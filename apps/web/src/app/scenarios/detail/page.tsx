@@ -6,7 +6,7 @@ import ScenarioDetailClient from './scenario-detail-client'
 
 function DetailInner() {
   const params = useSearchParams()
-  const id = params.get('id')
+  const id = params?.get('id')
   
   if (!id) {
     return <div className="p-8 text-center text-gray-500">シナリオIDが指定されていません</div>

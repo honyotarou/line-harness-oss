@@ -8,6 +8,8 @@ workers_dev = true
 
 [vars]
 WORKER_URL = "https://line-crm-worker.line-crm-api.workers.dev"
+WEB_URL = "http://127.0.0.1:3001"
+# ALLOWED_ORIGINS = "https://admin.example.com,https://preview.example.com"
 
 [[d1_databases]]
 binding = "DB"

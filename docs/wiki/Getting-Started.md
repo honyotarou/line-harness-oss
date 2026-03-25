@@ -145,13 +145,16 @@ npx wrangler secret put LINE_LOGIN_CHANNEL_SECRET
 | `LIFF_URL` | 任意 | LIFF アプリ URL |
 | `LINE_LOGIN_CHANNEL_ID` | **必須** | LINE Login チャネルID（UUID自動取得・`/auth/line` に必須） |
 | `LINE_LOGIN_CHANNEL_SECRET` | **必須** | LINE Login チャネルシークレット（OAuth コード交換に必須） |
+| `WEB_URL` | 推奨 | 管理画面の origin。Cookie/CORS allowlist に使用 |
+| `ALLOWED_ORIGINS` | 任意 | 追加で許可する origin のカンマ区切り |
 
 ### 管理画面の環境変数（Vercel / CF Pages）
 
 | 変数名 | 説明 |
 |--------|------|
 | `NEXT_PUBLIC_API_URL` | Workers API の URL（例: `https://line-crm-worker.line-crm-api.workers.dev`） |
-| `NEXT_PUBLIC_API_KEY` | 上で設定した API_KEY と同じ値 |
+
+`NEXT_PUBLIC_API_KEY` は設定しません。管理画面は `/api/auth/login` で `API_KEY` を `httpOnly` の管理セッション cookie へ交換して利用します。
 
 ## 5. Workers デプロイ
 
@@ -205,7 +208,7 @@ Vercel ダッシュボードからの場合:
 1. リポジトリを接続
 2. Root Directory: `apps/web`
 3. Framework Preset: Next.js
-4. 環境変数を設定（`NEXT_PUBLIC_API_URL`, `NEXT_PUBLIC_API_KEY`）
+4. 環境変数を設定（`NEXT_PUBLIC_API_URL` のみ）
 5. デプロイ
 
 ## 8. 動作確認

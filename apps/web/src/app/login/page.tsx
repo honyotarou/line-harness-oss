@@ -1,12 +1,16 @@
 'use client'
-import { useState } from 'react'
-import { useRouter } from 'next/navigation'
+import { useEffect, useState } from 'react'
+import { ApiError, api } from '@/lib/api'
 
 export default function LoginPage() {
   const [apiKey, setApiKey] = useState('')
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
-  const router = useRouter()
+  const [hydrated, setHydrated] = useState(false)
+
+  useEffect(() => {
+    setHydrated(true)
+  }, [])
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -14,20 +18,18 @@ export default function LoginPage() {
     setError('')
 
     try {
-      // Validate by calling a simple endpoint
-      const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8787'
-      const res = await fetch(`${apiUrl}/api/friends/count`, {
-        headers: { Authorization: `Bearer ${apiKey}` },
-      })
-
-      if (res.ok) {
-        localStorage.setItem('lh_api_key', apiKey)
-        router.push('/')
+      const res = await api.auth.login(apiKey)
+      if (res.success) {
+        window.location.assign('/')
       } else {
         setError('APIキーが正しくありません')
       }
-    } catch {
-      setError('接続に失敗しました')
+    } catch (err) {
+      if (err instanceof ApiError && err.status === 401) {
+        setError('APIキーが正しくありません')
+      } else {
+        setError('接続に失敗しました')
+      }
     } finally {
       setLoading(false)
     }
@@ -44,6 +46,11 @@ export default function LoginPage() {
           <p className="text-sm text-gray-500 mt-1">管理画面にログイン</p>
         </div>
 
+        {!hydrated ? (
+          <div className="py-10 flex justify-center">
+            <div className="animate-spin w-8 h-8 border-[3px] border-gray-200 border-t-green-500 rounded-full" />
+          </div>
+        ) : (
         <form onSubmit={handleLogin}>
           <div className="mb-4">
             <label className="block text-sm font-medium text-gray-700 mb-1">API Key</label>
@@ -70,6 +77,7 @@ export default function LoginPage() {
             {loading ? 'ログイン中...' : 'ログイン'}
           </button>
         </form>
+        )}
       </div>
     </div>
   )

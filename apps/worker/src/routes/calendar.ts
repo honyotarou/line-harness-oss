@@ -11,6 +11,8 @@ import {
   updateCalendarBookingEventId,
   getBookingsInRange,
   toJstString,
+  getFriendById,
+  getUserFriends,
 } from '@line-crm/db';
 import { GoogleCalendarClient } from '../services/google-calendar.js';
 import type { Env } from '../index.js';
@@ -179,9 +181,22 @@ calendar.post('/api/integrations/google-calendar/book', async (c) => {
       return c.json({ success: false, error: 'connectionId, title, startAt, endAt are required' }, 400);
     }
 
+    let resolvedFriendId: string | undefined;
+    if (body.friendId) {
+      const directFriend = await getFriendById(c.env.DB, body.friendId);
+      if (directFriend) {
+        resolvedFriendId = directFriend.id;
+      } else {
+        const userFriends = await getUserFriends(c.env.DB, body.friendId);
+        const bestMatch = userFriends.find((friend) => Boolean(friend.is_following)) ?? userFriends[0];
+        resolvedFriendId = bestMatch?.id;
+      }
+    }
+
     // D1 に予約レコードを作成
     const booking = await createCalendarBooking(c.env.DB, {
       ...body,
+      friendId: resolvedFriendId,
       metadata: body.metadata ? JSON.stringify(body.metadata) : undefined,
     });
 

@@ -553,6 +553,7 @@ export interface NotificationRule {
   eventType: string;
   conditions: Record<string, unknown>;
   channels: string[];
+  lineAccountId: string | null;
   isActive: boolean;
   createdAt: string;
   updatedAt: string;
@@ -566,6 +567,7 @@ export interface Notification {
   body: string;
   channel: string;
   status: "pending" | "sent" | "failed";
+  lineAccountId: string | null;
   metadata: string | null;
   createdAt: string;
 }

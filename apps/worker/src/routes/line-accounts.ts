@@ -8,41 +8,51 @@ import {
 } from '@line-crm/db';
 import type { LineAccount as DbLineAccount } from '@line-crm/db';
 import type { Env } from '../index.js';
+import { loadLineAccountStats } from '../services/line-account-stats.js';
+import { loadLineAccountProfile } from '../services/line-account-profile-cache.js';
 
 const lineAccounts = new Hono<Env>();
+const PROFILE_LOOKUP_CONCURRENCY = 3;
+
+async function mapWithConcurrencyLimit<T, R>(
+  items: T[],
+  limit: number,
+  mapper: (item: T, index: number) => Promise<R>,
+): Promise<R[]> {
+  if (items.length === 0) {
+    return [];
+  }
+
+  const results = new Array<R>(items.length);
+  let nextIndex = 0;
+
+  const worker = async () => {
+    while (nextIndex < items.length) {
+      const currentIndex = nextIndex;
+      nextIndex += 1;
+      results[currentIndex] = await mapper(items[currentIndex], currentIndex);
+    }
+  };
+
+  await Promise.all(
+    Array.from({ length: Math.min(limit, items.length) }, () => worker()),
+  );
+
+  return results;
+}
 
 function serializeLineAccount(row: DbLineAccount) {
   return {
     id: row.id,
     channelId: row.channel_id,
     name: row.name,
+    hasChannelAccessToken: Boolean(row.channel_access_token),
+    hasChannelSecret: Boolean(row.channel_secret),
     isActive: Boolean(row.is_active),
     createdAt: row.created_at,
     updatedAt: row.updated_at,
-    // Intentionally omit channelAccessToken and channelSecret from list responses
+    // Intentionally omit channelAccessToken and channelSecret from responses
   };
-}
-
-function serializeLineAccountFull(row: DbLineAccount) {
-  return {
-    ...serializeLineAccount(row),
-    channelAccessToken: row.channel_access_token,
-    channelSecret: row.channel_secret,
-  };
-}
-
-// Fetch bot profile (displayName, pictureUrl) from LINE API
-async function fetchBotProfile(accessToken: string): Promise<{ displayName?: string; pictureUrl?: string; basicId?: string }> {
-  try {
-    const res = await fetch('https://api.line.me/v2/bot/info', {
-      headers: { Authorization: `Bearer ${accessToken}` },
-    });
-    if (!res.ok) return {};
-    const data = await res.json() as { displayName?: string; pictureUrl?: string; basicId?: string };
-    return { displayName: data.displayName, pictureUrl: data.pictureUrl, basicId: data.basicId };
-  } catch {
-    return {};
-  }
 }
 
 // GET /api/line-accounts - list all (with LINE profile + stats)
@@ -50,37 +60,27 @@ lineAccounts.get('/api/line-accounts', async (c) => {
   try {
     const db = c.env.DB;
     const items = await getLineAccounts(db);
+    const statsByAccount = await loadLineAccountStats(db);
 
-    // Get stats for all accounts in parallel
-    const results = await Promise.all(
-      items.map(async (item) => {
-        const [profile, friendCount, scenarioCount, msgCount] = await Promise.all([
-          fetchBotProfile(item.channel_access_token),
-          db.prepare(`SELECT COUNT(*) as count FROM friends WHERE is_following = 1 AND line_account_id = ?`).bind(item.id).first<{ count: number }>(),
-          db.prepare(
-            `SELECT COUNT(*) as count FROM friend_scenarios fs
-             INNER JOIN friends f ON f.id = fs.friend_id
-             WHERE fs.status = 'active' AND f.line_account_id = ?`,
-          ).bind(item.id).first<{ count: number }>(),
-          db.prepare(
-            `SELECT COUNT(*) as count FROM messages_log ml
-             INNER JOIN friends f ON f.id = ml.friend_id
-             WHERE ml.direction = 'outgoing' AND ml.created_at >= date('now', '-30 days') AND f.line_account_id = ?`,
-          ).bind(item.id).first<{ count: number }>(),
-        ]);
+    const results = await mapWithConcurrencyLimit(
+      items,
+      PROFILE_LOOKUP_CONCURRENCY,
+      async (item) => {
+        const profile = await loadLineAccountProfile(db, item);
+        const stats = statsByAccount[item.id] ?? {
+          friendCount: 0,
+          activeScenarios: 0,
+          messagesThisMonth: 0,
+        };
 
         return {
           ...serializeLineAccount(item),
           displayName: profile.displayName || item.name,
           pictureUrl: profile.pictureUrl || null,
           basicId: profile.basicId || null,
-          stats: {
-            friendCount: friendCount?.count ?? 0,
-            activeScenarios: scenarioCount?.count ?? 0,
-            messagesThisMonth: msgCount?.count ?? 0,
-          },
+          stats,
         };
-      }),
+      },
     );
     return c.json({ success: true, data: results });
   } catch (err) {
@@ -96,7 +96,7 @@ lineAccounts.get('/api/line-accounts/:id', async (c) => {
     if (!account) {
       return c.json({ success: false, error: 'LINE account not found' }, 404);
     }
-    return c.json({ success: true, data: serializeLineAccountFull(account) });
+    return c.json({ success: true, data: serializeLineAccount(account) });
   } catch (err) {
     console.error('GET /api/line-accounts/:id error:', err);
     return c.json({ success: false, error: 'Internal server error' }, 500);
@@ -121,7 +121,7 @@ lineAccounts.post('/api/line-accounts', async (c) => {
     }
 
     const account = await createLineAccount(c.env.DB, body);
-    return c.json({ success: true, data: serializeLineAccountFull(account) }, 201);
+    return c.json({ success: true, data: serializeLineAccount(account) }, 201);
   } catch (err) {
     console.error('POST /api/line-accounts error:', err);
     return c.json({ success: false, error: 'Internal server error' }, 500);
@@ -149,7 +149,7 @@ lineAccounts.put('/api/line-accounts/:id', async (c) => {
     if (!updated) {
       return c.json({ success: false, error: 'LINE account not found' }, 404);
     }
-    return c.json({ success: true, data: serializeLineAccountFull(updated) });
+    return c.json({ success: true, data: serializeLineAccount(updated) });
   } catch (err) {
     console.error('PUT /api/line-accounts/:id error:', err);
     return c.json({ success: false, error: 'Internal server error' }, 500);

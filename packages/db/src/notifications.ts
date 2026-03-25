@@ -21,6 +21,7 @@ export interface NotificationRow {
   body: string;
   channel: string;
   status: string;
+  line_account_id: string | null;
   metadata: string | null;
   created_at: string;
 }
@@ -38,19 +39,41 @@ export async function getNotificationRuleById(db: D1Database, id: string): Promi
 
 export async function createNotificationRule(
   db: D1Database,
-  input: { name: string; eventType: string; conditions?: Record<string, unknown>; channels?: string[] },
+  input: {
+    name: string;
+    eventType: string;
+    conditions?: Record<string, unknown>;
+    channels?: string[];
+    lineAccountId?: string | null;
+  },
 ): Promise<NotificationRuleRow> {
   const id = crypto.randomUUID();
   const now = jstNow();
-  await db.prepare(`INSERT INTO notification_rules (id, name, event_type, conditions, channels, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?)`)
-    .bind(id, input.name, input.eventType, JSON.stringify(input.conditions ?? {}), JSON.stringify(input.channels ?? ['dashboard']), now, now).run();
+  await db.prepare(`INSERT INTO notification_rules (id, name, event_type, conditions, channels, line_account_id, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)`)
+    .bind(
+      id,
+      input.name,
+      input.eventType,
+      JSON.stringify(input.conditions ?? {}),
+      JSON.stringify(input.channels ?? ['dashboard']),
+      input.lineAccountId ?? null,
+      now,
+      now,
+    ).run();
   return (await getNotificationRuleById(db, id))!;
 }
 
 export async function updateNotificationRule(
   db: D1Database,
   id: string,
-  updates: Partial<{ name: string; eventType: string; conditions: Record<string, unknown>; channels: string[]; isActive: boolean }>,
+  updates: Partial<{
+    name: string;
+    eventType: string;
+    conditions: Record<string, unknown>;
+    channels: string[];
+    isActive: boolean;
+    lineAccountId: string | null;
+  }>,
 ): Promise<void> {
   const sets: string[] = [];
   const values: unknown[] = [];
@@ -59,6 +82,7 @@ export async function updateNotificationRule(
   if (updates.conditions !== undefined) { sets.push('conditions = ?'); values.push(JSON.stringify(updates.conditions)); }
   if (updates.channels !== undefined) { sets.push('channels = ?'); values.push(JSON.stringify(updates.channels)); }
   if (updates.isActive !== undefined) { sets.push('is_active = ?'); values.push(updates.isActive ? 1 : 0); }
+  if (updates.lineAccountId !== undefined) { sets.push('line_account_id = ?'); values.push(updates.lineAccountId); }
   if (sets.length === 0) return;
   sets.push('updated_at = ?');
   values.push(jstNow());
@@ -86,12 +110,30 @@ export async function getNotifications(db: D1Database, opts: { status?: string; 
 
 export async function createNotification(
   db: D1Database,
-  input: { ruleId?: string; eventType: string; title: string; body: string; channel: string; metadata?: string },
+  input: {
+    ruleId?: string;
+    eventType: string;
+    title: string;
+    body: string;
+    channel: string;
+    lineAccountId?: string | null;
+    metadata?: string;
+  },
 ): Promise<NotificationRow> {
   const id = crypto.randomUUID();
   const now = jstNow();
-  await db.prepare(`INSERT INTO notifications (id, rule_id, event_type, title, body, channel, metadata, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)`)
-    .bind(id, input.ruleId ?? null, input.eventType, input.title, input.body, input.channel, input.metadata ?? null, now).run();
+  await db.prepare(`INSERT INTO notifications (id, rule_id, event_type, title, body, channel, line_account_id, metadata, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`)
+    .bind(
+      id,
+      input.ruleId ?? null,
+      input.eventType,
+      input.title,
+      input.body,
+      input.channel,
+      input.lineAccountId ?? null,
+      input.metadata ?? null,
+      now,
+    ).run();
   return (await db.prepare(`SELECT * FROM notifications WHERE id = ?`).bind(id).first<NotificationRow>())!;
 }
 

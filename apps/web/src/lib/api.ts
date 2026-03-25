@@ -29,30 +29,42 @@ import type { Broadcast } from '@line-crm/shared'
 /** Broadcast type from API (now camelCase after worker serialization) */
 export type ApiBroadcast = Broadcast
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8787'
+const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://127.0.0.1:8787'
 
-/**
- * Read the API key from localStorage first (set during login), falling back to
- * the build-time env var for local development without the login page.
- */
-function getApiKey(): string {
-  if (typeof window !== 'undefined') {
-    const stored = localStorage.getItem('lh_api_key')
-    if (stored) return stored
+export class ApiError extends Error {
+  constructor(
+    message: string,
+    public readonly status: number,
+    public readonly body?: unknown,
+  ) {
+    super(message)
+    this.name = 'ApiError'
   }
-  return process.env.NEXT_PUBLIC_API_KEY || ''
 }
 
-export async function fetchApi<T>(path: string, options?: RequestInit): Promise<T> {
+export async function fetchApi<T>(
+  path: string,
+  options?: RequestInit,
+  requestOptions: { auth?: boolean } = {},
+): Promise<T> {
+  const headers: Record<string, string> = {
+    'Content-Type': 'application/json',
+    ...(options?.headers as Record<string, string> | undefined),
+  }
   const res = await fetch(`${API_URL}${path}`, {
     ...options,
-    headers: {
-      'Content-Type': 'application/json',
-      'Authorization': `Bearer ${getApiKey()}`,
-      ...options?.headers,
-    },
+    credentials: 'include',
+    headers,
   })
-  if (!res.ok) throw new Error(`API error: ${res.status}`)
+  if (!res.ok) {
+    let body: unknown
+    try {
+      body = await res.json()
+    } catch {
+      body = undefined
+    }
+    throw new ApiError(`API error: ${res.status}`, res.status, body)
+  }
   return res.json() as Promise<T>
 }
 
@@ -66,6 +78,19 @@ export type FriendListParams = {
 export type FriendWithTags = Friend & { tags: Tag[] }
 
 export const api = {
+  auth: {
+    login: (apiKey: string) =>
+      fetchApi<ApiResponse<{ expiresAt: string }>>('/api/auth/login', {
+        method: 'POST',
+        body: JSON.stringify({ apiKey }),
+      }, { auth: false }),
+    session: () =>
+      fetchApi<ApiResponse<{ authenticated: boolean }>>('/api/auth/session', undefined, { auth: false }),
+    logout: () =>
+      fetchApi<ApiResponse<null>>('/api/auth/logout', {
+        method: 'POST',
+      }, { auth: false }),
+  },
   friends: {
     list: (params?: FriendListParams) => {
       const query: Record<string, string> = {}
@@ -441,16 +466,31 @@ export const api = {
   },
   notifications: {
     rules: {
-      list: () =>
-        fetchApi<ApiResponse<NotificationRule[]>>('/api/notifications/rules'),
+      list: (params?: { lineAccountId?: string }) =>
+        fetchApi<ApiResponse<NotificationRule[]>>(
+          '/api/notifications/rules' + (params?.lineAccountId ? `?lineAccountId=${encodeURIComponent(params.lineAccountId)}` : ''),
+        ),
       get: (id: string) =>
         fetchApi<ApiResponse<NotificationRule>>(`/api/notifications/rules/${id}`),
-      create: (data: { name: string; eventType: string; conditions?: Record<string, unknown>; channels?: string[] }) =>
+      create: (data: {
+        name: string;
+        eventType: string;
+        conditions?: Record<string, unknown>;
+        channels?: string[];
+        lineAccountId?: string | null;
+      }) =>
         fetchApi<ApiResponse<NotificationRule>>('/api/notifications/rules', {
           method: 'POST',
           body: JSON.stringify(data),
         }),
-      update: (id: string, data: Partial<Pick<NotificationRule, 'name' | 'eventType' | 'conditions' | 'channels' | 'isActive'>>) =>
+      update: (id: string, data: Partial<{
+        name: string;
+        eventType: string;
+        conditions: Record<string, unknown>;
+        channels: string[];
+        lineAccountId: string | null;
+        isActive: boolean;
+      }>) =>
         fetchApi<ApiResponse<NotificationRule>>(`/api/notifications/rules/${id}`, {
           method: 'PUT',
           body: JSON.stringify(data),
@@ -458,7 +498,7 @@ export const api = {
       delete: (id: string) =>
         fetchApi<ApiResponse<null>>(`/api/notifications/rules/${id}`, { method: 'DELETE' }),
     },
-    list: (params?: { status?: string; limit?: string }) =>
+    list: (params?: { status?: string; limit?: string; lineAccountId?: string }) =>
       fetchApi<ApiResponse<Notification[]>>(
         '/api/notifications?' + new URLSearchParams(params as Record<string, string>),
       ),

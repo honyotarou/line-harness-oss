@@ -230,7 +230,7 @@ fireEvent(db, eventType, payload)
 
 | 方式 | 対象 | ヘッダー/検証 |
 |------|------|-------------|
-| API Key (Bearer) | 管理画面/SDK/curl | `Authorization: Bearer {API_KEY}` |
+| Admin Session / API Key (Bearer) | 管理画面/SDK/curl | 管理画面は `/api/auth/login` で発行した短期トークン、CLI/SDK は `API_KEY` |
 | LINE Signature | Webhook | `X-Line-Signature` (HMAC-SHA256) |
 | LIFF ID Token | LIFFアプリ | `/api/liff/*` ルートで検証 |
 
@@ -245,12 +245,14 @@ fireEvent(db, eventType, payload)
 //   /t/*               — トラッキングリンクリダイレクト（公開）
 //   /api/liff/*        — LIFF IDトークン認証
 //   /auth/*            — LINE Login フロー
+//   /api/auth/login    — 管理セッショントークン発行
+//   /api/auth/session  — 管理セッション検証
 //   /api/integrations/stripe/webhook — Stripe Webhook
-//   /api/webhooks/incoming/*/receive — 受信Webhook
-//   /api/forms/*/submit — フォーム送信（公開）
+//   /api/webhooks/incoming/*/receive — 受信Webhook（保存済み secret があれば署名検証）
+//   /api/forms/*/submit — フォーム送信（LIFF IDトークン必須）
 //   /api/forms/*       — フォーム定義取得（LIFF用、公開）
 
-// それ以外: Authorization: Bearer {API_KEY} が必須
+// それ以外: Authorization: Bearer {admin_session_token or API_KEY} が必須
 ```
 
 ### LINE Webhook 署名検証

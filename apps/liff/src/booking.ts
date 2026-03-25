@@ -21,6 +21,7 @@ declare const liff: {
 
 const API_URL = import.meta.env?.VITE_API_URL || 'http://localhost:8787';
 const CONNECTION_ID = import.meta.env?.VITE_CALENDAR_CONNECTION_ID || '';
+const UUID_STORAGE_KEY = 'lh_uuid';
 
 interface Slot {
   startAt: string;
@@ -425,10 +426,20 @@ export async function initBooking(): Promise<void> {
   const profile = await liff.getProfile();
   state.profile = profile;
 
-  // Try to get friendId from UUID linking
-  const UUID_STORAGE_KEY = 'lh_uuid';
   try {
-    state.friendId = localStorage.getItem(UUID_STORAGE_KEY);
+    const profileRes = await apiCall('/api/liff/profile', {
+      method: 'POST',
+      body: JSON.stringify({ lineUserId: profile.userId }),
+    });
+    if (profileRes.ok) {
+      const profileJson = await profileRes.json() as {
+        success: boolean;
+        data?: { id?: string };
+      };
+      if (profileJson.data?.id) {
+        state.friendId = profileJson.data.id;
+      }
+    }
   } catch {
     // silent
   }
@@ -436,7 +447,12 @@ export async function initBooking(): Promise<void> {
   // Silent UUID linking (same as main flow)
   const rawIdToken = liff.getIDToken();
   if (rawIdToken) {
-    const existingUuid = state.friendId;
+    let existingUuid: string | null = null;
+    try {
+      existingUuid = localStorage.getItem('lh_uuid');
+    } catch {
+      // silent
+    }
     apiCall('/api/liff/link', {
       method: 'POST',
       body: JSON.stringify({
@@ -450,7 +466,6 @@ export async function initBooking(): Promise<void> {
         if (data?.data?.userId) {
           try {
             localStorage.setItem(UUID_STORAGE_KEY, data.data.userId);
-            state.friendId = data.data.userId;
           } catch { /* silent */ }
         }
       }

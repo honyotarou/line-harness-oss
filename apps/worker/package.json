@@ -8,7 +8,7 @@
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
     "test:coverage": "vitest run --coverage",
-    "test:bench": "vitest bench"
+    "test:bench": "vitest bench --run"
   },
   "dependencies": {
     "hono": "^4.6.0",

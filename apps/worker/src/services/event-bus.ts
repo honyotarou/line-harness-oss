@@ -308,6 +308,7 @@ async function processNotifications(
           title: `${rule.name}: ${eventType}`,
           body: JSON.stringify(payload),
           channel,
+          lineAccountId: lineAccountId ?? null,
           metadata: JSON.stringify(payload.eventData ?? {}),
         });
 

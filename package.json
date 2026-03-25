@@ -6,7 +6,8 @@
   "scripts": {
     "dev:worker": "pnpm --filter worker dev",
     "dev:web": "pnpm --filter web dev",
-    "build": "pnpm -r build",
+    "build": "pnpm --workspace-concurrency=1 -r build",
+    "test:e2e": "playwright test",
     "deploy:worker": "pnpm --filter worker deploy",
     "deploy:web": "pnpm --filter web build",
     "db:migrate": "wrangler d1 execute line-crm --file=packages/db/schema.sql",
@@ -17,6 +18,7 @@
     "node": ">=20"
   },
   "devDependencies": {
+    "@playwright/test": "^1.51.1",
     "typescript": "^5.9.3"
   }
 }

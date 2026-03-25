@@ -360,16 +360,43 @@ export async function enrollFriendInScenario(
 export async function getFriendScenariosDueForDelivery(
   db: D1Database,
   now: string,
+  lineAccountId?: string | null,
 ): Promise<FriendScenario[]> {
-  // Fetch all active scenarios with a delivery time, then filter by epoch comparison
-  // to handle mixed timestamp formats (Z and +09:00) during migration
-  const result = await db
-    .prepare(
-      `SELECT * FROM friend_scenarios
-       WHERE status = 'active'
-         AND next_delivery_at IS NOT NULL`,
-    )
-    .all<FriendScenario>();
+  let result;
+  if (lineAccountId === undefined) {
+    result = await db
+      .prepare(
+        `SELECT fs.*
+         FROM friend_scenarios fs
+         INNER JOIN friends f ON f.id = fs.friend_id
+         WHERE fs.status = 'active'
+           AND fs.next_delivery_at IS NOT NULL`,
+      )
+      .all<FriendScenario>();
+  } else if (lineAccountId === null) {
+    result = await db
+      .prepare(
+        `SELECT fs.*
+         FROM friend_scenarios fs
+         INNER JOIN friends f ON f.id = fs.friend_id
+         WHERE fs.status = 'active'
+           AND fs.next_delivery_at IS NOT NULL
+           AND f.line_account_id IS NULL`,
+      )
+      .all<FriendScenario>();
+  } else {
+    result = await db
+      .prepare(
+        `SELECT fs.*
+         FROM friend_scenarios fs
+         INNER JOIN friends f ON f.id = fs.friend_id
+         WHERE fs.status = 'active'
+           AND fs.next_delivery_at IS NOT NULL
+           AND f.line_account_id = ?`,
+      )
+      .bind(lineAccountId)
+      .all<FriendScenario>();
+  }
   const nowMs = new Date(now).getTime();
   return result.results
     .filter((fs) => new Date(fs.next_delivery_at!).getTime() <= nowMs)

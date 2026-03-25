@@ -9,6 +9,11 @@ import {
 import type { LineClient } from '@line-crm/line-sdk';
 import type { Message } from '@line-crm/line-sdk';
 import { jitterDeliveryTime, addJitter, sleep } from './stealth.js';
+import {
+  beginDeliveryAttempt,
+  markDeliveryAttemptFailed,
+  markDeliveryAttemptSucceeded,
+} from './delivery-reliability.js';
 
 /**
  * Replace template variables in message content.
@@ -70,13 +75,14 @@ export async function processStepDeliveries(
   db: D1Database,
   lineClient: LineClient,
   workerUrl?: string,
+  lineAccountId?: string | null,
 ): Promise<void> {
   // Skip delivery outside 9:00-23:00 JST window
   const jstHour = new Date(Date.now() + 9 * 60 * 60_000).getUTCHours();
   if (jstHour < DEFAULT_START_HOUR || jstHour >= DEFAULT_END_HOUR) return;
 
   const now = jstNow();
-  const dueFriendScenarios = await getFriendScenariosDueForDelivery(db, now);
+  const dueFriendScenarios = await getFriendScenariosDueForDelivery(db, now, lineAccountId);
 
   for (let i = 0; i < dueFriendScenarios.length; i++) {
     const fs = dueFriendScenarios[i];
@@ -164,32 +170,57 @@ async function processSingleDelivery(
   // Expand template variables ({{name}}, {{uid}}, {{auth_url:CHANNEL_ID}}, etc.)
   const expandedContent = expandVariables(currentStep.message_content, friend, workerUrl);
   const message = buildMessage(currentStep.message_type, expandedContent);
-  await lineClient.pushMessage(friend.line_user_id, [message]);
+  const attempt = {
+    idempotencyKey: `step:${fs.id}:${currentStep.id}`,
+    jobName: 'step_deliveries',
+    sourceType: 'friend_scenario',
+    sourceId: fs.id,
+    friendId: friend.id,
+    lineAccountId: friend.line_account_id ?? null,
+    metadata: {
+      scenarioId: fs.scenario_id,
+      scenarioStepId: currentStep.id,
+      stepOrder: currentStep.step_order,
+    },
+  };
+  const reserved = await beginDeliveryAttempt(db, attempt);
+  if (!reserved) {
+    return;
+  }
 
-  // Log outgoing message
-  const logId = crypto.randomUUID();
-  await db
-    .prepare(
-      `INSERT INTO messages_log (id, friend_id, direction, message_type, content, broadcast_id, scenario_step_id, created_at)
-       VALUES (?, ?, 'outgoing', ?, ?, NULL, ?, ?)`,
-    )
-    .bind(logId, friend.id, currentStep.message_type, currentStep.message_content, currentStep.id, jstNow())
-    .run();
+  try {
+    await lineClient.pushMessage(friend.line_user_id, [message]);
 
-  // Determine next step (find the step after currentStep in the sorted list)
-  const currentIndex = steps.indexOf(currentStep);
-  const nextStep = currentIndex + 1 < steps.length ? steps[currentIndex + 1] : null;
+    // Log outgoing message
+    const logId = crypto.randomUUID();
+    await db
+      .prepare(
+        `INSERT INTO messages_log (id, friend_id, direction, message_type, content, broadcast_id, scenario_step_id, created_at)
+         VALUES (?, ?, 'outgoing', ?, ?, NULL, ?, ?)`,
+      )
+      .bind(logId, friend.id, currentStep.message_type, currentStep.message_content, currentStep.id, jstNow())
+      .run();
 
-  if (nextStep) {
-    // Schedule next delivery with stealth jitter + delivery window enforcement
-    const nextDeliveryDate = new Date(Date.now() + 9 * 60 * 60_000);
-    nextDeliveryDate.setMinutes(nextDeliveryDate.getMinutes() + nextStep.delay_minutes);
-    const windowedDate = enforceDeliveryWindow(nextDeliveryDate, preferredHour);
-    const jitteredDate = jitterDeliveryTime(windowedDate);
-    await advanceFriendScenario(db, fs.id, currentStep.step_order, jitteredDate.toISOString().slice(0, -1) + '+09:00');
-  } else {
-    // This was the last step
-    await completeFriendScenario(db, fs.id);
+    // Determine next step (find the step after currentStep in the sorted list)
+    const currentIndex = steps.indexOf(currentStep);
+    const nextStep = currentIndex + 1 < steps.length ? steps[currentIndex + 1] : null;
+
+    if (nextStep) {
+      // Schedule next delivery with stealth jitter + delivery window enforcement
+      const nextDeliveryDate = new Date(Date.now() + 9 * 60 * 60_000);
+      nextDeliveryDate.setMinutes(nextDeliveryDate.getMinutes() + nextStep.delay_minutes);
+      const windowedDate = enforceDeliveryWindow(nextDeliveryDate, preferredHour);
+      const jitteredDate = jitterDeliveryTime(windowedDate);
+      await advanceFriendScenario(db, fs.id, currentStep.step_order, jitteredDate.toISOString().slice(0, -1) + '+09:00');
+    } else {
+      // This was the last step
+      await completeFriendScenario(db, fs.id);
+    }
+
+    await markDeliveryAttemptSucceeded(db, { idempotencyKey: attempt.idempotencyKey });
+  } catch (err) {
+    await markDeliveryAttemptFailed(db, { ...attempt, error: err }, undefined);
+    throw err;
   }
 }
 

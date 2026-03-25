@@ -3,6 +3,7 @@
 import { useState, useEffect, useRef } from 'react'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
+import { api } from '@/lib/api'
 import { useAccount } from '@/contexts/account-context'
 import type { AccountWithStats } from '@/contexts/account-context'
 
@@ -162,6 +163,7 @@ function NavIcon({ d }: { d: string }) {
 
 export default function Sidebar() {
   const pathname = usePathname()
+  const currentPath = pathname ?? ''
   const [isOpen, setIsOpen] = useState(false)
 
   useEffect(() => { setIsOpen(false) }, [pathname])
@@ -170,7 +172,7 @@ export default function Sidebar() {
     return () => { document.body.style.overflow = '' }
   }, [isOpen])
 
-  const isActive = (href: string) => href === '/' ? pathname === '/' : pathname.startsWith(href)
+  const isActive = (href: string) => href === '/' ? currentPath === '/' : currentPath.startsWith(href)
 
   const sidebarContent = (
     <>
@@ -229,8 +231,11 @@ export default function Sidebar() {
         <p className="text-xs text-gray-400">LINE Harness v0.1</p>
         <button
           onClick={() => {
-            localStorage.removeItem('lh_api_key')
-            window.location.href = '/login'
+            void api.auth.logout()
+              .catch(() => undefined)
+              .finally(() => {
+                window.location.assign('/login')
+              })
           }}
           className="flex items-center gap-2 text-xs text-gray-400 hover:text-red-500 transition-colors"
         >

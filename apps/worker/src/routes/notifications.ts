@@ -34,6 +34,7 @@ notifications.get('/api/notifications/rules', async (c) => {
         eventType: r.event_type,
         conditions: JSON.parse(r.conditions),
         channels: JSON.parse(r.channels),
+        lineAccountId: r.line_account_id,
         isActive: Boolean(r.is_active),
         createdAt: r.created_at,
         updatedAt: r.updated_at,
@@ -57,6 +58,7 @@ notifications.get('/api/notifications/rules/:id', async (c) => {
         eventType: item.event_type,
         conditions: JSON.parse(item.conditions),
         channels: JSON.parse(item.channels),
+        lineAccountId: item.line_account_id,
         isActive: Boolean(item.is_active),
         createdAt: item.created_at,
       },
@@ -69,12 +71,25 @@ notifications.get('/api/notifications/rules/:id', async (c) => {
 
 notifications.post('/api/notifications/rules', async (c) => {
   try {
-    const body = await c.req.json<{ name: string; eventType: string; conditions?: Record<string, unknown>; channels?: string[] }>();
+    const body = await c.req.json<{
+      name: string;
+      eventType: string;
+      conditions?: Record<string, unknown>;
+      channels?: string[];
+      lineAccountId?: string | null;
+    }>();
     if (!body.name || !body.eventType) return c.json({ success: false, error: 'name and eventType are required' }, 400);
     const item = await createNotificationRule(c.env.DB, body);
     return c.json({
       success: true,
-      data: { id: item.id, name: item.name, eventType: item.event_type, channels: JSON.parse(item.channels), createdAt: item.created_at },
+      data: {
+        id: item.id,
+        name: item.name,
+        eventType: item.event_type,
+        channels: JSON.parse(item.channels),
+        lineAccountId: item.line_account_id,
+        createdAt: item.created_at,
+      },
     }, 201);
   } catch (err) {
     console.error('POST /api/notifications/rules error:', err);
@@ -91,7 +106,14 @@ notifications.put('/api/notifications/rules/:id', async (c) => {
     if (!updated) return c.json({ success: false, error: 'Not found' }, 404);
     return c.json({
       success: true,
-      data: { id: updated.id, name: updated.name, eventType: updated.event_type, channels: JSON.parse(updated.channels), isActive: Boolean(updated.is_active) },
+      data: {
+        id: updated.id,
+        name: updated.name,
+        eventType: updated.event_type,
+        channels: JSON.parse(updated.channels),
+        lineAccountId: updated.line_account_id,
+        isActive: Boolean(updated.is_active),
+      },
     });
   } catch (err) {
     console.error('PUT /api/notifications/rules/:id error:', err);
@@ -143,6 +165,7 @@ notifications.get('/api/notifications', async (c) => {
         body: n.body,
         channel: n.channel,
         status: n.status,
+        lineAccountId: n.line_account_id,
         metadata: n.metadata ? JSON.parse(n.metadata) : null,
         createdAt: n.created_at,
       })),

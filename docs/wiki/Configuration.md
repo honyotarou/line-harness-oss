@@ -48,6 +48,8 @@ crons = ["*/5 * * * *"]
 | `LIFF_URL` | 任意 | string | LIFF アプリ URL | `https://liff.line.me/12345-abcde` |
 | `LINE_LOGIN_CHANNEL_ID` | 任意 | string | LINE Login チャネルID（UUID連携用） | `9876543210` |
 | `LINE_LOGIN_CHANNEL_SECRET` | 任意 | string | LINE Login チャネルシークレット | `xyz789...` |
+| `WEB_URL` | 推奨 | string | 管理画面の origin。Cookie/CORS allowlist に使用 | `https://admin.example.com` |
+| `ALLOWED_ORIGINS` | 任意 | string | 追加で許可する origin のカンマ区切り | `https://preview.example.com,https://staging.example.com` |
 
 ### シークレット設定コマンド
 
@@ -79,6 +81,9 @@ export type Env = {
     LINE_CHANNEL_ID: string;
     LINE_LOGIN_CHANNEL_ID: string;
     LINE_LOGIN_CHANNEL_SECRET: string;
+    WORKER_URL: string;
+    WEB_URL?: string;
+    ALLOWED_ORIGINS?: string;
   };
 };
 ```
@@ -90,7 +95,8 @@ Next.js 管理画面で必要な環境変数。Vercel / CF Pages のダッシュ
 | 変数名 | 説明 | 例 |
 |--------|------|-----|
 | `NEXT_PUBLIC_API_URL` | Workers API URL | `https://line-crm-worker.line-crm-api.workers.dev` |
-| `NEXT_PUBLIC_API_KEY` | API 認証キー（API_KEY と同値） | `sk-my-secret-key` |
+
+`NEXT_PUBLIC_API_KEY` は使用しません。ブラウザに root API key を配布せず、ログイン時に `/api/auth/login` で `httpOnly` セッション cookie を発行します。
 
 ## D1 データベースセットアップ
 
@@ -178,22 +184,14 @@ crons = ["0 * * * *"]
 
 ## CORS 設定
 
-MVP では全オリジン許可:
+Worker は allowlist 方式です。以下を自動許可します:
+- `WEB_URL`
+- `WORKER_URL`
+- `LIFF_URL` の origin
+- `ALLOWED_ORIGINS` の各 origin
+- ローカル開発用の `localhost` / `127.0.0.1`
 
-```typescript
-// apps/worker/src/index.ts
-app.use('*', cors({ origin: '*' }));
-```
-
-本番環境では管理画面のドメインに制限することを推奨:
-
-```typescript
-app.use('*', cors({
-  origin: ['https://line-crm-admin.pages.dev', 'https://your-domain.com'],
-  allowMethods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-  allowHeaders: ['Authorization', 'Content-Type'],
-}));
-```
+本番では `WEB_URL` を必ず設定し、preview や staging がある場合だけ `ALLOWED_ORIGINS` を追加してください。
 
 ## JST タイムゾーン標準化
 

@@ -1,6 +1,7 @@
 'use client'
 import { useEffect, useState } from 'react'
 import { useRouter, usePathname } from 'next/navigation'
+import { api } from '@/lib/api'
 
 export default function AuthGuard({ children }: { children: React.ReactNode }) {
   const router = useRouter()
@@ -8,16 +9,34 @@ export default function AuthGuard({ children }: { children: React.ReactNode }) {
   const [checked, setChecked] = useState(false)
 
   useEffect(() => {
-    if (pathname === '/login') {
-      setChecked(true)
-      return
+    let cancelled = false
+
+    const check = async () => {
+      if (pathname === '/login') {
+        setChecked(true)
+        return
+      }
+
+      try {
+        const session = await api.auth.session()
+        if (!cancelled && session.success && session.data.authenticated) {
+          setChecked(true)
+          return
+        }
+      } catch {
+        // fall through to redirect
+      }
+
+      if (!cancelled) {
+        router.replace('/login')
+      }
     }
 
-    const key = localStorage.getItem('lh_api_key')
-    if (!key) {
-      router.replace('/login')
-    } else {
-      setChecked(true)
+    setChecked(false)
+    void check()
+
+    return () => {
+      cancelled = true
     }
   }, [pathname, router])
 

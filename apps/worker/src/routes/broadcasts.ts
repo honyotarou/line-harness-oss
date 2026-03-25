@@ -12,6 +12,7 @@ import { processBroadcastSend } from '../services/broadcast.js';
 import { processSegmentSend } from '../services/segment-send.js';
 import type { SegmentCondition } from '../services/segment-query.js';
 import type { Env } from '../index.js';
+import { resolveLineAccessTokenForLineAccountId } from '../services/line-account-routing.js';
 
 const broadcasts = new Hono<Env>();
 
@@ -191,10 +192,25 @@ broadcasts.post('/api/broadcasts/:id/send', async (c) => {
       return c.json({ success: false, error: 'Broadcast is already sent or sending' }, 400);
     }
 
-    const lineClient = new LineClient(c.env.LINE_CHANNEL_ACCESS_TOKEN);
+    const accessToken = await resolveLineAccessTokenForLineAccountId(
+      c.env.DB,
+      c.env.LINE_CHANNEL_ACCESS_TOKEN,
+      existing.line_account_id,
+    );
+    const lineClient = new LineClient(accessToken);
     await processBroadcastSend(c.env.DB, lineClient, id);
 
     const result = await getBroadcastById(c.env.DB, id);
+    if (result && result.status !== 'sent') {
+      return c.json(
+        {
+          success: false,
+          error: 'Broadcast delivery failed',
+          data: serializeBroadcast(result),
+        },
+        502,
+      );
+    }
     return c.json({ success: true, data: result ? serializeBroadcast(result) : null });
   } catch (err) {
     console.error('POST /api/broadcasts/:id/send error:', err);
@@ -225,7 +241,12 @@ broadcasts.post('/api/broadcasts/:id/send-segment', async (c) => {
       );
     }
 
-    const lineClient = new LineClient(c.env.LINE_CHANNEL_ACCESS_TOKEN);
+    const accessToken = await resolveLineAccessTokenForLineAccountId(
+      c.env.DB,
+      c.env.LINE_CHANNEL_ACCESS_TOKEN,
+      existing.line_account_id,
+    );
+    const lineClient = new LineClient(accessToken);
     await processSegmentSend(c.env.DB, lineClient, id, body.conditions);
 
     const result = await getBroadcastById(c.env.DB, id);

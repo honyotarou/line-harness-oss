@@ -1,12 +1,9 @@
 import { Hono } from 'hono';
-import { cors } from 'hono/cors';
-import { LineClient } from '@line-crm/line-sdk';
 import { getLineAccounts } from '@line-crm/db';
-import { processStepDeliveries } from './services/step-delivery.js';
-import { processScheduledBroadcasts } from './services/broadcast.js';
-import { processReminderDeliveries } from './services/reminder-delivery.js';
-import { checkAccountHealth } from './services/ban-monitor.js';
 import { authMiddleware } from './middleware/auth.js';
+import { buildAllowedOrigins, isAllowedOrigin } from './services/cors-policy.js';
+import { runScheduledJobs } from './services/scheduler.js';
+import { authRoutes } from './routes/auth.js';
 import { webhook } from './routes/webhook.js';
 import { friends } from './routes/friends.js';
 import { tags } from './routes/tags.js';
@@ -44,19 +41,47 @@ export type Env = {
     LINE_LOGIN_CHANNEL_ID: string;
     LINE_LOGIN_CHANNEL_SECRET: string;
     WORKER_URL: string;
+    WEB_URL?: string;
+    ALLOWED_ORIGINS?: string;
   };
 };
 
 const app = new Hono<Env>();
 
-// CORS — allow all origins for MVP
-app.use('*', cors({ origin: '*' }));
+app.use('*', async (c, next) => {
+  const origin = c.req.header('Origin');
+  if (!origin) {
+    return next();
+  }
+
+  const allowedOrigins = buildAllowedOrigins(c.env);
+  if (!isAllowedOrigin(origin, allowedOrigins)) {
+    if (c.req.method === 'OPTIONS') {
+      return c.json({ success: false, error: 'CORS origin denied' }, 403);
+    }
+    return next();
+  }
+
+  c.header('Access-Control-Allow-Origin', origin);
+  c.header('Access-Control-Allow-Credentials', 'true');
+  c.header('Access-Control-Allow-Headers', 'Authorization, Content-Type');
+  c.header('Access-Control-Allow-Methods', 'GET, HEAD, PUT, PATCH, POST, DELETE, OPTIONS');
+  c.header('Access-Control-Max-Age', '86400');
+  c.header('Vary', 'Origin');
+
+  if (c.req.method === 'OPTIONS') {
+    return c.body(null, 204);
+  }
+
+  return next();
+});
 
 // Auth middleware — skips /webhook and /docs automatically
 app.use('*', authMiddleware);
 
 // Mount route groups — MVP & Round 2
 app.route('/', webhook);
+app.route('/', authRoutes);
 app.route('/', friends);
 app.route('/', tags);
 app.route('/', scenarios);
@@ -126,33 +151,13 @@ async function scheduled(
   env: Env['Bindings'],
   _ctx: ExecutionContext,
 ): Promise<void> {
-  // Get all active accounts from DB, plus the default env account
   const dbAccounts = await getLineAccounts(env.DB);
-  const activeTokens = new Set<string>();
-
-  // Default account from env
-  activeTokens.add(env.LINE_CHANNEL_ACCESS_TOKEN);
-
-  // DB accounts
-  for (const account of dbAccounts) {
-    if (account.is_active) {
-      activeTokens.add(account.channel_access_token);
-    }
-  }
-
-  // Run delivery for each account
-  const jobs = [];
-  for (const token of activeTokens) {
-    const lineClient = new LineClient(token);
-    jobs.push(
-      processStepDeliveries(env.DB, lineClient, env.WORKER_URL),
-      processScheduledBroadcasts(env.DB, lineClient),
-      processReminderDeliveries(env.DB, lineClient),
-    );
-  }
-  jobs.push(checkAccountHealth(env.DB));
-
-  await Promise.allSettled(jobs);
+  await runScheduledJobs({
+    db: env.DB,
+    defaultAccessToken: env.LINE_CHANNEL_ACCESS_TOKEN,
+    workerUrl: env.WORKER_URL,
+    dbAccounts,
+  });
 }
 
 export default {

@@ -121,12 +121,38 @@ export async function cancelFriendReminder(db: D1Database, id: string): Promise<
 
 /** リマインダ配信処理用: 配信が必要な友だちリマインダを取得 */
 export async function getDueReminderDeliveries(db: D1Database, now: string): Promise<Array<FriendReminderRow & { steps: ReminderStepRow[] }>> {
-  // activeなリマインダ登録を取得
-  const activeReminders = await db
-    .prepare(`SELECT fr.* FROM friend_reminders fr
-              INNER JOIN reminders r ON r.id = fr.reminder_id
-              WHERE fr.status = 'active' AND r.is_active = 1`)
-    .all<FriendReminderRow>();
+  return getDueReminderDeliveriesByAccount(db, now, undefined);
+}
+
+export async function getDueReminderDeliveriesByAccount(
+  db: D1Database,
+  now: string,
+  lineAccountId?: string | null,
+): Promise<Array<FriendReminderRow & { steps: ReminderStepRow[] }>> {
+  let activeReminders;
+  if (lineAccountId === undefined) {
+    activeReminders = await db
+      .prepare(`SELECT fr.* FROM friend_reminders fr
+                INNER JOIN reminders r ON r.id = fr.reminder_id
+                INNER JOIN friends f ON f.id = fr.friend_id
+                WHERE fr.status = 'active' AND r.is_active = 1`)
+      .all<FriendReminderRow>();
+  } else if (lineAccountId === null) {
+    activeReminders = await db
+      .prepare(`SELECT fr.* FROM friend_reminders fr
+                INNER JOIN reminders r ON r.id = fr.reminder_id
+                INNER JOIN friends f ON f.id = fr.friend_id
+                WHERE fr.status = 'active' AND r.is_active = 1 AND f.line_account_id IS NULL`)
+      .all<FriendReminderRow>();
+  } else {
+    activeReminders = await db
+      .prepare(`SELECT fr.* FROM friend_reminders fr
+                INNER JOIN reminders r ON r.id = fr.reminder_id
+                INNER JOIN friends f ON f.id = fr.friend_id
+                WHERE fr.status = 'active' AND r.is_active = 1 AND f.line_account_id = ?`)
+      .bind(lineAccountId)
+      .all<FriendReminderRow>();
+  }
 
   const results: Array<FriendReminderRow & { steps: ReminderStepRow[] }> = [];
   for (const fr of activeReminders.results) {

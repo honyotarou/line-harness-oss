@@ -12,6 +12,7 @@ import {
   jstNow,
 } from '@line-crm/db';
 import type { Env } from '../index.js';
+import { resolveLineAccessTokenForFriend } from '../services/line-account-routing.js';
 
 const chats = new Hono<Env>();
 
@@ -230,7 +231,12 @@ chats.post('/api/chats/:id/send', async (c) => {
 
     // LINE APIでメッセージ送信
     const { LineClient } = await import('@line-crm/line-sdk');
-    const lineClient = new LineClient(c.env.LINE_CHANNEL_ACCESS_TOKEN);
+    const accessToken = await resolveLineAccessTokenForFriend(
+      c.env.DB,
+      c.env.LINE_CHANNEL_ACCESS_TOKEN,
+      friend.id,
+    );
+    const lineClient = new LineClient(accessToken);
     const messageType = body.messageType ?? 'text';
 
     if (messageType === 'text') {

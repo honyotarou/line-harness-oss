@@ -9,6 +9,11 @@ import type { Broadcast } from '@line-crm/db';
 import type { LineClient } from '@line-crm/line-sdk';
 import type { Message } from '@line-crm/line-sdk';
 import { calculateStaggerDelay, sleep, addMessageVariation } from './stealth.js';
+import {
+  beginDeliveryAttempt,
+  markDeliveryAttemptFailed,
+  markDeliveryAttemptSucceeded,
+} from './delivery-reliability.js';
 
 const MULTICAST_BATCH_SIZE = 500;
 
@@ -17,17 +22,35 @@ export async function processBroadcastSend(
   lineClient: LineClient,
   broadcastId: string,
 ): Promise<Broadcast> {
-  // Mark as sending
-  await updateBroadcastStatus(db, broadcastId, 'sending');
-
   const broadcast = await getBroadcastById(db, broadcastId);
   if (!broadcast) {
     throw new Error(`Broadcast ${broadcastId} not found`);
   }
 
+  const idempotencyKey = `broadcast:${broadcast.id}`;
+  const attempt = {
+    idempotencyKey,
+    jobName: 'broadcast_send',
+    sourceType: 'broadcast',
+    sourceId: broadcast.id,
+    lineAccountId: broadcast.line_account_id ?? null,
+    metadata: {
+      targetType: broadcast.target_type,
+      targetTagId: broadcast.target_tag_id,
+    },
+  };
+  const reserved = await beginDeliveryAttempt(db, attempt);
+  if (!reserved) {
+    return broadcast;
+  }
+
+  // Mark as sending only after the delivery slot is reserved.
+  await updateBroadcastStatus(db, broadcastId, 'sending');
+
   const message = buildMessage(broadcast.message_type, broadcast.message_content);
   let totalCount = 0;
   let successCount = 0;
+  const resetStatus = broadcast.status === 'scheduled' ? 'scheduled' : 'draft';
 
   try {
     if (broadcast.target_type === 'all') {
@@ -65,33 +88,42 @@ export async function processBroadcastSend(
           batchMessage = { ...message, text: addMessageVariation(message.text, batchIndex) };
         }
 
-        try {
-          await lineClient.multicast(lineUserIds, [batchMessage]);
-          successCount += batch.length;
+        await lineClient.multicast(lineUserIds, [batchMessage]);
+        successCount += batch.length;
 
-          // Log only successfully sent messages
-          for (const friend of batch) {
-            const logId = crypto.randomUUID();
-            await db
-              .prepare(
-                `INSERT INTO messages_log (id, friend_id, direction, message_type, content, broadcast_id, scenario_step_id, created_at)
-                 VALUES (?, ?, 'outgoing', ?, ?, ?, NULL, ?)`,
-              )
-              .bind(logId, friend.id, broadcast.message_type, broadcast.message_content, broadcastId, now)
-              .run();
-          }
-        } catch (err) {
-          console.error(`Multicast batch ${i / MULTICAST_BATCH_SIZE} failed:`, err);
-          // Continue with next batch; failed batch is not logged
+        // Log only successfully sent messages
+        for (const friend of batch) {
+          const logId = crypto.randomUUID();
+          await db
+            .prepare(
+              `INSERT INTO messages_log (id, friend_id, direction, message_type, content, broadcast_id, scenario_step_id, created_at)
+               VALUES (?, ?, 'outgoing', ?, ?, ?, NULL, ?)`,
+            )
+            .bind(logId, friend.id, broadcast.message_type, broadcast.message_content, broadcastId, now)
+            .run();
         }
       }
     }
 
+    await markDeliveryAttemptSucceeded(db, { idempotencyKey });
     await updateBroadcastStatus(db, broadcastId, 'sent', { totalCount, successCount });
   } catch (err) {
-    // On failure, reset to draft so it can be retried
-    await updateBroadcastStatus(db, broadcastId, 'draft');
-    throw err;
+    await markDeliveryAttemptFailed(
+      db,
+      {
+        ...attempt,
+        error: err,
+        metadata: {
+          targetType: broadcast.target_type,
+          targetTagId: broadcast.target_tag_id,
+          totalCount,
+          successCount,
+        },
+      },
+      undefined,
+    );
+    await updateBroadcastStatus(db, broadcastId, resetStatus, { totalCount, successCount });
+    console.error(`Broadcast ${broadcastId} send failed:`, err);
   }
 
   return (await getBroadcastById(db, broadcastId))!;
@@ -100,9 +132,10 @@ export async function processBroadcastSend(
 export async function processScheduledBroadcasts(
   db: D1Database,
   lineClient: LineClient,
+  lineAccountId?: string | null,
 ): Promise<void> {
   const now = jstNow();
-  const allBroadcasts = await getBroadcasts(db);
+  const allBroadcasts = await getBroadcasts(db, lineAccountId);
 
   const nowMs = Date.now();
   const scheduled = allBroadcasts.filter(

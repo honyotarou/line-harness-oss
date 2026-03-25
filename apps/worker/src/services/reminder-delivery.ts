@@ -6,7 +6,7 @@
  */
 
 import {
-  getDueReminderDeliveries,
+  getDueReminderDeliveriesByAccount,
   markReminderStepDelivered,
   completeReminderIfDone,
   getFriendById,
@@ -14,13 +14,19 @@ import {
 } from '@line-crm/db';
 import type { LineClient, Message } from '@line-crm/line-sdk';
 import { addJitter, sleep } from './stealth.js';
+import {
+  beginDeliveryAttempt,
+  markDeliveryAttemptFailed,
+  markDeliveryAttemptSucceeded,
+} from './delivery-reliability.js';
 
 export async function processReminderDeliveries(
   db: D1Database,
   lineClient: LineClient,
+  lineAccountId?: string | null,
 ): Promise<void> {
   const now = jstNow();
-  const dueReminders = await getDueReminderDeliveries(db, now);
+  const dueReminders = await getDueReminderDeliveriesByAccount(db, now, lineAccountId);
 
   for (let i = 0; i < dueReminders.length; i++) {
     const fr = dueReminders[i];
@@ -37,21 +43,45 @@ export async function processReminderDeliveries(
       }
 
       for (const step of fr.steps) {
+        const lineAccountForDelivery = lineAccountId ?? friend.line_account_id ?? null;
+        const attempt = {
+          idempotencyKey: `reminder:${fr.id}:${step.id}`,
+          jobName: 'reminder_deliveries',
+          sourceType: 'friend_reminder',
+          sourceId: fr.id,
+          friendId: friend.id,
+          lineAccountId: lineAccountForDelivery,
+          metadata: {
+            reminderId: fr.reminder_id,
+            reminderStepId: step.id,
+          },
+        };
+        const reserved = await beginDeliveryAttempt(db, attempt);
+        if (!reserved) {
+          continue;
+        }
+
         const message = buildMessage(step.message_type, step.message_content);
-        await lineClient.pushMessage(friend.line_user_id, [message]);
+        try {
+          await lineClient.pushMessage(friend.line_user_id, [message]);
 
-        // メッセージログに記録
-        const logId = crypto.randomUUID();
-        await db
-          .prepare(
-            `INSERT INTO messages_log (id, friend_id, direction, message_type, content, created_at)
-             VALUES (?, ?, 'outgoing', ?, ?, ?)`,
-          )
-          .bind(logId, friend.id, step.message_type, step.message_content, jstNow())
-          .run();
+          // メッセージログに記録
+          const logId = crypto.randomUUID();
+          await db
+            .prepare(
+              `INSERT INTO messages_log (id, friend_id, direction, message_type, content, created_at)
+               VALUES (?, ?, 'outgoing', ?, ?, ?)`,
+            )
+            .bind(logId, friend.id, step.message_type, step.message_content, jstNow())
+            .run();
 
-        // 配信済みを記録
-        await markReminderStepDelivered(db, fr.id, step.id);
+          // 配信済みを記録
+          await markReminderStepDelivered(db, fr.id, step.id);
+          await markDeliveryAttemptSucceeded(db, { idempotencyKey: attempt.idempotencyKey });
+        } catch (err) {
+          await markDeliveryAttemptFailed(db, { ...attempt, error: err }, undefined);
+          throw err;
+        }
       }
 
       // 全ステップ配信済みかチェック

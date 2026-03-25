@@ -17,11 +17,23 @@ import {
 import { fireEvent } from '../services/event-bus.js';
 import { buildMessage, expandVariables } from '../services/step-delivery.js';
 import type { Env } from '../index.js';
+import { BodyTooLargeError, readTextBodyWithLimit } from '../services/request-body.js';
 
 const webhook = new Hono<Env>();
+const LINE_WEBHOOK_LIMIT_BYTES = 256 * 1024;
 
 webhook.post('/webhook', async (c) => {
-  const rawBody = await c.req.text();
+  let rawBody: string;
+  try {
+    rawBody = await readTextBodyWithLimit(c.req.raw, LINE_WEBHOOK_LIMIT_BYTES);
+  } catch (err) {
+    if (err instanceof BodyTooLargeError) {
+      return c.json({ status: 'payload_too_large' }, 413);
+    }
+    console.error('Failed to read webhook body', err);
+    return c.json({ status: 'ok' }, 200);
+  }
+
   const signature = c.req.header('X-Line-Signature') ?? '';
   const db = c.env.DB;
 
@@ -73,7 +85,11 @@ webhook.post('/webhook', async (c) => {
     }
   })();
 
-  c.executionCtx.waitUntil(processingPromise);
+  try {
+    c.executionCtx.waitUntil(processingPromise);
+  } catch {
+    void processingPromise;
+  }
 
   return c.json({ status: 'ok' }, 200);
 });
@@ -250,9 +266,10 @@ async function handleEvent(
     // 自動返信チェック（このアカウントのルール + グローバルルールのみ）
     // NOTE: Auto-replies use replyMessage (free, no quota) instead of pushMessage
     // The replyToken is only valid for ~1 minute after the message event
-    const autoReplies = await db
-      .prepare(`SELECT * FROM auto_replies WHERE is_active = 1 AND (line_account_id IS NULL${lineAccountId ? ` OR line_account_id = '${lineAccountId}'` : ''}) ORDER BY created_at ASC`)
-      .all<{
+    const autoReplyStmt = lineAccountId
+      ? db.prepare('SELECT * FROM auto_replies WHERE is_active = 1 AND (line_account_id IS NULL OR line_account_id = ?) ORDER BY created_at ASC').bind(lineAccountId)
+      : db.prepare('SELECT * FROM auto_replies WHERE is_active = 1 AND line_account_id IS NULL ORDER BY created_at ASC');
+    const autoReplies = await autoReplyStmt.all<{
         id: string;
         keyword: string;
         match_type: 'exact' | 'contains';

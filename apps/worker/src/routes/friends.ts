@@ -14,6 +14,7 @@ import type { Friend as DbFriend, Tag as DbTag } from '@line-crm/db';
 import { fireEvent } from '../services/event-bus.js';
 import { buildMessage } from '../services/step-delivery.js';
 import type { Env } from '../index.js';
+import { resolveLineAccessTokenForFriend } from '../services/line-account-routing.js';
 
 const friends = new Hono<Env>();
 
@@ -305,7 +306,12 @@ friends.post('/api/friends/:id/messages', async (c) => {
     }
 
     const { LineClient } = await import('@line-crm/line-sdk');
-    const lineClient = new LineClient(c.env.LINE_CHANNEL_ACCESS_TOKEN);
+    const accessToken = await resolveLineAccessTokenForFriend(
+      db,
+      c.env.LINE_CHANNEL_ACCESS_TOKEN,
+      friendId,
+    );
+    const lineClient = new LineClient(accessToken);
     const messageType = body.messageType ?? 'text';
 
     const message = buildMessage(messageType, body.content);
