@@ -23,30 +23,30 @@
         <div class='clearfix'>
             
             <div class='fl pad1y space-right2'>
-                <span class="strong">0% </span>
+                <span class="strong">0.4% </span>
                 <span class="quiet">Statements</span>
-                <span class='fraction'>0/247</span>
+                <span class='fraction'>1/247</span>
             </div>
         
             
             <div class='fl pad1y space-right2'>
-                <span class="strong">0% </span>
+                <span class="strong">100% </span>
                 <span class="quiet">Branches</span>
-                <span class='fraction'>0/1</span>
+                <span class='fraction'>0/0</span>
             </div>
         
             
             <div class='fl pad1y space-right2'>
                 <span class="strong">0% </span>
                 <span class="quiet">Functions</span>
-                <span class='fraction'>0/1</span>
+                <span class='fraction'>0/7</span>
             </div>
         
             
             <div class='fl pad1y space-right2'>
-                <span class="strong">0% </span>
+                <span class="strong">0.4% </span>
                 <span class="quiet">Lines</span>
-                <span class='fraction'>0/247</span>
+                <span class='fraction'>1/247</span>
             </div>
         
             
@@ -389,7 +389,7 @@
 <a name='L324'></a><a href='#L324'>324</a>
 <a name='L325'></a><a href='#L325'>325</a>
 <a name='L326'></a><a href='#L326'>326</a>
-<a name='L327'></a><a href='#L327'>327</a></td><td class="line-coverage quiet"><span class="cline-any cline-no">&nbsp;</span>
+<a name='L327'></a><a href='#L327'>327</a></td><td class="line-coverage quiet"><span class="cline-any cline-yes">1x</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
@@ -715,7 +715,7 @@
 <span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span></td><td class="text"><pre class="prettyprint lang-js"><span class="cstat-no" title="statement not covered" >/**<span class="fstat-no" title="function not covered" ><span class="branch-0 cbranch-no" title="branch not covered" ></span></span></span>
+<span class="cline-any cline-neutral">&nbsp;</span></td><td class="text"><pre class="prettyprint lang-js">/**
  * イベントバス — システム内イベントの発火と処理
  *
  * イベント発生時に以下を実行:
@@ -747,7 +747,7 @@ interface EventPayload {
 /**
  * イベントを発火し、登録された全ハンドラーを実行
  */
-<span class="cstat-no" title="statement not covered" >export async function fireEvent(</span>
+<span class="cstat-no" title="statement not covered" ><span class="fstat-no" title="function not covered" >export async function fireEvent(</span></span>
 <span class="cstat-no" title="statement not covered" >  db: D1Database,</span>
 <span class="cstat-no" title="statement not covered" >  eventType: string,</span>
 <span class="cstat-no" title="statement not covered" >  payload: EventPayload,</span>
@@ -763,7 +763,7 @@ interface EventPayload {
 <span class="cstat-no" title="statement not covered" >}</span>
 &nbsp;
 /** 送信Webhookへの通知 */
-<span class="cstat-no" title="statement not covered" >async function fireOutgoingWebhooks(</span>
+<span class="cstat-no" title="statement not covered" ><span class="fstat-no" title="function not covered" >async function fireOutgoingWebhooks(</span></span>
 <span class="cstat-no" title="statement not covered" >  db: D1Database,</span>
 <span class="cstat-no" title="statement not covered" >  eventType: string,</span>
 <span class="cstat-no" title="statement not covered" >  payload: EventPayload,</span>
@@ -808,7 +808,7 @@ interface EventPayload {
 <span class="cstat-no" title="statement not covered" >}</span>
 &nbsp;
 /** スコアリングルール適用 */
-<span class="cstat-no" title="statement not covered" >async function processScoring(</span>
+<span class="cstat-no" title="statement not covered" ><span class="fstat-no" title="function not covered" >async function processScoring(</span></span>
 <span class="cstat-no" title="statement not covered" >  db: D1Database,</span>
 <span class="cstat-no" title="statement not covered" >  eventType: string,</span>
 <span class="cstat-no" title="statement not covered" >  payload: EventPayload,</span>
@@ -822,7 +822,7 @@ interface EventPayload {
 <span class="cstat-no" title="statement not covered" >}</span>
 &nbsp;
 /** 自動化ルール(IF-THEN)実行 */
-<span class="cstat-no" title="statement not covered" >async function processAutomations(</span>
+<span class="cstat-no" title="statement not covered" ><span class="fstat-no" title="function not covered" >async function processAutomations(</span></span>
 <span class="cstat-no" title="statement not covered" >  db: D1Database,</span>
 <span class="cstat-no" title="statement not covered" >  eventType: string,</span>
 <span class="cstat-no" title="statement not covered" >  payload: EventPayload,</span>
@@ -872,7 +872,7 @@ interface EventPayload {
 <span class="cstat-no" title="statement not covered" >}</span>
 &nbsp;
 /** 条件マッチング */
-<span class="cstat-no" title="statement not covered" >function matchConditions(</span>
+<span class="cstat-no" title="statement not covered" ><span class="fstat-no" title="function not covered" >function matchConditions(</span></span>
 <span class="cstat-no" title="statement not covered" >  conditions: Record&lt;string, unknown&gt;,</span>
 <span class="cstat-no" title="statement not covered" >  payload: EventPayload,</span>
 <span class="cstat-no" title="statement not covered" >): boolean {</span>
@@ -896,7 +896,7 @@ interface EventPayload {
 <span class="cstat-no" title="statement not covered" >}</span>
 &nbsp;
 /** アクション実行 */
-<span class="cstat-no" title="statement not covered" >async function executeAction(</span>
+<span class="cstat-no" title="statement not covered" ><span class="fstat-no" title="function not covered" >async function executeAction(</span></span>
 <span class="cstat-no" title="statement not covered" >  db: D1Database,</span>
 <span class="cstat-no" title="statement not covered" >  action: { type: string; params: Record&lt;string, string&gt; },</span>
 <span class="cstat-no" title="statement not covered" >  payload: EventPayload,</span>
@@ -1001,7 +1001,7 @@ interface EventPayload {
 <span class="cstat-no" title="statement not covered" >}</span>
 &nbsp;
 /** 通知ルール処理 */
-<span class="cstat-no" title="statement not covered" >async function processNotifications(</span>
+<span class="cstat-no" title="statement not covered" ><span class="fstat-no" title="function not covered" >async function processNotifications(</span></span>
 <span class="cstat-no" title="statement not covered" >  db: D1Database,</span>
 <span class="cstat-no" title="statement not covered" >  eventType: string,</span>
 <span class="cstat-no" title="statement not covered" >  payload: EventPayload,</span>
@@ -1048,7 +1048,7 @@ interface EventPayload {
             <div class='footer quiet pad2 space-top1 center small'>
                 Code coverage generated by
                 <a href="https://istanbul.js.org/" target="_blank" rel="noopener noreferrer">istanbul</a>
-                at 2026-03-25T14:41:16.208Z
+                at 2026-03-26T13:38:23.852Z
             </div>
         <script src="../prettify.js"></script>
         <script>

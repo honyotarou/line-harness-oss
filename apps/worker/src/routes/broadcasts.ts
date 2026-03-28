@@ -25,6 +25,7 @@ function serializeBroadcast(row: DbBroadcast) {
     targetType: row.target_type,
     targetTagId: row.target_tag_id,
     status: row.status,
+    lineAccountId: row.line_account_id,
     scheduledAt: row.scheduled_at,
     sentAt: row.sent_at,
     totalCount: row.total_count,
@@ -113,7 +114,13 @@ broadcasts.post('/api/broadcasts', async (c) => {
         .bind(body.lineAccountId, broadcast.id).run();
     }
 
-    return c.json({ success: true, data: serializeBroadcast(broadcast) }, 201);
+    return c.json({
+      success: true,
+      data: {
+        ...serializeBroadcast(broadcast),
+        lineAccountId: body.lineAccountId ?? broadcast.line_account_id ?? null,
+      },
+    }, 201);
   } catch (err) {
     console.error('POST /api/broadcasts error:', err);
     return c.json({ success: false, error: 'Internal server error' }, 500);

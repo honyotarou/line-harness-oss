@@ -37,6 +37,8 @@ liffRoutes.get('/auth/line', async (c) => {
   const utmSource = c.req.query('utm_source') || '';
   const utmMedium = c.req.query('utm_medium') || '';
   const utmCampaign = c.req.query('utm_campaign') || '';
+  const utmContent = c.req.query('utm_content') || '';
+  const utmTerm = c.req.query('utm_term') || '';
   const accountParam = c.req.query('account') || '';
   const uidParam = c.req.query('uid') || ''; // existing user UUID for cross-account linking
   const baseUrl = new URL(c.req.url).origin;
@@ -65,13 +67,29 @@ liffRoutes.get('/auth/line', async (c) => {
   if (gclid) liffParams.set('gclid', gclid);
   if (fbclid) liffParams.set('fbclid', fbclid);
   if (utmSource) liffParams.set('utm_source', utmSource);
-  const liffTarget = liffParams.toString()
-    ? `${liffUrl}?${liffParams.toString()}`
-    : liffUrl;
+  if (utmMedium) liffParams.set('utm_medium', utmMedium);
+  if (utmCampaign) liffParams.set('utm_campaign', utmCampaign);
+  if (utmContent) liffParams.set('utm_content', utmContent);
+  if (utmTerm) liffParams.set('utm_term', utmTerm);
+  if (uidParam) liffParams.set('uid', uidParam);
+  if (accountParam) liffParams.set('account', accountParam);
+  const liffTarget = liffParams.toString() ? `${liffUrl}?${liffParams.toString()}` : liffUrl;
 
   // Build OAuth URL (for desktop fallback)
   // Pack all tracking params into state so they survive the OAuth redirect
-  const state = JSON.stringify({ ref, redirect, gclid, fbclid, utmSource, utmMedium, utmCampaign, account: accountParam, uid: uidParam });
+  const state = JSON.stringify({
+    ref,
+    redirect,
+    gclid,
+    fbclid,
+    utmSource,
+    utmMedium,
+    utmCampaign,
+    utmContent,
+    utmTerm,
+    account: accountParam,
+    uid: uidParam,
+  });
   const encodedState = btoa(state);
   const loginUrl = new URL('https://access.line.me/oauth2/v2.1/authorize');
   loginUrl.searchParams.set('response_type', 'code');
@@ -80,13 +98,7 @@ liffRoutes.get('/auth/line', async (c) => {
   loginUrl.searchParams.set('scope', 'profile openid email');
   loginUrl.searchParams.set('bot_prompt', 'aggressive');
   loginUrl.searchParams.set('state', encodedState);
-
-  // Build LIFF URL with params (opens LINE app directly on mobile + QR on PC)
-  const qrParams = new URLSearchParams();
-  if (ref) qrParams.set('ref', ref);
-  if (uidParam) qrParams.set('uid', uidParam);
-  if (accountParam) qrParams.set('account', accountParam);
-  const qrUrl = qrParams.toString() ? `${liffUrl}?${qrParams.toString()}` : liffUrl;
+  const scanTarget = accountParam ? loginUrl.toString() : liffTarget;
 
   // Mobile: redirect to LIFF URL (opens LINE app directly)
   // Exception: cross-account links (account param) use OAuth directly
@@ -98,7 +110,7 @@ liffRoutes.get('/auth/line', async (c) => {
       // Cross-account: use OAuth (LIFF won't work across accounts)
       return c.redirect(loginUrl.toString());
     }
-    return c.redirect(qrUrl);
+    return c.redirect(liffTarget);
   }
 
   // PC: show QR code page
@@ -125,7 +137,7 @@ liffRoutes.get('/auth/line', async (c) => {
     <h1>LINE Harness を体験</h1>
     <p class="sub">スマートフォンで QR コードを読み取ってください</p>
     <div class="qr">
-      <img src="https://api.qrserver.com/v1/create-qr-code/?size=240x240&data=${encodeURIComponent(qrUrl)}" alt="QR Code">
+      <img src="https://api.qrserver.com/v1/create-qr-code/?size=240x240&data=${encodeURIComponent(scanTarget)}" alt="QR Code">
     </div>
     <p class="hint">LINE アプリのカメラまたは<br>スマートフォンのカメラで読み取れます</p>
     <div class="badge">LINE Harness OSS</div>
@@ -152,6 +164,8 @@ liffRoutes.get('/auth/callback', async (c) => {
   let utmSource = '';
   let utmMedium = '';
   let utmCampaign = '';
+  let utmContent = '';
+  let utmTerm = '';
   let accountParam = '';
   let uidParam = '';
   try {
@@ -163,6 +177,8 @@ liffRoutes.get('/auth/callback', async (c) => {
     utmSource = parsed.utmSource || '';
     utmMedium = parsed.utmMedium || '';
     utmCampaign = parsed.utmCampaign || '';
+    utmContent = parsed.utmContent || '';
+    utmTerm = parsed.utmTerm || '';
     accountParam = parsed.account || '';
     uidParam = parsed.uid || '';
   } catch {
@@ -330,6 +346,8 @@ liffRoutes.get('/auth/callback', async (c) => {
     if (utmSource) adMeta.utm_source = utmSource;
     if (utmMedium) adMeta.utm_medium = utmMedium;
     if (utmCampaign) adMeta.utm_campaign = utmCampaign;
+    if (utmContent) adMeta.utm_content = utmContent;
+    if (utmTerm) adMeta.utm_term = utmTerm;
 
     if (Object.keys(adMeta).length > 0) {
       const existingMeta = await db

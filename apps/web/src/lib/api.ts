@@ -136,12 +136,12 @@ export const api = {
     },
     get: (id: string) =>
       fetchApi<ApiResponse<Scenario & { steps: ScenarioStep[] }>>(`/api/scenarios/${id}`),
-    create: (data: Omit<Scenario, 'id' | 'createdAt' | 'updatedAt'> & { lineAccountId?: string }) =>
+    create: (data: Omit<Scenario, 'id' | 'createdAt' | 'updatedAt' | 'lineAccountId'> & { lineAccountId?: string | null }) =>
       fetchApi<ApiResponse<Scenario>>('/api/scenarios', {
         method: 'POST',
         body: JSON.stringify(data),
       }),
-    update: (id: string, data: Partial<Omit<Scenario, 'id' | 'createdAt' | 'updatedAt'>>) =>
+    update: (id: string, data: Partial<Omit<Scenario, 'id' | 'createdAt' | 'updatedAt' | 'lineAccountId'>>) =>
       fetchApi<ApiResponse<Scenario>>(`/api/scenarios/${id}`, {
         method: 'PUT',
         body: JSON.stringify(data),
@@ -182,6 +182,7 @@ export const api = {
       targetTagId?: string | null
       scheduledAt?: string | null
       status?: ApiBroadcast['status']
+      lineAccountId?: string | null
     }) =>
       fetchApi<ApiResponse<ApiBroadcast>>('/api/broadcasts', {
         method: 'POST',
@@ -332,6 +333,7 @@ export const api = {
       description?: string | null
       conditions?: Record<string, unknown>
       priority?: number
+      lineAccountId?: string | null
     }) =>
       fetchApi<ApiResponse<Automation>>('/api/automations', {
         method: 'POST',
@@ -363,7 +365,7 @@ export const api = {
       fetchApi<ApiResponse<Chat & { messages?: { id: string; content: string; senderType: string; createdAt: string }[] }>>(
         `/api/chats/${id}`,
       ),
-    create: (data: { friendId: string; operatorId?: string | null }) =>
+    create: (data: { friendId: string; operatorId?: string | null; lineAccountId?: string | null }) =>
       fetchApi<ApiResponse<Chat>>('/api/chats', {
         method: 'POST',
         body: JSON.stringify(data),
@@ -386,7 +388,7 @@ export const api = {
     },
     get: (id: string) =>
       fetchApi<ApiResponse<Reminder & { steps: ReminderStep[] }>>(`/api/reminders/${id}`),
-    create: (data: { name: string; description?: string | null }) =>
+    create: (data: { name: string; description?: string | null; lineAccountId?: string | null }) =>
       fetchApi<ApiResponse<Reminder>>('/api/reminders', {
         method: 'POST',
         body: JSON.stringify(data),
@@ -426,7 +428,7 @@ export const api = {
     deleteRule: (id: string) =>
       fetchApi<ApiResponse<null>>(`/api/scoring-rules/${id}`, { method: 'DELETE' }),
     friendScore: (friendId: string) =>
-      fetchApi<ApiResponse<{ totalScore: number; history: { id: string; scoreChange: number; reason: string | null; createdAt: string }[] }>>(
+      fetchApi<ApiResponse<{ currentScore: number; history: { id: string; scoreChange: number; reason: string | null; createdAt: string }[] }>>(
         `/api/friends/${friendId}/score`,
       ),
   },

@@ -38,6 +38,7 @@ reminders.get('/api/reminders', async (c) => {
         name: r.name,
         description: r.description,
         isActive: Boolean(r.is_active),
+        lineAccountId: r.line_account_id,
         createdAt: r.created_at,
         updatedAt: r.updated_at,
       })),
@@ -63,6 +64,7 @@ reminders.get('/api/reminders/:id', async (c) => {
         name: reminder.name,
         description: reminder.description,
         isActive: Boolean(reminder.is_active),
+        lineAccountId: reminder.line_account_id,
         createdAt: reminder.created_at,
         updatedAt: reminder.updated_at,
         steps: steps.map((s) => ({
@@ -91,7 +93,15 @@ reminders.post('/api/reminders', async (c) => {
       await c.env.DB.prepare(`UPDATE reminders SET line_account_id = ? WHERE id = ?`)
         .bind(body.lineAccountId, item.id).run();
     }
-    return c.json({ success: true, data: { id: item.id, name: item.name, createdAt: item.created_at } }, 201);
+    return c.json({
+      success: true,
+      data: {
+        id: item.id,
+        name: item.name,
+        lineAccountId: body.lineAccountId ?? item.line_account_id ?? null,
+        createdAt: item.created_at,
+      },
+    }, 201);
   } catch (err) {
     console.error('POST /api/reminders error:', err);
     return c.json({ success: false, error: 'Internal server error' }, 500);
@@ -105,7 +115,15 @@ reminders.put('/api/reminders/:id', async (c) => {
     await updateReminder(c.env.DB, id, body);
     const updated = await getReminderById(c.env.DB, id);
     if (!updated) return c.json({ success: false, error: 'Not found' }, 404);
-    return c.json({ success: true, data: { id: updated.id, name: updated.name, isActive: Boolean(updated.is_active) } });
+    return c.json({
+      success: true,
+      data: {
+        id: updated.id,
+        name: updated.name,
+        isActive: Boolean(updated.is_active),
+        lineAccountId: updated.line_account_id,
+      },
+    });
   } catch (err) {
     console.error('PUT /api/reminders/:id error:', err);
     return c.json({ success: false, error: 'Internal server error' }, 500);

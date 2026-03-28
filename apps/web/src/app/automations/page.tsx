@@ -152,6 +152,7 @@ export default function AutomationsPage() {
         actions: parsedActions,
         conditions: parsedConditions,
         priority: form.priority,
+        lineAccountId: selectedAccountId,
       })
       if (res.success) {
         setShowCreate(false)

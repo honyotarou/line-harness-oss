@@ -60,6 +60,22 @@ describe('FriendsResource', () => {
     expect(result).toEqual(42)
   })
 
+  it('count() uses explicit accountId when provided', async () => {
+    const http = mockHttp({ get: vi.fn().mockResolvedValue({ success: true, data: { count: 7 } }) })
+    const resource = new FriendsResource(http)
+    const result = await resource.count({ accountId: 'account-1' })
+    expect(http.get).toHaveBeenCalledWith('/api/friends/count?lineAccountId=account-1')
+    expect(result).toEqual(7)
+  })
+
+  it('count() falls back to the default accountId', async () => {
+    const http = mockHttp({ get: vi.fn().mockResolvedValue({ success: true, data: { count: 9 } }) })
+    const resource = new FriendsResource(http, 'default-account')
+    const result = await resource.count()
+    expect(http.get).toHaveBeenCalledWith('/api/friends/count?lineAccountId=default-account')
+    expect(result).toEqual(9)
+  })
+
   it('addTag() calls POST /api/friends/:id/tags with { tagId }', async () => {
     const http = mockHttp({ post: vi.fn().mockResolvedValue({ success: true, data: null }) })
     const resource = new FriendsResource(http)

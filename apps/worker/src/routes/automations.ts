@@ -37,6 +37,7 @@ automations.get('/api/automations', async (c) => {
         actions: JSON.parse(a.actions),
         isActive: Boolean(a.is_active),
         priority: a.priority,
+        lineAccountId: a.line_account_id,
         createdAt: a.created_at,
         updatedAt: a.updated_at,
       })),
@@ -66,6 +67,7 @@ automations.get('/api/automations/:id', async (c) => {
         actions: JSON.parse(item.actions),
         isActive: Boolean(item.is_active),
         priority: item.priority,
+        lineAccountId: item.line_account_id,
         createdAt: item.created_at,
         updatedAt: item.updated_at,
         logs: logs.map((l) => ({
@@ -113,6 +115,7 @@ automations.post('/api/automations', async (c) => {
         actions: JSON.parse(item.actions),
         isActive: Boolean(item.is_active),
         priority: item.priority,
+        lineAccountId: body.lineAccountId ?? item.line_account_id ?? null,
         createdAt: item.created_at,
       },
     }, 201);
@@ -139,6 +142,7 @@ automations.put('/api/automations/:id', async (c) => {
         actions: JSON.parse(updated.actions),
         isActive: Boolean(updated.is_active),
         priority: updated.priority,
+        lineAccountId: updated.line_account_id,
       },
     });
   } catch (err) {

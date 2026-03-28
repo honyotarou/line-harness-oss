@@ -27,6 +27,7 @@ function serializeFriend(row: DbFriend) {
     pictureUrl: row.picture_url,
     statusMessage: row.status_message,
     isFollowing: Boolean(row.is_following),
+    lineAccountId: row.line_account_id,
     metadata: JSON.parse(row.metadata || '{}'),
     refCode: (row as unknown as Record<string, unknown>).ref_code as string | null,
     userId: row.user_id,

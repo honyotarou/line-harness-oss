@@ -3,6 +3,7 @@
 import { useState } from 'react'
 import type { Tag } from '@line-crm/shared'
 import { api, type ApiBroadcast } from '@/lib/api'
+import { useAccount } from '@/contexts/account-context'
 
 interface BroadcastFormProps {
   tags: Tag[]
@@ -27,6 +28,7 @@ interface FormState {
 }
 
 export default function BroadcastForm({ tags, onSuccess, onCancel }: BroadcastFormProps) {
+  const { selectedAccountId } = useAccount()
   const [form, setForm] = useState<FormState>({
     title: '',
     messageType: 'text',
@@ -65,6 +67,7 @@ export default function BroadcastForm({ tags, onSuccess, onCancel }: BroadcastFo
         scheduledAt: form.sendNow || !form.scheduledAt
           ? null
           : form.scheduledAt + ':00.000+09:00',
+        lineAccountId: selectedAccountId,
       })
       if (res.success) {
         onSuccess()

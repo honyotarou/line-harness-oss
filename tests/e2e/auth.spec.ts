@@ -1,11 +1,17 @@
 import { expect, test } from '@playwright/test';
 
-async function mockWebApi(page: import('@playwright/test').Page) {
+async function mockWebApi(
+  page: import('@playwright/test').Page,
+  hooks?: {
+    onApiRequest?: (request: { method: string; url: URL }) => void;
+  },
+) {
   const cookieUrl = 'http://127.0.0.1:8787';
 
   await page.route('**/api/**', async (route) => {
     const request = route.request();
     const url = new URL(request.url());
+    hooks?.onApiRequest?.({ method: request.method(), url });
     const cookies = await page.context().cookies(cookieUrl);
     const hasSessionCookie = cookies.some((cookie) => cookie.name === 'lh_admin_session' && cookie.value === 'session-token');
 
@@ -130,6 +136,12 @@ async function mockWebApi(page: import('@playwright/test').Page) {
       case '/api/scoring-rules':
         await ok([{ id: 'rule-1' }]);
         return;
+      case '/api/notifications/rules':
+        await ok([]);
+        return;
+      case '/api/notifications':
+        await ok([]);
+        return;
       default:
         await ok([]);
     }
@@ -172,6 +184,61 @@ test('stores the session in an httpOnly cookie and loads the dashboard after log
   expect(cookies.find((cookie) => cookie.name === 'lh_admin_session')?.httpOnly).toBe(true);
 });
 
+test('scopes dashboard KPI requests to the selected line account', async ({ page }) => {
+  const dashboardRequests: URL[] = [];
+  await mockWebApi(page, {
+    onApiRequest({ url }) {
+      if (
+        url.pathname === '/api/friends/count'
+        || url.pathname === '/api/scenarios'
+        || url.pathname === '/api/broadcasts'
+        || url.pathname === '/api/automations'
+      ) {
+        dashboardRequests.push(url);
+      }
+    },
+  });
+
+  await page.goto('/login', { waitUntil: 'domcontentloaded' });
+  await page.getByPlaceholder('APIキーを入力').fill('valid-key');
+  await page.getByRole('button', { name: 'ログイン' }).click();
+
+  await expect(page).toHaveURL('http://127.0.0.1:3001/');
+  await expect(page.getByRole('heading', { name: 'ダッシュボード' })).toBeVisible();
+
+  await expect
+    .poll(() =>
+      dashboardRequests.some(
+        (url) => url.pathname === '/api/friends/count' && url.searchParams.get('lineAccountId') === 'account-1',
+      ),
+    )
+    .toBe(true);
+
+  await expect
+    .poll(() =>
+      dashboardRequests.some(
+        (url) => url.pathname === '/api/scenarios' && url.searchParams.get('lineAccountId') === 'account-1',
+      ),
+    )
+    .toBe(true);
+
+  await expect
+    .poll(() =>
+      dashboardRequests.some(
+        (url) => url.pathname === '/api/broadcasts' && url.searchParams.get('lineAccountId') === 'account-1',
+      ),
+    )
+    .toBe(true);
+
+  await expect
+    .poll(() =>
+      dashboardRequests.some(
+        (url) => url.pathname === '/api/automations' && url.searchParams.get('lineAccountId') === 'account-1',
+      ),
+    )
+    .toBe(true);
+});
+
 test('clears the admin session on logout', async ({ page }) => {
   await mockWebApi(page);
 
@@ -185,4 +252,73 @@ test('clears the admin session on logout', async ({ page }) => {
   await expect(page).toHaveURL(/\/login$/);
   const cookies = await page.context().cookies('http://127.0.0.1:8787');
   expect(cookies.find((cookie) => cookie.name === 'lh_admin_session')).toBeUndefined();
+});
+
+test('scopes notification page requests to the selected line account', async ({ page }) => {
+  const notificationRequests: URL[] = [];
+  await mockWebApi(page, {
+    onApiRequest({ url }) {
+      if (url.pathname.startsWith('/api/notifications')) {
+        notificationRequests.push(url);
+      }
+    },
+  });
+
+  await page.goto('/login', { waitUntil: 'domcontentloaded' });
+  await page.getByPlaceholder('APIキーを入力').fill('valid-key');
+  await page.getByRole('button', { name: 'ログイン' }).click();
+
+  await expect(page).toHaveURL('http://127.0.0.1:3001/');
+
+  notificationRequests.length = 0;
+  await page.goto('/notifications', { waitUntil: 'domcontentloaded' });
+
+  await expect(page.getByRole('heading', { name: '通知ルール設定' })).toBeVisible();
+  await expect(page.getByText('Main Account の通知ルールと履歴')).toBeVisible();
+
+  await expect
+    .poll(() =>
+      notificationRequests.some(
+        (url) => url.pathname === '/api/notifications/rules' && url.searchParams.get('lineAccountId') === 'account-1',
+      ),
+    )
+    .toBe(true);
+
+  await expect
+    .poll(() =>
+      notificationRequests.some(
+        (url) =>
+          url.pathname === '/api/notifications'
+          && url.searchParams.get('lineAccountId') === 'account-1'
+          && url.searchParams.get('limit') === '50',
+      ),
+    )
+    .toBe(true);
+});
+
+test('blocks creating a user without any durable identifier in the UI', async ({ page }) => {
+  const userCreateRequests: URL[] = [];
+  await mockWebApi(page, {
+    onApiRequest({ method, url }) {
+      if (method === 'POST' && url.pathname === '/api/users') {
+        userCreateRequests.push(url);
+      }
+    },
+  });
+
+  await page.goto('/login', { waitUntil: 'domcontentloaded' });
+  await page.getByPlaceholder('APIキーを入力').fill('valid-key');
+  await page.getByRole('button', { name: 'ログイン' }).click();
+
+  await expect(page).toHaveURL('http://127.0.0.1:3001/');
+
+  await page.goto('/users', { waitUntil: 'domcontentloaded' });
+  await expect(page.getByRole('heading', { name: 'ユーザーUUID管理' })).toBeVisible();
+
+  await page.getByRole('button', { name: '+ ユーザー作成' }).click();
+  await page.getByPlaceholder('山田太郎').fill('No identifiers');
+  await page.getByRole('button', { name: '作成' }).click();
+
+  await expect(page.getByText('メール・電話番号・外部IDのいずれかは必須です')).toBeVisible();
+  await expect.poll(() => userCreateRequests.length).toBe(0);
 });

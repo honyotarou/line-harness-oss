@@ -1,32 +1,11 @@
 'use client'
 
 import { useState, useEffect, useCallback } from 'react'
+import type { NotificationRule, Notification } from '@line-crm/shared'
 import { api } from '@/lib/api'
+import { useAccount } from '@/contexts/account-context'
 import Header from '@/components/layout/header'
 import CcPromptButton from '@/components/cc-prompt-button'
-
-interface NotificationRule {
-  id: string
-  name: string
-  eventType: string
-  conditions: Record<string, unknown>
-  channels: string[]
-  isActive: boolean
-  createdAt: string
-  updatedAt: string
-}
-
-interface Notification {
-  id: string
-  ruleId: string | null
-  eventType: string
-  title: string
-  body: string
-  channel: string
-  status: 'pending' | 'sent' | 'failed'
-  metadata: string | null
-  createdAt: string
-}
 
 interface CreateFormState {
   name: string
@@ -81,6 +60,7 @@ const ccPrompts = [
 ]
 
 export default function NotificationsPage() {
+  const { selectedAccountId, selectedAccount } = useAccount()
   const [rules, setRules] = useState<NotificationRule[]>([])
   const [notifications, setNotifications] = useState<Notification[]>([])
   const [loading, setLoading] = useState(true)
@@ -98,7 +78,7 @@ export default function NotificationsPage() {
 
   const loadRules = useCallback(async () => {
     try {
-      const res = await api.notifications.rules.list()
+      const res = await api.notifications.rules.list({ lineAccountId: selectedAccountId || undefined })
       if (res.success) {
         // channels may be a JSON string or already parsed array
         setRules((res.data as unknown as NotificationRule[]).map((r: NotificationRule) => ({
@@ -111,19 +91,20 @@ export default function NotificationsPage() {
     } catch {
       setError('通知ルールの読み込みに失敗しました。もう一度お試しください。')
     }
-  }, [])
+  }, [selectedAccountId])
 
   const loadNotifications = useCallback(async (status?: string) => {
     try {
-      const params: { status?: string; limit?: string } = { limit: '50' }
+      const params: { status?: string; limit?: string; lineAccountId?: string } = { limit: '50' }
       if (status) params.status = status
+      if (selectedAccountId) params.lineAccountId = selectedAccountId
       const res = await api.notifications.list(params)
       if (res.success) setNotifications(res.data)
       else setError(res.error)
     } catch {
       setError('通知履歴の読み込みに失敗しました。もう一度お試しください。')
     }
-  }, [])
+  }, [selectedAccountId])
 
   const load = useCallback(async () => {
     setLoading(true)
@@ -168,6 +149,7 @@ export default function NotificationsPage() {
         eventType: form.eventType,
         conditions,
         channels,
+        lineAccountId: selectedAccountId,
       })
       if (res.success) {
         setShowCreate(false)
@@ -211,6 +193,7 @@ export default function NotificationsPage() {
     <div>
       <Header
         title="通知ルール設定"
+        description={selectedAccount ? `${selectedAccount.displayName || selectedAccount.name} の通知ルールと履歴` : undefined}
         action={
           <button
             onClick={() => setShowCreate(true)}

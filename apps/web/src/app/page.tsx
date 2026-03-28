@@ -91,10 +91,10 @@ export default function DashboardPage() {
       try {
         const [friendCountRes, scenariosRes, broadcastsRes, templatesRes, automationsRes, scoringRes] = await Promise.allSettled([
           api.friends.count({ accountId: selectedAccountId ?? undefined }),
-          api.scenarios.list(),
-          api.broadcasts.list(),
+          api.scenarios.list({ accountId: selectedAccountId ?? undefined }),
+          api.broadcasts.list({ accountId: selectedAccountId ?? undefined }),
           api.templates.list(),
-          api.automations.list(),
+          api.automations.list({ accountId: selectedAccountId ?? undefined }),
           api.scoring.rules(),
         ])
 

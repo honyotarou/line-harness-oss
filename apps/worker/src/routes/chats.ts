@@ -124,6 +124,7 @@ chats.get('/api/chats', async (c) => {
         status: ch.status,
         notes: ch.notes,
         lastMessageAt: ch.last_message_at,
+        lineAccountId: ch.line_account_id ?? null,
         createdAt: ch.created_at,
         updatedAt: ch.updated_at,
       })),
@@ -162,7 +163,9 @@ chats.get('/api/chats/:id', async (c) => {
         status: item.status,
         notes: item.notes,
         lastMessageAt: item.last_message_at,
+        lineAccountId: item.line_account_id ?? null,
         createdAt: item.created_at,
+        updatedAt: item.updated_at,
         messages: (messages.results as Record<string, unknown>[]).map((m) => ({
           id: m.id,
           direction: m.direction,
@@ -188,7 +191,20 @@ chats.post('/api/chats', async (c) => {
       await c.env.DB.prepare(`UPDATE chats SET line_account_id = ? WHERE id = ?`)
         .bind(body.lineAccountId, item.id).run();
     }
-    return c.json({ success: true, data: { id: item.id, friendId: item.friend_id, status: item.status } }, 201);
+    return c.json({
+      success: true,
+      data: {
+        id: item.id,
+        friendId: item.friend_id,
+        operatorId: item.operator_id,
+        status: item.status,
+        notes: item.notes,
+        lastMessageAt: item.last_message_at,
+        lineAccountId: body.lineAccountId ?? item.line_account_id ?? null,
+        createdAt: item.created_at,
+        updatedAt: item.updated_at,
+      },
+    }, 201);
   } catch (err) {
     console.error('POST /api/chats error:', err);
     return c.json({ success: false, error: 'Internal server error' }, 500);
@@ -205,7 +221,17 @@ chats.put('/api/chats/:id', async (c) => {
     if (!updated) return c.json({ success: false, error: 'Not found' }, 404);
     return c.json({
       success: true,
-      data: { id: updated.id, friendId: updated.friend_id, operatorId: updated.operator_id, status: updated.status, notes: updated.notes },
+      data: {
+        id: updated.id,
+        friendId: updated.friend_id,
+        operatorId: updated.operator_id,
+        status: updated.status,
+        notes: updated.notes,
+        lastMessageAt: updated.last_message_at,
+        lineAccountId: updated.line_account_id ?? null,
+        createdAt: updated.created_at,
+        updatedAt: updated.updated_at,
+      },
     });
   } catch (err) {
     console.error('PUT /api/chats/:id error:', err);

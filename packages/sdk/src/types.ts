@@ -35,7 +35,10 @@ export interface Friend {
   pictureUrl: string | null
   statusMessage: string | null
   isFollowing: boolean
+  lineAccountId: string | null
   metadata: Record<string, unknown>
+  refCode: string | null
+  userId: string | null
   tags: Tag[]
   createdAt: string
   updatedAt: string
@@ -69,6 +72,7 @@ export interface Scenario {
   triggerType: ScenarioTriggerType
   triggerTagId: string | null
   isActive: boolean
+  lineAccountId: string | null
   createdAt: string
   updatedAt: string
 }
@@ -150,6 +154,7 @@ export interface Broadcast {
   targetType: 'all' | 'tag'
   targetTagId: string | null
   status: BroadcastStatus
+  lineAccountId: string | null
   scheduledAt: string | null
   sentAt: string | null
   totalCount: number

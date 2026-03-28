@@ -18,6 +18,7 @@ export interface ChatRow {
   status: string;
   notes: string | null;
   last_message_at: string | null;
+  line_account_id: string | null;
   created_at: string;
   updated_at: string;
 }

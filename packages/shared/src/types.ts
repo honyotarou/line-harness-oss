@@ -26,6 +26,14 @@ export interface Friend {
    * D1はBOOLEANをINTEGER(0/1)で格納するが、Cloudflare D1クライアントはJavaScript boolean に変換して返す
    */
   isFollowing: boolean;
+  /** LINEアカウントスコープ */
+  lineAccountId: string | null;
+  /** 付随メタデータ */
+  metadata: Record<string, unknown>;
+  /** 流入元コード */
+  refCode: string | null;
+  /** 紐づく users.id */
+  userId: string | null;
   /** 作成日時 (ISO 8601) */
   createdAt: string;
   /** 更新日時 (ISO 8601) */
@@ -78,6 +86,8 @@ export interface Scenario {
   triggerTagId: string | null;
   /** 有効/無効フラグ */
   isActive: boolean;
+  /** LINEアカウントスコープ */
+  lineAccountId: string | null;
   /** 作成日時 (ISO 8601) */
   createdAt: string;
   /** 更新日時 (ISO 8601) */
@@ -159,6 +169,8 @@ export interface Broadcast {
   targetTagId: string | null;
   /** 配信ステータス */
   status: BroadcastStatus;
+  /** LINEアカウントスコープ */
+  lineAccountId: string | null;
   /** 予約配信日時 (ISO 8601、即時配信の場合は null) */
   scheduledAt: string | null;
   /** 配信完了日時 (ISO 8601) */
@@ -454,6 +466,7 @@ export interface Reminder {
   name: string;
   description: string | null;
   isActive: boolean;
+  lineAccountId: string | null;
   createdAt: string;
   updatedAt: string;
 }
@@ -539,6 +552,7 @@ export interface Chat {
   status: "unread" | "in_progress" | "resolved";
   notes: string | null;
   lastMessageAt: string | null;
+  lineAccountId: string | null;
   createdAt: string;
   updatedAt: string;
 }
@@ -568,7 +582,7 @@ export interface Notification {
   channel: string;
   status: "pending" | "sent" | "failed";
   lineAccountId: string | null;
-  metadata: string | null;
+  metadata: Record<string, unknown> | null;
   createdAt: string;
 }
 
@@ -638,6 +652,7 @@ export interface Automation {
   actions: AutomationAction[];
   isActive: boolean;
   priority: number;
+  lineAccountId: string | null;
   createdAt: string;
   updatedAt: string;
 }

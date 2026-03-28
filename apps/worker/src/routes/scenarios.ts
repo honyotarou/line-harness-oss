@@ -32,6 +32,7 @@ function serializeScenario(row: DbScenario) {
     triggerType: row.trigger_type,
     triggerTagId: row.trigger_tag_id,
     isActive: Boolean(row.is_active),
+    lineAccountId: row.line_account_id,
     createdAt: row.created_at,
     updatedAt: row.updated_at,
   };
@@ -159,7 +160,13 @@ scenarios.post('/api/scenarios', async (c) => {
       if (updated) scenario = updated;
     }
 
-    return c.json({ success: true, data: serializeScenario(scenario) }, 201);
+    return c.json({
+      success: true,
+      data: {
+        ...serializeScenario(scenario),
+        lineAccountId: body.lineAccountId ?? scenario.line_account_id ?? null,
+      },
+    }, 201);
   } catch (err) {
     console.error('POST /api/scenarios error:', err);
     return c.json({ success: false, error: 'Internal server error' }, 500);

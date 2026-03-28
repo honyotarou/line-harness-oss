@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { Fragment, useState, useEffect } from 'react'
 import { api } from '@/lib/api'
 import type { User } from '@line-crm/shared'
 import Header from '@/components/layout/header'
@@ -30,6 +30,7 @@ export default function UsersPage() {
   const [loading, setLoading] = useState(true)
   const [showCreate, setShowCreate] = useState(false)
   const [form, setForm] = useState({ email: '', phone: '', displayName: '', externalId: '' })
+  const [error, setError] = useState('')
   const [expandedId, setExpandedId] = useState<string | null>(null)
   const [linkedAccounts, setLinkedAccounts] = useState<{ id: string; lineUserId: string; displayName: string | null; isFollowing: boolean }[]>([])
 
@@ -46,6 +47,11 @@ export default function UsersPage() {
 
   const handleCreate = async (e: React.FormEvent) => {
     e.preventDefault()
+    setError('')
+    if (!form.email.trim() && !form.phone.trim() && !form.externalId.trim()) {
+      setError('メール・電話番号・外部IDのいずれかは必須です')
+      return
+    }
     try {
       await api.users.create({
         email: form.email || null,
@@ -56,7 +62,9 @@ export default function UsersPage() {
       setForm({ email: '', phone: '', displayName: '', externalId: '' })
       setShowCreate(false)
       load()
-    } catch {}
+    } catch {
+      setError('ユーザーの作成に失敗しました')
+    }
   }
 
   const handleDelete = async (id: string) => {
@@ -95,6 +103,12 @@ export default function UsersPage() {
           </button>
         }
       />
+
+      {error && (
+        <div className="mb-4 p-4 bg-red-50 border border-red-200 rounded-lg text-red-700 text-sm">
+          {error}
+        </div>
+      )}
 
       {showCreate && (
         <form onSubmit={handleCreate} className="bg-white rounded-lg border border-gray-200 p-6 mb-6">
@@ -165,9 +179,8 @@ export default function UsersPage() {
             </thead>
             <tbody className="divide-y divide-gray-200">
               {users.map((user) => (
-                <>
+                <Fragment key={user.id}>
                   <tr
-                    key={user.id}
                     className="hover:bg-gray-50 cursor-pointer"
                     onClick={() => handleExpand(user.id)}
                   >
@@ -186,7 +199,7 @@ export default function UsersPage() {
                     </td>
                   </tr>
                   {expandedId === user.id && (
-                    <tr key={`${user.id}-detail`}>
+                    <tr>
                       <td colSpan={6} className="px-6 py-4 bg-gray-50">
                         <p className="text-xs font-medium text-gray-500 mb-2">紐付きLINEアカウント:</p>
                         {linkedAccounts.length === 0 ? (
@@ -206,7 +219,7 @@ export default function UsersPage() {
                       </td>
                     </tr>
                   )}
-                </>
+                </Fragment>
               ))}
             </tbody>
           </table>
