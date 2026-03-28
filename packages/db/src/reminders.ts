@@ -6,6 +6,7 @@ export interface ReminderRow {
   name: string;
   description: string | null;
   is_active: number;
+  line_account_id: string | null;
   created_at: string;
   updated_at: string;
 }

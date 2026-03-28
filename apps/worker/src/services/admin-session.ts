@@ -26,7 +26,7 @@ function getAdminSessionCookieOptions(
   return {
     path: '/',
     httpOnly: true,
-    sameSite: (isLocal ? 'Lax' : 'None') as const,
+    sameSite: isLocal ? ('Lax' as const) : ('None' as const),
     secure: !isLocal,
     maxAge: overrides?.maxAge ?? DEFAULT_SESSION_TTL_SECONDS,
   };

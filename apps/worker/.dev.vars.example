@@ -1,0 +1,12 @@
+# Copy to `.dev.vars` for local `wrangler dev` (never commit `.dev.vars`).
+# CI uses this file as-is for API integration tests.
+
+API_KEY=local-dev-api-key-change-me
+LINE_CHANNEL_SECRET=dev-placeholder
+LINE_CHANNEL_ACCESS_TOKEN=dev-placeholder
+LIFF_URL=https://liff.line.me/dev-placeholder
+LINE_CHANNEL_ID=dev-placeholder
+LINE_LOGIN_CHANNEL_ID=dev-placeholder
+LINE_LOGIN_CHANNEL_SECRET=dev-placeholder
+# Required for POST /api/integrations/stripe/webhook (HMAC signing). Use a test value locally.
+STRIPE_WEBHOOK_SECRET=whsec_local_placeholder

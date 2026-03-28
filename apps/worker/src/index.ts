@@ -43,6 +43,7 @@ export type Env = {
     WORKER_URL: string;
     WEB_URL?: string;
     ALLOWED_ORIGINS?: string;
+    STRIPE_WEBHOOK_SECRET?: string;
   };
 };
 
@@ -54,7 +55,7 @@ app.use('*', async (c, next) => {
     return next();
   }
 
-  const allowedOrigins = buildAllowedOrigins(c.env);
+  const allowedOrigins = new Set(buildAllowedOrigins(c.env));
   if (!isAllowedOrigin(origin, allowedOrigins)) {
     if (c.req.method === 'OPTIONS') {
       return c.json({ success: false, error: 'CORS origin denied' }, 403);

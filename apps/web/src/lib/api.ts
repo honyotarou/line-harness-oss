@@ -29,7 +29,11 @@ import type { Broadcast } from '@line-crm/shared'
 /** Broadcast type from API (now camelCase after worker serialization) */
 export type ApiBroadcast = Broadcast
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://127.0.0.1:8787'
+const DEFAULT_API_URL = 'http://127.0.0.1:8787'
+
+function resolveApiUrl(): string {
+  return process.env.NEXT_PUBLIC_API_URL || DEFAULT_API_URL
+}
 
 export class ApiError extends Error {
   constructor(
@@ -42,16 +46,18 @@ export class ApiError extends Error {
   }
 }
 
-export async function fetchApi<T>(
+/** Testable HTTP helper: all browser `fetchApi` calls go through here. */
+export async function fetchApiCore<T>(
+  baseUrl: string,
+  fetchImpl: typeof fetch,
   path: string,
   options?: RequestInit,
-  requestOptions: { auth?: boolean } = {},
 ): Promise<T> {
   const headers: Record<string, string> = {
     'Content-Type': 'application/json',
     ...(options?.headers as Record<string, string> | undefined),
   }
-  const res = await fetch(`${API_URL}${path}`, {
+  const res = await fetchImpl(`${baseUrl}${path}`, {
     ...options,
     credentials: 'include',
     headers,
@@ -66,6 +72,10 @@ export async function fetchApi<T>(
     throw new ApiError(`API error: ${res.status}`, res.status, body)
   }
   return res.json() as Promise<T>
+}
+
+export async function fetchApi<T>(path: string, options?: RequestInit): Promise<T> {
+  return fetchApiCore<T>(resolveApiUrl(), globalThis.fetch.bind(globalThis), path, options)
 }
 
 export type FriendListParams = {
@@ -83,13 +93,13 @@ export const api = {
       fetchApi<ApiResponse<{ expiresAt: string }>>('/api/auth/login', {
         method: 'POST',
         body: JSON.stringify({ apiKey }),
-      }, { auth: false }),
+      }),
     session: () =>
-      fetchApi<ApiResponse<{ authenticated: boolean }>>('/api/auth/session', undefined, { auth: false }),
+      fetchApi<ApiResponse<{ authenticated: boolean }>>('/api/auth/session'),
     logout: () =>
       fetchApi<ApiResponse<null>>('/api/auth/logout', {
         method: 'POST',
-      }, { auth: false }),
+      }),
   },
   friends: {
     list: (params?: FriendListParams) => {

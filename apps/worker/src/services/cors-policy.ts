@@ -55,5 +55,14 @@ export function isAllowedOrigin(
     return false;
   }
 
-  return new Set(allowedOrigins).has(normalized);
+  if (allowedOrigins instanceof Set) {
+    return allowedOrigins.has(normalized);
+  }
+
+  for (const allowed of allowedOrigins) {
+    if (allowed === normalized) {
+      return true;
+    }
+  }
+  return false;
 }

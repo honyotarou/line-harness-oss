@@ -1,6 +1,7 @@
 import { bench, describe } from 'vitest';
 import { expandVariables } from '../../src/services/step-delivery.js';
 import { buildSegmentQuery } from '../../src/services/segment-query.js';
+import { buildAllowedOrigins, isAllowedOrigin } from '../../src/services/cors-policy.js';
 
 describe('core helpers', () => {
   bench('expandVariables', () => {
@@ -25,5 +26,17 @@ describe('core helpers', () => {
         { type: 'is_following', value: true },
       ],
     });
+  });
+
+  const corsSet = new Set(
+    buildAllowedOrigins({
+      WEB_URL: 'https://admin.example.com',
+      WORKER_URL: 'https://api.example.com',
+      ALLOWED_ORIGINS: 'https://a.example.com,https://b.example.com',
+    }),
+  );
+
+  bench('isAllowedOrigin (Set lookup)', () => {
+    isAllowedOrigin('https://admin.example.com', corsSet);
   });
 });

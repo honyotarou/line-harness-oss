@@ -28,4 +28,17 @@ describe('cors policy helpers', () => {
 
     expect(isAllowedOrigin('https://evil.example.com', origins)).toBe(false);
   });
+
+  it('accepts origins when allowed list is a Set (middleware hot path)', async () => {
+    const { buildAllowedOrigins, isAllowedOrigin } = await import('../../src/services/cors-policy.js');
+
+    const set = new Set(
+      buildAllowedOrigins({
+        WEB_URL: 'https://admin.example.com',
+      }),
+    );
+
+    expect(isAllowedOrigin('https://admin.example.com', set)).toBe(true);
+    expect(isAllowedOrigin('https://evil.example.com', set)).toBe(false);
+  });
 });

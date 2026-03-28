@@ -9,4 +9,9 @@ dist/
 .DS_Store
 .env.production
 .env.staging
+apps/worker/.dev.vars
 apps/web/out/
+apps/web/coverage/
+apps/worker/coverage/
+playwright-report/
+test-results/
