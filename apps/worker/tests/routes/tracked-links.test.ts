@@ -44,10 +44,9 @@ describe('tracked link routes', () => {
     const app = new Hono();
     app.route('/', trackedLinks);
 
-    const response = await app.fetch(
-      new Request('http://localhost/t/link-1?f=friend-1'),
-      { DB: {} as D1Database } as never,
-    );
+    const response = await app.fetch(new Request('http://localhost/t/link-1?f=friend-1'), {
+      DB: {} as D1Database,
+    } as never);
 
     expect(response.status).toBe(302);
     expect(response.headers.get('Location')).toBe('https://example.com/offer');

@@ -24,10 +24,7 @@ function getContentLength(request: Request): number | null {
   return Number.isFinite(contentLength) ? contentLength : null;
 }
 
-export async function readTextBodyWithLimit(
-  request: Request,
-  limitBytes: number,
-): Promise<string> {
+export async function readTextBodyWithLimit(request: Request, limitBytes: number): Promise<string> {
   const contentLength = getContentLength(request);
   if (contentLength !== null && contentLength > limitBytes) {
     throw new BodyTooLargeError(limitBytes);
@@ -41,10 +38,7 @@ export async function readTextBodyWithLimit(
   return text;
 }
 
-export async function readJsonBodyWithLimit<T>(
-  request: Request,
-  limitBytes: number,
-): Promise<T> {
+export async function readJsonBodyWithLimit<T>(request: Request, limitBytes: number): Promise<T> {
   const text = await readTextBodyWithLimit(request, limitBytes);
 
   try {

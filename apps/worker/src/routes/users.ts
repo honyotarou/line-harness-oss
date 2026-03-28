@@ -132,8 +132,7 @@ users.post('/api/users/:id/link', async (c) => {
       return c.json({ success: false, error: 'User not found' }, 404);
     }
 
-    const friend = await c.env.DB
-      .prepare(`SELECT id FROM friends WHERE id = ?`)
+    const friend = await c.env.DB.prepare(`SELECT id FROM friends WHERE id = ?`)
       .bind(body.friendId)
       .first<{ id: string }>();
     if (!friend) {

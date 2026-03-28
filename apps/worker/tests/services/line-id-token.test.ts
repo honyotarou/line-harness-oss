@@ -26,9 +26,10 @@ describe('line-id-token helpers', () => {
       });
     vi.stubGlobal('fetch', fetchMock);
 
-    await expect(
-      verifyLineIdToken('valid-token', ['channel-1', 'channel-2']),
-    ).resolves.toEqual({ sub: 'line-user-1', name: 'Alice' });
+    await expect(verifyLineIdToken('valid-token', ['channel-1', 'channel-2'])).resolves.toEqual({
+      sub: 'line-user-1',
+      name: 'Alice',
+    });
 
     expect(fetchMock).toHaveBeenCalledTimes(2);
   });
@@ -36,17 +37,19 @@ describe('line-id-token helpers', () => {
   it('returns null when no channel can verify the token', async () => {
     vi.stubGlobal('fetch', vi.fn().mockResolvedValue({ ok: false }));
 
-    await expect(
-      verifyLineIdToken('invalid-token', ['channel-1']),
-    ).resolves.toBeNull();
+    await expect(verifyLineIdToken('invalid-token', ['channel-1'])).resolves.toBeNull();
   });
 
   it('starts verification requests for all channel ids instead of waiting sequentially', async () => {
     let resolveSlow: ((value: { ok: boolean; json: () => Promise<never> }) => void) | null = null;
-    const fetchMock = vi.fn()
-      .mockImplementationOnce(() => new Promise((resolve) => {
-        resolveSlow = resolve;
-      }))
+    const fetchMock = vi
+      .fn()
+      .mockImplementationOnce(
+        () =>
+          new Promise((resolve) => {
+            resolveSlow = resolve;
+          }),
+      )
       .mockResolvedValueOnce({
         ok: true,
         json: async () => ({ sub: 'line-user-2' }),

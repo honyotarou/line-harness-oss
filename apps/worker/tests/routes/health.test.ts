@@ -19,7 +19,11 @@ function createDb() {
         bind(...bindings: unknown[]) {
           return {
             async first<T>() {
-              if (sql.includes('SELECT COUNT(*) as count FROM friends WHERE is_following = 1 AND line_account_id = ?')) {
+              if (
+                sql.includes(
+                  'SELECT COUNT(*) as count FROM friends WHERE is_following = 1 AND line_account_id = ?',
+                )
+              ) {
                 const [fromAccountId] = bindings as [string];
                 if (fromAccountId !== 'account-1') {
                   throw new Error(`Unexpected account id: ${fromAccountId}`);
@@ -111,18 +115,13 @@ describe('health routes', () => {
     );
 
     expect(response.status).toBe(201);
-    expect(dbMocks.createAccountMigration).toHaveBeenCalledWith(
-      expect.anything(),
-      {
-        fromAccountId: 'account-1',
-        toAccountId: 'account-2',
-        totalCount: 3,
-      },
-    );
-    expect(dbMocks.updateAccountMigration).toHaveBeenCalledWith(
-      expect.anything(),
-      'migration-1',
-      { status: 'in_progress' },
-    );
+    expect(dbMocks.createAccountMigration).toHaveBeenCalledWith(expect.anything(), {
+      fromAccountId: 'account-1',
+      toAccountId: 'account-2',
+      totalCount: 3,
+    });
+    expect(dbMocks.updateAccountMigration).toHaveBeenCalledWith(expect.anything(), 'migration-1', {
+      status: 'in_progress',
+    });
   });
 });

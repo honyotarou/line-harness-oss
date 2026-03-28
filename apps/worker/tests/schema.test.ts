@@ -34,17 +34,23 @@ describe('schema.sql', () => {
   });
 
   it('defines multi-account oauth columns on line_accounts', () => {
-    const accountsBlock = schema.match(/CREATE TABLE IF NOT EXISTS line_accounts \(([\s\S]*?)\n\);/);
+    const accountsBlock = schema.match(
+      /CREATE TABLE IF NOT EXISTS line_accounts \(([\s\S]*?)\n\);/,
+    );
     expect(accountsBlock?.[1]).toContain('login_channel_id');
     expect(accountsBlock?.[1]).toContain('login_channel_secret');
     expect(accountsBlock?.[1]).toContain('liff_id');
   });
 
   it('defines notification and delivery columns required for operability', () => {
-    const notificationsBlock = schema.match(/CREATE TABLE IF NOT EXISTS notifications \(([\s\S]*?)\n\);/);
+    const notificationsBlock = schema.match(
+      /CREATE TABLE IF NOT EXISTS notifications \(([\s\S]*?)\n\);/,
+    );
     expect(notificationsBlock?.[1]).toContain('line_account_id');
 
-    const deliveryBlock = schema.match(/CREATE TABLE IF NOT EXISTS delivery_operations \(([\s\S]*?)\n\);/);
+    const deliveryBlock = schema.match(
+      /CREATE TABLE IF NOT EXISTS delivery_operations \(([\s\S]*?)\n\);/,
+    );
     expect(deliveryBlock?.[1]).toContain('idempotency_key');
     expect(deliveryBlock?.[1]).toContain('attempt_count');
     expect(deliveryBlock?.[1]).toContain('next_retry_at');

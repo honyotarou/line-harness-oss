@@ -13,7 +13,14 @@ import type { Env } from '../index.js';
 
 const affiliates = new Hono<Env>();
 
-function serializeAffiliate(row: { id: string; name: string; code: string; commission_rate: number; is_active: number; created_at: string }) {
+function serializeAffiliate(row: {
+  id: string;
+  name: string;
+  code: string;
+  commission_rate: number;
+  is_active: number;
+  created_at: string;
+}) {
   return {
     id: row.id,
     name: row.name,

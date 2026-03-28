@@ -6,6 +6,10 @@ export async function authMiddleware(c: Context<Env>, next: Next): Promise<Respo
   // Skip auth for the LINE webhook endpoint — it uses signature verification instead
   // Skip auth for OpenAPI docs — public documentation
   const path = new URL(c.req.url).pathname;
+  const method = c.req.method;
+  const publicFormDefinitionGet = method === 'GET' && /^\/api\/forms\/[^/]+$/.test(path);
+  const publicFormSubmitPost = method === 'POST' && /^\/api\/forms\/[^/]+\/submit$/.test(path);
+
   if (
     path === '/webhook' ||
     path === '/docs' ||
@@ -20,16 +24,14 @@ export async function authMiddleware(c: Context<Env>, next: Next): Promise<Respo
     path.startsWith('/auth/') ||
     path === '/api/integrations/stripe/webhook' ||
     path.match(/^\/api\/webhooks\/incoming\/[^/]+\/receive$/) ||
-    path.match(/^\/api\/forms\/[^/]+\/submit$/) ||
-    path.match(/^\/api\/forms\/[^/]+$/) // GET form definition (public for LIFF)
+    publicFormSubmitPost ||
+    publicFormDefinitionGet
   ) {
     return next();
   }
 
   const authHeader = c.req.header('Authorization');
-  const bearerToken = authHeader?.startsWith('Bearer ')
-    ? authHeader.slice('Bearer '.length)
-    : null;
+  const bearerToken = authHeader?.startsWith('Bearer ') ? authHeader.slice('Bearer '.length) : null;
   const token = bearerToken ?? readAdminSessionCookie(c);
   if (!token) {
     return c.json({ success: false, error: 'Unauthorized' }, 401);

@@ -100,13 +100,18 @@ describe('public form submit route', () => {
       display_name: 'Real User',
       metadata: '{}',
     });
-    dbMocks.createFormSubmission.mockImplementation(async (_db: D1Database, input: { formId: string; friendId: string | null; data: string }) => ({
-      id: 'submission-1',
-      form_id: input.formId,
-      friend_id: input.friendId,
-      data: input.data,
-      created_at: '2026-03-25T10:00:00+09:00',
-    }));
+    dbMocks.createFormSubmission.mockImplementation(
+      async (
+        _db: D1Database,
+        input: { formId: string; friendId: string | null; data: string },
+      ) => ({
+        id: 'submission-1',
+        form_id: input.formId,
+        friend_id: input.friendId,
+        data: input.data,
+        created_at: '2026-03-25T10:00:00+09:00',
+      }),
+    );
 
     vi.stubGlobal(
       'fetch',

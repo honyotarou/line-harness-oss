@@ -1,31 +1,31 @@
-'use client'
+'use client';
 
-import { useState, useEffect, useCallback } from 'react'
-import { api } from '@/lib/api'
-import Header from '@/components/layout/header'
-import CcPromptButton from '@/components/cc-prompt-button'
+import { useState, useEffect, useCallback } from 'react';
+import { api } from '@/lib/api';
+import Header from '@/components/layout/header';
+import CcPromptButton from '@/components/cc-prompt-button';
 
 interface Template {
-  id: string
-  name: string
-  category: string
-  messageType: string
-  messageContent: string
-  createdAt: string
-  updatedAt: string
+  id: string;
+  name: string;
+  category: string;
+  messageType: string;
+  messageContent: string;
+  createdAt: string;
+  updatedAt: string;
 }
 
 const messageTypeLabels: Record<string, string> = {
   text: 'テキスト',
   image: '画像',
   flex: 'Flex',
-}
+};
 
 interface CreateFormState {
-  name: string
-  category: string
-  messageType: string
-  messageContent: string
+  name: string;
+  category: string;
+  messageType: string;
+  messageContent: string;
 }
 
 function formatDate(iso: string): string {
@@ -35,7 +35,7 @@ function formatDate(iso: string): string {
     day: '2-digit',
     hour: '2-digit',
     minute: '2-digit',
-  })
+  });
 }
 
 const ccPrompts = [
@@ -55,95 +55,93 @@ const ccPrompts = [
 3. 不足しているカテゴリやテンプレートの追加推奨
 結果をレポートしてください。`,
   },
-]
+];
 
 export default function TemplatesPage() {
-  const [templates, setTemplates] = useState<Template[]>([])
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState('')
-  const [showCreate, setShowCreate] = useState(false)
-  const [selectedCategory, setSelectedCategory] = useState<string>('all')
+  const [templates, setTemplates] = useState<Template[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
+  const [showCreate, setShowCreate] = useState(false);
+  const [selectedCategory, setSelectedCategory] = useState<string>('all');
   const [form, setForm] = useState<CreateFormState>({
     name: '',
     category: '',
     messageType: 'text',
     messageContent: '',
-  })
-  const [saving, setSaving] = useState(false)
-  const [formError, setFormError] = useState('')
+  });
+  const [saving, setSaving] = useState(false);
+  const [formError, setFormError] = useState('');
 
   const load = useCallback(async () => {
-    setLoading(true)
-    setError('')
+    setLoading(true);
+    setError('');
     try {
       const res = await api.templates.list(
-        selectedCategory !== 'all' ? selectedCategory : undefined
-      )
+        selectedCategory !== 'all' ? selectedCategory : undefined,
+      );
       if (res.success) {
-        setTemplates(res.data)
+        setTemplates(res.data);
       } else {
-        setError(res.error)
+        setError(res.error);
       }
     } catch {
-      setError('テンプレートの読み込みに失敗しました。もう一度お試しください。')
+      setError('テンプレートの読み込みに失敗しました。もう一度お試しください。');
     } finally {
-      setLoading(false)
+      setLoading(false);
     }
-  }, [selectedCategory])
+  }, [selectedCategory]);
 
   useEffect(() => {
-    load()
-  }, [load])
+    load();
+  }, [load]);
 
-  const categories = Array.from(
-    new Set(templates.map((t) => t.category).filter(Boolean))
-  )
+  const categories = Array.from(new Set(templates.map((t) => t.category).filter(Boolean)));
 
   const handleCreate = async () => {
     if (!form.name.trim()) {
-      setFormError('テンプレート名を入力してください')
-      return
+      setFormError('テンプレート名を入力してください');
+      return;
     }
     if (!form.category.trim()) {
-      setFormError('カテゴリを入力してください')
-      return
+      setFormError('カテゴリを入力してください');
+      return;
     }
     if (!form.messageContent.trim()) {
-      setFormError('メッセージ内容を入力してください')
-      return
+      setFormError('メッセージ内容を入力してください');
+      return;
     }
-    setSaving(true)
-    setFormError('')
+    setSaving(true);
+    setFormError('');
     try {
       const res = await api.templates.create({
         name: form.name,
         category: form.category,
         messageType: form.messageType,
         messageContent: form.messageContent,
-      })
+      });
       if (res.success) {
-        setShowCreate(false)
-        setForm({ name: '', category: '', messageType: 'text', messageContent: '' })
-        load()
+        setShowCreate(false);
+        setForm({ name: '', category: '', messageType: 'text', messageContent: '' });
+        load();
       } else {
-        setFormError(res.error)
+        setFormError(res.error);
       }
     } catch {
-      setFormError('作成に失敗しました')
+      setFormError('作成に失敗しました');
     } finally {
-      setSaving(false)
+      setSaving(false);
     }
-  }
+  };
 
   const handleDelete = async (id: string) => {
-    if (!confirm('このテンプレートを削除してもよいですか？')) return
+    if (!confirm('このテンプレートを削除してもよいですか？')) return;
     try {
-      await api.templates.delete(id)
-      load()
+      await api.templates.delete(id);
+      load();
     } catch {
-      setError('削除に失敗しました')
+      setError('削除に失敗しました');
     }
-  }
+  };
 
   return (
     <div>
@@ -204,7 +202,9 @@ export default function TemplatesPage() {
           <h2 className="text-sm font-semibold text-gray-800 mb-4">新規テンプレートを作成</h2>
           <div className="space-y-4 max-w-lg">
             <div>
-              <label className="block text-xs font-medium text-gray-600 mb-1">テンプレート名 <span className="text-red-500">*</span></label>
+              <label className="block text-xs font-medium text-gray-600 mb-1">
+                テンプレート名 <span className="text-red-500">*</span>
+              </label>
               <input
                 type="text"
                 className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-500"
@@ -214,7 +214,9 @@ export default function TemplatesPage() {
               />
             </div>
             <div>
-              <label className="block text-xs font-medium text-gray-600 mb-1">カテゴリ <span className="text-red-500">*</span></label>
+              <label className="block text-xs font-medium text-gray-600 mb-1">
+                カテゴリ <span className="text-red-500">*</span>
+              </label>
               <input
                 type="text"
                 className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-500"
@@ -224,7 +226,9 @@ export default function TemplatesPage() {
               />
             </div>
             <div>
-              <label className="block text-xs font-medium text-gray-600 mb-1">メッセージタイプ</label>
+              <label className="block text-xs font-medium text-gray-600 mb-1">
+                メッセージタイプ
+              </label>
               <select
                 className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-500 bg-white"
                 value={form.messageType}
@@ -236,7 +240,9 @@ export default function TemplatesPage() {
               </select>
             </div>
             <div>
-              <label className="block text-xs font-medium text-gray-600 mb-1">メッセージ内容 <span className="text-red-500">*</span></label>
+              <label className="block text-xs font-medium text-gray-600 mb-1">
+                メッセージ内容 <span className="text-red-500">*</span>
+              </label>
               <textarea
                 className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-500 resize-none"
                 rows={4}
@@ -258,7 +264,10 @@ export default function TemplatesPage() {
                 {saving ? '作成中...' : '作成'}
               </button>
               <button
-                onClick={() => { setShowCreate(false); setFormError('') }}
+                onClick={() => {
+                  setShowCreate(false);
+                  setFormError('');
+                }}
                 className="px-4 py-2 text-sm font-medium text-gray-600 bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors"
               >
                 キャンセル
@@ -272,7 +281,10 @@ export default function TemplatesPage() {
       {loading ? (
         <div className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
           {[...Array(4)].map((_, i) => (
-            <div key={i} className="px-4 py-4 border-b border-gray-100 flex items-center gap-4 animate-pulse">
+            <div
+              key={i}
+              className="px-4 py-4 border-b border-gray-100 flex items-center gap-4 animate-pulse"
+            >
               <div className="flex-1 space-y-2">
                 <div className="h-3 bg-gray-200 rounded w-48" />
                 <div className="h-2 bg-gray-100 rounded w-32" />
@@ -284,77 +296,79 @@ export default function TemplatesPage() {
         </div>
       ) : templates.length === 0 && !showCreate ? (
         <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-12 text-center">
-          <p className="text-gray-500">テンプレートがありません。「新規テンプレート」から作成してください。</p>
+          <p className="text-gray-500">
+            テンプレートがありません。「新規テンプレート」から作成してください。
+          </p>
         </div>
       ) : (
         <div className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
           <div className="overflow-x-auto">
-          <table className="w-full min-w-[640px]">
-            <thead>
-              <tr className="bg-gray-50 border-b border-gray-200">
-                <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">
-                  テンプレート名
-                </th>
-                <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">
-                  カテゴリ
-                </th>
-                <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">
-                  メッセージタイプ
-                </th>
-                <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">
-                  作成日時
-                </th>
-                <th className="px-4 py-3" />
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-gray-100">
-              {templates.map((template) => (
-                <tr key={template.id} className="hover:bg-gray-50 transition-colors">
-                  {/* Name */}
-                  <td className="px-4 py-3">
-                    <div>
-                      <p className="text-sm font-medium text-gray-900">{template.name}</p>
-                      <p className="text-xs text-gray-400 mt-0.5 truncate max-w-xs">
-                        {template.messageContent.slice(0, 50)}
-                        {template.messageContent.length > 50 ? '...' : ''}
-                      </p>
-                    </div>
-                  </td>
-
-                  {/* Category */}
-                  <td className="px-4 py-3">
-                    <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-700">
-                      {template.category}
-                    </span>
-                  </td>
-
-                  {/* Message Type */}
-                  <td className="px-4 py-3 text-sm text-gray-600">
-                    {messageTypeLabels[template.messageType] || template.messageType}
-                  </td>
-
-                  {/* Created At */}
-                  <td className="px-4 py-3 text-sm text-gray-500">
-                    {formatDate(template.createdAt)}
-                  </td>
-
-                  {/* Actions */}
-                  <td className="px-4 py-3 text-right">
-                    <button
-                      onClick={() => handleDelete(template.id)}
-                      className="px-3 py-1 text-xs font-medium text-red-500 hover:text-red-700 bg-red-50 hover:bg-red-100 rounded-md transition-colors"
-                    >
-                      削除
-                    </button>
-                  </td>
+            <table className="w-full min-w-[640px]">
+              <thead>
+                <tr className="bg-gray-50 border-b border-gray-200">
+                  <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">
+                    テンプレート名
+                  </th>
+                  <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">
+                    カテゴリ
+                  </th>
+                  <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">
+                    メッセージタイプ
+                  </th>
+                  <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">
+                    作成日時
+                  </th>
+                  <th className="px-4 py-3" />
                 </tr>
-              ))}
-            </tbody>
-          </table>
+              </thead>
+              <tbody className="divide-y divide-gray-100">
+                {templates.map((template) => (
+                  <tr key={template.id} className="hover:bg-gray-50 transition-colors">
+                    {/* Name */}
+                    <td className="px-4 py-3">
+                      <div>
+                        <p className="text-sm font-medium text-gray-900">{template.name}</p>
+                        <p className="text-xs text-gray-400 mt-0.5 truncate max-w-xs">
+                          {template.messageContent.slice(0, 50)}
+                          {template.messageContent.length > 50 ? '...' : ''}
+                        </p>
+                      </div>
+                    </td>
+
+                    {/* Category */}
+                    <td className="px-4 py-3">
+                      <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-700">
+                        {template.category}
+                      </span>
+                    </td>
+
+                    {/* Message Type */}
+                    <td className="px-4 py-3 text-sm text-gray-600">
+                      {messageTypeLabels[template.messageType] || template.messageType}
+                    </td>
+
+                    {/* Created At */}
+                    <td className="px-4 py-3 text-sm text-gray-500">
+                      {formatDate(template.createdAt)}
+                    </td>
+
+                    {/* Actions */}
+                    <td className="px-4 py-3 text-right">
+                      <button
+                        onClick={() => handleDelete(template.id)}
+                        className="px-3 py-1 text-xs font-medium text-red-500 hover:text-red-700 bg-red-50 hover:bg-red-100 rounded-md transition-colors"
+                      >
+                        削除
+                      </button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
           </div>
         </div>
       )}
       <CcPromptButton prompts={ccPrompts} />
     </div>
-  )
+  );
 }

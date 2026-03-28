@@ -75,7 +75,9 @@ health.post('/api/accounts/:id/migrate', async (c) => {
 
     // 移行対象は移行元アカウントに紐づくフォロー中ユーザーのみに限定する
     const countResult = await db
-      .prepare(`SELECT COUNT(*) as count FROM friends WHERE is_following = 1 AND line_account_id = ?`)
+      .prepare(
+        `SELECT COUNT(*) as count FROM friends WHERE is_following = 1 AND line_account_id = ?`,
+      )
       .bind(fromAccountId)
       .first<{ count: number }>();
     const totalCount = countResult?.count ?? 0;
@@ -91,17 +93,20 @@ health.post('/api/accounts/:id/migrate', async (c) => {
       status: 'in_progress',
     });
 
-    return c.json({
-      success: true,
-      data: {
-        id: migration.id,
-        fromAccountId: migration.from_account_id,
-        toAccountId: migration.to_account_id,
-        status: 'in_progress',
-        totalCount: migration.total_count,
-        createdAt: migration.created_at,
+    return c.json(
+      {
+        success: true,
+        data: {
+          id: migration.id,
+          fromAccountId: migration.from_account_id,
+          toAccountId: migration.to_account_id,
+          status: 'in_progress',
+          totalCount: migration.total_count,
+          createdAt: migration.created_at,
+        },
       },
-    }, 201);
+      201,
+    );
   } catch (err) {
     console.error('POST /api/accounts/:id/migrate error:', err);
     return c.json({ success: false, error: 'Internal server error' }, 500);

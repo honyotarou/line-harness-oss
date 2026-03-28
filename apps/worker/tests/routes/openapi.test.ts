@@ -10,7 +10,7 @@ describe('openapi routes', () => {
     const response = await app.fetch(new Request('http://localhost/openapi.json'));
 
     expect(response.status).toBe(200);
-    const json = await response.json() as {
+    const json = (await response.json()) as {
       openapi: string;
       info: { title: string };
       components: { securitySchemes: { bearerAuth: { scheme: string } } };

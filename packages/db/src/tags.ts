@@ -13,9 +13,7 @@ export interface FriendTag {
 }
 
 export async function getTags(db: D1Database): Promise<Tag[]> {
-  const result = await db
-    .prepare(`SELECT * FROM tags ORDER BY name ASC`)
-    .all<Tag>();
+  const result = await db.prepare(`SELECT * FROM tags ORDER BY name ASC`).all<Tag>();
   return result.results;
 }
 
@@ -24,10 +22,7 @@ export interface CreateTagInput {
   color?: string;
 }
 
-export async function createTag(
-  db: D1Database,
-  input: CreateTagInput,
-): Promise<Tag> {
+export async function createTag(db: D1Database, input: CreateTagInput): Promise<Tag> {
   const id = crypto.randomUUID();
   const now = jstNow();
   const color = input.color ?? '#3B82F6';
@@ -40,10 +35,7 @@ export async function createTag(
     .bind(id, input.name, color, now)
     .run();
 
-  return (await db
-    .prepare(`SELECT * FROM tags WHERE id = ?`)
-    .bind(id)
-    .first<Tag>())!;
+  return (await db.prepare(`SELECT * FROM tags WHERE id = ?`).bind(id).first<Tag>())!;
 }
 
 export async function deleteTag(db: D1Database, id: string): Promise<void> {
@@ -71,17 +63,12 @@ export async function removeTagFromFriend(
   tagId: string,
 ): Promise<void> {
   await db
-    .prepare(
-      `DELETE FROM friend_tags WHERE friend_id = ? AND tag_id = ?`,
-    )
+    .prepare(`DELETE FROM friend_tags WHERE friend_id = ? AND tag_id = ?`)
     .bind(friendId, tagId)
     .run();
 }
 
-export async function getFriendTags(
-  db: D1Database,
-  friendId: string,
-): Promise<Tag[]> {
+export async function getFriendTags(db: D1Database, friendId: string): Promise<Tag[]> {
   const result = await db
     .prepare(
       `SELECT t.*
@@ -136,10 +123,7 @@ export async function getTagsForFriends(
 
 import type { Friend } from './friends';
 
-export async function getFriendsByTag(
-  db: D1Database,
-  tagId: string,
-): Promise<Friend[]> {
+export async function getFriendsByTag(db: D1Database, tagId: string): Promise<Friend[]> {
   const result = await db
     .prepare(
       `SELECT f.*

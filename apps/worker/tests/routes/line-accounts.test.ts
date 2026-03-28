@@ -46,13 +46,12 @@ describe('line account routes', () => {
     const app = new Hono();
     app.route('/', lineAccounts);
 
-    const response = await app.fetch(
-      new Request('http://localhost/api/line-accounts/account-1'),
-      { DB: {} as D1Database } as never,
-    );
+    const response = await app.fetch(new Request('http://localhost/api/line-accounts/account-1'), {
+      DB: {} as D1Database,
+    } as never);
 
     expect(response.status).toBe(200);
-    const json = await response.json() as { success: boolean; data: Record<string, unknown> };
+    const json = (await response.json()) as { success: boolean; data: Record<string, unknown> };
     expect(json.success).toBe(true);
     expect(json.data.channelAccessToken).toBeUndefined();
     expect(json.data.channelSecret).toBeUndefined();
@@ -75,26 +74,27 @@ describe('line account routes', () => {
 
     let active = 0;
     let peak = 0;
-    serviceMocks.loadLineAccountProfile.mockImplementation(async (_db: unknown, account: { id: string }) => {
-      active += 1;
-      peak = Math.max(peak, active);
-      await new Promise((resolve) => setTimeout(resolve, 10));
-      active -= 1;
-      return {
-        displayName: `Profile ${account.id}`,
-        pictureUrl: null,
-        basicId: null,
-      };
-    });
+    serviceMocks.loadLineAccountProfile.mockImplementation(
+      async (_db: unknown, account: { id: string }) => {
+        active += 1;
+        peak = Math.max(peak, active);
+        await new Promise((resolve) => setTimeout(resolve, 10));
+        active -= 1;
+        return {
+          displayName: `Profile ${account.id}`,
+          pictureUrl: null,
+          basicId: null,
+        };
+      },
+    );
 
     const { lineAccounts } = await import('../../src/routes/line-accounts.js');
     const app = new Hono();
     app.route('/', lineAccounts);
 
-    const response = await app.fetch(
-      new Request('http://localhost/api/line-accounts'),
-      { DB: {} as D1Database } as never,
-    );
+    const response = await app.fetch(new Request('http://localhost/api/line-accounts'), {
+      DB: {} as D1Database,
+    } as never);
 
     expect(response.status).toBe(200);
     expect(serviceMocks.loadLineAccountProfile).toHaveBeenCalledTimes(5);

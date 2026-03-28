@@ -12,10 +12,7 @@
       "default": "./src/index.ts"
     }
   },
-  "files": [
-    "dist",
-    "src"
-  ],
+  "files": ["dist", "src"],
   "scripts": {
     "build": "tsc -p tsconfig.build.json",
     "typecheck": "tsc --noEmit",
@@ -24,9 +21,5 @@
   "devDependencies": {
     "typescript": "^5.7.0"
   },
-  "keywords": [
-    "line",
-    "crm",
-    "types"
-  ]
+  "keywords": ["line", "crm", "types"]
 }

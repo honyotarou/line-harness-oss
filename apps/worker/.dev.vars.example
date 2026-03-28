@@ -2,6 +2,8 @@
 # CI uses this file as-is for API integration tests.
 
 API_KEY=local-dev-api-key-change-me
+# Optional; defaults to API_KEY. HMAC secret for LINE Login OAuth `state` (use a long random value in production).
+# LIFF_STATE_SECRET=
 LINE_CHANNEL_SECRET=dev-placeholder
 LINE_CHANNEL_ACCESS_TOKEN=dev-placeholder
 LIFF_URL=https://liff.line.me/dev-placeholder

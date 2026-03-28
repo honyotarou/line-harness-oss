@@ -99,7 +99,14 @@ export async function processBroadcastSend(
               `INSERT INTO messages_log (id, friend_id, direction, message_type, content, broadcast_id, scenario_step_id, created_at)
                VALUES (?, ?, 'outgoing', ?, ?, ?, NULL, ?)`,
             )
-            .bind(logId, friend.id, broadcast.message_type, broadcast.message_content, broadcastId, now)
+            .bind(
+              logId,
+              friend.id,
+              broadcast.message_type,
+              broadcast.message_content,
+              broadcastId,
+              now,
+            )
             .run();
         }
       }

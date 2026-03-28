@@ -146,7 +146,9 @@ function renderCalendar(): string {
       selected ? 'selected' : '',
       new Date(currentYear, currentMonth, day).getDay() === 0 ? 'sun' : '',
       new Date(currentYear, currentMonth, day).getDay() === 6 ? 'sat' : '',
-    ].filter(Boolean).join(' ');
+    ]
+      .filter(Boolean)
+      .join(' ');
 
     html += `<span class="${classes}" ${past ? '' : `data-date="${dateStr}"`}>${day}</span>`;
   }
@@ -183,13 +185,17 @@ function renderSlots(): string {
     `;
   }
 
-  const slotButtons = slots.map((slot) => {
-    const isSelected = selectedSlot?.startAt === slot.startAt;
-    const cls = slot.available
-      ? (isSelected ? 'slot-btn selected' : 'slot-btn available')
-      : 'slot-btn full';
-    return `<button class="${cls}" ${slot.available ? `data-start="${slot.startAt}" data-end="${slot.endAt}"` : 'disabled'}>${formatTime(slot.startAt)} - ${formatTime(slot.endAt)}</button>`;
-  }).join('');
+  const slotButtons = slots
+    .map((slot) => {
+      const isSelected = selectedSlot?.startAt === slot.startAt;
+      const cls = slot.available
+        ? isSelected
+          ? 'slot-btn selected'
+          : 'slot-btn available'
+        : 'slot-btn full';
+      return `<button class="${cls}" ${slot.available ? `data-start="${slot.startAt}" data-end="${slot.endAt}"` : 'disabled'}>${formatTime(slot.startAt)} - ${formatTime(slot.endAt)}</button>`;
+    })
+    .join('');
 
   return `
     <div class="slots-section">
@@ -371,7 +377,7 @@ async function fetchSlots(date: string): Promise<void> {
     if (CONNECTION_ID) params.set('connectionId', CONNECTION_ID);
     const res = await apiCall(`/api/integrations/google-calendar/slots?${params}`);
     if (!res.ok) throw new Error('スロット取得に失敗しました');
-    const json = await res.json() as { success: boolean; data: Slot[] };
+    const json = (await res.json()) as { success: boolean; data: Slot[] };
     if (!json.success) throw new Error('スロット取得に失敗しました');
     state.slots = json.data;
   } catch (err) {
@@ -388,7 +394,9 @@ async function submitBooking(): Promise<void> {
   if (!selectedSlot || !selectedDate || !profile || state.submitting) return;
   state.submitting = true;
 
-  const confirmBtn = getApp().querySelector('[data-action="confirm-booking"]') as HTMLButtonElement | null;
+  const confirmBtn = getApp().querySelector(
+    '[data-action="confirm-booking"]',
+  ) as HTMLButtonElement | null;
   if (confirmBtn) {
     confirmBtn.disabled = true;
     confirmBtn.textContent = '送信中...';
@@ -409,7 +417,7 @@ async function submitBooking(): Promise<void> {
     });
 
     if (!res.ok) {
-      const errData = await res.json().catch(() => null) as { error?: string } | null;
+      const errData = (await res.json().catch(() => null)) as { error?: string } | null;
       throw new Error(errData?.error || '予約に失敗しました');
     }
 
@@ -425,14 +433,18 @@ async function submitBooking(): Promise<void> {
 export async function initBooking(): Promise<void> {
   const profile = await liff.getProfile();
   state.profile = profile;
+  const rawIdToken = liff.getIDToken();
 
   try {
     const profileRes = await apiCall('/api/liff/profile', {
       method: 'POST',
-      body: JSON.stringify({ lineUserId: profile.userId }),
+      body: JSON.stringify({
+        lineUserId: profile.userId,
+        idToken: rawIdToken || '',
+      }),
     });
     if (profileRes.ok) {
-      const profileJson = await profileRes.json() as {
+      const profileJson = (await profileRes.json()) as {
         success: boolean;
         data?: { id?: string };
       };
@@ -445,7 +457,6 @@ export async function initBooking(): Promise<void> {
   }
 
   // Silent UUID linking (same as main flow)
-  const rawIdToken = liff.getIDToken();
   if (rawIdToken) {
     let existingUuid: string | null = null;
     try {
@@ -460,16 +471,22 @@ export async function initBooking(): Promise<void> {
         displayName: profile.displayName,
         existingUuid: existingUuid,
       }),
-    }).then(async (res) => {
-      if (res.ok) {
-        const data = await res.json() as { success: boolean; data?: { userId?: string } };
-        if (data?.data?.userId) {
-          try {
-            localStorage.setItem(UUID_STORAGE_KEY, data.data.userId);
-          } catch { /* silent */ }
+    })
+      .then(async (res) => {
+        if (res.ok) {
+          const data = (await res.json()) as { success: boolean; data?: { userId?: string } };
+          if (data?.data?.userId) {
+            try {
+              localStorage.setItem(UUID_STORAGE_KEY, data.data.userId);
+            } catch {
+              /* silent */
+            }
+          }
         }
-      }
-    }).catch(() => { /* silent */ });
+      })
+      .catch(() => {
+        /* silent */
+      });
   }
 
   render();

@@ -18,8 +18,9 @@ notifications.get('/api/notifications/rules', async (c) => {
     const lineAccountId = c.req.query('lineAccountId');
     let items;
     if (lineAccountId) {
-      const result = await c.env.DB
-        .prepare(`SELECT * FROM notification_rules WHERE line_account_id = ? ORDER BY created_at DESC`)
+      const result = await c.env.DB.prepare(
+        `SELECT * FROM notification_rules WHERE line_account_id = ? ORDER BY created_at DESC`,
+      )
         .bind(lineAccountId)
         .all();
       items = result.results as unknown as Awaited<ReturnType<typeof getNotificationRules>>;
@@ -78,19 +79,23 @@ notifications.post('/api/notifications/rules', async (c) => {
       channels?: string[];
       lineAccountId?: string | null;
     }>();
-    if (!body.name || !body.eventType) return c.json({ success: false, error: 'name and eventType are required' }, 400);
+    if (!body.name || !body.eventType)
+      return c.json({ success: false, error: 'name and eventType are required' }, 400);
     const item = await createNotificationRule(c.env.DB, body);
-    return c.json({
-      success: true,
-      data: {
-        id: item.id,
-        name: item.name,
-        eventType: item.event_type,
-        channels: JSON.parse(item.channels),
-        lineAccountId: item.line_account_id,
-        createdAt: item.created_at,
+    return c.json(
+      {
+        success: true,
+        data: {
+          id: item.id,
+          name: item.name,
+          eventType: item.event_type,
+          channels: JSON.parse(item.channels),
+          lineAccountId: item.line_account_id,
+          createdAt: item.created_at,
+        },
       },
-    }, 201);
+      201,
+    );
   } catch (err) {
     console.error('POST /api/notifications/rules error:', err);
     return c.json({ success: false, error: 'Internal server error' }, 500);
@@ -147,8 +152,9 @@ notifications.get('/api/notifications', async (c) => {
         bindings.push(status);
       }
       bindings.push(limit);
-      const result = await c.env.DB
-        .prepare(`SELECT * FROM notifications WHERE ${conditions.join(' AND ')} ORDER BY created_at DESC LIMIT ?`)
+      const result = await c.env.DB.prepare(
+        `SELECT * FROM notifications WHERE ${conditions.join(' AND ')} ORDER BY created_at DESC LIMIT ?`,
+      )
         .bind(...bindings)
         .all();
       items = result.results as unknown as Awaited<ReturnType<typeof getNotifications>>;

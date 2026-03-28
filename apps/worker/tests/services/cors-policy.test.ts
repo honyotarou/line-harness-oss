@@ -2,7 +2,9 @@ import { describe, expect, it } from 'vitest';
 
 describe('cors policy helpers', () => {
   it('allows configured dashboard and liff origins', async () => {
-    const { buildAllowedOrigins, isAllowedOrigin } = await import('../../src/services/cors-policy.js');
+    const { buildAllowedOrigins, isAllowedOrigin } = await import(
+      '../../src/services/cors-policy.js'
+    );
 
     const origins = buildAllowedOrigins({
       WEB_URL: 'https://admin.example.com',
@@ -19,7 +21,9 @@ describe('cors policy helpers', () => {
   });
 
   it('rejects unknown origins', async () => {
-    const { buildAllowedOrigins, isAllowedOrigin } = await import('../../src/services/cors-policy.js');
+    const { buildAllowedOrigins, isAllowedOrigin } = await import(
+      '../../src/services/cors-policy.js'
+    );
 
     const origins = buildAllowedOrigins({
       WEB_URL: 'https://admin.example.com',
@@ -30,7 +34,9 @@ describe('cors policy helpers', () => {
   });
 
   it('accepts origins when allowed list is a Set (middleware hot path)', async () => {
-    const { buildAllowedOrigins, isAllowedOrigin } = await import('../../src/services/cors-policy.js');
+    const { buildAllowedOrigins, isAllowedOrigin } = await import(
+      '../../src/services/cors-policy.js'
+    );
 
     const set = new Set(
       buildAllowedOrigins({

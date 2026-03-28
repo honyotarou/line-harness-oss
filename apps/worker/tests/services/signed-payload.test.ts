@@ -17,9 +17,7 @@ describe('verifySignedPayload', () => {
   it('rejects missing or invalid signatures', async () => {
     const { verifySignedPayload } = await import('../../src/services/signed-payload.js');
 
-    await expect(
-      verifySignedPayload('top-secret', '{"ok":true}', ''),
-    ).resolves.toBe(false);
+    await expect(verifySignedPayload('top-secret', '{"ok":true}', '')).resolves.toBe(false);
     await expect(
       verifySignedPayload('top-secret', '{"ok":true}', sign('wrong-secret', '{"ok":true}')),
     ).resolves.toBe(false);

@@ -34,9 +34,7 @@ async function mapWithConcurrencyLimit<T, R>(
     }
   };
 
-  await Promise.all(
-    Array.from({ length: Math.min(limit, items.length) }, () => worker()),
-  );
+  await Promise.all(Array.from({ length: Math.min(limit, items.length) }, () => worker()));
 
   return results;
 }
@@ -115,7 +113,10 @@ lineAccounts.post('/api/line-accounts', async (c) => {
 
     if (!body.channelId || !body.name || !body.channelAccessToken || !body.channelSecret) {
       return c.json(
-        { success: false, error: 'channelId, name, channelAccessToken, and channelSecret are required' },
+        {
+          success: false,
+          error: 'channelId, name, channelAccessToken, and channelSecret are required',
+        },
         400,
       );
     }

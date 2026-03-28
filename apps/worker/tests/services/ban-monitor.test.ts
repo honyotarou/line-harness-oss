@@ -38,11 +38,10 @@ describe('checkAccountHealth', () => {
   });
 
   it('skips inactive accounts', async () => {
-    vi.stubGlobal(
-      'fetch',
-      vi.fn().mockResolvedValue({ ok: true, status: 200 }),
-    );
-    dbMocks.getLineAccounts.mockResolvedValue([{ id: 'a1', is_active: 0, channel_access_token: 't' }]);
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue({ ok: true, status: 200 }));
+    dbMocks.getLineAccounts.mockResolvedValue([
+      { id: 'a1', is_active: 0, channel_access_token: 't' },
+    ]);
 
     const { checkAccountHealth } = await import('../../src/services/ban-monitor.js');
     await checkAccountHealth(createD1(0));
@@ -51,11 +50,10 @@ describe('checkAccountHealth', () => {
   });
 
   it('records danger when LINE /v2/bot/info returns 403', async () => {
-    vi.stubGlobal(
-      'fetch',
-      vi.fn().mockResolvedValue({ ok: false, status: 403 }),
-    );
-    dbMocks.getLineAccounts.mockResolvedValue([{ id: 'acc-1', is_active: 1, channel_access_token: 'tok' }]);
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue({ ok: false, status: 403 }));
+    dbMocks.getLineAccounts.mockResolvedValue([
+      { id: 'acc-1', is_active: 1, channel_access_token: 'tok' },
+    ]);
 
     const { checkAccountHealth } = await import('../../src/services/ban-monitor.js');
     await checkAccountHealth(createD1(0));
@@ -71,11 +69,10 @@ describe('checkAccountHealth', () => {
   });
 
   it('records warning on HTTP 429', async () => {
-    vi.stubGlobal(
-      'fetch',
-      vi.fn().mockResolvedValue({ ok: false, status: 429 }),
-    );
-    dbMocks.getLineAccounts.mockResolvedValue([{ id: 'acc-2', is_active: 1, channel_access_token: 'tok' }]);
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue({ ok: false, status: 429 }));
+    dbMocks.getLineAccounts.mockResolvedValue([
+      { id: 'acc-2', is_active: 1, channel_access_token: 'tok' },
+    ]);
 
     const { checkAccountHealth } = await import('../../src/services/ban-monitor.js');
     await checkAccountHealth(createD1(0));
@@ -91,11 +88,10 @@ describe('checkAccountHealth', () => {
   });
 
   it('records warning when outgoing volume exceeds threshold', async () => {
-    vi.stubGlobal(
-      'fetch',
-      vi.fn().mockResolvedValue({ ok: true, status: 200 }),
-    );
-    dbMocks.getLineAccounts.mockResolvedValue([{ id: 'acc-3', is_active: 1, channel_access_token: 'tok' }]);
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue({ ok: true, status: 200 }));
+    dbMocks.getLineAccounts.mockResolvedValue([
+      { id: 'acc-3', is_active: 1, channel_access_token: 'tok' },
+    ]);
 
     const { checkAccountHealth } = await import('../../src/services/ban-monitor.js');
     await checkAccountHealth(createD1(6000));

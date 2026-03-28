@@ -42,7 +42,10 @@ function encodeBase64Url(input: string): string {
 }
 
 function decodeBase64Url(input: string): string {
-  const padded = input.replace(/-/g, '+').replace(/_/g, '/').padEnd(Math.ceil(input.length / 4) * 4, '=');
+  const padded = input
+    .replace(/-/g, '+')
+    .replace(/_/g, '/')
+    .padEnd(Math.ceil(input.length / 4) * 4, '=');
   const binary = atob(padded);
   const bytes = Uint8Array.from(binary, (char) => char.charCodeAt(0));
   return new TextDecoder().decode(bytes);
@@ -112,7 +115,11 @@ export async function verifyAdminSessionToken(
   try {
     const payload = JSON.parse(decodeBase64Url(encodedPayload)) as Partial<AdminSessionPayload>;
     const now = options?.now ?? Math.floor(Date.now() / 1000);
-    if (payload.scope !== 'admin' || typeof payload.iat !== 'number' || typeof payload.exp !== 'number') {
+    if (
+      payload.scope !== 'admin' ||
+      typeof payload.iat !== 'number' ||
+      typeof payload.exp !== 'number'
+    ) {
       return null;
     }
     if (payload.exp <= now) {

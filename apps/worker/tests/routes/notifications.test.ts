@@ -160,7 +160,9 @@ describe('notifications routes', () => {
     app.route('/', notifications);
 
     const response = await app.fetch(
-      new Request('http://localhost/api/notifications?lineAccountId=account-1&status=failed&limit=10'),
+      new Request(
+        'http://localhost/api/notifications?lineAccountId=account-1&status=failed&limit=10',
+      ),
       { DB: createDb() } as never,
     );
 

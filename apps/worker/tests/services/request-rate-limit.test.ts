@@ -50,7 +50,9 @@ function createRateLimitDb() {
 
 describe('request rate limit helpers', () => {
   it('blocks requests that exceed the configured limit within the active window', async () => {
-    const { checkRateLimit, resetRequestRateLimits } = await import('../../src/services/request-rate-limit.js');
+    const { checkRateLimit, resetRequestRateLimits } = await import(
+      '../../src/services/request-rate-limit.js'
+    );
     resetRequestRateLimits();
 
     expect(

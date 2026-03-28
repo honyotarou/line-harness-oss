@@ -57,9 +57,17 @@ templates.get('/api/templates/:id', async (c) => {
 
 templates.post('/api/templates', async (c) => {
   try {
-    const body = await c.req.json<{ name: string; category?: string; messageType: string; messageContent: string }>();
+    const body = await c.req.json<{
+      name: string;
+      category?: string;
+      messageType: string;
+      messageContent: string;
+    }>();
     if (!body.name || !body.messageType || !body.messageContent) {
-      return c.json({ success: false, error: 'name, messageType, messageContent are required' }, 400);
+      return c.json(
+        { success: false, error: 'name, messageType, messageContent are required' },
+        400,
+      );
     }
     const item = await createTemplate(c.env.DB, body);
     return c.json({ success: true, data: serializeTemplate(item) }, 201);

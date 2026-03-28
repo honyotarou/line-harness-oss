@@ -20,64 +20,69 @@ export interface CreateUserInput {
   displayName?: string | null;
 }
 
-export async function createUser(
-  db: D1Database,
-  input: CreateUserInput,
-): Promise<User> {
+export async function createUser(db: D1Database, input: CreateUserInput): Promise<User> {
   const id = crypto.randomUUID();
   const now = jstNow();
 
-  await db
-    .prepare(
-      `INSERT INTO users (id, email, phone, external_id, display_name, created_at, updated_at)
-       VALUES (?, ?, ?, ?, ?, ?, ?)`,
-    )
-    .bind(
-      id,
-      input.email ?? null,
-      input.phone ?? null,
-      input.externalId ?? null,
-      input.displayName ?? null,
-      now,
-      now,
-    )
-    .run();
+  try {
+    await db
+      .prepare(
+        `INSERT INTO users (id, email, phone, external_id, display_name, created_at, updated_at)
+         VALUES (?, ?, ?, ?, ?, ?, ?)`,
+      )
+      .bind(
+        id,
+        input.email ?? null,
+        input.phone ?? null,
+        input.externalId ?? null,
+        input.displayName ?? null,
+        now,
+        now,
+      )
+      .run();
+  } catch (e: unknown) {
+    const msg = e instanceof Error ? e.message : String(e);
+    if (!msg.includes('UNIQUE') && !msg.includes('unique')) throw e;
+    if (input.email) {
+      const existing = await getUserByEmail(db, input.email);
+      if (existing) return existing;
+    }
+    if (input.phone) {
+      const existing = await getUserByPhone(db, input.phone);
+      if (existing) return existing;
+    }
+    if (input.externalId) {
+      const existing = await getUserByExternalId(db, input.externalId);
+      if (existing) return existing;
+    }
+    throw e;
+  }
 
   return (await getUserById(db, id))!;
 }
 
-export async function getUserById(
-  db: D1Database,
-  id: string,
-): Promise<User | null> {
+export async function getUserById(db: D1Database, id: string): Promise<User | null> {
   return db.prepare(`SELECT * FROM users WHERE id = ?`).bind(id).first<User>();
 }
 
 export async function getUsers(db: D1Database): Promise<User[]> {
-  const result = await db
-    .prepare(`SELECT * FROM users ORDER BY created_at DESC`)
-    .all<User>();
+  const result = await db.prepare(`SELECT * FROM users ORDER BY created_at DESC`).all<User>();
   return result.results;
 }
 
-export async function getUserByEmail(
-  db: D1Database,
-  email: string,
-): Promise<User | null> {
-  return db
-    .prepare(`SELECT * FROM users WHERE email = ?`)
-    .bind(email)
-    .first<User>();
+export async function getUserByEmail(db: D1Database, email: string): Promise<User | null> {
+  return db.prepare(`SELECT * FROM users WHERE email = ?`).bind(email).first<User>();
 }
 
-export async function getUserByPhone(
+export async function getUserByPhone(db: D1Database, phone: string): Promise<User | null> {
+  return db.prepare(`SELECT * FROM users WHERE phone = ?`).bind(phone).first<User>();
+}
+
+export async function getUserByExternalId(
   db: D1Database,
-  phone: string,
+  externalId: string,
 ): Promise<User | null> {
-  return db
-    .prepare(`SELECT * FROM users WHERE phone = ?`)
-    .bind(phone)
-    .first<User>();
+  return db.prepare(`SELECT * FROM users WHERE external_id = ?`).bind(externalId).first<User>();
 }
 
 export type UpdateUserInput = Partial<
@@ -124,6 +129,11 @@ export async function updateUser(
 }
 
 export async function deleteUser(db: D1Database, id: string): Promise<void> {
+  const now = jstNow();
+  await db
+    .prepare(`UPDATE friends SET user_id = NULL, updated_at = ? WHERE user_id = ?`)
+    .bind(now, id)
+    .run();
   await db.prepare(`DELETE FROM users WHERE id = ?`).bind(id).run();
 }
 
@@ -141,7 +151,9 @@ export async function linkFriendToUser(
 export async function getUserFriends(
   db: D1Database,
   userId: string,
-): Promise<{ id: string; line_user_id: string; display_name: string | null; is_following: number }[]> {
+): Promise<
+  { id: string; line_user_id: string; display_name: string | null; is_following: number }[]
+> {
   const result = await db
     .prepare(`SELECT id, line_user_id, display_name, is_following FROM friends WHERE user_id = ?`)
     .bind(userId)

@@ -44,14 +44,8 @@ export async function getBroadcasts(
   return result.results;
 }
 
-export async function getBroadcastById(
-  db: D1Database,
-  id: string,
-): Promise<Broadcast | null> {
-  return db
-    .prepare(`SELECT * FROM broadcasts WHERE id = ?`)
-    .bind(id)
-    .first<Broadcast>();
+export async function getBroadcastById(db: D1Database, id: string): Promise<Broadcast | null> {
+  return db.prepare(`SELECT * FROM broadcasts WHERE id = ?`).bind(id).first<Broadcast>();
 }
 
 export interface CreateBroadcastInput {

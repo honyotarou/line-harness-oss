@@ -12,3 +12,8 @@ pre-commit:
         - package.json
         - pnpm-lock.yaml
         - lefthook.yml
+    biome:
+      run: pnpm format:check
+      glob:
+        - "**/*.{ts,tsx,js,jsx,json}"
+        - biome.json

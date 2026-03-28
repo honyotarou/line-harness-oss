@@ -2,7 +2,9 @@ import { describe, expect, it } from 'vitest';
 
 describe('admin session tokens', () => {
   it('issues and verifies signed admin sessions', async () => {
-    const { issueAdminSessionToken, verifyAdminSessionToken } = await import('../../src/services/admin-session.js');
+    const { issueAdminSessionToken, verifyAdminSessionToken } = await import(
+      '../../src/services/admin-session.js'
+    );
 
     const token = await issueAdminSessionToken('root-api-key', {
       issuedAt: 1_700_000_000,
@@ -20,7 +22,9 @@ describe('admin session tokens', () => {
   });
 
   it('rejects expired or tampered tokens', async () => {
-    const { issueAdminSessionToken, verifyAdminSessionToken } = await import('../../src/services/admin-session.js');
+    const { issueAdminSessionToken, verifyAdminSessionToken } = await import(
+      '../../src/services/admin-session.js'
+    );
 
     const token = await issueAdminSessionToken('root-api-key', {
       issuedAt: 1_700_000_000,

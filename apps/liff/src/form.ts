@@ -268,7 +268,11 @@ function renderSuccess(): void {
   // Auto-close after 3s inside LINE
   if (liff.isInClient()) {
     setTimeout(() => {
-      try { liff.closeWindow(); } catch { /* ignore */ }
+      try {
+        liff.closeWindow();
+      } catch {
+        /* ignore */
+      }
     }, 3000);
   }
 }
@@ -308,9 +312,7 @@ function collectFormData(): Record<string, unknown> {
   for (const field of formDef.fields) {
     if (field.type === 'checkbox') {
       const checked = Array.from(
-        document.querySelectorAll<HTMLInputElement>(
-          `input[name="${field.name}"]:checked`,
-        ),
+        document.querySelectorAll<HTMLInputElement>(`input[name="${field.name}"]:checked`),
       ).map((el) => el.value);
       result[field.name] = checked;
     } else if (field.type === 'radio') {
@@ -397,7 +399,12 @@ async function submitForm(): Promise<void> {
     if (!res.ok) {
       const errText = await res.text().catch(() => '');
       let errMsg = '送信に失敗しました';
-      try { const errData = JSON.parse(errText); errMsg = errData.error || errMsg; } catch { errMsg = errText || errMsg; }
+      try {
+        const errData = JSON.parse(errText);
+        errMsg = errData.error || errMsg;
+      } catch {
+        errMsg = errText || errMsg;
+      }
       throw new Error(`${res.status}: ${errMsg}`);
     }
 
@@ -439,10 +446,7 @@ export async function initForm(formId: string | null): Promise<void> {
 
   try {
     // Fetch profile and form definition in parallel
-    const [profile, res] = await Promise.all([
-      liff.getProfile(),
-      apiCall(`/api/forms/${formId}`),
-    ]);
+    const [profile, res] = await Promise.all([liff.getProfile(), apiCall(`/api/forms/${formId}`)]);
 
     state.profile = profile;
 
@@ -463,17 +467,23 @@ export async function initForm(formId: string | null): Promise<void> {
           displayName: profile.displayName,
           existingUuid: state.friendId,
         }),
-      }).then(async (linkRes) => {
-        if (linkRes.ok) {
-          const data = await linkRes.json() as { success: boolean; data?: { userId?: string } };
-          if (data?.data?.userId) {
-            try {
-              localStorage.setItem(UUID_STORAGE_KEY, data.data.userId);
-              state.friendId = data.data.userId;
-            } catch { /* silent */ }
+      })
+        .then(async (linkRes) => {
+          if (linkRes.ok) {
+            const data = (await linkRes.json()) as { success: boolean; data?: { userId?: string } };
+            if (data?.data?.userId) {
+              try {
+                localStorage.setItem(UUID_STORAGE_KEY, data.data.userId);
+                state.friendId = data.data.userId;
+              } catch {
+                /* silent */
+              }
+            }
           }
-        }
-      }).catch(() => { /* silent */ });
+        })
+        .catch(() => {
+          /* silent */
+        });
     }
 
     if (!res.ok) {
@@ -485,7 +495,7 @@ export async function initForm(formId: string | null): Promise<void> {
       return;
     }
 
-    const json = await res.json() as { success: boolean; data?: FormDef };
+    const json = (await res.json()) as { success: boolean; data?: FormDef };
     if (!json.success || !json.data) {
       renderFormError('フォームの読み込みに失敗しました');
       return;

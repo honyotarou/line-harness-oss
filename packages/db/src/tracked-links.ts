@@ -31,14 +31,8 @@ export async function getTrackedLinks(db: D1Database): Promise<TrackedLink[]> {
   return result.results;
 }
 
-export async function getTrackedLinkById(
-  db: D1Database,
-  id: string,
-): Promise<TrackedLink | null> {
-  return db
-    .prepare(`SELECT * FROM tracked_links WHERE id = ?`)
-    .bind(id)
-    .first<TrackedLink>();
+export async function getTrackedLinkById(db: D1Database, id: string): Promise<TrackedLink | null> {
+  return db.prepare(`SELECT * FROM tracked_links WHERE id = ?`).bind(id).first<TrackedLink>();
 }
 
 export interface CreateTrackedLinkInput {
@@ -60,7 +54,15 @@ export async function createTrackedLink(
       `INSERT INTO tracked_links (id, name, original_url, tag_id, scenario_id, is_active, click_count, created_at, updated_at)
        VALUES (?, ?, ?, ?, ?, 1, 0, ?, ?)`,
     )
-    .bind(id, input.name, input.originalUrl, input.tagId ?? null, input.scenarioId ?? null, now, now)
+    .bind(
+      id,
+      input.name,
+      input.originalUrl,
+      input.tagId ?? null,
+      input.scenarioId ?? null,
+      now,
+      now,
+    )
     .run();
 
   return (await getTrackedLinkById(db, id))!;
@@ -89,16 +91,11 @@ export async function recordLinkClick(
     .run();
 
   await db
-    .prepare(
-      `UPDATE tracked_links SET click_count = click_count + 1, updated_at = ? WHERE id = ?`,
-    )
+    .prepare(`UPDATE tracked_links SET click_count = click_count + 1, updated_at = ? WHERE id = ?`)
     .bind(now, trackedLinkId)
     .run();
 
-  return (await db
-    .prepare(`SELECT * FROM link_clicks WHERE id = ?`)
-    .bind(id)
-    .first<LinkClick>())!;
+  return (await db.prepare(`SELECT * FROM link_clicks WHERE id = ?`).bind(id).first<LinkClick>())!;
 }
 
 export interface LinkClickWithFriend extends LinkClick {

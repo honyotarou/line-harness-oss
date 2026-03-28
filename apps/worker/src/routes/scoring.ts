@@ -131,7 +131,8 @@ scoring.post('/api/friends/:id/score', async (c) => {
   try {
     const friendId = c.req.param('id');
     const body = await c.req.json<{ scoreChange: number; reason?: string }>();
-    if (body.scoreChange === undefined) return c.json({ success: false, error: 'scoreChange is required' }, 400);
+    if (body.scoreChange === undefined)
+      return c.json({ success: false, error: 'scoreChange is required' }, 400);
     await addScore(c.env.DB, { friendId, scoreChange: body.scoreChange, reason: body.reason });
     const newScore = await getFriendScore(c.env.DB, friendId);
     return c.json({ success: true, data: { friendId, currentScore: newScore } }, 201);

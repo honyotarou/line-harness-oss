@@ -43,13 +43,28 @@ calendar.get('/api/integrations/google-calendar', async (c) => {
 
 calendar.post('/api/integrations/google-calendar/connect', async (c) => {
   try {
-    const body = await c.req.json<{ calendarId: string; authType: string; accessToken?: string; refreshToken?: string; apiKey?: string }>();
+    const body = await c.req.json<{
+      calendarId: string;
+      authType: string;
+      accessToken?: string;
+      refreshToken?: string;
+      apiKey?: string;
+    }>();
     if (!body.calendarId) return c.json({ success: false, error: 'calendarId is required' }, 400);
     const conn = await createCalendarConnection(c.env.DB, body);
-    return c.json({
-      success: true,
-      data: { id: conn.id, calendarId: conn.calendar_id, authType: conn.auth_type, isActive: Boolean(conn.is_active), createdAt: conn.created_at },
-    }, 201);
+    return c.json(
+      {
+        success: true,
+        data: {
+          id: conn.id,
+          calendarId: conn.calendar_id,
+          authType: conn.auth_type,
+          isActive: Boolean(conn.is_active),
+          createdAt: conn.created_at,
+        },
+      },
+      201,
+    );
   } catch (err) {
     console.error('POST /api/integrations/google-calendar/connect error:', err);
     return c.json({ success: false, error: 'Internal server error' }, 500);
@@ -136,7 +151,11 @@ calendar.get('/api/integrations/google-calendar/slots', async (c) => {
         return slotStart.getTime() < gEnd && slotEnd.getTime() > gStart;
       });
 
-      slots.push({ startAt: startStr, endAt: endStr, available: !isBookedInD1 && !isBookedInGoogle });
+      slots.push({
+        startAt: startStr,
+        endAt: endStr,
+        available: !isBookedInD1 && !isBookedInGoogle,
+      });
     }
 
     return c.json({ success: true, data: slots });
@@ -152,7 +171,10 @@ calendar.get('/api/integrations/google-calendar/bookings', async (c) => {
   try {
     const connectionId = c.req.query('connectionId');
     const friendId = c.req.query('friendId');
-    const items = await getCalendarBookings(c.env.DB, { connectionId: connectionId ?? undefined, friendId: friendId ?? undefined });
+    const items = await getCalendarBookings(c.env.DB, {
+      connectionId: connectionId ?? undefined,
+      friendId: friendId ?? undefined,
+    });
     return c.json({
       success: true,
       data: items.map((b) => ({
@@ -176,9 +198,20 @@ calendar.get('/api/integrations/google-calendar/bookings', async (c) => {
 
 calendar.post('/api/integrations/google-calendar/book', async (c) => {
   try {
-    const body = await c.req.json<{ connectionId: string; friendId?: string; title: string; startAt: string; endAt: string; description?: string; metadata?: Record<string, unknown> }>();
+    const body = await c.req.json<{
+      connectionId: string;
+      friendId?: string;
+      title: string;
+      startAt: string;
+      endAt: string;
+      description?: string;
+      metadata?: Record<string, unknown>;
+    }>();
     if (!body.connectionId || !body.title || !body.startAt || !body.endAt) {
-      return c.json({ success: false, error: 'connectionId, title, startAt, endAt are required' }, 400);
+      return c.json(
+        { success: false, error: 'connectionId, title, startAt, endAt are required' },
+        400,
+      );
     }
 
     let resolvedFriendId: string | undefined;
@@ -188,7 +221,8 @@ calendar.post('/api/integrations/google-calendar/book', async (c) => {
         resolvedFriendId = directFriend.id;
       } else {
         const userFriends = await getUserFriends(c.env.DB, body.friendId);
-        const bestMatch = userFriends.find((friend) => Boolean(friend.is_following)) ?? userFriends[0];
+        const bestMatch =
+          userFriends.find((friend) => Boolean(friend.is_following)) ?? userFriends[0];
         resolvedFriendId = bestMatch?.id;
       }
     }
@@ -223,20 +257,23 @@ calendar.post('/api/integrations/google-calendar/book', async (c) => {
       }
     }
 
-    return c.json({
-      success: true,
-      data: {
-        id: booking.id,
-        connectionId: booking.connection_id,
-        friendId: booking.friend_id,
-        eventId: booking.event_id,
-        title: booking.title,
-        startAt: booking.start_at,
-        endAt: booking.end_at,
-        status: booking.status,
-        createdAt: booking.created_at,
+    return c.json(
+      {
+        success: true,
+        data: {
+          id: booking.id,
+          connectionId: booking.connection_id,
+          friendId: booking.friend_id,
+          eventId: booking.event_id,
+          title: booking.title,
+          startAt: booking.start_at,
+          endAt: booking.end_at,
+          status: booking.status,
+          createdAt: booking.created_at,
+        },
       },
-    }, 201);
+      201,
+    );
   } catch (err) {
     console.error('POST /api/integrations/google-calendar/book error:', err);
     return c.json({ success: false, error: 'Internal server error' }, 500);

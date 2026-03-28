@@ -1,10 +1,5 @@
 import { Hono } from 'hono';
-import {
-  getStripeEvents,
-  getStripeEventByStripeId,
-  createStripeEvent,
-  jstNow,
-} from '@line-crm/db';
+import { getStripeEvents, getStripeEventByStripeId, createStripeEvent, jstNow } from '@line-crm/db';
 import type { Env } from '../index.js';
 import { verifyStripeSignature } from '../services/stripe-signature.js';
 
@@ -108,7 +103,9 @@ stripe.post('/api/integrations/stripe/webhook', async (c) => {
           .first<{ id: string }>();
         if (tag) {
           await db
-            .prepare(`INSERT OR IGNORE INTO friend_tags (friend_id, tag_id, assigned_at) VALUES (?, ?, ?)`)
+            .prepare(
+              `INSERT OR IGNORE INTO friend_tags (friend_id, tag_id, assigned_at) VALUES (?, ?, ?)`,
+            )
             .bind(friendId, tag.id, jstNow())
             .run();
         }
@@ -116,7 +113,10 @@ stripe.post('/api/integrations/stripe/webhook', async (c) => {
 
       // イベントバスに発火（自動化ルール用）
       const { fireEvent } = await import('../services/event-bus.js');
-      await fireEvent(db, 'cv_fire', { friendId, eventData: { type: 'purchase', amount: obj.amount, stripeEventId: body.id } });
+      await fireEvent(db, 'cv_fire', {
+        friendId,
+        eventData: { type: 'purchase', amount: obj.amount, stripeEventId: body.id },
+      });
     }
 
     // サブスクリプションイベント処理
@@ -126,7 +126,9 @@ stripe.post('/api/integrations/stripe/webhook', async (c) => {
         .first<{ id: string }>();
       if (cancelledTag) {
         await db
-          .prepare(`INSERT OR IGNORE INTO friend_tags (friend_id, tag_id, assigned_at) VALUES (?, ?, ?)`)
+          .prepare(
+            `INSERT OR IGNORE INTO friend_tags (friend_id, tag_id, assigned_at) VALUES (?, ?, ?)`,
+          )
           .bind(friendId, cancelledTag.id, jstNow())
           .run();
       }
@@ -134,7 +136,12 @@ stripe.post('/api/integrations/stripe/webhook', async (c) => {
 
     return c.json({
       success: true,
-      data: { id: event.id, stripeEventId: event.stripe_event_id, eventType: event.event_type, processedAt: event.processed_at },
+      data: {
+        id: event.id,
+        stripeEventId: event.stripe_event_id,
+        eventType: event.event_type,
+        processedAt: event.processed_at,
+      },
     });
   } catch (err) {
     console.error('POST /api/integrations/stripe/webhook error:', err);

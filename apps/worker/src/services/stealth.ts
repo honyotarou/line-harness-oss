@@ -47,10 +47,7 @@ export function addMessageVariation(text: string, index: number): string {
  * @param batchIndex Current batch index (0-based)
  * @returns Delay in milliseconds before sending this batch
  */
-export function calculateStaggerDelay(
-  totalMessages: number,
-  batchIndex: number,
-): number {
+export function calculateStaggerDelay(totalMessages: number, batchIndex: number): number {
   if (totalMessages <= 100) {
     // Small sends: minimal delay with jitter
     return addJitter(100, 500);

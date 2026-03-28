@@ -56,7 +56,11 @@ describe('processReminderDeliveries', () => {
               previewImageUrl: 'https://example.com/preview.png',
             }),
           },
-          { id: 'step-3', message_type: 'flex', message_content: '{"type":"bubble","body":{"contents":[]}}' },
+          {
+            id: 'step-3',
+            message_type: 'flex',
+            message_content: '{"type":"bubble","body":{"contents":[]}}',
+          },
         ],
       },
     ]);
@@ -79,7 +83,11 @@ describe('processReminderDeliveries', () => {
     );
     expect(lineClient.pushMessage).toHaveBeenCalledTimes(3);
     expect(dbMocks.markReminderStepDelivered).toHaveBeenCalledTimes(3);
-    expect(dbMocks.completeReminderIfDone).toHaveBeenCalledWith(db, 'friend-reminder-1', 'reminder-1');
+    expect(dbMocks.completeReminderIfDone).toHaveBeenCalledWith(
+      db,
+      'friend-reminder-1',
+      'reminder-1',
+    );
   });
 
   it('skips reminder deliveries for unfollowed friends', async () => {

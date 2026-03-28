@@ -66,7 +66,7 @@ function normalizeMetadata(
 
 function computeRetryDelayMs(attemptCount: number, baseRetryMs: number): number {
   const exponent = Math.max(attemptCount - 1, 0);
-  return Math.min(baseRetryMs * (2 ** exponent), MAX_RETRY_DELAY_MS);
+  return Math.min(baseRetryMs * 2 ** exponent, MAX_RETRY_DELAY_MS);
 }
 
 async function getDeliveryOperation(
@@ -164,7 +164,9 @@ export async function markDeliveryAttemptFailed(
   const exhausted = attemptCount >= maxAttempts;
   const nextRetryAt = exhausted
     ? null
-    : new Date(nowMs + computeRetryDelayMs(attemptCount, options?.baseRetryMs ?? DEFAULT_RETRY_BASE_MS)).toISOString();
+    : new Date(
+        nowMs + computeRetryDelayMs(attemptCount, options?.baseRetryMs ?? DEFAULT_RETRY_BASE_MS),
+      ).toISOString();
 
   await db
     .prepare(
@@ -204,15 +206,16 @@ export async function markDeliveryAttemptFailed(
     body: lastError,
     channel: 'dashboard',
     lineAccountId: input.lineAccountId ?? null,
-    metadata: normalizeMetadata(
-      {
-        idempotencyKey: input.idempotencyKey,
-        sourceType: input.sourceType,
-        sourceId: input.sourceId,
-        friendId: input.friendId ?? null,
-        attempts: attemptCount,
-      },
-      input.error,
-    ) ?? undefined,
+    metadata:
+      normalizeMetadata(
+        {
+          idempotencyKey: input.idempotencyKey,
+          sourceType: input.sourceType,
+          sourceId: input.sourceId,
+          friendId: input.friendId ?? null,
+          attempts: attemptCount,
+        },
+        input.error,
+      ) ?? undefined,
   });
 }

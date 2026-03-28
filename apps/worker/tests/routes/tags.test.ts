@@ -28,10 +28,9 @@ describe('tag routes', () => {
     const app = new Hono();
     app.route('/', tags);
 
-    const response = await app.fetch(
-      new Request('http://localhost/api/tags'),
-      { DB: {} as D1Database } as never,
-    );
+    const response = await app.fetch(new Request('http://localhost/api/tags'), {
+      DB: {} as D1Database,
+    } as never);
 
     expect(response.status).toBe(200);
     await expect(response.json()).resolves.toEqual({
@@ -160,10 +159,9 @@ describe('tag routes', () => {
     const app = new Hono();
     app.route('/', tags);
 
-    const response = await app.fetch(
-      new Request('http://localhost/api/tags'),
-      { DB: {} as D1Database } as never,
-    );
+    const response = await app.fetch(new Request('http://localhost/api/tags'), {
+      DB: {} as D1Database,
+    } as never);
 
     expect(response.status).toBe(500);
     await expect(response.json()).resolves.toMatchObject({ success: false });

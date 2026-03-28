@@ -13,11 +13,15 @@ export interface TemplateRow {
 
 export async function getTemplates(db: D1Database, category?: string): Promise<TemplateRow[]> {
   if (category) {
-    const result = await db.prepare(`SELECT * FROM templates WHERE category = ? ORDER BY created_at DESC`)
-      .bind(category).all<TemplateRow>();
+    const result = await db
+      .prepare(`SELECT * FROM templates WHERE category = ? ORDER BY created_at DESC`)
+      .bind(category)
+      .all<TemplateRow>();
     return result.results;
   }
-  const result = await db.prepare(`SELECT * FROM templates ORDER BY created_at DESC`).all<TemplateRow>();
+  const result = await db
+    .prepare(`SELECT * FROM templates ORDER BY created_at DESC`)
+    .all<TemplateRow>();
   return result.results;
 }
 
@@ -31,8 +35,20 @@ export async function createTemplate(
 ): Promise<TemplateRow> {
   const id = crypto.randomUUID();
   const now = jstNow();
-  await db.prepare(`INSERT INTO templates (id, name, category, message_type, message_content, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?)`)
-    .bind(id, input.name, input.category ?? 'general', input.messageType, input.messageContent, now, now).run();
+  await db
+    .prepare(
+      `INSERT INTO templates (id, name, category, message_type, message_content, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?)`,
+    )
+    .bind(
+      id,
+      input.name,
+      input.category ?? 'general',
+      input.messageType,
+      input.messageContent,
+      now,
+      now,
+    )
+    .run();
   return (await getTemplateById(db, id))!;
 }
 
@@ -43,15 +59,30 @@ export async function updateTemplate(
 ): Promise<void> {
   const sets: string[] = [];
   const values: unknown[] = [];
-  if (updates.name !== undefined) { sets.push('name = ?'); values.push(updates.name); }
-  if (updates.category !== undefined) { sets.push('category = ?'); values.push(updates.category); }
-  if (updates.messageType !== undefined) { sets.push('message_type = ?'); values.push(updates.messageType); }
-  if (updates.messageContent !== undefined) { sets.push('message_content = ?'); values.push(updates.messageContent); }
+  if (updates.name !== undefined) {
+    sets.push('name = ?');
+    values.push(updates.name);
+  }
+  if (updates.category !== undefined) {
+    sets.push('category = ?');
+    values.push(updates.category);
+  }
+  if (updates.messageType !== undefined) {
+    sets.push('message_type = ?');
+    values.push(updates.messageType);
+  }
+  if (updates.messageContent !== undefined) {
+    sets.push('message_content = ?');
+    values.push(updates.messageContent);
+  }
   if (sets.length === 0) return;
   sets.push('updated_at = ?');
   values.push(jstNow());
   values.push(id);
-  await db.prepare(`UPDATE templates SET ${sets.join(', ')} WHERE id = ?`).bind(...values).run();
+  await db
+    .prepare(`UPDATE templates SET ${sets.join(', ')} WHERE id = ?`)
+    .bind(...values)
+    .run();
 }
 
 export async function deleteTemplate(db: D1Database, id: string): Promise<void> {

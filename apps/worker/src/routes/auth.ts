@@ -25,7 +25,9 @@ function getBearerToken(header: string | undefined): string | null {
   return header.slice('Bearer '.length);
 }
 
-function getAdminAuthToken(c: { req: { header: (name: string) => string | undefined } }): string | null {
+function getAdminAuthToken(c: { req: { header: (name: string) => string | undefined } }):
+  | string
+  | null {
   const bearer = getBearerToken(c.req.header('Authorization'));
   if (bearer) {
     return bearer;

@@ -1,14 +1,14 @@
-'use client'
-import { usePathname } from 'next/navigation'
-import Sidebar from './layout/sidebar'
-import AuthGuard from './auth-guard'
-import { AccountProvider } from '@/contexts/account-context'
+'use client';
+import { usePathname } from 'next/navigation';
+import Sidebar from './layout/sidebar';
+import AuthGuard from './auth-guard';
+import { AccountProvider } from '@/contexts/account-context';
 
 export default function AppShell({ children }: { children: React.ReactNode }) {
-  const pathname = usePathname()
+  const pathname = usePathname();
 
   if (pathname === '/login') {
-    return <>{children}</>
+    return <>{children}</>;
   }
 
   return (
@@ -22,5 +22,5 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
         </div>
       </AccountProvider>
     </AuthGuard>
-  )
+  );
 }

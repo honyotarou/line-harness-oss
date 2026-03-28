@@ -22,11 +22,7 @@ export async function verifySignature(
     ['sign'],
   );
 
-  const signatureBytes = await crypto.subtle.sign(
-    'HMAC',
-    key,
-    encoder.encode(body),
-  );
+  const signatureBytes = await crypto.subtle.sign('HMAC', key, encoder.encode(body));
 
   // Convert the provided base64 signature to bytes for constant-time comparison
   let providedBytes: Uint8Array;

@@ -5,6 +5,9 @@ set -euo pipefail
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 cd "$ROOT"
 
+echo "== harness: biome format =="
+pnpm exec biome format .
+
 echo "== harness: worker typecheck =="
 pnpm --filter worker typecheck
 

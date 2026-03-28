@@ -71,7 +71,7 @@ export interface FriendTag {
 // -----------------------------------------------------------------------------
 
 /** シナリオのトリガー種別 */
-export type ScenarioTriggerType = "friend_add" | "tag_added" | "manual";
+export type ScenarioTriggerType = 'friend_add' | 'tag_added' | 'manual';
 
 export interface Scenario {
   /** 主キー (UUIDv4) */
@@ -99,7 +99,7 @@ export interface Scenario {
 // -----------------------------------------------------------------------------
 
 /** メッセージ種別 */
-export type MessageType = "text" | "image" | "flex";
+export type MessageType = 'text' | 'image' | 'flex';
 
 export interface ScenarioStep {
   /** 主キー (UUIDv4) */
@@ -123,7 +123,7 @@ export interface ScenarioStep {
 // -----------------------------------------------------------------------------
 
 /** シナリオ配信ステータス */
-export type FriendScenarioStatus = "active" | "paused" | "completed";
+export type FriendScenarioStatus = 'active' | 'paused' | 'completed';
 
 export interface FriendScenario {
   /** 主キー (UUIDv4) */
@@ -149,10 +149,10 @@ export interface FriendScenario {
 // -----------------------------------------------------------------------------
 
 /** 配信対象種別 */
-export type BroadcastTargetType = "all" | "tag";
+export type BroadcastTargetType = 'all' | 'tag';
 
 /** 配信ステータス */
-export type BroadcastStatus = "draft" | "scheduled" | "sending" | "sent";
+export type BroadcastStatus = 'draft' | 'scheduled' | 'sending' | 'sent';
 
 export interface Broadcast {
   /** 主キー (UUIDv4) */
@@ -188,7 +188,7 @@ export interface Broadcast {
 // -----------------------------------------------------------------------------
 
 /** メッセージの方向 */
-export type MessageDirection = "incoming" | "outgoing";
+export type MessageDirection = 'incoming' | 'outgoing';
 
 export interface MessageLog {
   /** 主キー (UUIDv4) */
@@ -214,7 +214,7 @@ export interface MessageLog {
 // -----------------------------------------------------------------------------
 
 /** キーワードマッチ種別 */
-export type AutoReplyMatchType = "exact" | "contains";
+export type AutoReplyMatchType = 'exact' | 'contains';
 
 export interface AutoReply {
   /** 主キー (UUIDv4) */
@@ -256,7 +256,7 @@ export interface AdminUser {
  * 管理ユーザー (公開用 — パスワードハッシュを除いたもの)
  * API レスポンスやセッション情報にはこちらを使う。
  */
-export type AdminUserPublic = Omit<AdminUser, "passwordHash">;
+export type AdminUserPublic = Omit<AdminUser, 'passwordHash'>;
 
 // -----------------------------------------------------------------------------
 // 内部ユーザー (User) — UUID Cross-Account System
@@ -451,7 +451,7 @@ export interface CalendarBooking {
   title: string;
   startAt: string;
   endAt: string;
-  status: "confirmed" | "cancelled" | "completed";
+  status: 'confirmed' | 'cancelled' | 'completed';
   metadata: string | null;
   createdAt: string;
   updatedAt: string;
@@ -485,7 +485,7 @@ export interface FriendReminder {
   friendId: string;
   reminderId: string;
   targetDate: string;
-  status: "active" | "completed" | "cancelled";
+  status: 'active' | 'completed' | 'cancelled';
   createdAt: string;
   updatedAt: string;
 }
@@ -535,7 +535,7 @@ export interface Operator {
   id: string;
   name: string;
   email: string;
-  role: "admin" | "operator";
+  role: 'admin' | 'operator';
   isActive: boolean;
   createdAt: string;
   updatedAt: string;
@@ -549,7 +549,7 @@ export interface Chat {
   id: string;
   friendId: string;
   operatorId: string | null;
-  status: "unread" | "in_progress" | "resolved";
+  status: 'unread' | 'in_progress' | 'resolved';
   notes: string | null;
   lastMessageAt: string | null;
   lineAccountId: string | null;
@@ -580,7 +580,7 @@ export interface Notification {
   title: string;
   body: string;
   channel: string;
-  status: "pending" | "sent" | "failed";
+  status: 'pending' | 'sent' | 'failed';
   lineAccountId: string | null;
   metadata: Record<string, unknown> | null;
   createdAt: string;
@@ -611,7 +611,7 @@ export interface AccountHealthLog {
   errorCode: number | null;
   errorCount: number;
   checkPeriod: string;
-  riskLevel: "normal" | "warning" | "danger";
+  riskLevel: 'normal' | 'warning' | 'danger';
   createdAt: string;
 }
 
@@ -619,7 +619,7 @@ export interface AccountMigration {
   id: string;
   fromAccountId: string;
   toAccountId: string;
-  status: "pending" | "in_progress" | "completed" | "failed";
+  status: 'pending' | 'in_progress' | 'completed' | 'failed';
   migratedCount: number;
   totalCount: number;
   createdAt: string;
@@ -631,15 +631,21 @@ export interface AccountMigration {
 // -----------------------------------------------------------------------------
 
 export type AutomationEventType =
-  | "friend_add"
-  | "tag_change"
-  | "score_threshold"
-  | "cv_fire"
-  | "message_received"
-  | "calendar_booked";
+  | 'friend_add'
+  | 'tag_change'
+  | 'score_threshold'
+  | 'cv_fire'
+  | 'message_received'
+  | 'calendar_booked';
 
 export interface AutomationAction {
-  type: "add_tag" | "remove_tag" | "start_scenario" | "send_message" | "send_webhook" | "switch_rich_menu";
+  type:
+    | 'add_tag'
+    | 'remove_tag'
+    | 'start_scenario'
+    | 'send_message'
+    | 'send_webhook'
+    | 'switch_rich_menu';
   params: Record<string, unknown>;
 }
 
@@ -663,7 +669,7 @@ export interface AutomationLog {
   friendId: string | null;
   eventData: string | null;
   actionsResult: string | null;
-  status: "success" | "partial" | "failed";
+  status: 'success' | 'partial' | 'failed';
   createdAt: string;
 }
 

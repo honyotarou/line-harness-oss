@@ -26,7 +26,12 @@ import {
  */
 export function expandVariables(
   content: string,
-  friend: { id: string; display_name: string | null; user_id: string | null; ref_code?: string | null },
+  friend: {
+    id: string;
+    display_name: string | null;
+    user_id: string | null;
+    ref_code?: string | null;
+  },
   apiOrigin?: string,
 ): string {
   let result = content;
@@ -118,8 +123,12 @@ async function processSingleDelivery(
     await completeFriendScenario(db, fs.id);
     return;
   }
-  const metadata = JSON.parse((friend as { metadata?: string }).metadata || '{}') as Record<string, unknown>;
-  const preferredHour = typeof metadata.preferred_hour === 'number' ? metadata.preferred_hour : undefined;
+  const metadata = JSON.parse((friend as { metadata?: string }).metadata || '{}') as Record<
+    string,
+    unknown
+  >;
+  const preferredHour =
+    typeof metadata.preferred_hour === 'number' ? metadata.preferred_hour : undefined;
 
   // Get all steps for this scenario
   const steps = await getScenarioSteps(db, fs.scenario_id);
@@ -148,7 +157,12 @@ async function processSingleDelivery(
           nextDate.setMinutes(nextDate.getMinutes() + jumpStep.delay_minutes);
           const windowedDate = enforceDeliveryWindow(nextDate, preferredHour);
           const jitteredDate = jitterDeliveryTime(windowedDate);
-          await advanceFriendScenario(db, fs.id, currentStep.step_order, jitteredDate.toISOString().slice(0, -1) + '+09:00');
+          await advanceFriendScenario(
+            db,
+            fs.id,
+            currentStep.step_order,
+            jitteredDate.toISOString().slice(0, -1) + '+09:00',
+          );
           return;
         }
       }
@@ -159,7 +173,12 @@ async function processSingleDelivery(
         nextDate.setMinutes(nextDate.getMinutes() + nextStep.delay_minutes);
         const windowedDate = enforceDeliveryWindow(nextDate, preferredHour);
         const jitteredDate = jitterDeliveryTime(windowedDate);
-        await advanceFriendScenario(db, fs.id, currentStep.step_order, jitteredDate.toISOString().slice(0, -1) + '+09:00');
+        await advanceFriendScenario(
+          db,
+          fs.id,
+          currentStep.step_order,
+          jitteredDate.toISOString().slice(0, -1) + '+09:00',
+        );
       } else {
         await completeFriendScenario(db, fs.id);
       }
@@ -198,7 +217,14 @@ async function processSingleDelivery(
         `INSERT INTO messages_log (id, friend_id, direction, message_type, content, broadcast_id, scenario_step_id, created_at)
          VALUES (?, ?, 'outgoing', ?, ?, NULL, ?, ?)`,
       )
-      .bind(logId, friend.id, currentStep.message_type, currentStep.message_content, currentStep.id, jstNow())
+      .bind(
+        logId,
+        friend.id,
+        currentStep.message_type,
+        currentStep.message_content,
+        currentStep.id,
+        jstNow(),
+      )
       .run();
 
     // Determine next step (find the step after currentStep in the sorted list)
@@ -211,7 +237,12 @@ async function processSingleDelivery(
       nextDeliveryDate.setMinutes(nextDeliveryDate.getMinutes() + nextStep.delay_minutes);
       const windowedDate = enforceDeliveryWindow(nextDeliveryDate, preferredHour);
       const jitteredDate = jitterDeliveryTime(windowedDate);
-      await advanceFriendScenario(db, fs.id, currentStep.step_order, jitteredDate.toISOString().slice(0, -1) + '+09:00');
+      await advanceFriendScenario(
+        db,
+        fs.id,
+        currentStep.step_order,
+        jitteredDate.toISOString().slice(0, -1) + '+09:00',
+      );
     } else {
       // This was the last step
       await completeFriendScenario(db, fs.id);

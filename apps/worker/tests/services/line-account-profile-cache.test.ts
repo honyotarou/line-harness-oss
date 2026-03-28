@@ -1,12 +1,17 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-function createProfileCacheDb(initialRows: Record<string, {
-  display_name: string | null;
-  picture_url: string | null;
-  basic_id: string | null;
-  fetched_at: string;
-  updated_at: string;
-}> = {}) {
+function createProfileCacheDb(
+  initialRows: Record<
+    string,
+    {
+      display_name: string | null;
+      picture_url: string | null;
+      basic_id: string | null;
+      fetched_at: string;
+      updated_at: string;
+    }
+  > = {},
+) {
   const rows = new Map(Object.entries(initialRows));
 
   return {
@@ -25,14 +30,15 @@ function createProfileCacheDb(initialRows: Record<string, {
               },
               async run() {
                 if (sql.includes('INSERT INTO line_account_profile_cache')) {
-                  const [
-                    lineAccountId,
-                    displayName,
-                    pictureUrl,
-                    basicId,
-                    fetchedAt,
-                    updatedAt,
-                  ] = bindings as [string, string | null, string | null, string | null, string, string];
+                  const [lineAccountId, displayName, pictureUrl, basicId, fetchedAt, updatedAt] =
+                    bindings as [
+                      string,
+                      string | null,
+                      string | null,
+                      string | null,
+                      string,
+                      string,
+                    ];
                   rows.set(lineAccountId, {
                     display_name: displayName,
                     picture_url: pictureUrl,
@@ -56,9 +62,11 @@ describe('line account profile cache', () => {
   beforeEach(() => {
     vi.useRealTimers();
     // Reset module state between tests because concurrent refresh dedupe uses a module-level map.
-    return import('../../src/services/line-account-profile-cache.js').then(({ resetLineAccountProfileInflightState }) => {
-      resetLineAccountProfileInflightState();
-    });
+    return import('../../src/services/line-account-profile-cache.js').then(
+      ({ resetLineAccountProfileInflightState }) => {
+        resetLineAccountProfileInflightState();
+      },
+    );
   });
 
   it('returns fresh cached profiles without calling the LINE API', async () => {
@@ -73,7 +81,9 @@ describe('line account profile cache', () => {
     });
     const fetchBotProfile = vi.fn();
 
-    const { loadLineAccountProfile } = await import('../../src/services/line-account-profile-cache.js');
+    const { loadLineAccountProfile } = await import(
+      '../../src/services/line-account-profile-cache.js'
+    );
     const profile = await loadLineAccountProfile(
       db,
       { id: 'account-1', channel_access_token: 'token-1' },
@@ -107,7 +117,9 @@ describe('line account profile cache', () => {
       basicId: '@fresh',
     });
 
-    const { loadLineAccountProfile } = await import('../../src/services/line-account-profile-cache.js');
+    const { loadLineAccountProfile } = await import(
+      '../../src/services/line-account-profile-cache.js'
+    );
     const profile = await loadLineAccountProfile(
       cache.db,
       { id: 'account-1', channel_access_token: 'token-1' },
@@ -142,7 +154,9 @@ describe('line account profile cache', () => {
     });
     const fetchBotProfile = vi.fn().mockRejectedValue(new Error('LINE unavailable'));
 
-    const { loadLineAccountProfile } = await import('../../src/services/line-account-profile-cache.js');
+    const { loadLineAccountProfile } = await import(
+      '../../src/services/line-account-profile-cache.js'
+    );
     const profile = await loadLineAccountProfile(
       db,
       { id: 'account-1', channel_access_token: 'token-1' },
@@ -161,7 +175,9 @@ describe('line account profile cache', () => {
 
   it('deduplicates concurrent refreshes for the same account', async () => {
     const cache = createProfileCacheDb();
-    let resolveFetch: ((value: { displayName: string; pictureUrl: string; basicId: string }) => void) | undefined;
+    let resolveFetch:
+      | ((value: { displayName: string; pictureUrl: string; basicId: string }) => void)
+      | undefined;
     const fetchBotProfile = vi.fn().mockImplementation(
       () =>
         new Promise((resolve) => {
@@ -169,7 +185,9 @@ describe('line account profile cache', () => {
         }),
     );
 
-    const { loadLineAccountProfile } = await import('../../src/services/line-account-profile-cache.js');
+    const { loadLineAccountProfile } = await import(
+      '../../src/services/line-account-profile-cache.js'
+    );
 
     const first = loadLineAccountProfile(
       cache.db,

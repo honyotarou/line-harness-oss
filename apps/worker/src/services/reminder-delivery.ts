@@ -98,8 +98,15 @@ function buildMessage(messageType: string, messageContent: string): Message {
   }
   if (messageType === 'image') {
     try {
-      const parsed = JSON.parse(messageContent) as { originalContentUrl: string; previewImageUrl: string };
-      return { type: 'image', originalContentUrl: parsed.originalContentUrl, previewImageUrl: parsed.previewImageUrl };
+      const parsed = JSON.parse(messageContent) as {
+        originalContentUrl: string;
+        previewImageUrl: string;
+      };
+      return {
+        type: 'image',
+        originalContentUrl: parsed.originalContentUrl,
+        previewImageUrl: parsed.previewImageUrl,
+      };
     } catch {
       return { type: 'text', text: messageContent };
     }

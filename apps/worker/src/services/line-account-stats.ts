@@ -15,10 +15,7 @@ const EMPTY_STATS: LineAccountStats = {
   messagesThisMonth: 0,
 };
 
-async function loadAggregateCounts(
-  db: D1Database,
-  sql: string,
-): Promise<Record<string, number>> {
+async function loadAggregateCounts(db: D1Database, sql: string): Promise<Record<string, number>> {
   const result = await db.prepare(sql).all<AggregateRow>();
   const rows = result.results ?? [];
   return Object.fromEntries(

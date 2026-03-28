@@ -11,7 +11,19 @@ description: >-
 
 # LINE Harness OSS — 開発ハーネス
 
-このリポジトリでは **モデルやプロンプトより、リポジトリ内の実行可能なハーネス**（型・テスト・CI・スキル本文）が品質の主担当である。考え方の背景は [Harness Engineering ベストプラクティス（逆瀬川ちゃん, 2026）](https://nyosegawa.com/posts/harness-engineering-best-practices-2026/)（特に「ハーネスがモデルより重要」「決定論的ツール」「E2E の層分け」「テストはドキュメントより腐敗に強い」）に沿う。
+このリポジトリでは **モデルやプロンプトより、リポジトリ内の実行可能なハーネス**（型・テスト・CI・スキル本文）が品質の主担当である。考え方の背景は [Harness Engineering ベストプラクティス（逆瀬川ちゃん, 2026）](https://nyosegawa.com/posts/harness-engineering-best-practices-2026/)（[「ハーネスがモデルより重要」](https://nyosegawa.com/posts/harness-engineering-best-practices-2026/#%E3%83%8F%E3%83%BC%E3%83%8D%E3%82%B9%E3%81%8C%E3%83%A2%E3%83%87%E3%83%AB%E3%82%88%E3%82%8A%E9%87%8D%E8%A6%81) ほか）に沿う。リポジトリへの落とし込みは [ADR 0002](../../../docs/adr/0002-harness-engineering.md)。
+
+### 記事の論点 → このリポの実装
+
+| 記事の原則 | このリポジトリでの実装 |
+|------------|-------------------------|
+| [ハーネスがモデルより重要](https://nyosegawa.com/posts/harness-engineering-best-practices-2026/#%E3%83%8F%E3%83%BC%E3%83%8D%E3%82%B9%E3%81%8C%E3%83%A2%E3%83%87%E3%83%AB%E3%82%88%E3%82%8A%E9%87%8D%E8%A6%81) | 完了条件は `pnpm harness` 系と CI；プロンプトだけに頼らない |
+| リンターの仕事を LLM にさせない | 型（tsc）+ Vitest + **Biome format**；スタイルは機械的に強制 |
+| フィードバックは速い層へ | `pnpm harness`（Lefthook / PostToolUse）が最速；E2E・API は `harness:full` や CI |
+| PostToolUse / Stop の品質ループ | `.claude/settings.json` + `.claude/hooks/*`（Claude Code 利用者向け） |
+| E2E の層分け（API は Hurl 等） | Playwright = UI+モック；`pnpm test:api` = 実 Worker + [Hurl](https://hurl.dev) |
+| AGENTS はポインタ | ルート `AGENTS.md` は表とリンクのみ；詳細はスキル・ADR |
+| MVH（最小実行可能ハーネス） | Week1: `pnpm harness` + Lefthook；拡張: `harness:ci` / `harness:full` |
 
 ## 1. 真実のソース（Single sources of truth）
 
@@ -36,15 +48,29 @@ description: >-
 
 **Lefthook**: コントリビュータは `pnpm exec lefthook install` で pre-commit に `pnpm harness` を入れられる（[evilmartians/lefthook](https://github.com/evilmartians/lefthook)）。
 
-リント設定が無い現状では **TypeScript とテストが主リンター** である。新規にリンタを入れる場合は CI と同じコマンドを `scripts/harness-check.sh` に追記する。
+**Biome** は formatter のみ（`biome.json` で `linter.enabled: false`）。スタイルは `pnpm harness` と CI で強制する。Biome **リント**を有効化する場合は `biome.json` を人間の PR で更新し、CI と `harness-check.sh` に `biome check` を足す。
 
-### クイックゲート
+### クイックゲート（速度順）
+
+| コマンド | 内容 |
+|----------|------|
+| `pnpm harness` | Worker 型 + 全ユニット（**既定の完了条件**） |
+| `pnpm harness:ci` | GitHub `unit` ジョブ相当（カバレッジ + SDK） |
+| `pnpm harness:full` | harness + Playwright + Hurl（PR 直前・広い変更向け） |
 
 ```bash
-./scripts/harness-check.sh
+./scripts/harness-check.sh   # = pnpm harness
 ```
 
-（ルート `package.json` の `pnpm harness` と同等）
+### PreToolUse（設定改竄の防止）
+
+Claude Code: `.claude/hooks/pre-protect-config.sh` が `lefthook.yml` / `biome.json` / `tsconfig.base.json`（2 本）/ `playwright.config.ts` / `.github/workflows/*` / ハーネス＆ API 統合シェル / `.claude/settings.json` / Claude hook 3 本の **Write|Edit|MultiEdit** を **exit 2** でブロックする（記事の「リンター設定を変えて誤魔化す」対策）。変更は人間の PR で行う。
+
+### Biome（formatter のみ）
+
+- `pnpm format` / `pnpm format:check`；`pnpm harness` 先頭で `biome format .`。
+- `PostToolUse`: 編集ファイルに対し `post-biome-format.sh` で自動 format（任意）。
+- リントルールは未導入（`biome.json` の `linter.enabled: false`）。将来 ON にする場合も **保護リスト** 経由で設定変更を扱う。
 
 ## 3. E2E の層（名前と期待値を一致させる）
 
@@ -87,4 +113,5 @@ LIFF・認証・紐付けは **ビジネスクリティカル** のため、Work
 ## 7. 参照リンク
 
 - [Harness Engineering ベストプラクティス（2026）](https://nyosegawa.com/posts/harness-engineering-best-practices-2026/) — ハーネス全体像、E2E 層、Hooks・リンタの考え方
-- リポジトリ: `AGENTS.md`, `docs/adr/`, `scripts/harness-check.sh`
+- [ADR 0002 — Harness Engineering をリポジトリに落とす](../../../docs/adr/0002-harness-engineering.md)
+- リポジトリ: `AGENTS.md`, `docs/adr/`, `scripts/harness-check.sh`, `scripts/harness-ci-parity.sh`, `scripts/harness-full.sh`, `.claude/`

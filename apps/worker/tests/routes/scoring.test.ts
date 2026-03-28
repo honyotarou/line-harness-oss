@@ -77,10 +77,9 @@ describe('scoring routes', () => {
     const app = new Hono();
     app.route('/', scoring);
 
-    const response = await app.fetch(
-      new Request('http://localhost/api/scoring-rules/rule-1'),
-      { DB: {} as D1Database } as never,
-    );
+    const response = await app.fetch(new Request('http://localhost/api/scoring-rules/rule-1'), {
+      DB: {} as D1Database,
+    } as never);
 
     expect(response.status).toBe(200);
     await expect(response.json()).resolves.toEqual({

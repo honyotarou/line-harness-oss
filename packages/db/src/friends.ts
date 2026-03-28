@@ -19,10 +19,7 @@ export interface GetFriendsOptions {
   tagId?: string;
 }
 
-export async function getFriends(
-  db: D1Database,
-  opts: GetFriendsOptions = {},
-): Promise<Friend[]> {
+export async function getFriends(db: D1Database, opts: GetFriendsOptions = {}): Promise<Friend[]> {
   const { limit = 50, offset = 0, tagId } = opts;
 
   if (tagId) {
@@ -61,14 +58,8 @@ export async function getFriendByLineUserId(
     .first<Friend>();
 }
 
-export async function getFriendById(
-  db: D1Database,
-  id: string,
-): Promise<Friend | null> {
-  return db
-    .prepare(`SELECT * FROM friends WHERE id = ?`)
-    .bind(id)
-    .first<Friend>();
+export async function getFriendById(db: D1Database, id: string): Promise<Friend | null> {
+  return db.prepare(`SELECT * FROM friends WHERE id = ?`).bind(id).first<Friend>();
 }
 
 export interface UpsertFriendInput {
@@ -78,10 +69,7 @@ export interface UpsertFriendInput {
   statusMessage?: string | null;
 }
 
-export async function upsertFriend(
-  db: D1Database,
-  input: UpsertFriendInput,
-): Promise<Friend> {
+export async function upsertFriend(db: D1Database, input: UpsertFriendInput): Promise<Friend> {
   const now = jstNow();
   const existing = await getFriendByLineUserId(db, input.lineUserId);
 
@@ -144,8 +132,6 @@ export async function updateFriendFollowStatus(
 }
 
 export async function getFriendCount(db: D1Database): Promise<number> {
-  const row = await db
-    .prepare(`SELECT COUNT(*) as count FROM friends`)
-    .first<{ count: number }>();
+  const row = await db.prepare(`SELECT COUNT(*) as count FROM friends`).first<{ count: number }>();
   return row?.count ?? 0;
 }

@@ -194,10 +194,7 @@ forms.post('/api/forms/:id/submit', async (c) => {
     const body = await readJsonBodyWithLimit<{
       idToken?: string;
       data?: Record<string, unknown>;
-    }>(
-      c.req.raw,
-      PUBLIC_FORM_SUBMIT_LIMIT_BYTES,
-    );
+    }>(c.req.raw, PUBLIC_FORM_SUBMIT_LIMIT_BYTES);
 
     const formId = c.req.param('id');
     const form = await getFormById(c.env.DB, formId);
@@ -226,10 +223,7 @@ forms.post('/api/forms/:id/submit', async (c) => {
       if (field.required) {
         const val = submissionData[field.name];
         if (val === undefined || val === null || val === '') {
-          return c.json(
-            { success: false, error: `${field.label} は必須項目です` },
-            400,
-          );
+          return c.json({ success: false, error: `${field.label} は必須項目です` }, 400);
         }
       }
     }
@@ -292,7 +286,10 @@ forms.post('/api/forms/:id/submit', async (c) => {
       (async () => {
         console.log('Form reply: starting for friendId', friendId);
         const refreshedFriend = await getFriendById(db, friendId);
-        if (!refreshedFriend?.line_user_id) { console.log('Form reply: no line_user_id'); return; }
+        if (!refreshedFriend?.line_user_id) {
+          console.log('Form reply: no line_user_id');
+          return;
+        }
         console.log('Form reply: sending to', refreshedFriend.line_user_id);
         const { LineClient } = await import('@line-crm/line-sdk');
         const accessToken = await resolveLineAccessTokenForFriend(
@@ -305,36 +302,71 @@ forms.post('/api/forms/:id/submit', async (c) => {
         // Build Flex card showing their answers
         const entries = Object.entries(submissionData as Record<string, unknown>);
         const answerRows = entries.map(([key, value]) => {
-          const field = form.fields ? (JSON.parse(form.fields) as Array<{ name: string; label: string }>).find((f: { name: string }) => f.name === key) : null;
+          const field = form.fields
+            ? (JSON.parse(form.fields) as Array<{ name: string; label: string }>).find(
+                (f: { name: string }) => f.name === key,
+              )
+            : null;
           const label = field?.label || key;
           const val = Array.isArray(value) ? value.join(', ') : String(value || '-') || '-';
           return {
-            type: 'box' as const, layout: 'vertical' as const, margin: 'md' as const,
+            type: 'box' as const,
+            layout: 'vertical' as const,
+            margin: 'md' as const,
             contents: [
               { type: 'text' as const, text: label, size: 'xxs' as const, color: '#64748b' },
-              { type: 'text' as const, text: val, size: 'sm' as const, color: '#1e293b', weight: 'bold' as const, wrap: true },
+              {
+                type: 'text' as const,
+                text: val,
+                size: 'sm' as const,
+                color: '#1e293b',
+                weight: 'bold' as const,
+                wrap: true,
+              },
             ],
           };
         });
 
         const flex = {
-          type: 'bubble', size: 'giga',
+          type: 'bubble',
+          size: 'giga',
           header: {
-            type: 'box', layout: 'vertical',
+            type: 'box',
+            layout: 'vertical',
             contents: [
               { type: 'text', text: '診断結果', size: 'lg', weight: 'bold', color: '#1e293b' },
-              { type: 'text', text: `${refreshedFriend.display_name || ''}さんのプロフィール`, size: 'xs', color: '#64748b', margin: 'sm' },
+              {
+                type: 'text',
+                text: `${refreshedFriend.display_name || ''}さんのプロフィール`,
+                size: 'xs',
+                color: '#64748b',
+                margin: 'sm',
+              },
             ],
-            paddingAll: '20px', backgroundColor: '#f0fdf4',
+            paddingAll: '20px',
+            backgroundColor: '#f0fdf4',
           },
           body: {
-            type: 'box', layout: 'vertical',
+            type: 'box',
+            layout: 'vertical',
             contents: [
               ...answerRows,
               { type: 'separator', margin: 'lg' },
-              { type: 'box', layout: 'vertical', margin: 'lg', backgroundColor: '#eff6ff', cornerRadius: 'md', paddingAll: '12px',
+              {
+                type: 'box',
+                layout: 'vertical',
+                margin: 'lg',
+                backgroundColor: '#eff6ff',
+                cornerRadius: 'md',
+                paddingAll: '12px',
                 contents: [
-                  { type: 'text', text: 'この情報はメタデータに自動保存済み。今後の配信があなたに最適化されます。L社 ではフォーム回答をリアルタイムで返すことはできません。', size: 'xxs', color: '#2563EB', wrap: true },
+                  {
+                    type: 'text',
+                    text: 'この情報はメタデータに自動保存済み。今後の配信があなたに最適化されます。L社 ではフォーム回答をリアルタイムで返すことはできません。',
+                    size: 'xxs',
+                    color: '#2563EB',
+                    wrap: true,
+                  },
                 ],
               },
             ],
@@ -343,7 +375,9 @@ forms.post('/api/forms/:id/submit', async (c) => {
         };
 
         const { buildMessage } = await import('../services/step-delivery.js');
-        await lineClient.pushMessage(refreshedFriend.line_user_id, [buildMessage('flex', JSON.stringify(flex))]);
+        await lineClient.pushMessage(refreshedFriend.line_user_id, [
+          buildMessage('flex', JSON.stringify(flex)),
+        ]);
       })(),
     );
 

@@ -6,7 +6,11 @@ import {
   updateBroadcast,
   deleteBroadcast,
 } from '@line-crm/db';
-import type { Broadcast as DbBroadcast, BroadcastMessageType, BroadcastTargetType } from '@line-crm/db';
+import type {
+  Broadcast as DbBroadcast,
+  BroadcastMessageType,
+  BroadcastTargetType,
+} from '@line-crm/db';
 import { LineClient } from '@line-crm/line-sdk';
 import { processBroadcastSend } from '../services/broadcast.js';
 import { processSegmentSend } from '../services/segment-send.js';
@@ -40,8 +44,9 @@ broadcasts.get('/api/broadcasts', async (c) => {
     const lineAccountId = c.req.query('lineAccountId');
     let items: DbBroadcast[];
     if (lineAccountId) {
-      const result = await c.env.DB
-        .prepare(`SELECT * FROM broadcasts WHERE line_account_id = ? ORDER BY created_at DESC`)
+      const result = await c.env.DB.prepare(
+        `SELECT * FROM broadcasts WHERE line_account_id = ? ORDER BY created_at DESC`,
+      )
         .bind(lineAccountId)
         .all<DbBroadcast>();
       items = result.results;
@@ -87,7 +92,10 @@ broadcasts.post('/api/broadcasts', async (c) => {
 
     if (!body.title || !body.messageType || !body.messageContent || !body.targetType) {
       return c.json(
-        { success: false, error: 'title, messageType, messageContent, and targetType are required' },
+        {
+          success: false,
+          error: 'title, messageType, messageContent, and targetType are required',
+        },
         400,
       );
     }
@@ -111,16 +119,20 @@ broadcasts.post('/api/broadcasts', async (c) => {
     // Save line_account_id if provided
     if (body.lineAccountId) {
       await c.env.DB.prepare(`UPDATE broadcasts SET line_account_id = ? WHERE id = ?`)
-        .bind(body.lineAccountId, broadcast.id).run();
+        .bind(body.lineAccountId, broadcast.id)
+        .run();
     }
 
-    return c.json({
-      success: true,
-      data: {
-        ...serializeBroadcast(broadcast),
-        lineAccountId: body.lineAccountId ?? broadcast.line_account_id ?? null,
+    return c.json(
+      {
+        success: true,
+        data: {
+          ...serializeBroadcast(broadcast),
+          lineAccountId: body.lineAccountId ?? broadcast.line_account_id ?? null,
+        },
       },
-    }, 201);
+      201,
+    );
   } catch (err) {
     console.error('POST /api/broadcasts error:', err);
     return c.json({ success: false, error: 'Internal server error' }, 500);
@@ -138,7 +150,10 @@ broadcasts.put('/api/broadcasts/:id', async (c) => {
     }
 
     if (existing.status !== 'draft' && existing.status !== 'scheduled') {
-      return c.json({ success: false, error: 'Only draft or scheduled broadcasts can be updated' }, 400);
+      return c.json(
+        { success: false, error: 'Only draft or scheduled broadcasts can be updated' },
+        400,
+      );
     }
 
     const body = await c.req.json<{

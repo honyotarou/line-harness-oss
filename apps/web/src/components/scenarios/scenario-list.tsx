@@ -1,34 +1,42 @@
-import Link from 'next/link'
-import type { Scenario } from '@line-crm/shared'
+import Link from 'next/link';
+import type { Scenario } from '@line-crm/shared';
 
-type ScenarioWithCount = Scenario & { stepCount?: number }
+type ScenarioWithCount = Scenario & { stepCount?: number };
 
 const triggerLabels: Record<string, string> = {
   friend_add: '友だち追加時',
   tag_added: 'タグ付与時',
   manual: '手動',
-}
+};
 
 interface ScenarioListProps {
-  scenarios: ScenarioWithCount[]
-  onToggleActive: (id: string, current: boolean) => void
-  onDelete: (id: string) => void
-  loading?: boolean
+  scenarios: ScenarioWithCount[];
+  onToggleActive: (id: string, current: boolean) => void;
+  onDelete: (id: string) => void;
+  loading?: boolean;
 }
 
-export default function ScenarioList({ scenarios, onToggleActive, onDelete, loading }: ScenarioListProps) {
+export default function ScenarioList({
+  scenarios,
+  onToggleActive,
+  onDelete,
+  loading,
+}: ScenarioListProps) {
   if (scenarios.length === 0) {
     return (
       <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-12 text-center">
         <p className="text-gray-500">シナリオがありません。新しいシナリオを作成してください。</p>
       </div>
-    )
+    );
   }
 
   return (
     <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
       {scenarios.map((scenario) => (
-        <div key={scenario.id} className="bg-white rounded-lg shadow-sm border border-gray-200 p-5 flex flex-col gap-3 hover:shadow-md transition-shadow">
+        <div
+          key={scenario.id}
+          className="bg-white rounded-lg shadow-sm border border-gray-200 p-5 flex flex-col gap-3 hover:shadow-md transition-shadow"
+        >
           {/* Header */}
           <div className="flex items-start justify-between gap-2">
             <Link
@@ -39,9 +47,7 @@ export default function ScenarioList({ scenarios, onToggleActive, onDelete, load
             </Link>
             <span
               className={`shrink-0 inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${
-                scenario.isActive
-                  ? 'bg-green-100 text-green-700'
-                  : 'bg-gray-100 text-gray-500'
+                scenario.isActive ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-500'
               }`}
             >
               {scenario.isActive ? '有効' : '無効'}
@@ -57,15 +63,23 @@ export default function ScenarioList({ scenarios, onToggleActive, onDelete, load
           <div className="flex items-center gap-4 text-xs text-gray-500">
             <span className="flex items-center gap-1">
               <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
-                  d="M13 10V3L4 14h7v7l9-11h-7z" />
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M13 10V3L4 14h7v7l9-11h-7z"
+                />
               </svg>
               <span>トリガー: {triggerLabels[scenario.triggerType] ?? scenario.triggerType}</span>
             </span>
             <span className="flex items-center gap-1">
               <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
-                  d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"
+                />
               </svg>
               <span>ステップ数: {scenario.stepCount ?? '-'}</span>
             </span>
@@ -89,7 +103,7 @@ export default function ScenarioList({ scenarios, onToggleActive, onDelete, load
             <button
               onClick={() => {
                 if (confirm(`「${scenario.name}」を削除してもよいですか？`)) {
-                  onDelete(scenario.id)
+                  onDelete(scenario.id);
                 }
               }}
               disabled={loading}
@@ -101,5 +115,5 @@ export default function ScenarioList({ scenarios, onToggleActive, onDelete, load
         </div>
       ))}
     </div>
-  )
+  );
 }

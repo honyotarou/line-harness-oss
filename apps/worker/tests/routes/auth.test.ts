@@ -19,7 +19,7 @@ describe('auth routes', () => {
     expect(response.status).toBe(200);
     expect(response.headers.get('Set-Cookie')).toContain('lh_admin_session=');
     expect(response.headers.get('Set-Cookie')).toContain('HttpOnly');
-    const json = await response.json() as {
+    const json = (await response.json()) as {
       success: boolean;
       data?: { expiresAt: string };
     };
@@ -51,7 +51,10 @@ describe('auth routes', () => {
     );
 
     expect(sessionResponse.status).toBe(200);
-    const sessionJson = await sessionResponse.json() as { success: boolean; data?: { authenticated: boolean } };
+    const sessionJson = (await sessionResponse.json()) as {
+      success: boolean;
+      data?: { authenticated: boolean };
+    };
     expect(sessionJson).toEqual({
       success: true,
       data: { authenticated: true },
@@ -71,10 +74,9 @@ describe('auth routes', () => {
       }),
       { API_KEY: 'root-api-key' } as never,
     );
-    const sessionResponse = await app.fetch(
-      new Request('http://localhost/api/auth/session'),
-      { API_KEY: 'root-api-key' } as never,
-    );
+    const sessionResponse = await app.fetch(new Request('http://localhost/api/auth/session'), {
+      API_KEY: 'root-api-key',
+    } as never);
 
     expect(loginResponse.status).toBe(401);
     expect(sessionResponse.status).toBe(401);

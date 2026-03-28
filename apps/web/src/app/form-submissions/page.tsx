@@ -1,74 +1,90 @@
-'use client'
+'use client';
 
-import { useState, useEffect, useCallback } from 'react'
-import { api, fetchApi } from '@/lib/api'
-import Header from '@/components/layout/header'
-import { useAccount } from '@/contexts/account-context'
+import { useState, useEffect, useCallback } from 'react';
+import { api, fetchApi } from '@/lib/api';
+import Header from '@/components/layout/header';
+import { useAccount } from '@/contexts/account-context';
 
 interface Form {
-  id: string
-  name: string
+  id: string;
+  name: string;
 }
 
 interface Submission {
-  id: string
-  formId: string
-  friendId: string
-  friendName?: string
-  data: Record<string, unknown>
-  createdAt: string
+  id: string;
+  formId: string;
+  friendId: string;
+  friendName?: string;
+  data: Record<string, unknown>;
+  createdAt: string;
 }
 
 export default function FormSubmissionsPage() {
-  const { selectedAccountId } = useAccount()
-  const [forms, setForms] = useState<Form[]>([])
-  const [selectedFormId, setSelectedFormId] = useState<string | null>(null)
-  const [submissions, setSubmissions] = useState<Submission[]>([])
-  const [loading, setLoading] = useState(true)
-  const [subLoading, setSubLoading] = useState(false)
+  const { selectedAccountId } = useAccount();
+  const [forms, setForms] = useState<Form[]>([]);
+  const [selectedFormId, setSelectedFormId] = useState<string | null>(null);
+  const [submissions, setSubmissions] = useState<Submission[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [subLoading, setSubLoading] = useState(false);
 
   const loadForms = useCallback(async () => {
-    setLoading(true)
+    setLoading(true);
     try {
-      const res = await fetchApi<{ success: boolean; data: Form[] }>('/api/forms')
+      const res = await fetchApi<{ success: boolean; data: Form[] }>('/api/forms');
       if (res.success) {
-        setForms(res.data)
+        setForms(res.data);
       }
-    } catch { /* silent */ }
-    setLoading(false)
-  }, [])
+    } catch {
+      /* silent */
+    }
+    setLoading(false);
+  }, []);
 
-  useEffect(() => { loadForms() }, [loadForms])
+  useEffect(() => {
+    loadForms();
+  }, [loadForms]);
 
-  const loadSubmissions = useCallback(async (formId: string) => {
-    setSubLoading(true)
-    try {
-      const res = await fetchApi<{ success: boolean; data: Submission[] }>(
-        `/api/forms/${formId}/submissions`
-      )
-      if (res.success) {
-        // Enrich with friend names
-        const friendRes = await api.friends.list({ accountId: selectedAccountId || undefined, limit: '200' })
-        const friendMap = new Map<string, string>()
-        if (friendRes.success) {
-          for (const f of (friendRes.data as unknown as { items: { id: string; displayName: string }[] }).items) {
-            friendMap.set(f.id, f.displayName)
+  const loadSubmissions = useCallback(
+    async (formId: string) => {
+      setSubLoading(true);
+      try {
+        const res = await fetchApi<{ success: boolean; data: Submission[] }>(
+          `/api/forms/${formId}/submissions`,
+        );
+        if (res.success) {
+          // Enrich with friend names
+          const friendRes = await api.friends.list({
+            accountId: selectedAccountId || undefined,
+            limit: '200',
+          });
+          const friendMap = new Map<string, string>();
+          if (friendRes.success) {
+            for (const f of (
+              friendRes.data as unknown as { items: { id: string; displayName: string }[] }
+            ).items) {
+              friendMap.set(f.id, f.displayName);
+            }
           }
+          setSubmissions(
+            res.data.map((s) => ({
+              ...s,
+              data: typeof s.data === 'string' ? JSON.parse(s.data) : s.data,
+              friendName: s.friendId ? friendMap.get(s.friendId) || '不明' : '不明',
+            })),
+          );
         }
-        setSubmissions(res.data.map((s) => ({
-          ...s,
-          data: typeof s.data === 'string' ? JSON.parse(s.data) : s.data,
-          friendName: s.friendId ? friendMap.get(s.friendId) || '不明' : '不明',
-        })))
+      } catch {
+        /* silent */
       }
-    } catch { /* silent */ }
-    setSubLoading(false)
-  }, [selectedAccountId])
+      setSubLoading(false);
+    },
+    [selectedAccountId],
+  );
 
   const handleSelectForm = (formId: string) => {
-    setSelectedFormId(formId)
-    loadSubmissions(formId)
-  }
+    setSelectedFormId(formId);
+    loadSubmissions(formId);
+  };
 
   return (
     <div>
@@ -101,8 +117,8 @@ export default function FormSubmissionsPage() {
       </div>
 
       {/* Submissions */}
-      {selectedFormId && (
-        subLoading ? (
+      {selectedFormId &&
+        (subLoading ? (
           <div className="bg-white rounded-lg border border-gray-200 p-8 text-center text-gray-400">
             読み込み中...
           </div>
@@ -119,8 +135,11 @@ export default function FormSubmissionsPage() {
                     <span className="text-sm font-bold text-gray-900">{sub.friendName}</span>
                     <span className="text-xs text-gray-400">
                       {new Date(sub.createdAt).toLocaleString('ja-JP', {
-                        year: 'numeric', month: '2-digit', day: '2-digit',
-                        hour: '2-digit', minute: '2-digit',
+                        year: 'numeric',
+                        month: '2-digit',
+                        day: '2-digit',
+                        hour: '2-digit',
+                        minute: '2-digit',
                       })}
                     </span>
                   </div>
@@ -138,8 +157,7 @@ export default function FormSubmissionsPage() {
               </div>
             ))}
           </div>
-        )
-      )}
+        ))}
     </div>
-  )
+  );
 }

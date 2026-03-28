@@ -10,18 +10,15 @@ describe('loadLineAccountStats', () => {
         ],
       },
       {
-        results: [
-          { lineAccountId: 'account-1', count: 3 },
-        ],
+        results: [{ lineAccountId: 'account-1', count: 3 }],
       },
       {
-        results: [
-          { lineAccountId: 'account-2', count: 99 },
-        ],
+        results: [{ lineAccountId: 'account-2', count: 99 }],
       },
     ];
 
-    const all = vi.fn()
+    const all = vi
+      .fn()
       .mockResolvedValueOnce(aggregateResults[0])
       .mockResolvedValueOnce(aggregateResults[1])
       .mockResolvedValueOnce(aggregateResults[2]);

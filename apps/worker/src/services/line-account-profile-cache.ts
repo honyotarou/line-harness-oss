@@ -31,7 +31,7 @@ async function defaultFetchBotProfile(accessToken: string): Promise<LineAccountP
     throw new Error(`LINE bot info fetch failed: ${res.status}`);
   }
 
-  const data = await res.json() as {
+  const data = (await res.json()) as {
     displayName?: string;
     pictureUrl?: string;
     basicId?: string;
@@ -116,10 +116,12 @@ export async function loadLineAccountProfile(
     const fresh = await refreshPromise;
     return fresh;
   } catch {
-    return toProfile(cachedRow) ?? {
-      displayName: null,
-      pictureUrl: null,
-      basicId: null,
-    };
+    return (
+      toProfile(cachedRow) ?? {
+        displayName: null,
+        pictureUrl: null,
+        basicId: null,
+      }
+    );
   }
 }

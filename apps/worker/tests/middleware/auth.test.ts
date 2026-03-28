@@ -6,6 +6,9 @@ function createApp() {
   const app = new Hono();
   app.use('*', authMiddleware);
   app.get('/private', (c) => c.json({ success: true }));
+  app.get('/api/forms/:id', (c) => c.json({ success: true }));
+  app.put('/api/forms/:id', (c) => c.json({ success: true }));
+  app.delete('/api/forms/:id', (c) => c.json({ success: true }));
   app.post('/api/forms/:id/submit', (c) => c.json({ success: true }));
   app.post('/api/webhooks/incoming/:id/receive', (c) => c.json({ success: true }));
   return app;
@@ -15,10 +18,9 @@ describe('authMiddleware', () => {
   it('rejects protected routes without a bearer token', async () => {
     const app = createApp();
 
-    const response = await app.fetch(
-      new Request('http://localhost/private'),
-      { API_KEY: 'secret' } as never,
-    );
+    const response = await app.fetch(new Request('http://localhost/private'), {
+      API_KEY: 'secret',
+    } as never);
 
     expect(response.status).toBe(401);
   });
@@ -78,17 +80,38 @@ describe('authMiddleware', () => {
     const app = createApp();
 
     const [formResponse, webhookResponse] = await Promise.all([
+      app.fetch(new Request('http://localhost/api/forms/form-1/submit', { method: 'POST' }), {
+        API_KEY: 'secret',
+      } as never),
       app.fetch(
-        new Request('http://localhost/api/forms/form-1/submit', { method: 'POST' }),
-        { API_KEY: 'secret' } as never,
-      ),
-      app.fetch(
-        new Request('http://localhost/api/webhooks/incoming/incoming-1/receive', { method: 'POST' }),
+        new Request('http://localhost/api/webhooks/incoming/incoming-1/receive', {
+          method: 'POST',
+        }),
         { API_KEY: 'secret' } as never,
       ),
     ]);
 
     expect(formResponse.status).toBe(200);
     expect(webhookResponse.status).toBe(200);
+  });
+
+  it('skips auth only for GET form definition, not PUT or DELETE', async () => {
+    const app = createApp();
+
+    const [getRes, putRes, delRes] = await Promise.all([
+      app.fetch(new Request('http://localhost/api/forms/form-1', { method: 'GET' }), {
+        API_KEY: 'secret',
+      } as never),
+      app.fetch(new Request('http://localhost/api/forms/form-1', { method: 'PUT' }), {
+        API_KEY: 'secret',
+      } as never),
+      app.fetch(new Request('http://localhost/api/forms/form-1', { method: 'DELETE' }), {
+        API_KEY: 'secret',
+      } as never),
+    ]);
+
+    expect(getRes.status).toBe(200);
+    expect(putRes.status).toBe(401);
+    expect(delRes.status).toBe(401);
   });
 });

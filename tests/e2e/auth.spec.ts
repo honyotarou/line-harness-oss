@@ -21,7 +21,9 @@ test('shows an error when the API key is invalid', async ({ page }) => {
   await expect(page).toHaveURL(/\/login$/);
 });
 
-test('stores the session in an httpOnly cookie and loads the dashboard after login', async ({ page }) => {
+test('stores the session in an httpOnly cookie and loads the dashboard after login', async ({
+  page,
+}) => {
   await mockWebApi(page);
 
   await page.goto('/login', { waitUntil: 'domcontentloaded' });
@@ -42,10 +44,10 @@ test('scopes dashboard KPI requests to the selected line account', async ({ page
   await mockWebApi(page, {
     onApiRequest({ url }) {
       if (
-        url.pathname === '/api/friends/count'
-        || url.pathname === '/api/scenarios'
-        || url.pathname === '/api/broadcasts'
-        || url.pathname === '/api/automations'
+        url.pathname === '/api/friends/count' ||
+        url.pathname === '/api/scenarios' ||
+        url.pathname === '/api/broadcasts' ||
+        url.pathname === '/api/automations'
       ) {
         dashboardRequests.push(url);
       }
@@ -62,7 +64,9 @@ test('scopes dashboard KPI requests to the selected line account', async ({ page
   await expect
     .poll(() =>
       dashboardRequests.some(
-        (url) => url.pathname === '/api/friends/count' && url.searchParams.get('lineAccountId') === 'account-1',
+        (url) =>
+          url.pathname === '/api/friends/count' &&
+          url.searchParams.get('lineAccountId') === 'account-1',
       ),
     )
     .toBe(true);
@@ -70,7 +74,9 @@ test('scopes dashboard KPI requests to the selected line account', async ({ page
   await expect
     .poll(() =>
       dashboardRequests.some(
-        (url) => url.pathname === '/api/scenarios' && url.searchParams.get('lineAccountId') === 'account-1',
+        (url) =>
+          url.pathname === '/api/scenarios' &&
+          url.searchParams.get('lineAccountId') === 'account-1',
       ),
     )
     .toBe(true);
@@ -78,7 +84,9 @@ test('scopes dashboard KPI requests to the selected line account', async ({ page
   await expect
     .poll(() =>
       dashboardRequests.some(
-        (url) => url.pathname === '/api/broadcasts' && url.searchParams.get('lineAccountId') === 'account-1',
+        (url) =>
+          url.pathname === '/api/broadcasts' &&
+          url.searchParams.get('lineAccountId') === 'account-1',
       ),
     )
     .toBe(true);
@@ -86,7 +94,9 @@ test('scopes dashboard KPI requests to the selected line account', async ({ page
   await expect
     .poll(() =>
       dashboardRequests.some(
-        (url) => url.pathname === '/api/automations' && url.searchParams.get('lineAccountId') === 'account-1',
+        (url) =>
+          url.pathname === '/api/automations' &&
+          url.searchParams.get('lineAccountId') === 'account-1',
       ),
     )
     .toBe(true);
@@ -132,7 +142,9 @@ test('scopes notification page requests to the selected line account', async ({ 
   await expect
     .poll(() =>
       notificationRequests.some(
-        (url) => url.pathname === '/api/notifications/rules' && url.searchParams.get('lineAccountId') === 'account-1',
+        (url) =>
+          url.pathname === '/api/notifications/rules' &&
+          url.searchParams.get('lineAccountId') === 'account-1',
       ),
     )
     .toBe(true);
@@ -141,9 +153,9 @@ test('scopes notification page requests to the selected line account', async ({ 
     .poll(() =>
       notificationRequests.some(
         (url) =>
-          url.pathname === '/api/notifications'
-          && url.searchParams.get('lineAccountId') === 'account-1'
-          && url.searchParams.get('limit') === '50',
+          url.pathname === '/api/notifications' &&
+          url.searchParams.get('lineAccountId') === 'account-1' &&
+          url.searchParams.get('limit') === '50',
       ),
     )
     .toBe(true);

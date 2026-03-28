@@ -131,7 +131,14 @@ export async function mockWebApi(page: Page, hooks?: MockWebApiHooks): Promise<v
             metadata: {},
             createdAt: '2026-03-26T10:00:00+09:00',
             updatedAt: '2026-03-26T10:00:00+09:00',
-            tags: [{ id: 'tag-1', name: 'VIP', color: '#ff0000', createdAt: '2026-03-26T10:00:00+09:00' }],
+            tags: [
+              {
+                id: 'tag-1',
+                name: 'VIP',
+                color: '#ff0000',
+                createdAt: '2026-03-26T10:00:00+09:00',
+              },
+            ],
           },
         ],
         total: 1,
@@ -143,7 +150,9 @@ export async function mockWebApi(page: Page, hooks?: MockWebApiHooks): Promise<v
     }
 
     if (path === '/api/tags') {
-      await ok([{ id: 'tag-1', name: 'VIP', color: '#ff0000', createdAt: '2026-03-26T10:00:00+09:00' }]);
+      await ok([
+        { id: 'tag-1', name: 'VIP', color: '#ff0000', createdAt: '2026-03-26T10:00:00+09:00' },
+      ]);
       return;
     }
 

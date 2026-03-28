@@ -38,17 +38,19 @@ describe('calendar booking route', () => {
       { id: 'friend-1', is_following: 0 },
       { id: 'friend-2', is_following: 1 },
     ]);
-    dbMocks.createCalendarBooking.mockImplementation(async (_db: D1Database, input: Record<string, unknown>) => ({
-      id: 'booking-1',
-      connection_id: input.connectionId,
-      friend_id: input.friendId,
-      event_id: null,
-      title: input.title,
-      start_at: input.startAt,
-      end_at: input.endAt,
-      status: 'confirmed',
-      created_at: '2026-03-25T10:00:00+09:00',
-    }));
+    dbMocks.createCalendarBooking.mockImplementation(
+      async (_db: D1Database, input: Record<string, unknown>) => ({
+        id: 'booking-1',
+        connection_id: input.connectionId,
+        friend_id: input.friendId,
+        event_id: null,
+        title: input.title,
+        start_at: input.startAt,
+        end_at: input.endAt,
+        status: 'confirmed',
+        created_at: '2026-03-25T10:00:00+09:00',
+      }),
+    );
     dbMocks.getCalendarConnectionById.mockResolvedValue(null);
 
     const { calendar } = await import('../../src/routes/calendar.js');

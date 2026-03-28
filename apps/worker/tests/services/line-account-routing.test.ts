@@ -19,9 +19,14 @@ describe('line account routing helpers', () => {
 
   it('uses the friend account token when the friend belongs to a non-default account', async () => {
     dbMocks.getFriendById.mockResolvedValue({ id: 'friend-1', line_account_id: 'account-1' });
-    dbMocks.getLineAccountById.mockResolvedValue({ id: 'account-1', channel_access_token: 'account-token' });
+    dbMocks.getLineAccountById.mockResolvedValue({
+      id: 'account-1',
+      channel_access_token: 'account-token',
+    });
 
-    const { resolveLineAccessTokenForFriend } = await import('../../src/services/line-account-routing.js');
+    const { resolveLineAccessTokenForFriend } = await import(
+      '../../src/services/line-account-routing.js'
+    );
 
     await expect(
       resolveLineAccessTokenForFriend({} as D1Database, 'default-token', 'friend-1'),
@@ -29,14 +34,19 @@ describe('line account routing helpers', () => {
   });
 
   it('falls back to the default token when the friend is unassigned or the account is missing', async () => {
-    const { resolveLineAccessTokenForFriend } = await import('../../src/services/line-account-routing.js');
+    const { resolveLineAccessTokenForFriend } = await import(
+      '../../src/services/line-account-routing.js'
+    );
 
     dbMocks.getFriendById.mockResolvedValueOnce({ id: 'friend-1', line_account_id: null });
     await expect(
       resolveLineAccessTokenForFriend({} as D1Database, 'default-token', 'friend-1'),
     ).resolves.toBe('default-token');
 
-    dbMocks.getFriendById.mockResolvedValueOnce({ id: 'friend-2', line_account_id: 'missing-account' });
+    dbMocks.getFriendById.mockResolvedValueOnce({
+      id: 'friend-2',
+      line_account_id: 'missing-account',
+    });
     dbMocks.getLineAccountById.mockResolvedValueOnce(null);
     await expect(
       resolveLineAccessTokenForFriend({} as D1Database, 'default-token', 'friend-2'),

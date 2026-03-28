@@ -78,9 +78,7 @@ export async function runWithConcurrencyLimit<T>(
     }
   };
 
-  await Promise.all(
-    Array.from({ length: Math.min(limit, tasks.length) }, () => worker()),
-  );
+  await Promise.all(Array.from({ length: Math.min(limit, tasks.length) }, () => worker()));
 
   return results;
 }
@@ -93,11 +91,7 @@ async function runScheduledJob(
   try {
     await task();
   } catch (err) {
-    console.error(
-      'Scheduled job failed:',
-      { job, lineAccountId },
-      err,
-    );
+    console.error('Scheduled job failed:', { job, lineAccountId }, err);
   }
 }
 
@@ -109,33 +103,14 @@ async function runJobsForTarget(
   const lineClient = new deps.LineClient(target.accessToken);
 
   await Promise.all([
-    runScheduledJob(
-      'step_deliveries',
-      target.lineAccountId,
-      () => deps.processStepDeliveries(
-        params.db,
-        lineClient,
-        params.workerUrl,
-        target.lineAccountId,
-      ),
+    runScheduledJob('step_deliveries', target.lineAccountId, () =>
+      deps.processStepDeliveries(params.db, lineClient, params.workerUrl, target.lineAccountId),
     ),
-    runScheduledJob(
-      'scheduled_broadcasts',
-      target.lineAccountId,
-      () => deps.processScheduledBroadcasts(
-        params.db,
-        lineClient,
-        target.lineAccountId,
-      ),
+    runScheduledJob('scheduled_broadcasts', target.lineAccountId, () =>
+      deps.processScheduledBroadcasts(params.db, lineClient, target.lineAccountId),
     ),
-    runScheduledJob(
-      'reminder_deliveries',
-      target.lineAccountId,
-      () => deps.processReminderDeliveries(
-        params.db,
-        lineClient,
-        target.lineAccountId,
-      ),
+    runScheduledJob('reminder_deliveries', target.lineAccountId, () =>
+      deps.processReminderDeliveries(params.db, lineClient, target.lineAccountId),
     ),
   ]);
 }
@@ -144,13 +119,8 @@ export async function runScheduledJobs(
   params: SchedulerParams,
   deps: SchedulerDeps = defaultDeps,
 ): Promise<void> {
-  const targets = buildScheduledAccountTargets(
-    params.defaultAccessToken,
-    params.dbAccounts,
-  );
-  const targetTasks = targets.map(
-    (target) => () => runJobsForTarget(params, deps, target),
-  );
+  const targets = buildScheduledAccountTargets(params.defaultAccessToken, params.dbAccounts);
+  const targetTasks = targets.map((target) => () => runJobsForTarget(params, deps, target));
 
   await Promise.all([
     runWithConcurrencyLimit(targetTasks, ACCOUNT_CONCURRENCY_LIMIT),

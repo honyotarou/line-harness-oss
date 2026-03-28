@@ -62,7 +62,10 @@ describe('broadcast delivery', () => {
 
     const result = await processBroadcastSend(db, lineClient as never, 'broadcast-1');
 
-    expect(lineClient.multicast).toHaveBeenCalledWith(['u1', 'u2'], [{ type: 'text', text: 'hello' }]);
+    expect(lineClient.multicast).toHaveBeenCalledWith(
+      ['u1', 'u2'],
+      [{ type: 'text', text: 'hello' }],
+    );
     expect(dbMocks.updateBroadcastStatus).toHaveBeenNthCalledWith(1, db, 'broadcast-1', 'sending');
     expect(dbMocks.updateBroadcastStatus).toHaveBeenNthCalledWith(2, db, 'broadcast-1', 'sent', {
       totalCount: 2,

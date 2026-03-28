@@ -2,7 +2,10 @@ import { Hono } from 'hono';
 import { LineClient } from '@line-crm/line-sdk';
 import { getFriendById } from '@line-crm/db';
 import type { Env } from '../index.js';
-import { resolveLineAccessTokenForFriend, resolveLineAccessTokenForLineAccountId } from '../services/line-account-routing.js';
+import {
+  resolveLineAccessTokenForFriend,
+  resolveLineAccessTokenForLineAccountId,
+} from '../services/line-account-routing.js';
 
 const richMenus = new Hono<Env>();
 
@@ -136,7 +139,10 @@ richMenus.delete('/api/friends/:friendId/rich-menu', async (c) => {
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
     console.error('DELETE /api/friends/:friendId/rich-menu error:', message);
-    return c.json({ success: false, error: `Failed to unlink rich menu from friend: ${message}` }, 500);
+    return c.json(
+      { success: false, error: `Failed to unlink rich menu from friend: ${message}` },
+      500,
+    );
   }
 });
 
@@ -169,9 +175,16 @@ richMenus.post('/api/rich-menus/:id/image', async (c) => {
     } else if (contentType.includes('image/')) {
       // Accept raw binary upload
       imageData = await c.req.arrayBuffer();
-      imageContentType = contentType.includes('jpeg') || contentType.includes('jpg') ? 'image/jpeg' : 'image/png';
+      imageContentType =
+        contentType.includes('jpeg') || contentType.includes('jpg') ? 'image/jpeg' : 'image/png';
     } else {
-      return c.json({ success: false, error: 'Content-Type must be application/json (with base64) or image/png or image/jpeg' }, 400);
+      return c.json(
+        {
+          success: false,
+          error: 'Content-Type must be application/json (with base64) or image/png or image/jpeg',
+        },
+        400,
+      );
     }
 
     const accessToken = await resolveLineAccessTokenForLineAccountId(

@@ -44,6 +44,8 @@ export type Env = {
     WEB_URL?: string;
     ALLOWED_ORIGINS?: string;
     STRIPE_WEBHOOK_SECRET?: string;
+    /** Optional; defaults to API_KEY. Used to HMAC-sign LINE Login OAuth `state`. */
+    LIFF_STATE_SECRET?: string;
   };
 };
 

@@ -61,7 +61,8 @@ describe('runScheduledJobs', () => {
 
   it('logs named job failures without aborting the remaining scheduled work', async () => {
     const processStepDeliveries = vi.fn().mockResolvedValue(undefined);
-    const processScheduledBroadcasts = vi.fn()
+    const processScheduledBroadcasts = vi
+      .fn()
       .mockRejectedValueOnce(new Error('broadcast failed'))
       .mockResolvedValue(undefined);
     const processReminderDeliveries = vi.fn().mockResolvedValue(undefined);
@@ -73,9 +74,7 @@ describe('runScheduledJobs', () => {
         db: {} as D1Database,
         defaultAccessToken: 'shared-token',
         workerUrl: 'https://worker.example.com',
-        dbAccounts: [
-          { id: 'account-1', is_active: 1, channel_access_token: 'account-1-token' },
-        ],
+        dbAccounts: [{ id: 'account-1', is_active: 1, channel_access_token: 'account-1-token' }],
       },
       {
         LineClient: FakeLineClient,

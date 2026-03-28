@@ -74,9 +74,7 @@ export async function getScenarioById(
   if (!scenario) return null;
 
   const stepsResult = await db
-    .prepare(
-      `SELECT * FROM scenario_steps WHERE scenario_id = ? ORDER BY step_order ASC`,
-    )
+    .prepare(`SELECT * FROM scenario_steps WHERE scenario_id = ? ORDER BY step_order ASC`)
     .bind(id)
     .all<ScenarioStep>();
 
@@ -113,10 +111,7 @@ export async function createScenario(
     )
     .run();
 
-  return (await db
-    .prepare(`SELECT * FROM scenarios WHERE id = ?`)
-    .bind(id)
-    .first<Scenario>())!;
+  return (await db.prepare(`SELECT * FROM scenarios WHERE id = ?`).bind(id).first<Scenario>())!;
 }
 
 export type UpdateScenarioInput = Partial<
@@ -154,10 +149,7 @@ export async function updateScenario(
   }
 
   if (fields.length === 0) {
-    return db
-      .prepare(`SELECT * FROM scenarios WHERE id = ?`)
-      .bind(id)
-      .first<Scenario>();
+    return db.prepare(`SELECT * FROM scenarios WHERE id = ?`).bind(id).first<Scenario>();
   }
 
   fields.push('updated_at = ?');
@@ -169,10 +161,7 @@ export async function updateScenario(
     .bind(...values)
     .run();
 
-  return db
-    .prepare(`SELECT * FROM scenarios WHERE id = ?`)
-    .bind(id)
-    .first<Scenario>();
+  return db.prepare(`SELECT * FROM scenarios WHERE id = ?`).bind(id).first<Scenario>();
 }
 
 export async function deleteScenario(db: D1Database, id: string): Promise<void> {
@@ -227,7 +216,16 @@ export async function createScenarioStep(
 }
 
 export type UpdateScenarioStepInput = Partial<
-  Pick<ScenarioStep, 'step_order' | 'delay_minutes' | 'message_type' | 'message_content' | 'condition_type' | 'condition_value' | 'next_step_on_false'>
+  Pick<
+    ScenarioStep,
+    | 'step_order'
+    | 'delay_minutes'
+    | 'message_type'
+    | 'message_content'
+    | 'condition_type'
+    | 'condition_value'
+    | 'next_step_on_false'
+  >
 >;
 
 export async function updateScenarioStep(
@@ -275,10 +273,7 @@ export async function updateScenarioStep(
       .run();
   }
 
-  return db
-    .prepare(`SELECT * FROM scenario_steps WHERE id = ?`)
-    .bind(id)
-    .first<ScenarioStep>();
+  return db.prepare(`SELECT * FROM scenario_steps WHERE id = ?`).bind(id).first<ScenarioStep>();
 }
 
 export async function deleteScenarioStep(db: D1Database, id: string): Promise<void> {
@@ -290,9 +285,7 @@ export async function getScenarioSteps(
   scenarioId: string,
 ): Promise<ScenarioStep[]> {
   const result = await db
-    .prepare(
-      `SELECT * FROM scenario_steps WHERE scenario_id = ? ORDER BY step_order ASC`,
-    )
+    .prepare(`SELECT * FROM scenario_steps WHERE scenario_id = ? ORDER BY step_order ASC`)
     .bind(scenarioId)
     .all<ScenarioStep>();
   return result.results;
@@ -312,9 +305,7 @@ export async function enrollFriendInScenario(
 
   // Get the first step to calculate next_delivery_at
   const firstStep = await db
-    .prepare(
-      `SELECT * FROM scenario_steps WHERE scenario_id = ? ORDER BY step_order ASC LIMIT 1`,
-    )
+    .prepare(`SELECT * FROM scenario_steps WHERE scenario_id = ? ORDER BY step_order ASC LIMIT 1`)
     .bind(scenarioId)
     .first<{ step_order: number; delay_minutes: number }>();
 
@@ -400,7 +391,9 @@ export async function getFriendScenariosDueForDelivery(
   const nowMs = new Date(now).getTime();
   return result.results
     .filter((fs) => new Date(fs.next_delivery_at!).getTime() <= nowMs)
-    .sort((a, b) => new Date(a.next_delivery_at!).getTime() - new Date(b.next_delivery_at!).getTime());
+    .sort(
+      (a, b) => new Date(a.next_delivery_at!).getTime() - new Date(b.next_delivery_at!).getTime(),
+    );
 }
 
 export async function advanceFriendScenario(
@@ -422,10 +415,7 @@ export async function advanceFriendScenario(
     .run();
 }
 
-export async function completeFriendScenario(
-  db: D1Database,
-  id: string,
-): Promise<void> {
+export async function completeFriendScenario(db: D1Database, id: string): Promise<void> {
   const now = jstNow();
   await db
     .prepare(

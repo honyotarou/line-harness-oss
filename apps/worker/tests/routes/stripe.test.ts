@@ -15,7 +15,11 @@ vi.mock('../../src/services/event-bus.js', () => ({
   fireEvent: vi.fn(),
 }));
 
-async function stripeWebhookSignature(secret: string, rawBody: string, timestamp = '1234567890'): Promise<string> {
+async function stripeWebhookSignature(
+  secret: string,
+  rawBody: string,
+  timestamp = '1234567890',
+): Promise<string> {
   const encoder = new TextEncoder();
   const signedPayload = `${timestamp}.${rawBody}`;
   const key = await crypto.subtle.importKey(
@@ -95,7 +99,11 @@ describe('stripe routes', () => {
       new Request('http://localhost/api/integrations/stripe/webhook', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ id: 'evt_1', type: 'charge.succeeded', data: { object: { id: 'ch_1' } } }),
+        body: JSON.stringify({
+          id: 'evt_1',
+          type: 'charge.succeeded',
+          data: { object: { id: 'ch_1' } },
+        }),
       }),
       makeEnv({ STRIPE_WEBHOOK_SECRET: '' }),
     );

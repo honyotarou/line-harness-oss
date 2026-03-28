@@ -42,14 +42,8 @@ export async function createLineAccount(
   return (await getLineAccountById(db, id))!;
 }
 
-export async function getLineAccountById(
-  db: D1Database,
-  id: string,
-): Promise<LineAccount | null> {
-  return db
-    .prepare(`SELECT * FROM line_accounts WHERE id = ?`)
-    .bind(id)
-    .first<LineAccount>();
+export async function getLineAccountById(db: D1Database, id: string): Promise<LineAccount | null> {
+  return db.prepare(`SELECT * FROM line_accounts WHERE id = ?`).bind(id).first<LineAccount>();
 }
 
 export async function getLineAccounts(db: D1Database): Promise<LineAccount[]> {
@@ -112,9 +106,6 @@ export async function updateLineAccount(
   return getLineAccountById(db, id);
 }
 
-export async function deleteLineAccount(
-  db: D1Database,
-  id: string,
-): Promise<void> {
+export async function deleteLineAccount(db: D1Database, id: string): Promise<void> {
   await db.prepare(`DELETE FROM line_accounts WHERE id = ?`).bind(id).run();
 }

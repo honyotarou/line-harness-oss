@@ -116,7 +116,9 @@ describe('fireEvent', () => {
     const init = fetchMock.mock.calls[0][1] as RequestInit;
     expect(init.method).toBe('POST');
     expect(init.headers).toMatchObject({ 'Content-Type': 'application/json' });
-    expect((init.headers as Record<string, string>)['X-Webhook-Signature']).toMatch(/^[0-9a-f]{64}$/);
+    expect((init.headers as Record<string, string>)['X-Webhook-Signature']).toMatch(
+      /^[0-9a-f]{64}$/,
+    );
   });
 
   it('executes add_tag automation and logs success', async () => {

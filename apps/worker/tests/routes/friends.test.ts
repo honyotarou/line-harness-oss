@@ -61,7 +61,11 @@ function createDb() {
                 return { count: 1 } as T;
               }
 
-              if (sql.includes('SELECT COUNT(*) as count FROM friends WHERE line_account_id = ? AND ref_code IS NOT NULL')) {
+              if (
+                sql.includes(
+                  'SELECT COUNT(*) as count FROM friends WHERE line_account_id = ? AND ref_code IS NOT NULL',
+                )
+              ) {
                 return { count: 3 } as T;
               }
 

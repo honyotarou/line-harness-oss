@@ -1,34 +1,34 @@
-'use client'
+'use client';
 
-import { useState } from 'react'
-import type { Tag } from '@line-crm/shared'
-import { api, type ApiBroadcast } from '@/lib/api'
-import { useAccount } from '@/contexts/account-context'
+import { useState } from 'react';
+import type { Tag } from '@line-crm/shared';
+import { api, type ApiBroadcast } from '@/lib/api';
+import { useAccount } from '@/contexts/account-context';
 
 interface BroadcastFormProps {
-  tags: Tag[]
-  onSuccess: () => void
-  onCancel: () => void
+  tags: Tag[];
+  onSuccess: () => void;
+  onCancel: () => void;
 }
 
 const messageTypeLabels: Record<ApiBroadcast['messageType'], string> = {
   text: 'テキスト',
   image: '画像',
   flex: 'Flexメッセージ',
-}
+};
 
 interface FormState {
-  title: string
-  messageType: ApiBroadcast['messageType']
-  messageContent: string
-  targetType: ApiBroadcast['targetType']
-  targetTagId: string
-  scheduledAt: string
-  sendNow: boolean
+  title: string;
+  messageType: ApiBroadcast['messageType'];
+  messageContent: string;
+  targetType: ApiBroadcast['targetType'];
+  targetTagId: string;
+  scheduledAt: string;
+  sendNow: boolean;
 }
 
 export default function BroadcastForm({ tags, onSuccess, onCancel }: BroadcastFormProps) {
-  const { selectedAccountId } = useAccount()
+  const { selectedAccountId } = useAccount();
   const [form, setForm] = useState<FormState>({
     title: '',
     messageType: 'text',
@@ -37,23 +37,34 @@ export default function BroadcastForm({ tags, onSuccess, onCancel }: BroadcastFo
     targetTagId: '',
     scheduledAt: '',
     sendNow: true,
-  })
-  const [saving, setSaving] = useState(false)
-  const [error, setError] = useState('')
+  });
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState('');
 
   const handleSave = async () => {
-    if (!form.title.trim()) { setError('配信タイトルを入力してください'); return }
-    if (!form.messageContent.trim()) { setError('メッセージ内容を入力してください'); return }
+    if (!form.title.trim()) {
+      setError('配信タイトルを入力してください');
+      return;
+    }
+    if (!form.messageContent.trim()) {
+      setError('メッセージ内容を入力してください');
+      return;
+    }
     if (form.messageType === 'flex') {
-      try { JSON.parse(form.messageContent) } catch { setError('FlexメッセージのJSONが無効です'); return }
+      try {
+        JSON.parse(form.messageContent);
+      } catch {
+        setError('FlexメッセージのJSONが無効です');
+        return;
+      }
     }
     if (!form.sendNow && !form.scheduledAt) {
-      setError('予約配信の場合は配信日時を指定してください')
-      return
+      setError('予約配信の場合は配信日時を指定してください');
+      return;
     }
 
-    setSaving(true)
-    setError('')
+    setSaving(true);
+    setError('');
     try {
       const res = await api.broadcasts.create({
         title: form.title,
@@ -64,22 +75,20 @@ export default function BroadcastForm({ tags, onSuccess, onCancel }: BroadcastFo
         status: 'draft',
         // datetime-local returns YYYY-MM-DDTHH:mm in JST wall-clock time
         // Append +09:00 so new Date() parses correctly for epoch comparisons
-        scheduledAt: form.sendNow || !form.scheduledAt
-          ? null
-          : form.scheduledAt + ':00.000+09:00',
+        scheduledAt: form.sendNow || !form.scheduledAt ? null : form.scheduledAt + ':00.000+09:00',
         lineAccountId: selectedAccountId,
-      })
+      });
       if (res.success) {
-        onSuccess()
+        onSuccess();
       } else {
-        setError(res.error)
+        setError(res.error);
       }
     } catch {
-      setError('作成に失敗しました')
+      setError('作成に失敗しました');
     } finally {
-      setSaving(false)
+      setSaving(false);
     }
-  }
+  };
 
   return (
     <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6 mb-6">
@@ -131,41 +140,62 @@ export default function BroadcastForm({ tags, onSuccess, onCancel }: BroadcastFo
           </label>
 
           {/* Image helper: URL inputs that auto-generate the required LINE image JSON */}
-          {form.messageType === 'image' && (() => {
-            let parsed: { originalContentUrl?: string; previewImageUrl?: string } = {}
-            try { parsed = JSON.parse(form.messageContent) } catch { /* not yet valid */ }
-            return (
-              <div className="space-y-2 mb-2">
-                <div>
-                  <label className="block text-xs text-gray-500 mb-1">元画像URL (originalContentUrl)</label>
-                  <input
-                    type="url"
-                    className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-500"
-                    placeholder="https://example.com/image.png"
-                    value={parsed.originalContentUrl ?? ''}
-                    onChange={(e) => {
-                      const orig = e.target.value
-                      const prev = parsed.previewImageUrl ?? orig
-                      setForm({ ...form, messageContent: JSON.stringify({ originalContentUrl: orig, previewImageUrl: prev }) })
-                    }}
-                  />
+          {form.messageType === 'image' &&
+            (() => {
+              let parsed: { originalContentUrl?: string; previewImageUrl?: string } = {};
+              try {
+                parsed = JSON.parse(form.messageContent);
+              } catch {
+                /* not yet valid */
+              }
+              return (
+                <div className="space-y-2 mb-2">
+                  <div>
+                    <label className="block text-xs text-gray-500 mb-1">
+                      元画像URL (originalContentUrl)
+                    </label>
+                    <input
+                      type="url"
+                      className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-500"
+                      placeholder="https://example.com/image.png"
+                      value={parsed.originalContentUrl ?? ''}
+                      onChange={(e) => {
+                        const orig = e.target.value;
+                        const prev = parsed.previewImageUrl ?? orig;
+                        setForm({
+                          ...form,
+                          messageContent: JSON.stringify({
+                            originalContentUrl: orig,
+                            previewImageUrl: prev,
+                          }),
+                        });
+                      }}
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-xs text-gray-500 mb-1">
+                      プレビュー画像URL (previewImageUrl)
+                    </label>
+                    <input
+                      type="url"
+                      className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-500"
+                      placeholder="https://example.com/preview.png (空欄で元画像と同じ)"
+                      value={parsed.previewImageUrl ?? ''}
+                      onChange={(e) => {
+                        const prev = e.target.value;
+                        setForm({
+                          ...form,
+                          messageContent: JSON.stringify({
+                            originalContentUrl: parsed.originalContentUrl ?? '',
+                            previewImageUrl: prev,
+                          }),
+                        });
+                      }}
+                    />
+                  </div>
                 </div>
-                <div>
-                  <label className="block text-xs text-gray-500 mb-1">プレビュー画像URL (previewImageUrl)</label>
-                  <input
-                    type="url"
-                    className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-500"
-                    placeholder="https://example.com/preview.png (空欄で元画像と同じ)"
-                    value={parsed.previewImageUrl ?? ''}
-                    onChange={(e) => {
-                      const prev = e.target.value
-                      setForm({ ...form, messageContent: JSON.stringify({ originalContentUrl: parsed.originalContentUrl ?? '', previewImageUrl: prev }) })
-                    }}
-                  />
-                </div>
-              </div>
-            )
-          })()}
+              );
+            })()}
 
           <textarea
             className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-500 resize-y"
@@ -174,8 +204,8 @@ export default function BroadcastForm({ tags, onSuccess, onCancel }: BroadcastFo
               form.messageType === 'text'
                 ? '配信するメッセージを入力...'
                 : form.messageType === 'image'
-                ? '{"originalContentUrl":"...","previewImageUrl":"..."}'
-                : '{"type":"bubble","body":{...}}'
+                  ? '{"originalContentUrl":"...","previewImageUrl":"..."}'
+                  : '{"type":"bubble","body":{...}}'
             }
             value={form.messageContent}
             onChange={(e) => setForm({ ...form, messageContent: e.target.value })}
@@ -221,7 +251,9 @@ export default function BroadcastForm({ tags, onSuccess, onCancel }: BroadcastFo
             >
               <option value="">タグを選択...</option>
               {tags.map((tag) => (
-                <option key={tag.id} value={tag.id}>{tag.name}</option>
+                <option key={tag.id} value={tag.id}>
+                  {tag.name}
+                </option>
               ))}
             </select>
           )}
@@ -287,5 +319,5 @@ export default function BroadcastForm({ tags, onSuccess, onCancel }: BroadcastFo
         </div>
       </div>
     </div>
-  )
+  );
 }

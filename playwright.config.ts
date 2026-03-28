@@ -18,7 +18,8 @@ export default defineConfig({
     },
   ],
   webServer: {
-    command: 'NEXT_DIST_DIR=.next-playwright pnpm --filter web exec next dev --port 3001 --hostname 127.0.0.1',
+    command:
+      'NEXT_DIST_DIR=.next-playwright pnpm --filter web exec next dev --port 3001 --hostname 127.0.0.1',
     url: 'http://127.0.0.1:3001/login',
     reuseExistingServer: true,
     timeout: 120_000,

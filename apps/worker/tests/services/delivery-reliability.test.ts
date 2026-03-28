@@ -8,20 +8,26 @@ const dbMocks = vi.hoisted(() => ({
 vi.mock('@line-crm/db', () => dbMocks);
 
 function createDeliveryDb() {
-  const operations = new Map<string, {
-    id: string;
-    idempotency_key: string;
-    status: 'pending' | 'sent' | 'failed';
-    attempt_count: number;
-    next_retry_at: string | null;
-    last_error: string | null;
-    metadata: string | null;
-  }>();
-  const deadLetters = new Map<string, {
-    idempotency_key: string;
-    error_message: string;
-    metadata: string | null;
-  }>();
+  const operations = new Map<
+    string,
+    {
+      id: string;
+      idempotency_key: string;
+      status: 'pending' | 'sent' | 'failed';
+      attempt_count: number;
+      next_retry_at: string | null;
+      last_error: string | null;
+      metadata: string | null;
+    }
+  >();
+  const deadLetters = new Map<
+    string,
+    {
+      idempotency_key: string;
+      error_message: string;
+      metadata: string | null;
+    }
+  >();
 
   const db = {
     prepare(sql: string) {
@@ -48,7 +54,18 @@ function createDeliveryDb() {
                   metadata,
                   _createdAt,
                   _updatedAt,
-                ] = bindings as [string, string, string, string | null, string, string, string | null, string | null, string, string];
+                ] = bindings as [
+                  string,
+                  string,
+                  string,
+                  string | null,
+                  string,
+                  string,
+                  string | null,
+                  string | null,
+                  string,
+                  string,
+                ];
                 operations.set(idempotencyKey, {
                   id,
                   idempotency_key: idempotencyKey,
@@ -113,7 +130,19 @@ function createDeliveryDb() {
                   errorMessage,
                   metadata,
                   _createdAt,
-                ] = bindings as [string, string | null, string, string, string | null, string, string, string | null, string, string | null, string];
+                ] = bindings as [
+                  string,
+                  string | null,
+                  string,
+                  string,
+                  string | null,
+                  string,
+                  string,
+                  string | null,
+                  string,
+                  string | null,
+                  string,
+                ];
                 deadLetters.set(idempotencyKey, {
                   idempotency_key: idempotencyKey,
                   error_message: errorMessage,
@@ -144,29 +173,35 @@ describe('delivery reliability helpers', () => {
     const { beginDeliveryAttempt } = await import('../../src/services/delivery-reliability.js');
     const { db, operations } = createDeliveryDb();
 
-    await expect(beginDeliveryAttempt(db, {
-      idempotencyKey: 'step:1',
-      jobName: 'step_deliveries',
-      sourceType: 'friend_scenario',
-      sourceId: 'friend-scenario-1',
-      friendId: 'friend-1',
-      lineAccountId: 'account-1',
-    })).resolves.toBe(true);
+    await expect(
+      beginDeliveryAttempt(db, {
+        idempotencyKey: 'step:1',
+        jobName: 'step_deliveries',
+        sourceType: 'friend_scenario',
+        sourceId: 'friend-scenario-1',
+        friendId: 'friend-1',
+        lineAccountId: 'account-1',
+      }),
+    ).resolves.toBe(true);
 
-    await expect(beginDeliveryAttempt(db, {
-      idempotencyKey: 'step:1',
-      jobName: 'step_deliveries',
-      sourceType: 'friend_scenario',
-      sourceId: 'friend-scenario-1',
-      friendId: 'friend-1',
-      lineAccountId: 'account-1',
-    })).resolves.toBe(false);
+    await expect(
+      beginDeliveryAttempt(db, {
+        idempotencyKey: 'step:1',
+        jobName: 'step_deliveries',
+        sourceType: 'friend_scenario',
+        sourceId: 'friend-scenario-1',
+        friendId: 'friend-1',
+        lineAccountId: 'account-1',
+      }),
+    ).resolves.toBe(false);
 
     expect(operations.get('step:1')?.status).toBe('pending');
   });
 
   it('moves exhausted failures to the dead-letter queue and creates a dashboard notification', async () => {
-    const { beginDeliveryAttempt, markDeliveryAttemptFailed } = await import('../../src/services/delivery-reliability.js');
+    const { beginDeliveryAttempt, markDeliveryAttemptFailed } = await import(
+      '../../src/services/delivery-reliability.js'
+    );
     const { db, operations, deadLetters } = createDeliveryDb();
 
     await beginDeliveryAttempt(db, {
@@ -178,15 +213,19 @@ describe('delivery reliability helpers', () => {
       lineAccountId: 'account-2',
     });
 
-    await markDeliveryAttemptFailed(db, {
-      idempotencyKey: 'step:2',
-      jobName: 'step_deliveries',
-      sourceType: 'friend_scenario',
-      sourceId: 'friend-scenario-2',
-      friendId: 'friend-2',
-      lineAccountId: 'account-2',
-      error: new Error('push failed'),
-    }, { maxAttempts: 1 });
+    await markDeliveryAttemptFailed(
+      db,
+      {
+        idempotencyKey: 'step:2',
+        jobName: 'step_deliveries',
+        sourceType: 'friend_scenario',
+        sourceId: 'friend-scenario-2',
+        friendId: 'friend-2',
+        lineAccountId: 'account-2',
+        error: new Error('push failed'),
+      },
+      { maxAttempts: 1 },
+    );
 
     expect(operations.get('step:2')).toMatchObject({
       status: 'failed',

@@ -26,9 +26,9 @@ test('loads friends list with account-scoped API calls after login', async ({ pa
     .poll(() =>
       friendsRequests.some(
         (url) =>
-          url.pathname === '/api/friends'
-          && url.searchParams.get('lineAccountId') === 'account-1'
-          && url.searchParams.get('limit') === '20',
+          url.pathname === '/api/friends' &&
+          url.searchParams.get('lineAccountId') === 'account-1' &&
+          url.searchParams.get('limit') === '20',
       ),
     )
     .toBe(true);

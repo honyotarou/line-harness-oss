@@ -12,11 +12,7 @@
       "default": "./src/index.ts"
     }
   },
-  "files": [
-    "dist",
-    "src",
-    "README.md"
-  ],
+  "files": ["dist", "src", "README.md"],
   "scripts": {
     "build": "tsc -p tsconfig.build.json",
     "typecheck": "tsc --noEmit",
@@ -25,14 +21,7 @@
   "devDependencies": {
     "typescript": "^5.9.3"
   },
-  "keywords": [
-    "line",
-    "messaging-api",
-    "line-bot",
-    "line-sdk",
-    "flex-message",
-    "crm"
-  ],
+  "keywords": ["line", "messaging-api", "line-bot", "line-sdk", "flex-message", "crm"],
   "repository": {
     "type": "git",
     "url": "https://github.com/user/line-oss-crm",
