@@ -23,12 +23,31 @@ describe('authMiddleware', () => {
     expect(response.status).toBe(401);
   });
 
-  it('allows protected routes with the configured bearer token', async () => {
+  it('rejects the raw API_KEY as a bearer token (must use session token)', async () => {
     const app = createApp();
 
     const response = await app.fetch(
       new Request('http://localhost/private', {
         headers: { Authorization: 'Bearer secret' },
+      }),
+      { API_KEY: 'secret' } as never,
+    );
+
+    expect(response.status).toBe(401);
+  });
+
+  it('allows protected routes with a valid admin session token via Bearer header', async () => {
+    const { issueAdminSessionToken } = await import('../../src/services/admin-session.js');
+    const now = Math.floor(Date.now() / 1000);
+    const token = await issueAdminSessionToken('secret', {
+      issuedAt: now,
+      expiresInSeconds: 3600,
+    });
+    const app = createApp();
+
+    const response = await app.fetch(
+      new Request('http://localhost/private', {
+        headers: { Authorization: `Bearer ${token}` },
       }),
       { API_KEY: 'secret' } as never,
     );

@@ -8,6 +8,7 @@ const dbMocks = vi.hoisted(() => ({
   addTagToFriend: vi.fn(),
   removeTagFromFriend: vi.fn(),
   getFriendTags: vi.fn(),
+  getTagsForFriends: vi.fn(),
   getScenarios: vi.fn(),
   enrollFriendInScenario: vi.fn(),
   jstNow: vi.fn(),
@@ -77,6 +78,7 @@ describe('friends routes', () => {
   beforeEach(() => {
     Object.values(dbMocks).forEach((mockFn) => mockFn.mockReset());
     dbMocks.getFriendTags.mockResolvedValue([]);
+    dbMocks.getTagsForFriends.mockResolvedValue(new Map());
   });
 
   it('returns account-scoped friends with lineAccountId, metadata, and refCode', async () => {
@@ -116,6 +118,23 @@ describe('friends routes', () => {
         hasNextPage: false,
       },
     });
+  });
+
+  it('uses batch tag query instead of N+1 individual queries', async () => {
+    const { friends } = await import('../../src/routes/friends.js');
+    const app = new Hono();
+    app.route('/', friends);
+
+    await app.fetch(
+      new Request('http://localhost/api/friends?lineAccountId=account-1&limit=10&offset=0'),
+      { DB: createDb() } as never,
+    );
+
+    // getFriendTags (individual per-friend query) should NOT be called
+    expect(dbMocks.getFriendTags).not.toHaveBeenCalled();
+    // Instead, getTagsForFriends (batch query) should be called once
+    expect(dbMocks.getTagsForFriends).toHaveBeenCalledTimes(1);
+    expect(dbMocks.getTagsForFriends).toHaveBeenCalledWith(expect.anything(), ['friend-1']);
   });
 
   it('filters ref code stats by LINE account', async () => {

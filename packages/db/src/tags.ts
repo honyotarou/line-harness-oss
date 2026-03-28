@@ -95,6 +95,45 @@ export async function getFriendTags(
   return result.results;
 }
 
+/**
+ * Batch fetch tags for multiple friends in a single query (avoids N+1).
+ * Returns a Map from friendId to Tag[].
+ */
+export async function getTagsForFriends(
+  db: D1Database,
+  friendIds: string[],
+): Promise<Map<string, Tag[]>> {
+  const result = new Map<string, Tag[]>();
+  if (friendIds.length === 0) return result;
+
+  const placeholders = friendIds.map(() => '?').join(',');
+  const rows = await db
+    .prepare(
+      `SELECT t.*, ft.friend_id
+       FROM tags t
+       INNER JOIN friend_tags ft ON ft.tag_id = t.id
+       WHERE ft.friend_id IN (${placeholders})
+       ORDER BY t.name ASC`,
+    )
+    .bind(...friendIds)
+    .all<Tag & { friend_id: string }>();
+
+  for (const row of rows.results) {
+    const friendId = row.friend_id;
+    if (!result.has(friendId)) {
+      result.set(friendId, []);
+    }
+    result.get(friendId)!.push({
+      id: row.id,
+      name: row.name,
+      color: row.color,
+      created_at: row.created_at,
+    });
+  }
+
+  return result;
+}
+
 import type { Friend } from './friends';
 
 export async function getFriendsByTag(

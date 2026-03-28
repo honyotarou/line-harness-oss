@@ -129,9 +129,6 @@ export async function verifyAdminSessionToken(
 }
 
 export async function isValidAdminAuthToken(secret: string, token: string): Promise<boolean> {
-  if (token === secret) {
-    return true;
-  }
   const session = await verifyAdminSessionToken(secret, token);
   return Boolean(session);
 }

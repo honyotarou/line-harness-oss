@@ -6,6 +6,7 @@ import {
   addTagToFriend,
   removeTagFromFriend,
   getFriendTags,
+  getTagsForFriends,
   getScenarios,
   enrollFriendInScenario,
   jstNow,
@@ -80,13 +81,13 @@ friends.get('/api/friends', async (c) => {
     const listResult = await listStmt.bind(...listBinds).all<DbFriend>();
     const items = listResult.results;
 
-    // Fetch tags for each friend in parallel so the list response includes tags
-    const itemsWithTags = await Promise.all(
-      items.map(async (friend) => {
-        const tags = await getFriendTags(db, friend.id);
-        return { ...serializeFriend(friend), tags: tags.map(serializeTag) };
-      }),
-    );
+    // Batch fetch all tags in a single query (avoids N+1)
+    const friendIds = items.map((f) => f.id);
+    const tagMap = await getTagsForFriends(db, friendIds);
+    const itemsWithTags = items.map((friend) => {
+      const tags = tagMap.get(friend.id) ?? [];
+      return { ...serializeFriend(friend), tags: tags.map(serializeTag) };
+    });
 
     return c.json({
       success: true,
