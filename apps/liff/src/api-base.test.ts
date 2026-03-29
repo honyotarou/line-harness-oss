@@ -1,5 +1,17 @@
 import { describe, expect, it } from 'vitest';
-import { DEFAULT_LIFF_API_DEV, resolveLiffApiBaseUrl } from './api-base.js';
+import {
+  DEFAULT_LIFF_API_DEV,
+  isLineHostedLiffPageOrigin,
+  resolveLiffApiBaseUrl,
+} from './api-base.js';
+
+describe('isLineHostedLiffPageOrigin', () => {
+  it('detects LINE LIFF page hosts', () => {
+    expect(isLineHostedLiffPageOrigin('https://liff.line.me')).toBe(true);
+    expect(isLineHostedLiffPageOrigin('https://access.line.me/foo')).toBe(true);
+    expect(isLineHostedLiffPageOrigin('https://line-crm-worker.example.workers.dev')).toBe(false);
+  });
+});
 
 describe('resolveLiffApiBaseUrl', () => {
   it('prefers non-empty trimmed VITE value over browser origin', () => {
@@ -28,5 +40,29 @@ describe('resolveLiffApiBaseUrl', () => {
     expect(resolveLiffApiBaseUrl(undefined, '')).toBe(DEFAULT_LIFF_API_DEV);
     expect(resolveLiffApiBaseUrl(undefined, 'not-a-url')).toBe(DEFAULT_LIFF_API_DEV);
     expect(resolveLiffApiBaseUrl('   ', undefined)).toBe(DEFAULT_LIFF_API_DEV);
+  });
+
+  it('does not use liff.line.me as API base (no /api on LINE host)', () => {
+    expect(resolveLiffApiBaseUrl(undefined, 'https://liff.line.me')).toBe(DEFAULT_LIFF_API_DEV);
+  });
+
+  it('uses meta lh-api-base when page is on LINE LIFF host', () => {
+    expect(
+      resolveLiffApiBaseUrl(
+        undefined,
+        'https://liff.line.me',
+        'https://worker.example.workers.dev',
+      ),
+    ).toBe('https://worker.example.workers.dev');
+  });
+
+  it('prefers env over meta', () => {
+    expect(
+      resolveLiffApiBaseUrl(
+        'https://api.example',
+        'https://liff.line.me',
+        'https://ignored.workers.dev',
+      ),
+    ).toBe('https://api.example');
   });
 });

@@ -3,6 +3,8 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <!-- vite.config.ts の transformIndexHtml が VITE_API_URL を注入。liff.line.me では location を API に使えない。 -->
+  <meta name="lh-api-base" content="" />
   <title>LINE CRM</title>
   <script charset="utf-8" src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
   <style>

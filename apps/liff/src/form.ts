@@ -11,7 +11,7 @@
  */
 
 import { getLiffApiBaseUrl } from './api-base.js';
-import { formatSubmitErrorMessage } from './submit-error-message.js';
+import { formatLiffUserVisibleError, formatSubmitErrorMessage } from './submit-error-message.js';
 
 declare const liff: {
   init(config: { liffId: string }): Promise<void>;
@@ -527,6 +527,6 @@ export async function initForm(formId: string | null): Promise<void> {
     state.formDef = json.data;
     render();
   } catch (err) {
-    renderFormError(err instanceof Error ? err.message : 'エラーが発生しました');
+    renderFormError(formatLiffUserVisibleError(err, 'エラーが発生しました'));
   }
 }

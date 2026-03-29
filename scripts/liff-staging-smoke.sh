@@ -1,6 +1,8 @@
 #!/usr/bin/env bash
 # Automated slice of staging verification + LIFF manual reminder.
-# Usage: STAGING_WORKER_URL=https://your-worker.workers.dev bash scripts/liff-staging-smoke.sh
+# Usage:
+#   STAGING_WORKER_URL=https://your-worker.workers.dev bash scripts/liff-staging-smoke.sh
+# Optional: STAGING_LIFF_URL=https://your-liff.pages.dev  (checks index.html has lh-api-base)
 set -euo pipefail
 
 BASE="${STAGING_WORKER_URL:?Set STAGING_WORKER_URL to your deployed Worker origin (no trailing slash)}"
@@ -27,6 +29,21 @@ if [ "$code" != "200" ]; then
 fi
 
 echo "== liff-staging-smoke: HTTP OK =="
+
+if [ -n "${STAGING_LIFF_URL:-}" ]; then
+  echo "== liff-staging-smoke: LIFF index (lh-api-base must point to https Worker) =="
+  code="$(curl -sfS -o "$TMP" -w "%{http_code}" "${STAGING_LIFF_URL%/}/")"
+  if [ "$code" != "200" ]; then
+    echo "LIFF index expected 200, got $code ($STAGING_LIFF_URL)" >&2
+    exit 1
+  fi
+  if ! grep -qE '<meta[^>]+name="lh-api-base"[^>]+content="https?://' "$TMP"; then
+    echo "LIFF index missing lh-api-base meta with http(s) URL. Rebuild with VITE_API_URL set." >&2
+    exit 1
+  fi
+  echo "== liff-staging-smoke: LIFF HTML OK =="
+fi
+
 echo ""
 echo "Manual (LINE app / LIFF):"
 echo "  1. Open the staging LIFF URL from the LINE client (same channel as staging bot)."

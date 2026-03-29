@@ -6,7 +6,7 @@
   "scripts": {
     "dev:worker": "pnpm --filter worker dev",
     "dev:web": "pnpm --filter web dev",
-    "build": "pnpm --workspace-concurrency=1 -r build",
+    "build": "VITE_API_URL=${VITE_API_URL:-https://liff-build.workspace.invalid} pnpm --workspace-concurrency=1 -r build",
     "build:libs": "pnpm --filter @line-crm/shared --filter @line-crm/line-sdk build",
     "test": "pnpm --filter worker test && pnpm --filter web test && pnpm --filter @line-harness/sdk test && pnpm --filter liff test",
     "test:coverage": "pnpm --filter worker test:coverage && pnpm --filter web test:coverage",

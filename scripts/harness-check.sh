@@ -14,7 +14,10 @@ pnpm --filter worker typecheck
 echo "== harness: liff typecheck =="
 pnpm --filter liff typecheck
 
-echo "== harness: unit tests (worker, web, sdk) =="
+echo "== harness: liff production build (dummy VITE_API_URL; real deploys must set a real Worker URL) =="
+VITE_API_URL="https://harness.liff.api.invalid" pnpm --filter liff build
+
+echo "== harness: unit tests (worker, web, sdk, liff) =="
 pnpm test
 
 echo "== harness: OK =="

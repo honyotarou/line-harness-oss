@@ -1,5 +1,11 @@
 import { describe, expect, it } from 'vitest';
-import { formatSubmitErrorMessage } from './submit-error-message.js';
+import { formatLiffUserVisibleError, formatSubmitErrorMessage } from './submit-error-message.js';
+
+describe('formatLiffUserVisibleError', () => {
+  it('uses custom fallback for non-Error', () => {
+    expect(formatLiffUserVisibleError(null, '予約に失敗しました')).toBe('予約に失敗しました');
+  });
+});
 
 describe('formatSubmitErrorMessage', () => {
   it('returns generic message for non-Error', () => {
@@ -7,10 +13,14 @@ describe('formatSubmitErrorMessage', () => {
     expect(formatSubmitErrorMessage('x')).toBe('送信に失敗しました');
   });
 
-  it('hides ReferenceError / is not defined from users', () => {
-    expect(formatSubmitErrorMessage(new ReferenceError('API_URL is not defined'))).toBe(
-      '通信先の設定に問題があります。しばらくしてから再度お試しください。',
-    );
+  it('maps API_URL / not defined to build-config hint', () => {
+    const hint =
+      '通信先の設定に問題があります。ビルド時の VITE_API_URL（Workers の URL）を確認してください。';
+    expect(formatSubmitErrorMessage(new ReferenceError('API_URL is not defined'))).toBe(hint);
+    expect(formatSubmitErrorMessage(new Error('500: API_URL is not defined'))).toBe(hint);
+  });
+
+  it('hides other ReferenceError / is not defined from users', () => {
     expect(formatSubmitErrorMessage(new Error('x is not defined'))).toBe(
       '通信先の設定に問題があります。しばらくしてから再度お試しください。',
     );
