@@ -15,6 +15,7 @@
  */
 
 import { getLiffApiBaseUrl } from './api-base.js';
+import { formatLiffUserVisibleError } from './submit-error-message.js';
 import { initBooking } from './booking.js';
 import { initForm } from './form.js';
 
@@ -244,7 +245,7 @@ async function linkAndAddFlow() {
     if (redirectUrl) {
       window.location.href = redirectUrl;
     } else {
-      showError(err instanceof Error ? err.message : 'エラーが発生しました');
+      showError(formatLiffUserVisibleError(err, 'エラーが発生しました'));
     }
   }
 }
@@ -271,7 +272,7 @@ async function main() {
       await linkAndAddFlow();
     }
   } catch (err) {
-    showError(err instanceof Error ? err.message : 'LIFF初期化エラー');
+    showError(formatLiffUserVisibleError(err, 'LIFF初期化エラー'));
   }
 }
 

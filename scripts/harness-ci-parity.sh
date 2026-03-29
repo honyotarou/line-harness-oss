@@ -11,6 +11,12 @@ pnpm exec biome format .
 echo "== harness:ci (liff typecheck) =="
 pnpm --filter liff typecheck
 
+echo "== harness:ci (liff production build) =="
+VITE_API_URL="https://harness.liff.api.invalid" pnpm --filter liff build
+
+echo "== harness:ci (liff vitest) =="
+pnpm --filter liff test
+
 echo "== harness:ci (workspace libs dist for Next bundle) =="
 pnpm build:libs
 

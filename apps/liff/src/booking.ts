@@ -9,6 +9,7 @@
  */
 
 import { getLiffApiBaseUrl } from './api-base.js';
+import { formatLiffUserVisibleError } from './submit-error-message.js';
 
 declare const liff: {
   init(config: { liffId: string }): Promise<void>;
@@ -426,7 +427,7 @@ async function submitBooking(): Promise<void> {
     renderSuccess(selectedDate, selectedSlot);
   } catch (err) {
     state.submitting = false;
-    renderError(err instanceof Error ? err.message : '予約に失敗しました');
+    renderError(formatLiffUserVisibleError(err, '予約に失敗しました'));
   }
 }
 
