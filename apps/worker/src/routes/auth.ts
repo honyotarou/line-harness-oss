@@ -66,6 +66,8 @@ authRoutes.post('/api/auth/login', async (c) => {
       success: true,
       data: {
         expiresAt,
+        /** Same value as HttpOnly cookie; use when the admin UI and API are on different sites (cross-origin cookies blocked). */
+        sessionToken: token,
       },
     });
   } catch (err) {

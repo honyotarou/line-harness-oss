@@ -31,8 +31,52 @@ export type ApiBroadcast = Broadcast;
 
 const DEFAULT_API_URL = 'http://127.0.0.1:8787';
 
+/** Cross-origin admin (e.g. Vercel → workers.dev): browsers may not store/send API cookie; Bearer carries the same session token. */
+const ADMIN_SESSION_STORAGE_KEY = 'lh_admin_session_token';
+
 function resolveApiUrl(): string {
   return process.env.NEXT_PUBLIC_API_URL || DEFAULT_API_URL;
+}
+
+function getStoredAdminSessionToken(): string | null {
+  if (typeof window === 'undefined') {
+    return null;
+  }
+  try {
+    return sessionStorage.getItem(ADMIN_SESSION_STORAGE_KEY);
+  } catch {
+    return null;
+  }
+}
+
+export function setAdminSessionToken(token: string): void {
+  if (typeof window === 'undefined') {
+    return;
+  }
+  try {
+    sessionStorage.setItem(ADMIN_SESSION_STORAGE_KEY, token);
+  } catch {
+    /* ignore quota / private mode */
+  }
+}
+
+export function clearAdminSessionToken(): void {
+  if (typeof window === 'undefined') {
+    return;
+  }
+  try {
+    sessionStorage.removeItem(ADMIN_SESSION_STORAGE_KEY);
+  } catch {
+    /* ignore */
+  }
+}
+
+function bearerForRequest(path: string, method: string): Record<string, string> {
+  if (method === 'POST' && path === '/api/auth/login') {
+    return {};
+  }
+  const t = getStoredAdminSessionToken();
+  return t ? { Authorization: `Bearer ${t}` } : {};
 }
 
 export class ApiError extends Error {
@@ -75,7 +119,15 @@ export async function fetchApiCore<T>(
 }
 
 export async function fetchApi<T>(path: string, options?: RequestInit): Promise<T> {
-  return fetchApiCore<T>(resolveApiUrl(), globalThis.fetch.bind(globalThis), path, options);
+  const method = (options?.method ?? 'GET').toUpperCase();
+  const bearer = bearerForRequest(path, method);
+  return fetchApiCore<T>(resolveApiUrl(), globalThis.fetch.bind(globalThis), path, {
+    ...options,
+    headers: {
+      ...bearer,
+      ...(options?.headers as Record<string, string> | undefined),
+    },
+  });
 }
 
 export type FriendListParams = {
@@ -90,15 +142,20 @@ export type FriendWithTags = Friend & { tags: Tag[] };
 export const api = {
   auth: {
     login: (apiKey: string) =>
-      fetchApi<ApiResponse<{ expiresAt: string }>>('/api/auth/login', {
+      fetchApi<ApiResponse<{ expiresAt: string; sessionToken: string }>>('/api/auth/login', {
         method: 'POST',
         body: JSON.stringify({ apiKey }),
       }),
     session: () => fetchApi<ApiResponse<{ authenticated: boolean }>>('/api/auth/session'),
-    logout: () =>
-      fetchApi<ApiResponse<null>>('/api/auth/logout', {
-        method: 'POST',
-      }),
+    logout: async () => {
+      try {
+        return await fetchApi<ApiResponse<null>>('/api/auth/logout', {
+          method: 'POST',
+        });
+      } finally {
+        clearAdminSessionToken();
+      }
+    },
   },
   friends: {
     list: (params?: FriendListParams) => {

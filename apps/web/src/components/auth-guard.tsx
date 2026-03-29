@@ -1,7 +1,7 @@
 'use client';
 import { useEffect, useState } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
-import { api } from '@/lib/api';
+import { api, clearAdminSessionToken } from '@/lib/api';
 
 export default function AuthGuard({ children }: { children: React.ReactNode }) {
   const router = useRouter();
@@ -28,6 +28,7 @@ export default function AuthGuard({ children }: { children: React.ReactNode }) {
       }
 
       if (!cancelled) {
+        clearAdminSessionToken();
         router.replace('/login');
       }
     };

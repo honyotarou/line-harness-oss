@@ -1,6 +1,6 @@
 'use client';
 import { useEffect, useState } from 'react';
-import { ApiError, api } from '@/lib/api';
+import { ApiError, api, setAdminSessionToken } from '@/lib/api';
 
 export default function LoginPage() {
   const [apiKey, setApiKey] = useState('');
@@ -19,7 +19,10 @@ export default function LoginPage() {
 
     try {
       const res = await api.auth.login(apiKey);
-      if (res.success) {
+      if (res.success && res.data?.sessionToken) {
+        setAdminSessionToken(res.data.sessionToken);
+        window.location.assign('/');
+      } else if (res.success) {
         window.location.assign('/');
       } else {
         setError('APIキーが正しくありません');

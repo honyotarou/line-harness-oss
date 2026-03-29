@@ -21,10 +21,48 @@ describe('auth routes', () => {
     expect(response.headers.get('Set-Cookie')).toContain('HttpOnly');
     const json = (await response.json()) as {
       success: boolean;
-      data?: { expiresAt: string };
+      data?: { expiresAt: string; sessionToken: string };
     };
     expect(json.success).toBe(true);
     expect(json.data?.expiresAt).toBeTruthy();
+    expect(json.data?.sessionToken).toBeTruthy();
+  });
+
+  it('validates signed admin sessions via the session endpoint using Bearer sessionToken', async () => {
+    const { authRoutes } = await import('../../src/routes/auth.js');
+    const app = new Hono();
+    app.route('/', authRoutes);
+
+    const loginResponse = await app.fetch(
+      new Request('http://localhost/api/auth/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ apiKey: 'root-api-key' }),
+      }),
+      { API_KEY: 'root-api-key' } as never,
+    );
+    const body = (await loginResponse.json()) as {
+      data?: { sessionToken?: string };
+    };
+    const sessionToken = body.data?.sessionToken;
+    expect(sessionToken).toBeTruthy();
+
+    const sessionResponse = await app.fetch(
+      new Request('http://localhost/api/auth/session', {
+        headers: { Authorization: `Bearer ${sessionToken}` },
+      }),
+      { API_KEY: 'root-api-key' } as never,
+    );
+
+    expect(sessionResponse.status).toBe(200);
+    const sessionJson = (await sessionResponse.json()) as {
+      success: boolean;
+      data?: { authenticated: boolean };
+    };
+    expect(sessionJson).toEqual({
+      success: true,
+      data: { authenticated: true },
+    });
   });
 
   it('validates signed admin sessions via the session endpoint using cookies', async () => {
