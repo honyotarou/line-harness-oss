@@ -51,6 +51,9 @@ jobs:
       - name: Install
         run: pnpm install --frozen-lockfile
 
+      - name: Build workspace libs (dist for wrangler bundle)
+        run: pnpm build:libs
+
       - name: Install Playwright Chromium
         run: pnpm exec playwright install chromium --with-deps
 

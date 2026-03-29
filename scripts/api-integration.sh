@@ -30,6 +30,9 @@ fi
 echo "== api-integration: D1 schema (local) =="
 pnpm --filter worker exec wrangler d1 execute line-crm --local --file="../../packages/db/schema.sql"
 
+echo "== api-integration: build workspace libs (wrangler resolves @line-crm/*/dist) =="
+pnpm build:libs
+
 echo "== api-integration: wrangler dev --local :$PORT =="
 pnpm --filter worker exec wrangler dev --local --port "$PORT" &
 WRANGLE_PID=$!
