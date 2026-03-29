@@ -23,9 +23,9 @@
         <div class='clearfix'>
             
             <div class='fl pad1y space-right2'>
-                <span class="strong">84.78% </span>
+                <span class="strong">82.5% </span>
                 <span class="quiet">Statements</span>
-                <span class='fraction'>39/46</span>
+                <span class='fraction'>33/40</span>
             </div>
         
             
@@ -44,9 +44,9 @@
         
             
             <div class='fl pad1y space-right2'>
-                <span class="strong">84.78% </span>
+                <span class="strong">82.5% </span>
                 <span class="quiet">Lines</span>
-                <span class='fraction'>39/46</span>
+                <span class='fraction'>33/40</span>
             </div>
         
             
@@ -112,13 +112,7 @@
 <a name='L47'></a><a href='#L47'>47</a>
 <a name='L48'></a><a href='#L48'>48</a>
 <a name='L49'></a><a href='#L49'>49</a>
-<a name='L50'></a><a href='#L50'>50</a>
-<a name='L51'></a><a href='#L51'>51</a>
-<a name='L52'></a><a href='#L52'>52</a>
-<a name='L53'></a><a href='#L53'>53</a>
-<a name='L54'></a><a href='#L54'>54</a>
-<a name='L55'></a><a href='#L55'>55</a>
-<a name='L56'></a><a href='#L56'>56</a></td><td class="line-coverage quiet"><span class="cline-any cline-yes">1x</span>
+<a name='L50'></a><a href='#L50'>50</a></td><td class="line-coverage quiet"><span class="cline-any cline-yes">1x</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-yes">1x</span>
 <span class="cline-any cline-yes">1x</span>
@@ -134,45 +128,39 @@
 <span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-yes">1x</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-yes">56x</span>
-<span class="cline-any cline-yes">56x</span>
-<span class="cline-any cline-yes">56x</span>
-<span class="cline-any cline-yes">51x</span>
-<span class="cline-any cline-yes">51x</span>
+<span class="cline-any cline-yes">57x</span>
+<span class="cline-any cline-yes">57x</span>
+<span class="cline-any cline-yes">57x</span>
+<span class="cline-any cline-yes">52x</span>
+<span class="cline-any cline-yes">52x</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-yes">5x</span>
-<span class="cline-any cline-yes">56x</span>
-<span class="cline-any cline-yes">56x</span>
+<span class="cline-any cline-yes">57x</span>
+<span class="cline-any cline-yes">57x</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-yes">56x</span>
-<span class="cline-any cline-yes">56x</span>
-<span class="cline-any cline-yes">56x</span>
-<span class="cline-any cline-yes">56x</span>
-<span class="cline-any cline-yes">56x</span>
-<span class="cline-any cline-yes">56x</span>
+<span class="cline-any cline-yes">57x</span>
+<span class="cline-any cline-yes">57x</span>
+<span class="cline-any cline-yes">57x</span>
 <span class="cline-any cline-yes">5x</span>
 <span class="cline-any cline-yes">5x</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-yes">51x</span>
-<span class="cline-any cline-yes">56x</span>
+<span class="cline-any cline-yes">52x</span>
+<span class="cline-any cline-yes">57x</span>
 <span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-yes">51x</span>
-<span class="cline-any cline-yes">51x</span>
+<span class="cline-any cline-yes">52x</span>
+<span class="cline-any cline-yes">52x</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-yes">23x</span>
-<span class="cline-any cline-yes">23x</span>
-<span class="cline-any cline-yes">23x</span>
-<span class="cline-any cline-yes">23x</span>
-<span class="cline-any cline-yes">23x</span>
+<span class="cline-any cline-yes">24x</span>
+<span class="cline-any cline-yes">24x</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-yes">21x</span>
-<span class="cline-any cline-yes">21x</span>
-<span class="cline-any cline-yes">23x</span>
+<span class="cline-any cline-yes">22x</span>
+<span class="cline-any cline-yes">22x</span>
+<span class="cline-any cline-yes">24x</span>
 <span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-yes">23x</span>
+<span class="cline-any cline-yes">24x</span>
 <span class="cline-any cline-neutral">&nbsp;</span></td><td class="text"><pre class="prettyprint lang-js">const textEncoder = new TextEncoder();
 &nbsp;
 export class BodyTooLargeError extends Error {
@@ -199,10 +187,7 @@ function getContentLength(request: Request): number | null {
   return Number.isFinite(contentLength) ? <span class="branch-0 cbranch-no" title="branch not covered" >contentLength : null;</span>
 }
 &nbsp;
-export async function readTextBodyWithLimit(
-  request: Request,
-  limitBytes: number,
-): Promise&lt;string&gt; {
+export async function readTextBodyWithLimit(request: Request, limitBytes: number): Promise&lt;string&gt; {
   const contentLength = getContentLength(request);
   if (contentLength !== null &amp;&amp; contentLength &gt; limitBytes) {
     throw new BodyTooLargeError(limitBytes);
@@ -216,10 +201,7 @@ export async function readTextBodyWithLimit(
   return text;
 }
 &nbsp;
-export async function readJsonBodyWithLimit&lt;T&gt;(
-  request: Request,
-  limitBytes: number,
-): Promise&lt;T&gt; {
+export async function readJsonBodyWithLimit&lt;T&gt;(request: Request, limitBytes: number): Promise&lt;T&gt; {
   const text = await readTextBodyWithLimit(request, limitBytes);
 &nbsp;
   try {
@@ -235,7 +217,7 @@ export async function readJsonBodyWithLimit&lt;T&gt;(
             <div class='footer quiet pad2 space-top1 center small'>
                 Code coverage generated by
                 <a href="https://istanbul.js.org/" target="_blank" rel="noopener noreferrer">istanbul</a>
-                at 2026-03-28T20:53:09.446Z
+                at 2026-03-29T03:52:36.817Z
             </div>
         <script src="../prettify.js"></script>
         <script>

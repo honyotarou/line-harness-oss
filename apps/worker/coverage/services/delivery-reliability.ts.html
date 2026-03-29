@@ -23,9 +23,9 @@
         <div class='clearfix'>
             
             <div class='fl pad1y space-right2'>
-                <span class="strong">75.3% </span>
+                <span class="strong">74.54% </span>
                 <span class="quiet">Statements</span>
-                <span class='fraction'>122/162</span>
+                <span class='fraction'>123/165</span>
             </div>
         
             
@@ -44,9 +44,9 @@
         
             
             <div class='fl pad1y space-right2'>
-                <span class="strong">75.3% </span>
+                <span class="strong">74.54% </span>
                 <span class="quiet">Lines</span>
-                <span class='fraction'>122/162</span>
+                <span class='fraction'>123/165</span>
             </div>
         
             
@@ -281,7 +281,10 @@
 <a name='L216'></a><a href='#L216'>216</a>
 <a name='L217'></a><a href='#L217'>217</a>
 <a name='L218'></a><a href='#L218'>218</a>
-<a name='L219'></a><a href='#L219'>219</a></td><td class="line-coverage quiet"><span class="cline-any cline-yes">1x</span>
+<a name='L219'></a><a href='#L219'>219</a>
+<a name='L220'></a><a href='#L220'>220</a>
+<a name='L221'></a><a href='#L221'>221</a>
+<a name='L222'></a><a href='#L222'>222</a></td><td class="line-coverage quiet"><span class="cline-any cline-yes">1x</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-yes">1x</span>
 <span class="cline-any cline-yes">1x</span>
@@ -448,6 +451,8 @@
 <span class="cline-any cline-yes">1x</span>
 <span class="cline-any cline-yes">1x</span>
 <span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-yes">1x</span>
 <span class="cline-any cline-yes">1x</span>
@@ -481,6 +486,7 @@
 <span class="cline-any cline-yes">1x</span>
 <span class="cline-any cline-yes">1x</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">1x</span>
 <span class="cline-any cline-yes">1x</span>
 <span class="cline-any cline-yes">1x</span>
 <span class="cline-any cline-yes">1x</span>
@@ -567,7 +573,7 @@ function normalizeMetadata(
 &nbsp;
 <span class="cstat-no" title="statement not covered" ><span class="fstat-no" title="function not covered" >function computeRetryDelayMs(attemptCount: number, baseRetryMs: number): number {</span></span>
 <span class="cstat-no" title="statement not covered" >  const exponent = Math.max(attemptCount - 1, 0);</span>
-<span class="cstat-no" title="statement not covered" >  return Math.min(baseRetryMs * (2 ** exponent), MAX_RETRY_DELAY_MS);</span>
+<span class="cstat-no" title="statement not covered" >  return Math.min(baseRetryMs * 2 ** exponent, MAX_RETRY_DELAY_MS);</span>
 <span class="cstat-no" title="statement not covered" >}</span>
 &nbsp;
 async function getDeliveryOperation(
@@ -665,7 +671,9 @@ export async function markDeliveryAttemptFailed(
   const exhausted = attemptCount &gt;= maxAttempts;
   const nextRetryAt = exhausted
     ? <span class="branch-0 cbranch-no" title="branch not covered" >null</span>
-<span class="cstat-no" title="statement not covered" >    : new Date(nowMs + computeRetryDelayMs(attemptCount, options?.baseRetryMs ?? DEFAULT_RETRY_BASE_MS)).toISOString();</span>
+<span class="cstat-no" title="statement not covered" >    : new Date(</span>
+<span class="cstat-no" title="statement not covered" >        nowMs + computeRetryDelayMs(attemptCount, options?.baseRetryMs ?? DEFAULT_RETRY_BASE_MS),</span>
+<span class="cstat-no" title="statement not covered" >      ).toISOString();</span>
 &nbsp;
   await db
     .prepare(
@@ -705,16 +713,17 @@ export async function markDeliveryAttemptFailed(
     body: lastError,
     channel: 'dashboard',
     lineAccountId: input.<span class="branch-0 cbranch-no" title="branch not covered" >lineAccountId ?? null,</span>
-    metadata: normalizeMetadata(
-      {
-        idempotencyKey: input.idempotencyKey,
-        sourceType: input.sourceType,
-        sourceId: input.sourceId,
-        friendId: input.<span class="branch-0 cbranch-no" title="branch not covered" >friendId ?? null,</span>
-        attempts: attemptCount,
-      },
-      input.error,
-<span class="branch-0 cbranch-no" title="branch not covered" >    ) ?? undefined,</span>
+    metadata:
+      normalizeMetadata(
+        {
+          idempotencyKey: input.idempotencyKey,
+          sourceType: input.sourceType,
+          sourceId: input.sourceId,
+          friendId: input.<span class="branch-0 cbranch-no" title="branch not covered" >friendId ?? null,</span>
+          attempts: attemptCount,
+        },
+        input.error,
+<span class="branch-0 cbranch-no" title="branch not covered" >      ) ?? undefined,</span>
   });
 }
 &nbsp;</pre></td></tr></table></pre>
@@ -724,7 +733,7 @@ export async function markDeliveryAttemptFailed(
             <div class='footer quiet pad2 space-top1 center small'>
                 Code coverage generated by
                 <a href="https://istanbul.js.org/" target="_blank" rel="noopener noreferrer">istanbul</a>
-                at 2026-03-28T20:53:09.446Z
+                at 2026-03-29T03:52:36.817Z
             </div>
         <script src="../prettify.js"></script>
         <script>

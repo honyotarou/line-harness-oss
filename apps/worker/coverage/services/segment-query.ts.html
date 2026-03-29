@@ -23,9 +23,9 @@
         <div class='clearfix'>
             
             <div class='fl pad1y space-right2'>
-                <span class="strong">88.75% </span>
+                <span class="strong">88.88% </span>
                 <span class="quiet">Statements</span>
-                <span class='fraction'>71/80</span>
+                <span class='fraction'>72/81</span>
             </div>
         
             
@@ -44,9 +44,9 @@
         
             
             <div class='fl pad1y space-right2'>
-                <span class="strong">88.75% </span>
+                <span class="strong">88.88% </span>
                 <span class="quiet">Lines</span>
-                <span class='fraction'>71/80</span>
+                <span class='fraction'>72/81</span>
             </div>
         
             
@@ -162,7 +162,22 @@
 <a name='L97'></a><a href='#L97'>97</a>
 <a name='L98'></a><a href='#L98'>98</a>
 <a name='L99'></a><a href='#L99'>99</a>
-<a name='L100'></a><a href='#L100'>100</a></td><td class="line-coverage quiet"><span class="cline-any cline-neutral">&nbsp;</span>
+<a name='L100'></a><a href='#L100'>100</a>
+<a name='L101'></a><a href='#L101'>101</a>
+<a name='L102'></a><a href='#L102'>102</a>
+<a name='L103'></a><a href='#L103'>103</a>
+<a name='L104'></a><a href='#L104'>104</a>
+<a name='L105'></a><a href='#L105'>105</a>
+<a name='L106'></a><a href='#L106'>106</a>
+<a name='L107'></a><a href='#L107'>107</a>
+<a name='L108'></a><a href='#L108'>108</a>
+<a name='L109'></a><a href='#L109'>109</a></td><td class="line-coverage quiet"><span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
@@ -173,6 +188,9 @@
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">15x</span>
 <span class="cline-any cline-yes">15x</span>
 <span class="cline-any cline-yes">15x</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
@@ -262,41 +280,50 @@
 <span class="cline-any cline-yes">15x</span>
 <span class="cline-any cline-yes">15x</span>
 <span class="cline-any cline-neutral">&nbsp;</span></td><td class="text"><pre class="prettyprint lang-js">export interface SegmentRule {
-  type: 'tag_exists' | 'tag_not_exists' | 'metadata_equals' | 'metadata_not_equals' | 'ref_code' | 'is_following'
-  value: string | boolean | { key: string; value: string }
+  type:
+    | 'tag_exists'
+    | 'tag_not_exists'
+    | 'metadata_equals'
+    | 'metadata_not_equals'
+    | 'ref_code'
+    | 'is_following';
+  value: string | boolean | { key: string; value: string };
 }
 &nbsp;
 export interface SegmentCondition {
-  operator: 'AND' | 'OR'
-  rules: SegmentRule[]
+  operator: 'AND' | 'OR';
+  rules: SegmentRule[];
 }
 &nbsp;
-export function buildSegmentQuery(condition: SegmentCondition): { sql: string; bindings: unknown[] } {
-  const bindings: unknown[] = []
-  const clauses: string[] = []
+export function buildSegmentQuery(condition: SegmentCondition): {
+  sql: string;
+  bindings: unknown[];
+} {
+  const bindings: unknown[] = [];
+  const clauses: string[] = [];
 &nbsp;
   for (const rule of condition.rules) {
     switch (rule.type) {
       case 'tag_exists': {
         if (typeof rule.value !== 'string') {
-          throw new Error('tag_exists rule requires a string tag ID value')
+          throw new Error('tag_exists rule requires a string tag ID value');
         }
         clauses.push(
           `EXISTS (SELECT 1 FROM friend_tags ft WHERE ft.friend_id = f.id AND ft.tag_id = ?)`,
-        )
-        bindings.push(rule.value)
-        break
+        );
+        bindings.push(rule.value);
+        break;
       }
 &nbsp;
       case 'tag_not_exists': {
         if (typeof rule.value !== 'string') <span class="branch-0 cbranch-no" title="branch not covered" >{</span>
-<span class="cstat-no" title="statement not covered" >          throw new Error('tag_not_exists rule requires a string tag ID value')</span>
+<span class="cstat-no" title="statement not covered" >          throw new Error('tag_not_exists rule requires a string tag ID value');</span>
 <span class="cstat-no" title="statement not covered" >        }</span>
         clauses.push(
           `NOT EXISTS (SELECT 1 FROM friend_tags ft WHERE ft.friend_id = f.id AND ft.tag_id = ?)`,
-        )
-        bindings.push(rule.value)
-        break
+        );
+        bindings.push(rule.value);
+        break;
       }
 &nbsp;
       case 'metadata_equals': {
@@ -306,12 +333,12 @@ export function buildSegmentQuery(condition: SegmentCondition): { sql: string; b
           typeof (rule.value as { key: string; value: string }).key !== 'string' ||
           typeof (rule.value as { key: string; value: string }).value !== 'string'
         ) {
-          throw new Error('metadata_equals rule requires { key: string; value: string }')
+          throw new Error('metadata_equals rule requires { key: string; value: string }');
         }
-        const mv = rule.value as { key: string; value: string }
-        clauses.push(`json_extract(f.metadata, ?) = ?`)
-        bindings.push(`$.${mv.key}`, mv.value)
-        break
+        const mv = rule.value as { key: string; value: string };
+        clauses.push(`json_extract(f.metadata, ?) = ?`);
+        bindings.push(`$.${mv.key}`, mv.value);
+        break;
       }
 &nbsp;
       case 'metadata_not_equals': {
@@ -321,44 +348,44 @@ export function buildSegmentQuery(condition: SegmentCondition): { sql: string; b
           typeof (rule.value as { key: string; value: string }).key !== 'string' ||
           typeof (rule.value as { key: string; value: string }).value !== 'string'
         ) <span class="branch-0 cbranch-no" title="branch not covered" >{</span>
-<span class="cstat-no" title="statement not covered" >          throw new Error('metadata_not_equals rule requires { key: string; value: string }')</span>
+<span class="cstat-no" title="statement not covered" >          throw new Error('metadata_not_equals rule requires { key: string; value: string }');</span>
 <span class="cstat-no" title="statement not covered" >        }</span>
-        const mv = rule.value as { key: string; value: string }
-        clauses.push(`(json_extract(f.metadata, ?) IS NULL OR json_extract(f.metadata, ?) != ?)`)
-        bindings.push(`$.${mv.key}`, `$.${mv.key}`, mv.value)
-        break
+        const mv = rule.value as { key: string; value: string };
+        clauses.push(`(json_extract(f.metadata, ?) IS NULL OR json_extract(f.metadata, ?) != ?)`);
+        bindings.push(`$.${mv.key}`, `$.${mv.key}`, mv.value);
+        break;
       }
 &nbsp;
       case 'ref_code': {
         if (typeof rule.value !== 'string') <span class="branch-0 cbranch-no" title="branch not covered" >{</span>
-<span class="cstat-no" title="statement not covered" >          throw new Error('ref_code rule requires a string value')</span>
+<span class="cstat-no" title="statement not covered" >          throw new Error('ref_code rule requires a string value');</span>
 <span class="cstat-no" title="statement not covered" >        }</span>
-        clauses.push(`f.ref_code = ?`)
-        bindings.push(rule.value)
-        break
+        clauses.push(`f.ref_code = ?`);
+        bindings.push(rule.value);
+        break;
       }
 &nbsp;
       case 'is_following': {
         if (typeof rule.value !== 'boolean') {
-          throw new Error('is_following rule requires a boolean value')
+          throw new Error('is_following rule requires a boolean value');
         }
-        clauses.push(`f.is_following = ?`)
-        bindings.push(rule.value ? <span class="branch-0 cbranch-no" title="branch not covered" >1 : 0)</span>
-        break
+        clauses.push(`f.is_following = ?`);
+        bindings.push(rule.value ? <span class="branch-0 cbranch-no" title="branch not covered" >1 : 0)</span>;
+        break;
       }
 &nbsp;
 <span class="branch-0 cbranch-no" title="branch not covered" >      default: {</span>
-<span class="cstat-no" title="statement not covered" >        const exhaustive: never = rule.type</span>
-<span class="cstat-no" title="statement not covered" >        throw new Error(`Unknown segment rule type: ${exhaustive}`)</span>
+<span class="cstat-no" title="statement not covered" >        const exhaustive: never = rule.type;</span>
+<span class="cstat-no" title="statement not covered" >        throw new Error(`Unknown segment rule type: ${exhaustive}`);</span>
 <span class="cstat-no" title="statement not covered" >      }</span>
     }
   }
 &nbsp;
-  const separator = condition.operator === 'AND' ? ' AND ' : ' OR '
-  const where = clauses.length &gt; 0 ? clauses.join(separator) : '1=1'
-  const sql = `SELECT f.id, f.line_user_id FROM friends f WHERE ${where}`
+  const separator = condition.operator === 'AND' ? ' AND ' : ' OR ';
+  const where = clauses.length &gt; 0 ? clauses.join(separator) : '1=1';
+  const sql = `SELECT f.id, f.line_user_id FROM friends f WHERE ${where}`;
 &nbsp;
-  return { sql, bindings }
+  return { sql, bindings };
 }
 &nbsp;</pre></td></tr></table></pre>
 
@@ -367,7 +394,7 @@ export function buildSegmentQuery(condition: SegmentCondition): { sql: string; b
             <div class='footer quiet pad2 space-top1 center small'>
                 Code coverage generated by
                 <a href="https://istanbul.js.org/" target="_blank" rel="noopener noreferrer">istanbul</a>
-                at 2026-03-28T20:53:09.446Z
+                at 2026-03-29T03:52:36.817Z
             </div>
         <script src="../prettify.js"></script>
         <script>

@@ -23,9 +23,9 @@
         <div class='clearfix'>
             
             <div class='fl pad1y space-right2'>
-                <span class="strong">39.68% </span>
+                <span class="strong">43.41% </span>
                 <span class="quiet">Statements</span>
-                <span class='fraction'>50/126</span>
+                <span class='fraction'>56/129</span>
             </div>
         
             
@@ -44,9 +44,9 @@
         
             
             <div class='fl pad1y space-right2'>
-                <span class="strong">39.68% </span>
+                <span class="strong">43.41% </span>
                 <span class="quiet">Lines</span>
-                <span class='fraction'>50/126</span>
+                <span class='fraction'>56/129</span>
             </div>
         
             
@@ -233,7 +233,10 @@
 <a name='L168'></a><a href='#L168'>168</a>
 <a name='L169'></a><a href='#L169'>169</a>
 <a name='L170'></a><a href='#L170'>170</a>
-<a name='L171'></a><a href='#L171'>171</a></td><td class="line-coverage quiet"><span class="cline-any cline-yes">1x</span>
+<a name='L171'></a><a href='#L171'>171</a>
+<a name='L172'></a><a href='#L172'>172</a>
+<a name='L173'></a><a href='#L173'>173</a>
+<a name='L174'></a><a href='#L174'>174</a></td><td class="line-coverage quiet"><span class="cline-any cline-yes">1x</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
@@ -294,6 +297,9 @@
 <span class="cline-any cline-yes">1x</span>
 <span class="cline-any cline-yes">1x</span>
 <span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-yes">1x</span>
 <span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
@@ -326,9 +332,6 @@
 <span class="cline-any cline-yes">1x</span>
 <span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-yes">1x</span>
 <span class="cline-any cline-yes">1x</span>
@@ -338,6 +341,9 @@
 <span class="cline-any cline-yes">1x</span>
 <span class="cline-any cline-yes">1x</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-yes">1x</span>
 <span class="cline-any cline-yes">1x</span>
 <span class="cline-any cline-yes">1x</span>
 <span class="cline-any cline-yes">1x</span>
@@ -453,16 +459,19 @@ conversions.post('/api/conversions/points', async (c) =&gt; {
 <span class="cstat-no" title="statement not covered" >    }</span>
 &nbsp;
     const point = await createConversionPoint(c.env.DB, body);
-    return c.json({
-      success: true,
-      data: {
-        id: point.id,
-        name: point.name,
-        eventType: point.event_type,
-        value: point.value,
-        createdAt: point.created_at,
+    return c.json(
+      {
+        success: true,
+        data: {
+          id: point.id,
+          name: point.name,
+          eventType: point.event_type,
+          value: point.value,
+          createdAt: point.created_at,
+        },
       },
-    }, 201);
+      201,
+    );
 <span class="branch-0 cbranch-no" title="branch not covered" >  } catch (err) {</span>
 <span class="cstat-no" title="statement not covered" >    console.error('POST /api/conversions/points error:', err);</span>
 <span class="cstat-no" title="statement not covered" >    return c.json({ success: false, error: 'Internal server error' }, 500);</span>
@@ -494,10 +503,7 @@ conversions.post('/api/conversions/track', async (c) =&gt; {
     }&gt;();
 &nbsp;
     if (!body.conversionPointId || !body.friendId) <span class="branch-0 cbranch-no" title="branch not covered" >{</span>
-<span class="cstat-no" title="statement not covered" >      return c.json(</span>
-<span class="cstat-no" title="statement not covered" >        { success: false, error: 'conversionPointId and friendId are required' },</span>
-<span class="cstat-no" title="statement not covered" >        400,</span>
-<span class="cstat-no" title="statement not covered" >      );</span>
+<span class="cstat-no" title="statement not covered" >      return c.json({ success: false, error: 'conversionPointId and friendId are required' }, 400);</span>
 <span class="cstat-no" title="statement not covered" >    }</span>
 &nbsp;
     const event = await trackConversion(c.env.DB, {
@@ -508,18 +514,21 @@ conversions.post('/api/conversions/track', async (c) =&gt; {
       metadata: body.metadata ? JSON.stringify(body.metadata<span class="branch-0 cbranch-no" title="branch not covered" >) : null,</span>
     });
 &nbsp;
-    return c.json({
-      success: true,
-      data: {
-        id: event.id,
-        conversionPointId: event.conversion_point_id,
-        friendId: event.friend_id,
-        userId: event.user_id,
-        affiliateCode: event.affiliate_code,
-        metadata: event.metadata,
-        createdAt: event.created_at,
+    return c.json(
+      {
+        success: true,
+        data: {
+          id: event.id,
+          conversionPointId: event.conversion_point_id,
+          friendId: event.friend_id,
+          userId: event.user_id,
+          affiliateCode: event.affiliate_code,
+          metadata: event.metadata,
+          createdAt: event.created_at,
+        },
       },
-    }, 201);
+      201,
+    );
 <span class="branch-0 cbranch-no" title="branch not covered" >  } catch (err) {</span>
 <span class="cstat-no" title="statement not covered" >    console.error('POST /api/conversions/track error:', err);</span>
 <span class="cstat-no" title="statement not covered" >    return c.json({ success: false, error: 'Internal server error' }, 500);</span>
@@ -580,7 +589,7 @@ export { conversions };
             <div class='footer quiet pad2 space-top1 center small'>
                 Code coverage generated by
                 <a href="https://istanbul.js.org/" target="_blank" rel="noopener noreferrer">istanbul</a>
-                at 2026-03-28T20:53:09.446Z
+                at 2026-03-29T03:52:36.817Z
             </div>
         <script src="../prettify.js"></script>
         <script>
