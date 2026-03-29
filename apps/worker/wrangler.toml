@@ -14,7 +14,7 @@ WEB_URL = "http://127.0.0.1:3001"
 [[d1_databases]]
 binding = "DB"
 database_name = "line-crm"
-database_id = "YOUR_D1_DATABASE_ID"
+database_id = "910ee0b1-677c-4b55-9dee-d2cac28301f7"
 
 [triggers]
 crons = ["*/5 * * * *"]

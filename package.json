@@ -17,15 +17,15 @@
     "harness": "bash scripts/harness-check.sh",
     "harness:ci": "bash scripts/harness-ci-parity.sh",
     "harness:full": "bash scripts/harness-full.sh",
-    "db:migrate:worker-local": "pnpm --filter worker exec wrangler d1 execute line-crm --local --file=../../packages/db/schema.sql",
+    "db:migrate:worker-local": "pnpm --filter worker exec bash scripts/wrangler.sh d1 execute line-crm --local --file=../../packages/db/schema.sql",
     "db:pre-010-check": "bash scripts/d1-pre-010-check.sh local",
     "db:pre-010-check:remote": "bash scripts/d1-pre-010-check.sh remote",
     "db:apply-010:local": "bash scripts/d1-apply-010.sh local",
     "smoke:staging": "bash scripts/liff-staging-smoke.sh",
-    "deploy:worker": "pnpm --filter worker deploy",
+    "deploy:worker": "pnpm --filter worker run deploy",
     "deploy:web": "pnpm --filter web build",
-    "db:migrate": "wrangler d1 execute line-crm --file=packages/db/schema.sql",
-    "db:migrate:local": "wrangler d1 execute line-crm --file=packages/db/schema.sql --local"
+    "db:migrate": "pnpm --filter worker exec bash scripts/wrangler.sh d1 execute line-crm --remote --file=../../packages/db/schema.sql",
+    "db:migrate:local": "pnpm --filter worker exec bash scripts/wrangler.sh d1 execute line-crm --local --file=../../packages/db/schema.sql"
   },
   "packageManager": "pnpm@9.15.4",
   "engines": {

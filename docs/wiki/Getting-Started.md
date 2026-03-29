@@ -211,6 +211,35 @@ Vercel ダッシュボードからの場合:
 4. 環境変数を設定（`NEXT_PUBLIC_API_URL` のみ）
 5. デプロイ
 
+### LIFF アプリ（Vercel）
+
+LINE Developers で LIFF ID を発行したあと、**フロントのビルドに埋め込む**ため Vercel 側を更新し、**再デプロイ**が必要です（Vite はビルド時に `VITE_*` を固定します）。
+
+1. **Vercel** → 該当プロジェクト → **Settings → Environment Variables** で次を設定（Production / Preview どちらに入れるかは運用に合わせる）:
+
+   | 変数名 | 例 | 説明 |
+   |--------|-----|------|
+   | `VITE_LIFF_ID` | `1234567890-abcdef` | コンソールに表示される LIFF ID（`https://liff.line.me/` 以降の文字列） |
+   | `VITE_API_URL` | `https://line-crm-worker.xxx.workers.dev` | デプロイ済み Workers のベース URL（末尾スラッシュなし） |
+   | `VITE_BOT_BASIC_ID` | `@abc1234` | Messaging API の Bot basic ID（友だち追加ボタン用。Basic settings または LIFF 用ドキュメント参照） |
+
+2. **Build & Development Settings**（モノレポの場合）:
+   - Root Directory をリポジトリルートにするなら **Install Command** 例: `pnpm install`、**Build Command** 例: `pnpm --filter liff build`、**Output Directory** 例: `apps/liff/dist`
+   - Root を `apps/liff` のみにしている場合は **Framework Preset: Vite**、**Build Command** は `pnpm run build` または `npm run build`（`tsc && vite build` が走ること）
+
+3. 環境変数を保存したら **Deployments → 該当デプロイ → Redeploy**（または空コミットで再ビルド）。
+
+4. **LINE Developers** → LINE Login チャネル → LIFF → 該当アプリの **エンドポイント URL** を、Vercel の本番 URL（`https://xxxx.vercel.app` など）に更新。
+
+5. **Workers** のシークレットを LIFF と一致させる:
+
+   ```bash
+   npx wrangler secret put LIFF_URL
+   # 値: https://liff.line.me/{LIFF_ID}  （{LIFF_ID} は VITE_LIFF_ID と同じ）
+   ```
+
+   CORS では `LIFF_URL` のオリジン（`https://liff.line.me`）が許可リストに入ります。プレビュー用の `*.vercel.app` から API を叩いて 403 になる場合は、Workers の `ALLOWED_ORIGINS` にそのオリジンをカンマ区切りで追加してください。
+
 ## 8. 動作確認
 
 ### 8.1 Webhook テスト

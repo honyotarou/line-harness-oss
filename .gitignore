@@ -10,6 +10,7 @@ dist/
 .env.production
 .env.staging
 apps/worker/.dev.vars
+apps/worker/wrangler.local.toml
 apps/web/out/
 apps/web/coverage/
 apps/worker/coverage/
