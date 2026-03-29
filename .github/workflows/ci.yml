@@ -29,10 +29,20 @@ jobs:
       - name: Biome format check
         run: pnpm format:check
 
+      - name: LIFF typecheck
+        run: pnpm --filter liff typecheck
+
+      - name: Build workspace libs (Next transpilePackages)
+        run: pnpm build:libs
+
+      - name: Web production build (next build)
+        run: pnpm --filter web build
+
       - name: Unit tests + coverage (worker, web) and SDK tests
         run: |
           pnpm --filter worker test:coverage
           pnpm --filter web test:coverage
+          pnpm --filter liff test
           pnpm --filter @line-harness/sdk test
 
   e2e:

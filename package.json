@@ -8,7 +8,7 @@
     "dev:web": "pnpm --filter web dev",
     "build": "pnpm --workspace-concurrency=1 -r build",
     "build:libs": "pnpm --filter @line-crm/shared --filter @line-crm/line-sdk build",
-    "test": "pnpm --filter worker test && pnpm --filter web test && pnpm --filter @line-harness/sdk test",
+    "test": "pnpm --filter worker test && pnpm --filter web test && pnpm --filter @line-harness/sdk test && pnpm --filter liff test",
     "test:coverage": "pnpm --filter worker test:coverage && pnpm --filter web test:coverage",
     "test:bench": "pnpm --filter worker test:bench",
     "test:e2e": "playwright test",

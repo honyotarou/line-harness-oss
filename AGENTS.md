@@ -4,9 +4,8 @@
 
 ## 必読（オンデマンド）
 
-- **開発ハーネス（最優先）**: [`.cursor/skills/line-harness-harness/SKILL.md`](.cursor/skills/line-harness-harness/SKILL.md)
-- **テスト駆動開発（TDD）**: [`.cursor/skills/line/SKILL.md`](.cursor/skills/line/SKILL.md)（`/line` / `/tdd`）
-- **意思決定の履歴**: [`docs/adr/`](docs/adr/)（ハーネス方針: [`0002-harness-engineering.md`](docs/adr/0002-harness-engineering.md)）
+- **LINE 統合スキル（デザイン・壁打ち・TDD・ハーネス・デプロイ）**: [`.cursor/skills/line/SKILL.md`](.cursor/skills/line/SKILL.md)（**`/line`** — GAS 型の番号メニュー；Pinterest ムードボードは Step **0**、詳細は `steps-design-0-1.md` ほか `steps-*.md`）
+- **意思決定の履歴**: [`docs/adr/`](docs/adr/)（テスト層: [`0001`](docs/adr/0001-testing-and-harness-layers.md)、ハーネス方針: [`0002`](docs/adr/0002-harness-engineering.md)）
 
 ## よく使うコマンド（ルート）
 
@@ -14,7 +13,7 @@
 |------|-----------|
 | クイック検証（Biome + 型 + ユニット） | `pnpm harness` |
 | コード整形（Biome） | `pnpm format`（`pnpm format:check` で検証のみ） |
-| CI `unit` ジョブ相当（カバレッジ + SDK） | `pnpm harness:ci` |
+| CI `unit` ジョブ相当（LIFF 型・`build:libs`・`next build`・カバレッジ + SDK） | `pnpm harness:ci` |
 | 広い完了ゲート（harness + E2E + API 統合） | `pnpm harness:full` |
 | ユニット（CI と同系） | `pnpm test` |
 | カバレッジ | `pnpm test:coverage` |

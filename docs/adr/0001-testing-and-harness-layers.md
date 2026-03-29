@@ -9,12 +9,12 @@ The repo ships a Cloudflare Worker (API + LIFF), a Next.js admin app, and shared
 
 ## Decision
 
-1. **Deterministic gates** for routine changes: worker `tsc --noEmit` and `pnpm test` (see `scripts/harness-check.sh` / `pnpm harness`).
+1. **Deterministic gates** for routine changes: worker `tsc --noEmit`, **LIFF** `tsc --noEmit` (`pnpm --filter liff typecheck`), and `pnpm test` (see `scripts/harness-check.sh` / `pnpm harness`). **Next.js admin** の本番相当検証は `pnpm harness:ci` と CI `unit` ジョブで **`pnpm build:libs` の後に `next build`（web）** を実行する。
 2. **Playwright tests** under `tests/e2e/` validate the admin UI against **mocked** Worker HTTP (`mock-web-api.ts`). They are **UI E2E with a fake API**, not full-stack production E2E.
 3. **Worker route correctness** (especially LIFF / webhooks) is primarily enforced by **Vitest** in `apps/worker/tests/`.
 4. **Hurl smoke tests** (`pnpm test:api`, `tests/hurl/*.hurl`) run against **`wrangler dev --local`** to assert real HTTP behavior (OpenAPI doc, auth middleware, public HTML). This complements Vitest and is **not** a substitute for staging tests with production-like secrets.
 5. **Lefthook** (`lefthook.yml`) may run `pnpm harness` on pre-commit for faster local feedback; CI remains the merge gate.
-6. Agent-facing **harness documentation** lives in `.cursor/skills/line-harness-harness/SKILL.md` and short pointers in `AGENTS.md`, not duplicated prose specs.
+6. Agent-facing **harness + TDD + deploy workflow** lives in `.cursor/skills/line/SKILL.md` (and `steps-harness.md` / `steps-deploy.md` / TDD steps), with short pointers in `AGENTS.md`, not duplicated prose specs.
 7. Broader **Harness Engineering** policy (CI 同等コマンド、広い完了ゲート、Claude Code Hooks) は [ADR 0002](0002-harness-engineering.md) に委ねる。
 
 ## Consequences

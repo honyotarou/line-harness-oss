@@ -8,6 +8,15 @@ cd "$ROOT"
 echo "== harness:ci (biome format) =="
 pnpm exec biome format .
 
+echo "== harness:ci (liff typecheck) =="
+pnpm --filter liff typecheck
+
+echo "== harness:ci (workspace libs dist for Next bundle) =="
+pnpm build:libs
+
+echo "== harness:ci (web next build) =="
+pnpm --filter web build
+
 echo "== harness:ci (worker coverage) =="
 pnpm --filter worker test:coverage
 

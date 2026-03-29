@@ -1,6 +1,6 @@
-# TDD Step 4〜8 + check — ゲート・E2E・API・仕上げ
+# TDD Step 7〜11 + check — ゲート・E2E・API・仕上げ
 
-## Step 4 — 層別ゲート
+## Step 7 — 層別ゲート
 
 **目的**: ローカルで決定論的に「完了」を証明する。
 
@@ -16,7 +16,7 @@
 
 ---
 
-## Step 5 — UI 回帰 E2E（Playwright）
+## Step 8 — UI 回帰 E2E（Playwright）
 
 **目的**: Next.js 管理画面の回帰を防ぐ。**Worker はモック**（`tests/e2e` のパターン）。
 
@@ -26,11 +26,11 @@ pnpm test:e2e
 
 - 変更が `apps/web` の画面・ナビ・フォームに及ぶとき必須。
 - 時間短縮: `pnpm exec playwright test tests/e2e/特定.spec.ts`（必要なら）
-- **注意**: この層だけでは **実 Worker・LIFF・Webhook** は検証されない。説明で混同しない（ハーネススキル参照）。
+- **注意**: この層だけでは **実 Worker・LIFF・Webhook** は検証されない。説明で混同しない（[steps-harness.md](steps-harness.md) 参照）。
 
 ---
 
-## Step 6 — API 統合（実 Worker ローカル + Hurl）
+## Step 9 — API 統合（実 Worker ローカル + Hurl）
 
 **目的**: 本物の Hono ハンドラとミドルウェアが HTTP で期待どおり動くことを確認する。
 
@@ -45,7 +45,7 @@ pnpm test:api
 
 ---
 
-## Step 7 — カバレッジ・回帰
+## Step 10 — カバレッジ・回帰
 
 **目的**: ホットスポットにテストを足し、無防備な変更を減らす。
 
@@ -53,12 +53,12 @@ pnpm test:api
 pnpm test:coverage
 ```
 
-- カバレッジが低い **分岐の多い service / 認可**に、Step 0〜3 でテストを追加する。
+- カバレッジが低い **分岐の多い service / 認可**に、Step 3〜6 でテストを追加する。
 - **bench**: `pnpm test:bench`（Worker のパフォーマンス回帰；TDD の必須ではない）
 
 ---
 
-## Step 8 — 仕上げ
+## Step 11 — 仕上げ
 
 **目的**: コード以外の「真実」も更新する。
 

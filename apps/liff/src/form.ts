@@ -10,6 +10,9 @@
  * URL format: https://liff.line.me/{LIFF_ID}?page=form&id={FORM_ID}
  */
 
+import { getLiffApiBaseUrl } from './api-base.js';
+import { formatSubmitErrorMessage } from './submit-error-message.js';
+
 declare const liff: {
   init(config: { liffId: string }): Promise<void>;
   isLoggedIn(): boolean;
@@ -20,7 +23,7 @@ declare const liff: {
   closeWindow(): void;
 };
 
-const API_URL = import.meta.env?.VITE_API_URL || 'http://localhost:8787';
+const API_BASE = getLiffApiBaseUrl();
 const UUID_STORAGE_KEY = 'lh_uuid';
 
 interface FormField {
@@ -61,7 +64,7 @@ function escapeHtml(str: string): string {
 }
 
 function apiCall(path: string, options?: RequestInit): Promise<Response> {
-  return fetch(`${API_URL}${path}`, {
+  return fetch(`${API_BASE}${path}`, {
     ...options,
     headers: {
       'Content-Type': 'application/json',
@@ -117,7 +120,8 @@ function renderField(field: FormField): string {
             </label>`,
         )
         .join('');
-      inputHtml = `<div class="radio-group">${radios}</div>`;
+      const reqAttr = field.required ? ' aria-required="true"' : '';
+      inputHtml = `<div class="radio-group" role="radiogroup" aria-labelledby="lh-form-label-${escapeHtml(field.name)}"${reqAttr}>${radios}</div>`;
       break;
     }
 
@@ -131,7 +135,7 @@ function renderField(field: FormField): string {
             </label>`,
         )
         .join('');
-      inputHtml = `<div class="checkbox-group">${boxes}</div>`;
+      inputHtml = `<div class="checkbox-group" role="group" aria-labelledby="lh-form-label-${escapeHtml(field.name)}">${boxes}</div>`;
       break;
     }
 
@@ -145,9 +149,18 @@ function renderField(field: FormField): string {
       break;
   }
 
+  const labelFor =
+    field.type === 'radio' || field.type === 'checkbox'
+      ? ''
+      : ` for="field-${escapeHtml(field.name)}"`;
+  const labelId =
+    field.type === 'radio' || field.type === 'checkbox'
+      ? ` id="lh-form-label-${escapeHtml(field.name)}"`
+      : '';
+
   return `
     <div class="form-field">
-      <label class="form-label" for="field-${escapeHtml(field.name)}">
+      <label class="form-label"${labelId}${labelFor}>
         ${escapeHtml(field.label)}${requiredMark}
       </label>
       ${inputHtml}
@@ -193,7 +206,12 @@ function injectStyles(): void {
     .radio-label:has(input:checked), .checkbox-label:has(input:checked) {
       border-color: #06C755; background: #e8faf0;
     }
-    .radio-label input, .checkbox-label input { accent-color: #06C755; width: 18px; height: 18px; }
+    .radio-label input[type="radio"] {
+      accent-color: #06C755; width: 18px; height: 18px; border-radius: 50%; flex-shrink: 0;
+    }
+    .checkbox-label input[type="checkbox"] {
+      accent-color: #06C755; width: 18px; height: 18px; border-radius: 4px; flex-shrink: 0;
+    }
     .submit-btn {
       width: 100%; padding: 14px; border: none; border-radius: 8px;
       background: #06C755; color: #fff; font-size: 16px; font-weight: 700;
@@ -388,7 +406,7 @@ async function submitForm(): Promise<void> {
     const body: Record<string, unknown> = { data };
     const idToken = liff.getIDToken();
     if (idToken) body.idToken = idToken;
-    console.log('Submitting to:', `${API_URL}/api/forms/${state.formDef.id}/submit`);
+    console.log('Submitting to:', `${API_BASE}/api/forms/${state.formDef.id}/submit`);
 
     const res = await apiCall(`/api/forms/${state.formDef.id}/submit`, {
       method: 'POST',
@@ -420,7 +438,7 @@ async function submitForm(): Promise<void> {
     const errEl = document.createElement('p');
     errEl.className = 'form-error-msg';
     errEl.style.cssText = 'color:#e53e3e;font-size:14px;margin:8px 0;text-align:center;';
-    errEl.textContent = err instanceof Error ? err.message : '送信に失敗しました';
+    errEl.textContent = formatSubmitErrorMessage(err);
     const btn = document.getElementById('submitBtn');
     btn?.parentElement?.insertBefore(errEl, btn);
   }
