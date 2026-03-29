@@ -1,0 +1,22 @@
+# Copy to `.dev.vars` for local `wrangler dev` (never commit `.dev.vars`).
+# CI uses this file as-is for API integration tests.
+#
+# Cloudflare 側の認証情報はここには書きません。
+# - 手元の wrangler: `pnpm exec wrangler login`（資格情報はユーザーディレクトリに保存）
+# - D1 のバインド / database_id: 既定は `wrangler.toml`（プレースホルダ）。実 ID を Git に載せないなら
+#   `wrangler.local.toml.example` を `wrangler.local.toml` にコピーして編集（gitignore 済み）。`pnpm dev`/`deploy` が優先利用。
+# - CI デプロイ: リポジトリをプレースホルダのままにし、GitHub Secret `D1_DATABASE_ID` で注入（deploy-worker.yml）。
+# - GitHub Actions デプロイ: リポジトリの Secrets（CLOUDFLARE_API_TOKEN, CLOUDFLARE_ACCOUNT_ID）
+# Worker のコードが読むのは下記のキーだけです。
+
+API_KEY=local-dev-api-key-change-me
+# Optional; defaults to API_KEY. HMAC secret for LINE Login OAuth `state` (use a long random value in production).
+# LIFF_STATE_SECRET=
+LINE_CHANNEL_SECRET=dev-placeholder
+LINE_CHANNEL_ACCESS_TOKEN=dev-placeholder
+LIFF_URL=https://liff.line.me/dev-placeholder
+LINE_CHANNEL_ID=dev-placeholder
+LINE_LOGIN_CHANNEL_ID=dev-placeholder
+LINE_LOGIN_CHANNEL_SECRET=dev-placeholder
+# Required for POST /api/integrations/stripe/webhook (HMAC signing). Use a test value locally.
+STRIPE_WEBHOOK_SECRET=whsec_local_placeholder

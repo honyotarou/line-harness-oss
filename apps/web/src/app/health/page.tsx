@@ -1,52 +1,65 @@
-'use client'
+'use client';
 
-import { useState, useEffect, useCallback } from 'react'
-import Header from '@/components/layout/header'
-import { api } from '@/lib/api'
-import CcPromptButton from '@/components/cc-prompt-button'
+import { useState, useEffect, useCallback } from 'react';
+import Header from '@/components/layout/header';
+import { api } from '@/lib/api';
+import CcPromptButton from '@/components/cc-prompt-button';
 
 interface LineAccount {
-  id: string
-  channelId: string
-  name: string
-  isActive: boolean
-  createdAt: string
-  updatedAt: string
+  id: string;
+  channelId: string;
+  name: string;
+  isActive: boolean;
+  createdAt: string;
+  updatedAt: string;
 }
 
 interface AccountHealthLog {
-  id: string
-  lineAccountId: string
-  errorCode: number | null
-  errorCount: number
-  checkPeriod: string
-  riskLevel: 'normal' | 'warning' | 'danger'
-  createdAt: string
+  id: string;
+  lineAccountId: string;
+  errorCode: number | null;
+  errorCount: number;
+  checkPeriod: string;
+  riskLevel: 'normal' | 'warning' | 'danger';
+  createdAt: string;
 }
 
 interface AccountMigration {
-  id: string
-  fromAccountId: string
-  toAccountId: string
-  status: 'pending' | 'in_progress' | 'completed' | 'failed'
-  migratedCount: number
-  totalCount: number
-  createdAt: string
-  completedAt: string | null
+  id: string;
+  fromAccountId: string;
+  toAccountId: string;
+  status: 'pending' | 'in_progress' | 'completed' | 'failed';
+  migratedCount: number;
+  totalCount: number;
+  createdAt: string;
+  completedAt: string | null;
 }
 
 const riskConfig = {
-  normal: { label: '正常', color: 'bg-green-500', textColor: 'text-green-700', bgColor: 'bg-green-100' },
-  warning: { label: '警告', color: 'bg-yellow-500', textColor: 'text-yellow-700', bgColor: 'bg-yellow-100' },
+  normal: {
+    label: '正常',
+    color: 'bg-green-500',
+    textColor: 'text-green-700',
+    bgColor: 'bg-green-100',
+  },
+  warning: {
+    label: '警告',
+    color: 'bg-yellow-500',
+    textColor: 'text-yellow-700',
+    bgColor: 'bg-yellow-100',
+  },
   danger: { label: '危険', color: 'bg-red-500', textColor: 'text-red-700', bgColor: 'bg-red-100' },
-}
+};
 
-const statusConfig: Record<AccountMigration['status'], { label: string; textColor: string; bgColor: string }> = {
+const statusConfig: Record<
+  AccountMigration['status'],
+  { label: string; textColor: string; bgColor: string }
+> = {
   pending: { label: '待機中', textColor: 'text-gray-700', bgColor: 'bg-gray-100' },
   in_progress: { label: '移行中', textColor: 'text-blue-700', bgColor: 'bg-blue-100' },
   completed: { label: '完了', textColor: 'text-green-700', bgColor: 'bg-green-100' },
   failed: { label: '失敗', textColor: 'text-red-700', bgColor: 'bg-red-100' },
-}
+};
 
 const ccPrompts = [
   {
@@ -65,100 +78,104 @@ const ccPrompts = [
 3. 移行後の動作確認とフォローアップ手順
 手順を示してください。`,
   },
-]
+];
 
 export default function HealthPage() {
-  const [accounts, setAccounts] = useState<LineAccount[]>([])
-  const [healthLogs, setHealthLogs] = useState<Record<string, AccountHealthLog[]>>({})
-  const [latestRisk, setLatestRisk] = useState<Record<string, AccountHealthLog['riskLevel']>>({})
-  const [migrations, setMigrations] = useState<AccountMigration[]>([])
-  const [expandedId, setExpandedId] = useState<string | null>(null)
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState('')
-  const [migrateFrom, setMigrateFrom] = useState<string | null>(null)
-  const [migrateToId, setMigrateToId] = useState('')
-  const [migrating, setMigrating] = useState(false)
+  const [accounts, setAccounts] = useState<LineAccount[]>([]);
+  const [healthLogs, setHealthLogs] = useState<Record<string, AccountHealthLog[]>>({});
+  const [latestRisk, setLatestRisk] = useState<Record<string, AccountHealthLog['riskLevel']>>({});
+  const [migrations, setMigrations] = useState<AccountMigration[]>([]);
+  const [expandedId, setExpandedId] = useState<string | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
+  const [migrateFrom, setMigrateFrom] = useState<string | null>(null);
+  const [migrateToId, setMigrateToId] = useState('');
+  const [migrating, setMigrating] = useState(false);
 
   const loadAccounts = useCallback(async () => {
-    setLoading(true)
-    setError('')
+    setLoading(true);
+    setError('');
     try {
-      const res = await api.health.accounts()
+      const res = await api.health.accounts();
       if (res.success) {
-        const data = res.data as unknown as LineAccount[]
-        setAccounts(data)
+        const data = res.data as unknown as LineAccount[];
+        setAccounts(data);
         // Load health for each account
-        const risks: Record<string, AccountHealthLog['riskLevel']> = {}
+        const risks: Record<string, AccountHealthLog['riskLevel']> = {};
         for (const account of data) {
           try {
-            const healthRes = await api.health.getHealth(account.id)
+            const healthRes = await api.health.getHealth(account.id);
             if (healthRes.success) {
-              const payload = healthRes.data as unknown as { lineAccountId: string; riskLevel: string; logs: AccountHealthLog[] }
-              const logs = payload.logs ?? []
-              setHealthLogs((prev) => ({ ...prev, [account.id]: logs }))
+              const payload = healthRes.data as unknown as {
+                lineAccountId: string;
+                riskLevel: string;
+                logs: AccountHealthLog[];
+              };
+              const logs = payload.logs ?? [];
+              setHealthLogs((prev) => ({ ...prev, [account.id]: logs }));
               if (payload.riskLevel) {
-                risks[account.id] = payload.riskLevel as AccountHealthLog['riskLevel']
+                risks[account.id] = payload.riskLevel as AccountHealthLog['riskLevel'];
               } else if (logs.length > 0) {
-                risks[account.id] = logs[0].riskLevel
+                risks[account.id] = logs[0].riskLevel;
               } else {
-                risks[account.id] = 'normal'
+                risks[account.id] = 'normal';
               }
             }
           } catch {
-            risks[account.id] = 'normal'
+            risks[account.id] = 'normal';
           }
         }
-        setLatestRisk(risks)
+        setLatestRisk(risks);
       } else {
-        setError('アカウント情報の取得に失敗しました')
+        setError('アカウント情報の取得に失敗しました');
       }
     } catch {
-      setError('アカウント情報の読み込みに失敗しました。もう一度お試しください。')
+      setError('アカウント情報の読み込みに失敗しました。もう一度お試しください。');
     } finally {
-      setLoading(false)
+      setLoading(false);
     }
-  }, [])
+  }, []);
 
   const loadMigrations = useCallback(async () => {
     try {
-      const res = await api.health.migrations()
+      const res = await api.health.migrations();
       if (res.success) {
-        setMigrations(res.data as unknown as AccountMigration[])
+        setMigrations(res.data as unknown as AccountMigration[]);
       }
     } catch {
       // Non-blocking
     }
-  }, [])
+  }, []);
 
   useEffect(() => {
-    loadAccounts()
-    loadMigrations()
-  }, [loadAccounts, loadMigrations])
+    loadAccounts();
+    loadMigrations();
+  }, [loadAccounts, loadMigrations]);
 
   const handleExpand = (accountId: string) => {
-    setExpandedId(expandedId === accountId ? null : accountId)
-  }
+    setExpandedId(expandedId === accountId ? null : accountId);
+  };
 
   const handleMigrate = async (e: React.FormEvent) => {
-    e.preventDefault()
-    if (!migrateFrom || !migrateToId) return
-    setMigrating(true)
+    e.preventDefault();
+    if (!migrateFrom || !migrateToId) return;
+    setMigrating(true);
     try {
-      await api.health.migrate(migrateFrom, { toAccountId: migrateToId })
-      setMigrateFrom(null)
-      setMigrateToId('')
-      loadMigrations()
+      await api.health.migrate(migrateFrom, { toAccountId: migrateToId });
+      setMigrateFrom(null);
+      setMigrateToId('');
+      loadMigrations();
     } catch {
-      setError('移行リクエストに失敗しました')
+      setError('移行リクエストに失敗しました');
     } finally {
-      setMigrating(false)
+      setMigrating(false);
     }
-  }
+  };
 
   const getAccountName = (id: string): string => {
-    const account = accounts.find((a) => a.id === id)
-    return account?.name || id
-  }
+    const account = accounts.find((a) => a.id === id);
+    return account?.name || id;
+  };
 
   return (
     <div>
@@ -179,20 +196,25 @@ export default function HealthPage() {
       ) : accounts.length === 0 ? (
         <div className="bg-white rounded-lg border border-gray-200 p-8 text-center text-gray-400">
           <p className="mb-2">LINEアカウントが登録されていません</p>
-          <p className="text-xs text-gray-300">先にアカウント管理からLINEアカウントを登録してください</p>
+          <p className="text-xs text-gray-300">
+            先にアカウント管理からLINEアカウントを登録してください
+          </p>
         </div>
       ) : (
         <>
           {/* Account Health Cards */}
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 mb-8">
             {accounts.map((account) => {
-              const risk = latestRisk[account.id] || 'normal'
-              const config = riskConfig[risk]
-              const isExpanded = expandedId === account.id
-              const logs = healthLogs[account.id] || []
+              const risk = latestRisk[account.id] || 'normal';
+              const config = riskConfig[risk];
+              const isExpanded = expandedId === account.id;
+              const logs = healthLogs[account.id] || [];
 
               return (
-                <div key={account.id} className="bg-white rounded-lg border border-gray-200 overflow-hidden">
+                <div
+                  key={account.id}
+                  className="bg-white rounded-lg border border-gray-200 overflow-hidden"
+                >
                   <button
                     onClick={() => handleExpand(account.id)}
                     className="w-full p-4 text-left hover:bg-gray-50 transition-colors"
@@ -207,12 +229,18 @@ export default function HealthPage() {
                         </div>
                         <div>
                           <h3 className="text-sm font-bold text-gray-900">{account.name}</h3>
-                          <p className="text-xs text-gray-400 font-mono">Channel: {account.channelId}</p>
+                          <p className="text-xs text-gray-400 font-mono">
+                            Channel: {account.channelId}
+                          </p>
                         </div>
                       </div>
                       <div className="flex items-center gap-2">
-                        <span className={`inline-flex items-center gap-1.5 text-xs font-medium px-2.5 py-1 rounded-full ${config.bgColor} ${config.textColor}`}>
-                          <span className={`w-2 h-2 rounded-full ${config.color} ${risk === 'danger' ? 'animate-pulse' : ''}`} />
+                        <span
+                          className={`inline-flex items-center gap-1.5 text-xs font-medium px-2.5 py-1 rounded-full ${config.bgColor} ${config.textColor}`}
+                        >
+                          <span
+                            className={`w-2 h-2 rounded-full ${config.color} ${risk === 'danger' ? 'animate-pulse' : ''}`}
+                          />
                           {config.label}
                         </span>
                         <svg
@@ -221,7 +249,12 @@ export default function HealthPage() {
                           stroke="currentColor"
                           viewBox="0 0 24 24"
                         >
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                          <path
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            strokeWidth={2}
+                            d="M19 9l-7 7-7-7"
+                          />
                         </svg>
                       </div>
                     </div>
@@ -234,8 +267,8 @@ export default function HealthPage() {
                         <div className="mb-3">
                           <button
                             onClick={() => {
-                              setMigrateFrom(account.id)
-                              setMigrateToId('')
+                              setMigrateFrom(account.id);
+                              setMigrateToId('');
                             }}
                             className="px-3 py-1.5 rounded-lg text-white text-xs font-medium bg-red-500 hover:bg-red-600 transition-colors"
                           >
@@ -245,7 +278,9 @@ export default function HealthPage() {
                       )}
 
                       {logs.length === 0 ? (
-                        <p className="text-sm text-gray-400 text-center py-4">ヘルスログがありません</p>
+                        <p className="text-sm text-gray-400 text-center py-4">
+                          ヘルスログがありません
+                        </p>
                       ) : (
                         <div className="overflow-x-auto">
                           <table className="w-full text-sm">
@@ -260,7 +295,7 @@ export default function HealthPage() {
                             </thead>
                             <tbody>
                               {logs.map((log) => {
-                                const logConfig = riskConfig[log.riskLevel]
+                                const logConfig = riskConfig[log.riskLevel];
                                 return (
                                   <tr key={log.id} className="border-b border-gray-50">
                                     <td className="py-2 pr-3 font-mono text-gray-700">
@@ -269,8 +304,12 @@ export default function HealthPage() {
                                     <td className="py-2 pr-3 text-gray-700">{log.errorCount}</td>
                                     <td className="py-2 pr-3 text-gray-500">{log.checkPeriod}</td>
                                     <td className="py-2 pr-3">
-                                      <span className={`inline-flex items-center gap-1 text-xs font-medium px-2 py-0.5 rounded-full ${logConfig.bgColor} ${logConfig.textColor}`}>
-                                        <span className={`w-1.5 h-1.5 rounded-full ${logConfig.color} ${log.riskLevel === 'danger' ? 'animate-pulse' : ''}`} />
+                                      <span
+                                        className={`inline-flex items-center gap-1 text-xs font-medium px-2 py-0.5 rounded-full ${logConfig.bgColor} ${logConfig.textColor}`}
+                                      >
+                                        <span
+                                          className={`w-1.5 h-1.5 rounded-full ${logConfig.color} ${log.riskLevel === 'danger' ? 'animate-pulse' : ''}`}
+                                        />
                                         {logConfig.label}
                                       </span>
                                     </td>
@@ -278,7 +317,7 @@ export default function HealthPage() {
                                       {new Date(log.createdAt).toLocaleString('ja-JP')}
                                     </td>
                                   </tr>
-                                )
+                                );
                               })}
                             </tbody>
                           </table>
@@ -287,7 +326,7 @@ export default function HealthPage() {
                     </div>
                   )}
                 </div>
-              )
+              );
             })}
           </div>
 
@@ -299,7 +338,9 @@ export default function HealthPage() {
               </h2>
               <form onSubmit={handleMigrate}>
                 <div className="mb-4">
-                  <label className="block text-sm font-medium text-gray-700 mb-1">移行先アカウント</label>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    移行先アカウント
+                  </label>
                   <select
                     value={migrateToId}
                     onChange={(e) => setMigrateToId(e.target.value)}
@@ -328,8 +369,8 @@ export default function HealthPage() {
                   <button
                     type="button"
                     onClick={() => {
-                      setMigrateFrom(null)
-                      setMigrateToId('')
+                      setMigrateFrom(null);
+                      setMigrateToId('');
                     }}
                     className="px-4 py-2 rounded-lg text-sm font-medium border border-gray-300 text-gray-700 hover:bg-gray-50 transition-colors"
                   >
@@ -363,12 +404,16 @@ export default function HealthPage() {
                     </thead>
                     <tbody>
                       {migrations.map((migration) => {
-                        const status = statusConfig[migration.status]
-                        const progress = migration.totalCount > 0
-                          ? Math.round((migration.migratedCount / migration.totalCount) * 100)
-                          : 0
+                        const status = statusConfig[migration.status];
+                        const progress =
+                          migration.totalCount > 0
+                            ? Math.round((migration.migratedCount / migration.totalCount) * 100)
+                            : 0;
                         return (
-                          <tr key={migration.id} className="border-b border-gray-100 hover:bg-gray-50">
+                          <tr
+                            key={migration.id}
+                            className="border-b border-gray-100 hover:bg-gray-50"
+                          >
                             <td className="px-4 py-3 text-gray-900 font-medium">
                               {getAccountName(migration.fromAccountId)}
                             </td>
@@ -376,7 +421,9 @@ export default function HealthPage() {
                               {getAccountName(migration.toAccountId)}
                             </td>
                             <td className="px-4 py-3">
-                              <span className={`inline-flex text-xs font-medium px-2.5 py-1 rounded-full ${status.bgColor} ${status.textColor}`}>
+                              <span
+                                className={`inline-flex text-xs font-medium px-2.5 py-1 rounded-full ${status.bgColor} ${status.textColor}`}
+                              >
                                 {status.label}
                               </span>
                             </td>
@@ -402,7 +449,7 @@ export default function HealthPage() {
                                 : '-'}
                             </td>
                           </tr>
-                        )
+                        );
                       })}
                     </tbody>
                   </table>
@@ -414,5 +461,5 @@ export default function HealthPage() {
       )}
       <CcPromptButton prompts={ccPrompts} />
     </div>
-  )
+  );
 }

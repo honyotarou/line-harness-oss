@@ -1,18 +1,18 @@
-'use client'
+'use client';
 
-import { useState } from 'react'
-import { api } from '@/lib/api'
-import Header from '@/components/layout/header'
-import CcPromptButton from '@/components/cc-prompt-button'
+import { useState } from 'react';
+import { api } from '@/lib/api';
+import Header from '@/components/layout/header';
+import CcPromptButton from '@/components/cc-prompt-button';
 
-type ActionStatus = 'idle' | 'confirming' | 'executing' | 'done' | 'error'
+type ActionStatus = 'idle' | 'confirming' | 'executing' | 'done' | 'error';
 
 interface EmergencyAction {
-  id: string
-  label: string
-  description: string
-  status: ActionStatus
-  errorMessage?: string
+  id: string;
+  label: string;
+  description: string;
+  status: ActionStatus;
+  errorMessage?: string;
 }
 
 const emergencyPrompts = [
@@ -32,7 +32,7 @@ const emergencyPrompts = [
 3. 移行先アカウントを選択して移行を実行
 各ステップの結果を報告してください。`,
   },
-]
+];
 
 export default function EmergencyPage() {
   const [actions, setActions] = useState<EmergencyAction[]>([
@@ -54,57 +54,58 @@ export default function EmergencyPage() {
       description: 'BAN検知時のアカウント移行ページへ移動します',
       status: 'idle',
     },
-  ])
+  ]);
 
   const updateAction = (id: string, updates: Partial<EmergencyAction>) => {
-    setActions((prev) =>
-      prev.map((a) => (a.id === id ? { ...a, ...updates } : a))
-    )
-  }
+    setActions((prev) => prev.map((a) => (a.id === id ? { ...a, ...updates } : a)));
+  };
 
   const handleAction = async (id: string) => {
-    const action = actions.find((a) => a.id === id)
-    if (!action) return
+    const action = actions.find((a) => a.id === id);
+    if (!action) return;
 
     if (action.status === 'idle' || action.status === 'done' || action.status === 'error') {
-      updateAction(id, { status: 'confirming', errorMessage: undefined })
-      return
+      updateAction(id, { status: 'confirming', errorMessage: undefined });
+      return;
     }
 
     if (action.status === 'confirming') {
-      updateAction(id, { status: 'executing' })
+      updateAction(id, { status: 'executing' });
 
       try {
         if (id === 'stop-broadcasts') {
-          const res = await api.broadcasts.list()
+          const res = await api.broadcasts.list();
           if (res.success) {
-            const scheduled = res.data.filter((b) => b.status === 'scheduled')
+            const scheduled = res.data.filter((b) => b.status === 'scheduled');
             await Promise.allSettled(
-              scheduled.map((b) => api.broadcasts.update(b.id, { scheduledAt: null }))
-            )
+              scheduled.map((b) => api.broadcasts.update(b.id, { scheduledAt: null })),
+            );
           }
         } else if (id === 'stop-scenarios') {
-          const res = await api.scenarios.list()
+          const res = await api.scenarios.list();
           if (res.success) {
-            const active = res.data.filter((s) => s.isActive)
+            const active = res.data.filter((s) => s.isActive);
             await Promise.allSettled(
-              active.map((s) => api.scenarios.update(s.id, { isActive: false }))
-            )
+              active.map((s) => api.scenarios.update(s.id, { isActive: false })),
+            );
           }
         } else if (id === 'switch-account') {
-          window.location.href = '/health'
-          return
+          window.location.href = '/health';
+          return;
         }
-        updateAction(id, { status: 'done' })
+        updateAction(id, { status: 'done' });
       } catch {
-        updateAction(id, { status: 'error', errorMessage: '実行に失敗しました。再度お試しください。' })
+        updateAction(id, {
+          status: 'error',
+          errorMessage: '実行に失敗しました。再度お試しください。',
+        });
       }
     }
-  }
+  };
 
   const handleCancel = (id: string) => {
-    updateAction(id, { status: 'idle', errorMessage: undefined })
-  }
+    updateAction(id, { status: 'idle', errorMessage: undefined });
+  };
 
   const getStatusBadge = (status: ActionStatus) => {
     switch (status) {
@@ -112,27 +113,32 @@ export default function EmergencyPage() {
         return (
           <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-700">
             <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M5 13l4 4L19 7"
+              />
             </svg>
             完了
           </span>
-        )
+        );
       case 'executing':
         return (
           <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-yellow-100 text-yellow-700">
             実行中...
           </span>
-        )
+        );
       case 'error':
         return (
           <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-700">
             エラー
           </span>
-        )
+        );
       default:
-        return null
+        return null;
     }
-  }
+  };
 
   return (
     <div>
@@ -141,9 +147,18 @@ export default function EmergencyPage() {
       {/* Warning banner */}
       <div className="mb-6 p-4 bg-red-50 border-2 border-red-300 rounded-lg">
         <div className="flex items-start gap-3">
-          <svg className="w-6 h-6 text-red-500 shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
-              d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L4.072 16.5c-.77.833.192 2.5 1.732 2.5z" />
+          <svg
+            className="w-6 h-6 text-red-500 shrink-0 mt-0.5"
+            fill="none"
+            stroke="currentColor"
+            viewBox="0 0 24 24"
+          >
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth={2}
+              d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L4.072 16.5c-.77.833.192 2.5 1.732 2.5z"
+            />
           </svg>
           <div>
             <p className="text-sm font-bold text-red-800">注意: この操作は即時実行されます</p>
@@ -207,17 +222,22 @@ export default function EmergencyPage() {
         <h2 className="text-sm font-semibold text-gray-800 mb-3">現在のステータス</h2>
         <div className="space-y-2">
           {actions.map((action) => (
-            <div key={action.id} className="flex items-center justify-between py-2 border-b border-gray-100 last:border-0">
+            <div
+              key={action.id}
+              className="flex items-center justify-between py-2 border-b border-gray-100 last:border-0"
+            >
               <span className="text-sm text-gray-600">{action.label}</span>
-              <span className={`text-xs font-medium ${
-                action.status === 'done'
-                  ? 'text-green-600'
-                  : action.status === 'error'
-                  ? 'text-red-600'
-                  : action.status === 'executing'
-                  ? 'text-yellow-600'
-                  : 'text-gray-400'
-              }`}>
+              <span
+                className={`text-xs font-medium ${
+                  action.status === 'done'
+                    ? 'text-green-600'
+                    : action.status === 'error'
+                      ? 'text-red-600'
+                      : action.status === 'executing'
+                        ? 'text-yellow-600'
+                        : 'text-gray-400'
+                }`}
+              >
                 {action.status === 'idle' && '未実行'}
                 {action.status === 'confirming' && '確認待ち'}
                 {action.status === 'executing' && '実行中'}
@@ -231,5 +251,5 @@ export default function EmergencyPage() {
 
       <CcPromptButton prompts={emergencyPrompts} />
     </div>
-  )
+  );
 }

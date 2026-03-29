@@ -28,17 +28,12 @@ export interface FormSubmission {
 // ── CRUD ─────────────────────────────────────────────────────────────────────
 
 export async function getForms(db: D1Database): Promise<Form[]> {
-  const result = await db
-    .prepare(`SELECT * FROM forms ORDER BY created_at DESC`)
-    .all<Form>();
+  const result = await db.prepare(`SELECT * FROM forms ORDER BY created_at DESC`).all<Form>();
   return result.results;
 }
 
 export async function getFormById(db: D1Database, id: string): Promise<Form | null> {
-  return db
-    .prepare(`SELECT * FROM forms WHERE id = ?`)
-    .bind(id)
-    .first<Form>();
+  return db.prepare(`SELECT * FROM forms WHERE id = ?`).bind(id).first<Form>();
 }
 
 export interface CreateFormInput {
@@ -119,7 +114,9 @@ export async function updateForm(
         ? (input.onSubmitScenarioId ?? null)
         : existing.on_submit_scenario_id,
       'saveToMetadata' in input
-        ? (input.saveToMetadata !== false ? 1 : 0)
+        ? input.saveToMetadata !== false
+          ? 1
+          : 0
         : existing.save_to_metadata,
       'isActive' in input ? (input.isActive ? 1 : 0) : existing.is_active,
       now,
@@ -141,9 +138,7 @@ export async function getFormSubmissions(
   formId: string,
 ): Promise<FormSubmission[]> {
   const result = await db
-    .prepare(
-      `SELECT * FROM form_submissions WHERE form_id = ? ORDER BY created_at DESC`,
-    )
+    .prepare(`SELECT * FROM form_submissions WHERE form_id = ? ORDER BY created_at DESC`)
     .bind(formId)
     .all<FormSubmission>();
   return result.results;

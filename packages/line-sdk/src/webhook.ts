@@ -22,21 +22,28 @@ export async function verifySignature(
     ['sign'],
   );
 
-  const signatureBytes = await crypto.subtle.sign(
-    'HMAC',
-    key,
-    encoder.encode(body),
-  );
+  const signatureBytes = await crypto.subtle.sign('HMAC', key, encoder.encode(body));
 
-  // Convert computed HMAC to base64 (safe for all buffer sizes)
-  const bytes = new Uint8Array(signatureBytes);
-  let binary = '';
-  for (let i = 0; i < bytes.length; i++) {
-    binary += String.fromCharCode(bytes[i]);
+  // Convert the provided base64 signature to bytes for constant-time comparison
+  let providedBytes: Uint8Array;
+  try {
+    const providedBinary = atob(signature);
+    providedBytes = Uint8Array.from(providedBinary, (ch) => ch.charCodeAt(0));
+  } catch {
+    return false; // invalid base64
   }
-  const computedBase64 = btoa(binary);
 
-  // Constant-time comparison is not strictly needed here because both strings
-  // are base64 of the same length, but we avoid early-exit for safety.
-  return computedBase64 === signature;
+  const computedBytes = new Uint8Array(signatureBytes);
+
+  // Length mismatch → reject (no timing leak since lengths are public)
+  if (computedBytes.length !== providedBytes.length) {
+    return false;
+  }
+
+  // Constant-time comparison to prevent timing attacks
+  let diff = 0;
+  for (let i = 0; i < computedBytes.length; i++) {
+    diff |= computedBytes[i] ^ providedBytes[i];
+  }
+  return diff === 0;
 }

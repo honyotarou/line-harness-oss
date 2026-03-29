@@ -15,8 +15,8 @@ export interface BusyInterval {
 
 export interface CreateEventInput {
   summary: string;
-  start: string;   // ISO datetime string
-  end: string;     // ISO datetime string
+  start: string; // ISO datetime string
+  end: string; // ISO datetime string
   description?: string;
 }
 

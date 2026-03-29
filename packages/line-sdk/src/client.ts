@@ -39,9 +39,7 @@ export class LineClient {
 
     if (!res.ok) {
       const text = await res.text().catch(() => '');
-      throw new Error(
-        `LINE API error: ${res.status} ${res.statusText} — ${text}`,
-      );
+      throw new Error(`LINE API error: ${res.status} ${res.statusText} — ${text}`);
     }
 
     // Some endpoints (e.g. push, reply) return an empty body with 200.
@@ -56,11 +54,7 @@ export class LineClient {
   // ─── Profile ──────────────────────────────────────────────────────────────
 
   async getProfile(userId: string): Promise<UserProfile> {
-    return this.request<UserProfile>(
-      `/profile/${encodeURIComponent(userId)}`,
-      {},
-      'GET',
-    );
+    return this.request<UserProfile>(`/profile/${encodeURIComponent(userId)}`, {}, 'GET');
   }
 
   // ─── Messaging ───────────────────────────────────────────────────────────
@@ -80,10 +74,7 @@ export class LineClient {
     await this.request('/message/broadcast', body);
   }
 
-  async replyMessage(
-    replyToken: string,
-    messages: Message[],
-  ): Promise<void> {
+  async replyMessage(replyToken: string, messages: Message[]): Promise<void> {
     const body: ReplyMessageRequest = { replyToken, messages };
     await this.request('/message/reply', body);
   }
@@ -91,11 +82,7 @@ export class LineClient {
   // ─── Rich Menu ────────────────────────────────────────────────────────────
 
   async getRichMenuList(): Promise<{ richmenus: RichMenuObject[] }> {
-    return this.request<{ richmenus: RichMenuObject[] }>(
-      '/richmenu/list',
-      {},
-      'GET',
-    );
+    return this.request<{ richmenus: RichMenuObject[] }>('/richmenu/list', {}, 'GET');
   }
 
   async createRichMenu(menu: RichMenuObject): Promise<{ richMenuId: string }> {
@@ -103,18 +90,11 @@ export class LineClient {
   }
 
   async deleteRichMenu(richMenuId: string): Promise<void> {
-    await this.request(
-      `/richmenu/${encodeURIComponent(richMenuId)}`,
-      {},
-      'DELETE',
-    );
+    await this.request(`/richmenu/${encodeURIComponent(richMenuId)}`, {}, 'DELETE');
   }
 
   async setDefaultRichMenu(richMenuId: string): Promise<void> {
-    await this.request(
-      `/user/all/richmenu/${encodeURIComponent(richMenuId)}`,
-      {},
-    );
+    await this.request(`/user/all/richmenu/${encodeURIComponent(richMenuId)}`, {});
   }
 
   async linkRichMenuToUser(userId: string, richMenuId: string): Promise<void> {
@@ -125,11 +105,7 @@ export class LineClient {
   }
 
   async unlinkRichMenuFromUser(userId: string): Promise<void> {
-    await this.request(
-      `/user/${encodeURIComponent(userId)}/richmenu`,
-      {},
-      'DELETE',
-    );
+    await this.request(`/user/${encodeURIComponent(userId)}/richmenu`, {}, 'DELETE');
   }
 
   async getRichMenuIdOfUser(userId: string): Promise<{ richMenuId: string }> {
@@ -146,11 +122,7 @@ export class LineClient {
     await this.pushMessage(to, [{ type: 'text', text }]);
   }
 
-  async pushFlexMessage(
-    to: string,
-    altText: string,
-    contents: FlexContainer,
-  ): Promise<void> {
+  async pushFlexMessage(to: string, altText: string, contents: FlexContainer): Promise<void> {
     await this.pushMessage(to, [{ type: 'flex', altText, contents }]);
   }
 

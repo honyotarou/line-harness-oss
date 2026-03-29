@@ -6,12 +6,17 @@ import {
   updateBroadcast,
   deleteBroadcast,
 } from '@line-crm/db';
-import type { Broadcast as DbBroadcast, BroadcastMessageType, BroadcastTargetType } from '@line-crm/db';
+import type {
+  Broadcast as DbBroadcast,
+  BroadcastMessageType,
+  BroadcastTargetType,
+} from '@line-crm/db';
 import { LineClient } from '@line-crm/line-sdk';
 import { processBroadcastSend } from '../services/broadcast.js';
 import { processSegmentSend } from '../services/segment-send.js';
 import type { SegmentCondition } from '../services/segment-query.js';
 import type { Env } from '../index.js';
+import { resolveLineAccessTokenForLineAccountId } from '../services/line-account-routing.js';
 
 const broadcasts = new Hono<Env>();
 
@@ -24,6 +29,7 @@ function serializeBroadcast(row: DbBroadcast) {
     targetType: row.target_type,
     targetTagId: row.target_tag_id,
     status: row.status,
+    lineAccountId: row.line_account_id,
     scheduledAt: row.scheduled_at,
     sentAt: row.sent_at,
     totalCount: row.total_count,
@@ -38,8 +44,9 @@ broadcasts.get('/api/broadcasts', async (c) => {
     const lineAccountId = c.req.query('lineAccountId');
     let items: DbBroadcast[];
     if (lineAccountId) {
-      const result = await c.env.DB
-        .prepare(`SELECT * FROM broadcasts WHERE line_account_id = ? ORDER BY created_at DESC`)
+      const result = await c.env.DB.prepare(
+        `SELECT * FROM broadcasts WHERE line_account_id = ? ORDER BY created_at DESC`,
+      )
         .bind(lineAccountId)
         .all<DbBroadcast>();
       items = result.results;
@@ -85,7 +92,10 @@ broadcasts.post('/api/broadcasts', async (c) => {
 
     if (!body.title || !body.messageType || !body.messageContent || !body.targetType) {
       return c.json(
-        { success: false, error: 'title, messageType, messageContent, and targetType are required' },
+        {
+          success: false,
+          error: 'title, messageType, messageContent, and targetType are required',
+        },
         400,
       );
     }
@@ -109,10 +119,20 @@ broadcasts.post('/api/broadcasts', async (c) => {
     // Save line_account_id if provided
     if (body.lineAccountId) {
       await c.env.DB.prepare(`UPDATE broadcasts SET line_account_id = ? WHERE id = ?`)
-        .bind(body.lineAccountId, broadcast.id).run();
+        .bind(body.lineAccountId, broadcast.id)
+        .run();
     }
 
-    return c.json({ success: true, data: serializeBroadcast(broadcast) }, 201);
+    return c.json(
+      {
+        success: true,
+        data: {
+          ...serializeBroadcast(broadcast),
+          lineAccountId: body.lineAccountId ?? broadcast.line_account_id ?? null,
+        },
+      },
+      201,
+    );
   } catch (err) {
     console.error('POST /api/broadcasts error:', err);
     return c.json({ success: false, error: 'Internal server error' }, 500);
@@ -130,7 +150,10 @@ broadcasts.put('/api/broadcasts/:id', async (c) => {
     }
 
     if (existing.status !== 'draft' && existing.status !== 'scheduled') {
-      return c.json({ success: false, error: 'Only draft or scheduled broadcasts can be updated' }, 400);
+      return c.json(
+        { success: false, error: 'Only draft or scheduled broadcasts can be updated' },
+        400,
+      );
     }
 
     const body = await c.req.json<{
@@ -191,10 +214,25 @@ broadcasts.post('/api/broadcasts/:id/send', async (c) => {
       return c.json({ success: false, error: 'Broadcast is already sent or sending' }, 400);
     }
 
-    const lineClient = new LineClient(c.env.LINE_CHANNEL_ACCESS_TOKEN);
+    const accessToken = await resolveLineAccessTokenForLineAccountId(
+      c.env.DB,
+      c.env.LINE_CHANNEL_ACCESS_TOKEN,
+      existing.line_account_id,
+    );
+    const lineClient = new LineClient(accessToken);
     await processBroadcastSend(c.env.DB, lineClient, id);
 
     const result = await getBroadcastById(c.env.DB, id);
+    if (result && result.status !== 'sent') {
+      return c.json(
+        {
+          success: false,
+          error: 'Broadcast delivery failed',
+          data: serializeBroadcast(result),
+        },
+        502,
+      );
+    }
     return c.json({ success: true, data: result ? serializeBroadcast(result) : null });
   } catch (err) {
     console.error('POST /api/broadcasts/:id/send error:', err);
@@ -225,7 +263,12 @@ broadcasts.post('/api/broadcasts/:id/send-segment', async (c) => {
       );
     }
 
-    const lineClient = new LineClient(c.env.LINE_CHANNEL_ACCESS_TOKEN);
+    const accessToken = await resolveLineAccessTokenForLineAccountId(
+      c.env.DB,
+      c.env.LINE_CHANNEL_ACCESS_TOKEN,
+      existing.line_account_id,
+    );
+    const lineClient = new LineClient(accessToken);
     await processSegmentSend(c.env.DB, lineClient, id, body.conditions);
 
     const result = await getBroadcastById(c.env.DB, id);

@@ -3,9 +3,12 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "dev": "wrangler dev",
-    "deploy": "wrangler deploy",
-    "typecheck": "tsc --noEmit"
+    "dev": "bash scripts/wrangler.sh dev",
+    "deploy": "bash scripts/wrangler.sh deploy",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "test:coverage": "vitest run --coverage",
+    "test:bench": "vitest bench --run"
   },
   "dependencies": {
     "hono": "^4.6.0",
@@ -15,7 +18,9 @@
   },
   "devDependencies": {
     "@cloudflare/workers-types": "^4.20241205.0",
+    "@vitest/coverage-v8": "^2.1.9",
     "typescript": "^5.7.0",
+    "vitest": "^2.1.9",
     "wrangler": "^3.99.0"
   }
 }

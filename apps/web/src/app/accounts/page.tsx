@@ -1,25 +1,25 @@
-'use client'
+'use client';
 
-import { useState, useEffect } from 'react'
-import { api } from '@/lib/api'
-import Header from '@/components/layout/header'
-import CcPromptButton from '@/components/cc-prompt-button'
+import { useState, useEffect } from 'react';
+import { api } from '@/lib/api';
+import Header from '@/components/layout/header';
+import CcPromptButton from '@/components/cc-prompt-button';
 
 interface LineAccountListItem {
-  id: string
-  channelId: string
-  name: string
-  displayName: string
-  pictureUrl: string | null
-  basicId: string | null
-  isActive: boolean
-  createdAt: string
-  updatedAt: string
+  id: string;
+  channelId: string;
+  name: string;
+  displayName: string;
+  pictureUrl: string | null;
+  basicId: string | null;
+  isActive: boolean;
+  createdAt: string;
+  updatedAt: string;
   stats: {
-    friendCount: number
-    activeScenarios: number
-    messagesThisMonth: number
-  }
+    friendCount: number;
+    activeScenarios: number;
+    messagesThisMonth: number;
+  };
 }
 
 const ccPrompts = [
@@ -39,54 +39,61 @@ const ccPrompts = [
 3. CRMへの登録手順と初期設定のベストプラクティス
 手順を示してください。`,
   },
-]
+];
 
 export default function AccountsPage() {
-  const [accounts, setAccounts] = useState<LineAccountListItem[]>([])
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState('')
-  const [showCreate, setShowCreate] = useState(false)
-  const [form, setForm] = useState({ channelId: '', name: '', channelAccessToken: '', channelSecret: '' })
+  const [accounts, setAccounts] = useState<LineAccountListItem[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
+  const [showCreate, setShowCreate] = useState(false);
+  const [form, setForm] = useState({
+    channelId: '',
+    name: '',
+    channelAccessToken: '',
+    channelSecret: '',
+  });
 
   const load = async () => {
-    setLoading(true)
-    setError('')
+    setLoading(true);
+    setError('');
     try {
-      const res = await api.lineAccounts.list()
+      const res = await api.lineAccounts.list();
       if (res.success) {
-        setAccounts(res.data as unknown as LineAccountListItem[])
+        setAccounts(res.data as unknown as LineAccountListItem[]);
       } else {
-        setError('アカウント情報の取得に失敗しました')
+        setError('アカウント情報の取得に失敗しました');
       }
     } catch {
-      setError('APIに接続できませんでした。サーバーが起動しているか確認してください。')
+      setError('APIに接続できませんでした。サーバーが起動しているか確認してください。');
     }
-    setLoading(false)
-  }
+    setLoading(false);
+  };
 
-  useEffect(() => { load() }, [])
+  useEffect(() => {
+    load();
+  }, []);
 
   const handleCreate = async (e: React.FormEvent) => {
-    e.preventDefault()
-    if (!form.channelId || !form.name || !form.channelAccessToken || !form.channelSecret) return
+    e.preventDefault();
+    if (!form.channelId || !form.name || !form.channelAccessToken || !form.channelSecret) return;
     try {
-      await api.lineAccounts.create(form)
-      setForm({ channelId: '', name: '', channelAccessToken: '', channelSecret: '' })
-      setShowCreate(false)
-      load()
+      await api.lineAccounts.create(form);
+      setForm({ channelId: '', name: '', channelAccessToken: '', channelSecret: '' });
+      setShowCreate(false);
+      load();
     } catch {}
-  }
+  };
 
   const handleDelete = async (id: string) => {
-    if (!confirm('このLINEアカウントを削除しますか？')) return
-    await api.lineAccounts.delete(id)
-    load()
-  }
+    if (!confirm('このLINEアカウントを削除しますか？')) return;
+    await api.lineAccounts.delete(id);
+    load();
+  };
 
   const handleToggle = async (id: string, currentActive: boolean) => {
-    await api.lineAccounts.update(id, { isActive: !currentActive })
-    load()
-  }
+    await api.lineAccounts.update(id, { isActive: !currentActive });
+    load();
+  };
 
   return (
     <div>
@@ -111,7 +118,10 @@ export default function AccountsPage() {
       )}
 
       {showCreate && (
-        <form onSubmit={handleCreate} className="bg-white rounded-lg border border-gray-200 p-6 mb-6">
+        <form
+          onSubmit={handleCreate}
+          className="bg-white rounded-lg border border-gray-200 p-6 mb-6"
+        >
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">アカウント名</label>
@@ -134,7 +144,9 @@ export default function AccountsPage() {
               />
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Channel Access Token</label>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Channel Access Token
+              </label>
               <input
                 type="password"
                 value={form.channelAccessToken}
@@ -165,11 +177,15 @@ export default function AccountsPage() {
       )}
 
       {loading ? (
-        <div className="bg-white rounded-lg border border-gray-200 p-8 text-center text-gray-400">読み込み中...</div>
+        <div className="bg-white rounded-lg border border-gray-200 p-8 text-center text-gray-400">
+          読み込み中...
+        </div>
       ) : accounts.length === 0 ? (
         <div className="bg-white rounded-lg border border-gray-200 p-8 text-center text-gray-400">
           <p className="mb-2">LINEアカウントが登録されていません</p>
-          <p className="text-xs text-gray-300">LINE Developers Console からChannel情報を取得して登録してください</p>
+          <p className="text-xs text-gray-300">
+            LINE Developers Console からChannel情報を取得して登録してください
+          </p>
         </div>
       ) : (
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -215,7 +231,9 @@ export default function AccountsPage() {
                   <p className="text-xs text-gray-400">配信中</p>
                 </div>
                 <div className="text-center">
-                  <p className="text-lg font-bold text-green-600">{account.stats.messagesThisMonth}</p>
+                  <p className="text-lg font-bold text-green-600">
+                    {account.stats.messagesThisMonth}
+                  </p>
                   <p className="text-xs text-gray-400">今月送信</p>
                 </div>
               </div>
@@ -236,5 +254,5 @@ export default function AccountsPage() {
       )}
       <CcPromptButton prompts={ccPrompts} />
     </div>
-  )
+  );
 }

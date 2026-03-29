@@ -12,6 +12,7 @@ import {
   jstNow,
 } from '@line-crm/db';
 import type { Env } from '../index.js';
+import { resolveLineAccessTokenForFriend } from '../services/line-account-routing.js';
 
 const chats = new Hono<Env>();
 
@@ -41,9 +42,13 @@ chats.get('/api/operators', async (c) => {
 chats.post('/api/operators', async (c) => {
   try {
     const body = await c.req.json<{ name: string; email: string; role?: string }>();
-    if (!body.name || !body.email) return c.json({ success: false, error: 'name and email are required' }, 400);
+    if (!body.name || !body.email)
+      return c.json({ success: false, error: 'name and email are required' }, 400);
     const item = await createOperator(c.env.DB, body);
-    return c.json({ success: true, data: { id: item.id, name: item.name, email: item.email, role: item.role } }, 201);
+    return c.json(
+      { success: true, data: { id: item.id, name: item.name, email: item.email, role: item.role } },
+      201,
+    );
   } catch (err) {
     console.error('POST /api/operators error:', err);
     return c.json({ success: false, error: 'Internal server error' }, 500);
@@ -57,7 +62,16 @@ chats.put('/api/operators/:id', async (c) => {
     await updateOperator(c.env.DB, id, body);
     const updated = await getOperatorById(c.env.DB, id);
     if (!updated) return c.json({ success: false, error: 'Not found' }, 404);
-    return c.json({ success: true, data: { id: updated.id, name: updated.name, email: updated.email, role: updated.role, isActive: Boolean(updated.is_active) } });
+    return c.json({
+      success: true,
+      data: {
+        id: updated.id,
+        name: updated.name,
+        email: updated.email,
+        role: updated.role,
+        isActive: Boolean(updated.is_active),
+      },
+    });
   } catch (err) {
     console.error('PUT /api/operators/:id error:', err);
     return c.json({ success: false, error: 'Internal server error' }, 500);
@@ -107,9 +121,8 @@ chats.get('/api/chats', async (c) => {
     }
     sql += ' ORDER BY c.last_message_at DESC';
 
-    const stmt = bindings.length > 0
-      ? c.env.DB.prepare(sql).bind(...bindings)
-      : c.env.DB.prepare(sql);
+    const stmt =
+      bindings.length > 0 ? c.env.DB.prepare(sql).bind(...bindings) : c.env.DB.prepare(sql);
     const result = await stmt.all();
 
     return c.json({
@@ -123,6 +136,7 @@ chats.get('/api/chats', async (c) => {
         status: ch.status,
         notes: ch.notes,
         lastMessageAt: ch.last_message_at,
+        lineAccountId: ch.line_account_id ?? null,
         createdAt: ch.created_at,
         updatedAt: ch.updated_at,
       })),
@@ -139,14 +153,16 @@ chats.get('/api/chats/:id', async (c) => {
     if (!item) return c.json({ success: false, error: 'Chat not found' }, 404);
 
     // 友だち情報を取得
-    const friend = await c.env.DB
-      .prepare(`SELECT display_name, picture_url, line_user_id FROM friends WHERE id = ?`)
+    const friend = await c.env.DB.prepare(
+      `SELECT display_name, picture_url, line_user_id FROM friends WHERE id = ?`,
+    )
       .bind(item.friend_id)
       .first<{ display_name: string | null; picture_url: string | null; line_user_id: string }>();
 
     // チャットに関連するメッセージログも取得
-    const messages = await c.env.DB
-      .prepare(`SELECT id, friend_id, direction, message_type, content, created_at FROM messages_log WHERE friend_id = ? ORDER BY created_at ASC LIMIT 200`)
+    const messages = await c.env.DB.prepare(
+      `SELECT id, friend_id, direction, message_type, content, created_at FROM messages_log WHERE friend_id = ? ORDER BY created_at ASC LIMIT 200`,
+    )
       .bind(item.friend_id)
       .all();
 
@@ -161,7 +177,9 @@ chats.get('/api/chats/:id', async (c) => {
         status: item.status,
         notes: item.notes,
         lastMessageAt: item.last_message_at,
+        lineAccountId: item.line_account_id ?? null,
         createdAt: item.created_at,
+        updatedAt: item.updated_at,
         messages: (messages.results as Record<string, unknown>[]).map((m) => ({
           id: m.id,
           direction: m.direction,
@@ -179,15 +197,36 @@ chats.get('/api/chats/:id', async (c) => {
 
 chats.post('/api/chats', async (c) => {
   try {
-    const body = await c.req.json<{ friendId: string; operatorId?: string; lineAccountId?: string | null }>();
+    const body = await c.req.json<{
+      friendId: string;
+      operatorId?: string;
+      lineAccountId?: string | null;
+    }>();
     if (!body.friendId) return c.json({ success: false, error: 'friendId is required' }, 400);
     const item = await createChat(c.env.DB, body);
     // Save line_account_id if provided
     if (body.lineAccountId) {
       await c.env.DB.prepare(`UPDATE chats SET line_account_id = ? WHERE id = ?`)
-        .bind(body.lineAccountId, item.id).run();
+        .bind(body.lineAccountId, item.id)
+        .run();
     }
-    return c.json({ success: true, data: { id: item.id, friendId: item.friend_id, status: item.status } }, 201);
+    return c.json(
+      {
+        success: true,
+        data: {
+          id: item.id,
+          friendId: item.friend_id,
+          operatorId: item.operator_id,
+          status: item.status,
+          notes: item.notes,
+          lastMessageAt: item.last_message_at,
+          lineAccountId: body.lineAccountId ?? item.line_account_id ?? null,
+          createdAt: item.created_at,
+          updatedAt: item.updated_at,
+        },
+      },
+      201,
+    );
   } catch (err) {
     console.error('POST /api/chats error:', err);
     return c.json({ success: false, error: 'Internal server error' }, 500);
@@ -198,13 +237,27 @@ chats.post('/api/chats', async (c) => {
 chats.put('/api/chats/:id', async (c) => {
   try {
     const id = c.req.param('id');
-    const body = await c.req.json<{ operatorId?: string | null; status?: string; notes?: string }>();
+    const body = await c.req.json<{
+      operatorId?: string | null;
+      status?: string;
+      notes?: string;
+    }>();
     await updateChat(c.env.DB, id, body);
     const updated = await getChatById(c.env.DB, id);
     if (!updated) return c.json({ success: false, error: 'Not found' }, 404);
     return c.json({
       success: true,
-      data: { id: updated.id, friendId: updated.friend_id, operatorId: updated.operator_id, status: updated.status, notes: updated.notes },
+      data: {
+        id: updated.id,
+        friendId: updated.friend_id,
+        operatorId: updated.operator_id,
+        status: updated.status,
+        notes: updated.notes,
+        lastMessageAt: updated.last_message_at,
+        lineAccountId: updated.line_account_id ?? null,
+        createdAt: updated.created_at,
+        updatedAt: updated.updated_at,
+      },
     });
   } catch (err) {
     console.error('PUT /api/chats/:id error:', err);
@@ -222,15 +275,19 @@ chats.post('/api/chats/:id/send', async (c) => {
     const body = await c.req.json<{ messageType?: string; content: string }>();
     if (!body.content) return c.json({ success: false, error: 'content is required' }, 400);
 
-    const friend = await c.env.DB
-      .prepare(`SELECT * FROM friends WHERE id = ?`)
+    const friend = await c.env.DB.prepare(`SELECT * FROM friends WHERE id = ?`)
       .bind(chat.friend_id)
       .first<{ id: string; line_user_id: string }>();
     if (!friend) return c.json({ success: false, error: 'Friend not found' }, 404);
 
     // LINE APIでメッセージ送信
     const { LineClient } = await import('@line-crm/line-sdk');
-    const lineClient = new LineClient(c.env.LINE_CHANNEL_ACCESS_TOKEN);
+    const accessToken = await resolveLineAccessTokenForFriend(
+      c.env.DB,
+      c.env.LINE_CHANNEL_ACCESS_TOKEN,
+      friend.id,
+    );
+    const lineClient = new LineClient(accessToken);
     const messageType = body.messageType ?? 'text';
 
     if (messageType === 'text') {
@@ -242,8 +299,9 @@ chats.post('/api/chats/:id/send', async (c) => {
 
     // メッセージログに記録
     const logId = crypto.randomUUID();
-    await c.env.DB
-      .prepare(`INSERT INTO messages_log (id, friend_id, direction, message_type, content, created_at) VALUES (?, ?, 'outgoing', ?, ?, ?)`)
+    await c.env.DB.prepare(
+      `INSERT INTO messages_log (id, friend_id, direction, message_type, content, created_at) VALUES (?, ?, 'outgoing', ?, ?, ?)`,
+    )
       .bind(logId, friend.id, messageType, body.content, jstNow())
       .run();
 

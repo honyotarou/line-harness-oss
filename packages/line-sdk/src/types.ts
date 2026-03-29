@@ -129,11 +129,7 @@ export interface PostbackEvent extends BaseEvent {
   };
 }
 
-export type WebhookEvent =
-  | MessageEvent
-  | FollowEvent
-  | UnfollowEvent
-  | PostbackEvent;
+export type WebhookEvent = MessageEvent | FollowEvent | UnfollowEvent | PostbackEvent;
 
 export interface WebhookRequestBody {
   destination: string;

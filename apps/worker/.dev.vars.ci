@@ -1,0 +1,7 @@
+API_KEY=harness-ci-test-key
+LINE_CHANNEL_SECRET=dummy
+LINE_CHANNEL_ACCESS_TOKEN=dummy
+LIFF_URL=https://liff.line.me/dummy
+LINE_CHANNEL_ID=dummy
+LINE_LOGIN_CHANNEL_ID=dummy
+LINE_LOGIN_CHANNEL_SECRET=dummy

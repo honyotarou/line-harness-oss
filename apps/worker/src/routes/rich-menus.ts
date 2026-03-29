@@ -2,13 +2,22 @@ import { Hono } from 'hono';
 import { LineClient } from '@line-crm/line-sdk';
 import { getFriendById } from '@line-crm/db';
 import type { Env } from '../index.js';
+import {
+  resolveLineAccessTokenForFriend,
+  resolveLineAccessTokenForLineAccountId,
+} from '../services/line-account-routing.js';
 
 const richMenus = new Hono<Env>();
 
 // GET /api/rich-menus — list all rich menus from LINE API
 richMenus.get('/api/rich-menus', async (c) => {
   try {
-    const lineClient = new LineClient(c.env.LINE_CHANNEL_ACCESS_TOKEN);
+    const accessToken = await resolveLineAccessTokenForLineAccountId(
+      c.env.DB,
+      c.env.LINE_CHANNEL_ACCESS_TOKEN,
+      c.req.query('lineAccountId') ?? null,
+    );
+    const lineClient = new LineClient(accessToken);
     const result = await lineClient.getRichMenuList();
     return c.json({ success: true, data: result.richmenus ?? [] });
   } catch (err) {
@@ -22,7 +31,12 @@ richMenus.get('/api/rich-menus', async (c) => {
 richMenus.post('/api/rich-menus', async (c) => {
   try {
     const body = await c.req.json();
-    const lineClient = new LineClient(c.env.LINE_CHANNEL_ACCESS_TOKEN);
+    const accessToken = await resolveLineAccessTokenForLineAccountId(
+      c.env.DB,
+      c.env.LINE_CHANNEL_ACCESS_TOKEN,
+      typeof body?.lineAccountId === 'string' ? body.lineAccountId : null,
+    );
+    const lineClient = new LineClient(accessToken);
     const result = await lineClient.createRichMenu(body);
     return c.json({ success: true, data: result }, 201);
   } catch (err) {
@@ -36,7 +50,12 @@ richMenus.post('/api/rich-menus', async (c) => {
 richMenus.delete('/api/rich-menus/:id', async (c) => {
   try {
     const richMenuId = c.req.param('id');
-    const lineClient = new LineClient(c.env.LINE_CHANNEL_ACCESS_TOKEN);
+    const accessToken = await resolveLineAccessTokenForLineAccountId(
+      c.env.DB,
+      c.env.LINE_CHANNEL_ACCESS_TOKEN,
+      c.req.query('lineAccountId') ?? null,
+    );
+    const lineClient = new LineClient(accessToken);
     await lineClient.deleteRichMenu(richMenuId);
     return c.json({ success: true, data: null });
   } catch (err) {
@@ -50,7 +69,12 @@ richMenus.delete('/api/rich-menus/:id', async (c) => {
 richMenus.post('/api/rich-menus/:id/default', async (c) => {
   try {
     const richMenuId = c.req.param('id');
-    const lineClient = new LineClient(c.env.LINE_CHANNEL_ACCESS_TOKEN);
+    const accessToken = await resolveLineAccessTokenForLineAccountId(
+      c.env.DB,
+      c.env.LINE_CHANNEL_ACCESS_TOKEN,
+      c.req.query('lineAccountId') ?? null,
+    );
+    const lineClient = new LineClient(accessToken);
     await lineClient.setDefaultRichMenu(richMenuId);
     return c.json({ success: true, data: null });
   } catch (err) {
@@ -76,7 +100,12 @@ richMenus.post('/api/friends/:friendId/rich-menu', async (c) => {
       return c.json({ success: false, error: 'Friend not found' }, 404);
     }
 
-    const lineClient = new LineClient(c.env.LINE_CHANNEL_ACCESS_TOKEN);
+    const accessToken = await resolveLineAccessTokenForFriend(
+      db,
+      c.env.LINE_CHANNEL_ACCESS_TOKEN,
+      friendId,
+    );
+    const lineClient = new LineClient(accessToken);
     await lineClient.linkRichMenuToUser(friend.line_user_id, body.richMenuId);
 
     return c.json({ success: true, data: null });
@@ -98,14 +127,22 @@ richMenus.delete('/api/friends/:friendId/rich-menu', async (c) => {
       return c.json({ success: false, error: 'Friend not found' }, 404);
     }
 
-    const lineClient = new LineClient(c.env.LINE_CHANNEL_ACCESS_TOKEN);
+    const accessToken = await resolveLineAccessTokenForFriend(
+      db,
+      c.env.LINE_CHANNEL_ACCESS_TOKEN,
+      friendId,
+    );
+    const lineClient = new LineClient(accessToken);
     await lineClient.unlinkRichMenuFromUser(friend.line_user_id);
 
     return c.json({ success: true, data: null });
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
     console.error('DELETE /api/friends/:friendId/rich-menu error:', message);
-    return c.json({ success: false, error: `Failed to unlink rich menu from friend: ${message}` }, 500);
+    return c.json(
+      { success: false, error: `Failed to unlink rich menu from friend: ${message}` },
+      500,
+    );
   }
 });
 
@@ -138,12 +175,24 @@ richMenus.post('/api/rich-menus/:id/image', async (c) => {
     } else if (contentType.includes('image/')) {
       // Accept raw binary upload
       imageData = await c.req.arrayBuffer();
-      imageContentType = contentType.includes('jpeg') || contentType.includes('jpg') ? 'image/jpeg' : 'image/png';
+      imageContentType =
+        contentType.includes('jpeg') || contentType.includes('jpg') ? 'image/jpeg' : 'image/png';
     } else {
-      return c.json({ success: false, error: 'Content-Type must be application/json (with base64) or image/png or image/jpeg' }, 400);
+      return c.json(
+        {
+          success: false,
+          error: 'Content-Type must be application/json (with base64) or image/png or image/jpeg',
+        },
+        400,
+      );
     }
 
-    const lineClient = new LineClient(c.env.LINE_CHANNEL_ACCESS_TOKEN);
+    const accessToken = await resolveLineAccessTokenForLineAccountId(
+      c.env.DB,
+      c.env.LINE_CHANNEL_ACCESS_TOKEN,
+      c.req.query('lineAccountId') ?? null,
+    );
+    const lineClient = new LineClient(accessToken);
     await lineClient.uploadRichMenuImage(richMenuId, imageData, imageContentType);
 
     return c.json({ success: true, data: null });

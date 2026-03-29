@@ -1,8 +1,4 @@
-import {
-  getBroadcastById,
-  updateBroadcastStatus,
-  jstNow,
-} from '@line-crm/db';
+import { getBroadcastById, updateBroadcastStatus, jstNow } from '@line-crm/db';
 import type { Broadcast } from '@line-crm/db';
 import type { LineClient, Message } from '@line-crm/line-sdk';
 import { calculateStaggerDelay, sleep, addMessageVariation } from './stealth.js';
@@ -78,7 +74,14 @@ export async function processSegmentSend(
               `INSERT INTO messages_log (id, friend_id, direction, message_type, content, broadcast_id, scenario_step_id, created_at)
                VALUES (?, ?, 'outgoing', ?, ?, ?, NULL, ?)`,
             )
-            .bind(logId, friend.id, broadcast.message_type, broadcast.message_content, broadcastId, now)
+            .bind(
+              logId,
+              friend.id,
+              broadcast.message_type,
+              broadcast.message_content,
+              broadcastId,
+              now,
+            )
             .run();
         }
       } catch (err) {

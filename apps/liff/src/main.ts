@@ -21,7 +21,12 @@ declare const liff: {
   init(config: { liffId: string }): Promise<void>;
   isLoggedIn(): boolean;
   login(opts?: { redirectUri?: string }): void;
-  getProfile(): Promise<{ userId: string; displayName: string; pictureUrl?: string; statusMessage?: string }>;
+  getProfile(): Promise<{
+    userId: string;
+    displayName: string;
+    pictureUrl?: string;
+    statusMessage?: string;
+  }>;
   getIDToken(): string | null;
   getDecodedIDToken(): { sub: string; name?: string; email?: string; picture?: string } | null;
   getFriendship(): Promise<{ friendFlag: boolean }>;
@@ -95,9 +100,7 @@ function escapeHtml(str: string): string {
 
 function showFriendAdd(profile: { displayName: string; pictureUrl?: string }) {
   const container = document.getElementById('app')!;
-  const friendAddUrl = BOT_BASIC_ID
-    ? `https://line.me/R/ti/p/${BOT_BASIC_ID}`
-    : '#';
+  const friendAddUrl = BOT_BASIC_ID ? `https://line.me/R/ti/p/${BOT_BASIC_ID}` : '#';
 
   container.innerHTML = `
     <div class="card">
@@ -128,7 +131,10 @@ function showFriendAdd(profile: { displayName: string; pictureUrl?: string }) {
   });
 }
 
-function showCompletion(profile: { displayName: string; pictureUrl?: string }, isRecovery: boolean) {
+function showCompletion(
+  profile: { displayName: string; pictureUrl?: string },
+  isRecovery: boolean,
+) {
   const container = document.getElementById('app')!;
   const ref = getRef();
   container.innerHTML = `
@@ -140,9 +146,10 @@ function showCompletion(profile: { displayName: string; pictureUrl?: string }, i
         <p class="name">${escapeHtml(profile.displayName)} さん</p>
       </div>
       <p class="message">
-        ${isRecovery
-          ? '以前のアカウント情報を引き継ぎました。'
-          : 'ありがとうございます！これからお役立ち情報をお届けします。'
+        ${
+          isRecovery
+            ? '以前のアカウント情報を引き継ぎました。'
+            : 'ありがとうございます！これからお役立ち情報をお届けします。'
         }
         <br>このページは閉じて大丈夫です。
       </p>
@@ -192,17 +199,19 @@ async function linkAndAddFlow() {
         existingUuid: existingUuid,
         ref: ref,
       }),
-    }).then(async (res) => {
-      if (res.ok) {
-        const data = await res.json() as { success: boolean; data?: { userId?: string } };
-        if (data?.data?.userId) {
-          saveUuid(data.data.userId);
+    })
+      .then(async (res) => {
+        if (res.ok) {
+          const data = (await res.json()) as { success: boolean; data?: { userId?: string } };
+          if (data?.data?.userId) {
+            saveUuid(data.data.userId);
+          }
         }
-      }
-      return res;
-    }).catch(() => {
-      // Silent fail — UUID linking is best-effort
-    });
+        return res;
+      })
+      .catch(() => {
+        // Silent fail — UUID linking is best-effort
+      });
 
     // 2. Attribution tracking
     if (ref) {
@@ -214,10 +223,7 @@ async function linkAndAddFlow() {
 
     // 3. Redirect flow (for wrapped URLs)
     if (redirectUrl) {
-      await Promise.race([
-        linkPromise,
-        new Promise((r) => setTimeout(r, 500)),
-      ]);
+      await Promise.race([linkPromise, new Promise((r) => setTimeout(r, 500))]);
       window.location.href = redirectUrl;
       return;
     }
@@ -233,7 +239,6 @@ async function linkAndAddFlow() {
       // Already a friend → all done
       showCompletion(profile, !!existingUuid);
     }
-
   } catch (err) {
     if (redirectUrl) {
       window.location.href = redirectUrl;

@@ -63,6 +63,13 @@ users.post('/api/users', async (c) => {
       displayName?: string | null;
     }>();
 
+    if (!body.email && !body.phone && !body.externalId) {
+      return c.json(
+        { success: false, error: 'at least one of email, phone, or externalId is required' },
+        400,
+      );
+    }
+
     const user = await createUser(c.env.DB, body);
     return c.json({ success: true, data: serializeUser(user) }, 201);
   } catch (err) {
@@ -120,6 +127,18 @@ users.post('/api/users/:id/link', async (c) => {
       return c.json({ success: false, error: 'friendId is required' }, 400);
     }
 
+    const user = await getUserById(c.env.DB, userId);
+    if (!user) {
+      return c.json({ success: false, error: 'User not found' }, 404);
+    }
+
+    const friend = await c.env.DB.prepare(`SELECT id FROM friends WHERE id = ?`)
+      .bind(body.friendId)
+      .first<{ id: string }>();
+    if (!friend) {
+      return c.json({ success: false, error: 'Friend not found' }, 404);
+    }
+
     await linkFriendToUser(c.env.DB, body.friendId, userId);
     return c.json({ success: true, data: null });
   } catch (err) {
@@ -152,6 +171,9 @@ users.get('/api/users/:id/accounts', async (c) => {
 users.post('/api/users/match', async (c) => {
   try {
     const body = await c.req.json<{ email?: string; phone?: string }>();
+    if (!body.email && !body.phone) {
+      return c.json({ success: false, error: 'email or phone is required' }, 400);
+    }
     let user = null;
 
     if (body.email) {

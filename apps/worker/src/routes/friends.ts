@@ -6,6 +6,7 @@ import {
   addTagToFriend,
   removeTagFromFriend,
   getFriendTags,
+  getTagsForFriends,
   getScenarios,
   enrollFriendInScenario,
   jstNow,
@@ -14,6 +15,7 @@ import type { Friend as DbFriend, Tag as DbTag } from '@line-crm/db';
 import { fireEvent } from '../services/event-bus.js';
 import { buildMessage } from '../services/step-delivery.js';
 import type { Env } from '../index.js';
+import { resolveLineAccessTokenForFriend } from '../services/line-account-routing.js';
 
 const friends = new Hono<Env>();
 
@@ -26,6 +28,7 @@ function serializeFriend(row: DbFriend) {
     pictureUrl: row.picture_url,
     statusMessage: row.status_message,
     isFollowing: Boolean(row.is_following),
+    lineAccountId: row.line_account_id,
     metadata: JSON.parse(row.metadata || '{}'),
     refCode: (row as unknown as Record<string, unknown>).ref_code as string | null,
     userId: row.user_id,
@@ -58,7 +61,9 @@ friends.get('/api/friends', async (c) => {
     const conditions: string[] = [];
     const binds: unknown[] = [];
     if (tagId) {
-      conditions.push('EXISTS (SELECT 1 FROM friend_tags ft WHERE ft.friend_id = f.id AND ft.tag_id = ?)');
+      conditions.push(
+        'EXISTS (SELECT 1 FROM friend_tags ft WHERE ft.friend_id = f.id AND ft.tag_id = ?)',
+      );
       binds.push(tagId);
     }
     if (lineAccountId) {
@@ -68,7 +73,9 @@ friends.get('/api/friends', async (c) => {
     const where = conditions.length > 0 ? `WHERE ${conditions.join(' AND ')}` : '';
 
     const countStmt = db.prepare(`SELECT COUNT(*) as count FROM friends f ${where}`);
-    const totalRow = await (binds.length > 0 ? countStmt.bind(...binds) : countStmt).first<{ count: number }>();
+    const totalRow = await (binds.length > 0 ? countStmt.bind(...binds) : countStmt).first<{
+      count: number;
+    }>();
     const total = totalRow?.count ?? 0;
 
     const listStmt = db.prepare(
@@ -78,13 +85,13 @@ friends.get('/api/friends', async (c) => {
     const listResult = await listStmt.bind(...listBinds).all<DbFriend>();
     const items = listResult.results;
 
-    // Fetch tags for each friend in parallel so the list response includes tags
-    const itemsWithTags = await Promise.all(
-      items.map(async (friend) => {
-        const tags = await getFriendTags(db, friend.id);
-        return { ...serializeFriend(friend), tags: tags.map(serializeTag) };
-      }),
-    );
+    // Batch fetch all tags in a single query (avoids N+1)
+    const friendIds = items.map((f) => f.id);
+    const tagMap = await getTagsForFriends(db, friendIds);
+    const itemsWithTags = items.map((friend) => {
+      const tags = tagMap.get(friend.id) ?? [];
+      return { ...serializeFriend(friend), tags: tags.map(serializeTag) };
+    });
 
     return c.json({
       success: true,
@@ -108,8 +115,11 @@ friends.get('/api/friends/count', async (c) => {
     const lineAccountId = c.req.query('lineAccountId');
     let count: number;
     if (lineAccountId) {
-      const row = await c.env.DB.prepare('SELECT COUNT(*) as count FROM friends WHERE is_following = 1 AND line_account_id = ?')
-        .bind(lineAccountId).first<{ count: number }>();
+      const row = await c.env.DB.prepare(
+        'SELECT COUNT(*) as count FROM friends WHERE is_following = 1 AND line_account_id = ?',
+      )
+        .bind(lineAccountId)
+        .first<{ count: number }>();
       count = row?.count ?? 0;
     } else {
       count = await getFriendCount(c.env.DB);
@@ -130,10 +140,15 @@ friends.get('/api/friends/ref-stats', async (c) => {
     const stmt = c.env.DB.prepare(
       `SELECT ref_code, COUNT(*) as count FROM friends ${where} AND ref_code IS NOT NULL GROUP BY ref_code ORDER BY count DESC`,
     );
-    const result = await (binds.length > 0 ? stmt.bind(...binds) : stmt).all<{ ref_code: string; count: number }>();
+    const result = await (binds.length > 0 ? stmt.bind(...binds) : stmt).all<{
+      ref_code: string;
+      count: number;
+    }>();
     const total = await c.env.DB.prepare(
       `SELECT COUNT(*) as count FROM friends ${lineAccountId ? 'WHERE line_account_id = ?' : ''} ${lineAccountId ? 'AND' : 'WHERE'} ref_code IS NOT NULL`,
-    ).bind(...(lineAccountId ? [lineAccountId] : [])).first<{ count: number }>();
+    )
+      .bind(...(lineAccountId ? [lineAccountId] : []))
+      .first<{ count: number }>();
     return c.json({
       success: true,
       data: {
@@ -153,10 +168,7 @@ friends.get('/api/friends/:id', async (c) => {
     const id = c.req.param('id');
     const db = c.env.DB;
 
-    const [friend, tags] = await Promise.all([
-      getFriendById(db, id),
-      getFriendTags(db, id),
-    ]);
+    const [friend, tags] = await Promise.all([getFriendById(db, id), getFriendTags(db, id)]);
 
     if (!friend) {
       return c.json({ success: false, error: 'Friend not found' }, 404);
@@ -191,7 +203,11 @@ friends.post('/api/friends/:id/tags', async (c) => {
     // Enroll in tag_added scenarios that match this tag
     const allScenarios = await getScenarios(db);
     for (const scenario of allScenarios) {
-      if (scenario.trigger_type === 'tag_added' && scenario.is_active && scenario.trigger_tag_id === body.tagId) {
+      if (
+        scenario.trigger_type === 'tag_added' &&
+        scenario.is_active &&
+        scenario.trigger_tag_id === body.tagId
+      ) {
         const existing = await db
           .prepare(`SELECT id FROM friend_scenarios WHERE friend_id = ? AND scenario_id = ?`)
           .bind(friendId, scenario.id)
@@ -203,7 +219,10 @@ friends.post('/api/friends/:id/tags', async (c) => {
     }
 
     // イベントバス発火: tag_change
-    await fireEvent(db, 'tag_change', { friendId, eventData: { tagId: body.tagId, action: 'add' } });
+    await fireEvent(db, 'tag_change', {
+      friendId,
+      eventData: { tagId: body.tagId, action: 'add' },
+    });
 
     return c.json({ success: true, data: null }, 201);
   } catch (err) {
@@ -271,13 +290,18 @@ friends.put('/api/friends/:id/metadata', async (c) => {
 friends.get('/api/friends/:id/messages', async (c) => {
   try {
     const friendId = c.req.param('id');
-    const result = await c.env.DB
-      .prepare(
-        `SELECT id, direction, message_type as messageType, content, created_at as createdAt
+    const result = await c.env.DB.prepare(
+      `SELECT id, direction, message_type as messageType, content, created_at as createdAt
          FROM messages_log WHERE friend_id = ? ORDER BY created_at ASC LIMIT 200`,
-      )
+    )
       .bind(friendId)
-      .all<{ id: string; direction: string; messageType: string; content: string; createdAt: string }>();
+      .all<{
+        id: string;
+        direction: string;
+        messageType: string;
+        content: string;
+        createdAt: string;
+      }>();
     return c.json({ success: true, data: result.results });
   } catch (err) {
     console.error('GET /api/friends/:id/messages error:', err);
@@ -305,7 +329,12 @@ friends.post('/api/friends/:id/messages', async (c) => {
     }
 
     const { LineClient } = await import('@line-crm/line-sdk');
-    const lineClient = new LineClient(c.env.LINE_CHANNEL_ACCESS_TOKEN);
+    const accessToken = await resolveLineAccessTokenForFriend(
+      db,
+      c.env.LINE_CHANNEL_ACCESS_TOKEN,
+      friendId,
+    );
+    const lineClient = new LineClient(accessToken);
     const messageType = body.messageType ?? 'text';
 
     const message = buildMessage(messageType, body.content);

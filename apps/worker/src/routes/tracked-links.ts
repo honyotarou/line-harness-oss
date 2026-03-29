@@ -131,34 +131,38 @@ trackedLinks.get('/t/:linkId', async (c) => {
   }
 
   // Redirect immediately, run side-effects async
-  const ctx = c.executionCtx as ExecutionContext;
-  ctx.waitUntil(
-    (async () => {
-      try {
-        // Record the click
-        await recordLinkClick(c.env.DB, linkId, friendId);
+  const trackClick = async () => {
+    try {
+      // Record the click
+      await recordLinkClick(c.env.DB, linkId, friendId);
 
-        // Run automatic actions if a friend is identified
-        if (friendId) {
-          const actions: Promise<unknown>[] = [];
+      // Run automatic actions if a friend is identified
+      if (friendId) {
+        const actions: Promise<unknown>[] = [];
 
-          if (link.tag_id) {
-            actions.push(addTagToFriend(c.env.DB, friendId, link.tag_id));
-          }
-
-          if (link.scenario_id) {
-            actions.push(enrollFriendInScenario(c.env.DB, friendId, link.scenario_id));
-          }
-
-          if (actions.length > 0) {
-            await Promise.allSettled(actions);
-          }
+        if (link.tag_id) {
+          actions.push(addTagToFriend(c.env.DB, friendId, link.tag_id));
         }
-      } catch (err) {
-        console.error(`/t/${linkId} async tracking error:`, err);
+
+        if (link.scenario_id) {
+          actions.push(enrollFriendInScenario(c.env.DB, friendId, link.scenario_id));
+        }
+
+        if (actions.length > 0) {
+          await Promise.allSettled(actions);
+        }
       }
-    })(),
-  );
+    } catch (err) {
+      console.error(`/t/${linkId} async tracking error:`, err);
+    }
+  };
+
+  try {
+    const executionCtx = c.executionCtx as ExecutionContext;
+    executionCtx.waitUntil(trackClick());
+  } catch {
+    await trackClick();
+  }
 
   return c.redirect(link.original_url, 302);
 });

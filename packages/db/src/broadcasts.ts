@@ -10,6 +10,7 @@ export interface Broadcast {
   message_content: string;
   target_type: BroadcastTargetType;
   target_tag_id: string | null;
+  line_account_id: string | null;
   status: BroadcastStatus;
   scheduled_at: string | null;
   sent_at: string | null;
@@ -18,21 +19,33 @@ export interface Broadcast {
   created_at: string;
 }
 
-export async function getBroadcasts(db: D1Database): Promise<Broadcast[]> {
+export async function getBroadcasts(
+  db: D1Database,
+  lineAccountId?: string | null,
+): Promise<Broadcast[]> {
+  if (lineAccountId === undefined) {
+    const result = await db
+      .prepare(`SELECT * FROM broadcasts ORDER BY created_at DESC`)
+      .all<Broadcast>();
+    return result.results;
+  }
+
+  if (lineAccountId === null) {
+    const result = await db
+      .prepare(`SELECT * FROM broadcasts WHERE line_account_id IS NULL ORDER BY created_at DESC`)
+      .all<Broadcast>();
+    return result.results;
+  }
+
   const result = await db
-    .prepare(`SELECT * FROM broadcasts ORDER BY created_at DESC`)
+    .prepare(`SELECT * FROM broadcasts WHERE line_account_id = ? ORDER BY created_at DESC`)
+    .bind(lineAccountId)
     .all<Broadcast>();
   return result.results;
 }
 
-export async function getBroadcastById(
-  db: D1Database,
-  id: string,
-): Promise<Broadcast | null> {
-  return db
-    .prepare(`SELECT * FROM broadcasts WHERE id = ?`)
-    .bind(id)
-    .first<Broadcast>();
+export async function getBroadcastById(db: D1Database, id: string): Promise<Broadcast | null> {
+  return db.prepare(`SELECT * FROM broadcasts WHERE id = ?`).bind(id).first<Broadcast>();
 }
 
 export interface CreateBroadcastInput {

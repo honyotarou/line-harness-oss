@@ -29,24 +29,12 @@ export async function getAffiliates(db: D1Database): Promise<Affiliate[]> {
   return result.results;
 }
 
-export async function getAffiliateById(
-  db: D1Database,
-  id: string,
-): Promise<Affiliate | null> {
-  return db
-    .prepare(`SELECT * FROM affiliates WHERE id = ?`)
-    .bind(id)
-    .first<Affiliate>();
+export async function getAffiliateById(db: D1Database, id: string): Promise<Affiliate | null> {
+  return db.prepare(`SELECT * FROM affiliates WHERE id = ?`).bind(id).first<Affiliate>();
 }
 
-export async function getAffiliateByCode(
-  db: D1Database,
-  code: string,
-): Promise<Affiliate | null> {
-  return db
-    .prepare(`SELECT * FROM affiliates WHERE code = ?`)
-    .bind(code)
-    .first<Affiliate>();
+export async function getAffiliateByCode(db: D1Database, code: string): Promise<Affiliate | null> {
+  return db.prepare(`SELECT * FROM affiliates WHERE code = ?`).bind(code).first<Affiliate>();
 }
 
 export interface CreateAffiliateInput {
@@ -109,10 +97,7 @@ export async function updateAffiliate(
   return getAffiliateById(db, id);
 }
 
-export async function deleteAffiliate(
-  db: D1Database,
-  id: string,
-): Promise<void> {
+export async function deleteAffiliate(db: D1Database, id: string): Promise<void> {
   await db.prepare(`DELETE FROM affiliates WHERE id = ?`).bind(id).run();
 }
 

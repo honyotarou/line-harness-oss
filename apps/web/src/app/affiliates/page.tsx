@@ -1,105 +1,112 @@
-'use client'
+'use client';
 
-import { useState, useEffect, useCallback } from 'react'
-import Header from '@/components/layout/header'
+import { useState, useEffect, useCallback } from 'react';
+import Header from '@/components/layout/header';
 
-import { fetchApi } from '@/lib/api'
-import { useAccount } from '@/contexts/account-context'
+import { fetchApi } from '@/lib/api';
+import { useAccount } from '@/contexts/account-context';
 
-const WORKER_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8787'
+const WORKER_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8787';
 
 interface RefRoute {
-  refCode: string
-  name: string
-  friendCount: number
-  clickCount: number
-  latestAt: string | null
+  refCode: string;
+  name: string;
+  friendCount: number;
+  clickCount: number;
+  latestAt: string | null;
 }
 
 interface RefSummaryData {
-  routes: RefRoute[]
-  totalFriends: number
-  friendsWithRef: number
-  friendsWithoutRef: number
+  routes: RefRoute[];
+  totalFriends: number;
+  friendsWithRef: number;
+  friendsWithoutRef: number;
 }
 
 interface RefFriend {
-  id: string
-  displayName: string
-  trackedAt: string | null
+  id: string;
+  displayName: string;
+  trackedAt: string | null;
 }
 
 interface RefDetailData {
-  refCode: string
-  name: string
-  friends: RefFriend[]
+  refCode: string;
+  name: string;
+  friends: RefFriend[];
 }
 
 export default function AttributionPage() {
-  const { selectedAccountId } = useAccount()
-  const [summary, setSummary] = useState<RefSummaryData | null>(null)
-  const [loading, setLoading] = useState(true)
-  const [selectedRef, setSelectedRef] = useState<string | null>(null)
-  const [detail, setDetail] = useState<RefDetailData | null>(null)
-  const [detailLoading, setDetailLoading] = useState(false)
-  const [copiedCode, setCopiedCode] = useState<string | null>(null)
+  const { selectedAccountId } = useAccount();
+  const [summary, setSummary] = useState<RefSummaryData | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [selectedRef, setSelectedRef] = useState<string | null>(null);
+  const [detail, setDetail] = useState<RefDetailData | null>(null);
+  const [detailLoading, setDetailLoading] = useState(false);
+  const [copiedCode, setCopiedCode] = useState<string | null>(null);
 
   const loadSummary = useCallback(async () => {
-    setLoading(true)
+    setLoading(true);
     try {
-      const query = selectedAccountId ? `?lineAccountId=${selectedAccountId}` : ''
-      const res = await fetchApi<{ success: boolean; data: RefSummaryData }>(`/api/analytics/ref-summary${query}`)
-      setSummary(res.data)
+      const query = selectedAccountId ? `?lineAccountId=${selectedAccountId}` : '';
+      const res = await fetchApi<{ success: boolean; data: RefSummaryData }>(
+        `/api/analytics/ref-summary${query}`,
+      );
+      setSummary(res.data);
     } catch {
       // silent
     }
-    setLoading(false)
-  }, [selectedAccountId])
+    setLoading(false);
+  }, [selectedAccountId]);
 
   useEffect(() => {
-    loadSummary()
+    loadSummary();
     // Refresh when tab becomes visible
-    const handleVisibility = () => { if (document.visibilityState === 'visible') loadSummary() }
-    document.addEventListener('visibilitychange', handleVisibility)
-    return () => document.removeEventListener('visibilitychange', handleVisibility)
-  }, [loadSummary])
+    const handleVisibility = () => {
+      if (document.visibilityState === 'visible') loadSummary();
+    };
+    document.addEventListener('visibilitychange', handleVisibility);
+    return () => document.removeEventListener('visibilitychange', handleVisibility);
+  }, [loadSummary]);
 
   const handleRowClick = async (refCode: string) => {
     if (selectedRef === refCode) {
-      setSelectedRef(null)
-      setDetail(null)
-      return
+      setSelectedRef(null);
+      setDetail(null);
+      return;
     }
-    setSelectedRef(refCode)
-    setDetailLoading(true)
+    setSelectedRef(refCode);
+    setDetailLoading(true);
     try {
-      const query = selectedAccountId ? `?lineAccountId=${selectedAccountId}` : ''
-      const res = await fetchApi<{ success: boolean; data: RefDetailData }>(`/api/analytics/ref/${encodeURIComponent(refCode)}${query}`)
-      setDetail(res.data)
+      const query = selectedAccountId ? `?lineAccountId=${selectedAccountId}` : '';
+      const res = await fetchApi<{ success: boolean; data: RefDetailData }>(
+        `/api/analytics/ref/${encodeURIComponent(refCode)}${query}`,
+      );
+      setDetail(res.data);
     } catch {
-      setDetail(null)
+      setDetail(null);
     }
-    setDetailLoading(false)
-  }
+    setDetailLoading(false);
+  };
 
   const handleCopy = async (refCode: string) => {
-    const url = `${WORKER_BASE}/auth/line?ref=${encodeURIComponent(refCode)}`
-    await navigator.clipboard.writeText(url)
-    setCopiedCode(refCode)
-    setTimeout(() => setCopiedCode(null), 2000)
-  }
+    const url = `${WORKER_BASE}/auth/line?ref=${encodeURIComponent(refCode)}`;
+    await navigator.clipboard.writeText(url);
+    setCopiedCode(refCode);
+    setTimeout(() => setCopiedCode(null), 2000);
+  };
 
   const formatDate = (iso: string | null) => {
-    if (!iso) return '—'
-    return new Date(iso).toLocaleDateString('ja-JP', { year: 'numeric', month: '2-digit', day: '2-digit' })
-  }
+    if (!iso) return '—';
+    return new Date(iso).toLocaleDateString('ja-JP', {
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit',
+    });
+  };
 
   return (
     <div>
-      <Header
-        title="流入経路分析"
-        description="ref コード別の友だち獲得・クリック実績"
-      />
+      <Header title="流入経路分析" description="ref コード別の友だち獲得・クリック実績" />
 
       {/* Summary cards */}
       {summary && (
@@ -137,18 +144,30 @@ export default function AttributionPage() {
           <table className="w-full min-w-[720px]">
             <thead className="bg-gray-50 border-b border-gray-200">
               <tr>
-                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">ref コード</th>
-                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">経路名</th>
-                <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase">友だち数</th>
-                <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase">クリック数</th>
-                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">最新追加日</th>
-                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">URL</th>
+                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+                  ref コード
+                </th>
+                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+                  経路名
+                </th>
+                <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase">
+                  友だち数
+                </th>
+                <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase">
+                  クリック数
+                </th>
+                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+                  最新追加日
+                </th>
+                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+                  URL
+                </th>
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-200">
               {summary.routes.map((route) => {
-                const authUrl = `${WORKER_BASE}/auth/line?ref=${encodeURIComponent(route.refCode)}`
-                const isExpanded = selectedRef === route.refCode
+                const authUrl = `${WORKER_BASE}/auth/line?ref=${encodeURIComponent(route.refCode)}`;
+                const isExpanded = selectedRef === route.refCode;
                 return (
                   <>
                     <tr
@@ -158,12 +177,20 @@ export default function AttributionPage() {
                     >
                       <td className="px-4 py-3 text-sm font-mono text-blue-600">{route.refCode}</td>
                       <td className="px-4 py-3 text-sm font-medium text-gray-900">{route.name}</td>
-                      <td className="px-4 py-3 text-sm text-right font-semibold text-gray-900">{route.friendCount}</td>
-                      <td className="px-4 py-3 text-sm text-right text-gray-600">{route.clickCount}</td>
-                      <td className="px-4 py-3 text-sm text-gray-500">{formatDate(route.latestAt)}</td>
+                      <td className="px-4 py-3 text-sm text-right font-semibold text-gray-900">
+                        {route.friendCount}
+                      </td>
+                      <td className="px-4 py-3 text-sm text-right text-gray-600">
+                        {route.clickCount}
+                      </td>
+                      <td className="px-4 py-3 text-sm text-gray-500">
+                        {formatDate(route.latestAt)}
+                      </td>
                       <td className="px-4 py-3 text-sm" onClick={(e) => e.stopPropagation()}>
                         <div className="flex items-center gap-2">
-                          <span className="text-xs text-gray-400 truncate max-w-[180px]">{authUrl}</span>
+                          <span className="text-xs text-gray-400 truncate max-w-[180px]">
+                            {authUrl}
+                          </span>
                           <button
                             onClick={() => handleCopy(route.refCode)}
                             className="text-xs text-blue-500 hover:text-blue-700 shrink-0"
@@ -185,26 +212,35 @@ export default function AttributionPage() {
                               </p>
                               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2">
                                 {detail.friends.map((f) => (
-                                  <div key={f.id} className="flex items-center justify-between bg-white rounded-lg px-3 py-2 border border-gray-100">
-                                    <span className="text-sm text-gray-800 font-medium truncate">{f.displayName}</span>
-                                    <span className="text-xs text-gray-400 ml-2 shrink-0">{formatDate(f.trackedAt)}</span>
+                                  <div
+                                    key={f.id}
+                                    className="flex items-center justify-between bg-white rounded-lg px-3 py-2 border border-gray-100"
+                                  >
+                                    <span className="text-sm text-gray-800 font-medium truncate">
+                                      {f.displayName}
+                                    </span>
+                                    <span className="text-xs text-gray-400 ml-2 shrink-0">
+                                      {formatDate(f.trackedAt)}
+                                    </span>
                                   </div>
                                 ))}
                               </div>
                             </div>
                           ) : (
-                            <p className="text-sm text-gray-400">このルートから追加した友だちはまだいません</p>
+                            <p className="text-sm text-gray-400">
+                              このルートから追加した友だちはまだいません
+                            </p>
                           )}
                         </td>
                       </tr>
                     )}
                   </>
-                )
+                );
               })}
             </tbody>
           </table>
         </div>
       )}
     </div>
-  )
+  );
 }

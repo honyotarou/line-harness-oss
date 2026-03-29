@@ -1,13 +1,13 @@
-'use client'
+'use client';
 
-import { useState, useEffect, useCallback } from 'react'
-import type { Tag } from '@line-crm/shared'
-import { api } from '@/lib/api'
-import type { FriendWithTags } from '@/lib/api'
-import Header from '@/components/layout/header'
-import FriendTable from '@/components/friends/friend-table'
-import CcPromptButton from '@/components/cc-prompt-button'
-import { useAccount } from '@/contexts/account-context'
+import { useState, useEffect, useCallback } from 'react';
+import type { Tag } from '@line-crm/shared';
+import { api } from '@/lib/api';
+import type { FriendWithTags } from '@/lib/api';
+import Header from '@/components/layout/header';
+import FriendTable from '@/components/friends/friend-table';
+import CcPromptButton from '@/components/cc-prompt-button';
+import { useAccount } from '@/contexts/account-context';
 
 const ccPrompts = [
   {
@@ -26,71 +26,71 @@ const ccPrompts = [
 3. 不要タグの整理
 作業手順を示してください。`,
   },
-]
+];
 
-const PAGE_SIZE = 20
+const PAGE_SIZE = 20;
 
 export default function FriendsPage() {
-  const { selectedAccountId } = useAccount()
-  const [friends, setFriends] = useState<FriendWithTags[]>([])
-  const [allTags, setAllTags] = useState<Tag[]>([])
-  const [total, setTotal] = useState(0)
-  const [page, setPage] = useState(1)
-  const [hasNextPage, setHasNextPage] = useState(false)
-  const [selectedTagId, setSelectedTagId] = useState('')
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState('')
+  const { selectedAccountId } = useAccount();
+  const [friends, setFriends] = useState<FriendWithTags[]>([]);
+  const [allTags, setAllTags] = useState<Tag[]>([]);
+  const [total, setTotal] = useState(0);
+  const [page, setPage] = useState(1);
+  const [hasNextPage, setHasNextPage] = useState(false);
+  const [selectedTagId, setSelectedTagId] = useState('');
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
 
   const loadTags = useCallback(async () => {
     try {
-      const res = await api.tags.list()
-      if (res.success) setAllTags(res.data)
+      const res = await api.tags.list();
+      if (res.success) setAllTags(res.data);
     } catch {
       // Non-blocking — tags used for filter
     }
-  }, [])
+  }, []);
 
   const loadFriends = useCallback(async () => {
-    setLoading(true)
-    setError('')
+    setLoading(true);
+    setError('');
     try {
       const params: Record<string, string> = {
         offset: String((page - 1) * PAGE_SIZE),
         limit: String(PAGE_SIZE),
-      }
-      if (selectedTagId) params.tagId = selectedTagId
-      if (selectedAccountId) params.accountId = selectedAccountId
+      };
+      if (selectedTagId) params.tagId = selectedTagId;
+      if (selectedAccountId) params.accountId = selectedAccountId;
 
-      const res = await api.friends.list(params)
+      const res = await api.friends.list(params);
       if (res.success) {
-        setFriends(res.data.items)
-        setTotal(res.data.total)
-        setHasNextPage(res.data.hasNextPage)
+        setFriends(res.data.items);
+        setTotal(res.data.total);
+        setHasNextPage(res.data.hasNextPage);
       } else {
-        setError(res.error)
+        setError(res.error);
       }
     } catch {
-      setError('友だちの読み込みに失敗しました。もう一度お試しください。')
+      setError('友だちの読み込みに失敗しました。もう一度お試しください。');
     } finally {
-      setLoading(false)
+      setLoading(false);
     }
-  }, [page, selectedTagId, selectedAccountId])
+  }, [page, selectedTagId, selectedAccountId]);
 
   useEffect(() => {
-    loadTags()
-  }, [loadTags])
+    loadTags();
+  }, [loadTags]);
 
   useEffect(() => {
-    setPage(1)
-  }, [selectedTagId, selectedAccountId])
+    setPage(1);
+  }, [selectedTagId, selectedAccountId]);
 
   useEffect(() => {
-    loadFriends()
-  }, [loadFriends])
+    loadFriends();
+  }, [loadFriends]);
 
   const handleTagFilter = (tagId: string) => {
-    setSelectedTagId(tagId)
-  }
+    setSelectedTagId(tagId);
+  };
 
   return (
     <div>
@@ -99,7 +99,9 @@ export default function FriendsPage() {
       {/* Filters */}
       <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:gap-3 mb-4">
         <div className="flex items-center gap-2">
-          <label className="text-sm text-gray-600 font-medium whitespace-nowrap">タグで絞り込み:</label>
+          <label className="text-sm text-gray-600 font-medium whitespace-nowrap">
+            タグで絞り込み:
+          </label>
           <select
             className="text-sm border border-gray-300 rounded-lg px-3 py-2 min-h-[44px] bg-white focus:outline-none focus:ring-2 focus:ring-green-500 flex-1 sm:flex-none"
             value={selectedTagId}
@@ -107,7 +109,9 @@ export default function FriendsPage() {
           >
             <option value="">すべて</option>
             {allTags.map((tag) => (
-              <option key={tag.id} value={tag.id}>{tag.name}</option>
+              <option key={tag.id} value={tag.id}>
+                {tag.name}
+              </option>
             ))}
           </select>
         </div>
@@ -127,7 +131,10 @@ export default function FriendsPage() {
       {loading ? (
         <div className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
           {[...Array(5)].map((_, i) => (
-            <div key={i} className="px-4 py-4 border-b border-gray-100 flex items-center gap-4 animate-pulse">
+            <div
+              key={i}
+              className="px-4 py-4 border-b border-gray-100 flex items-center gap-4 animate-pulse"
+            >
               <div className="w-9 h-9 rounded-full bg-gray-200" />
               <div className="flex-1 space-y-2">
                 <div className="h-3 bg-gray-200 rounded w-32" />
@@ -140,18 +147,15 @@ export default function FriendsPage() {
           ))}
         </div>
       ) : (
-        <FriendTable
-          friends={friends}
-          allTags={allTags}
-          onRefresh={loadFriends}
-        />
+        <FriendTable friends={friends} allTags={allTags} onRefresh={loadFriends} />
       )}
 
       {/* Pagination */}
       {!loading && total > 0 && (
         <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between mt-4">
           <p className="text-sm text-gray-500">
-            {((page - 1) * PAGE_SIZE) + 1}〜{Math.min(page * PAGE_SIZE, total)} 件 / 全{total.toLocaleString('ja-JP')}件
+            {(page - 1) * PAGE_SIZE + 1}〜{Math.min(page * PAGE_SIZE, total)} 件 / 全
+            {total.toLocaleString('ja-JP')}件
           </p>
           <div className="flex items-center gap-2">
             <button
@@ -175,5 +179,5 @@ export default function FriendsPage() {
 
       <CcPromptButton prompts={ccPrompts} />
     </div>
-  )
+  );
 }

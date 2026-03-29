@@ -1,0 +1,21 @@
+# 実際の D1 database_id を Git に載せたくないとき:
+#   cp wrangler.local.toml.example wrangler.local.toml
+#   # database_id を編集（wrangler.local.toml は .gitignore 済み）
+# pnpm dev / pnpm deploy は wrangler.local.toml を自動で使います。
+
+name = "line-crm-worker"
+main = "src/index.ts"
+compatibility_date = "2024-12-01"
+workers_dev = true
+
+[vars]
+WORKER_URL = "https://line-crm-worker.line-crm-api.workers.dev"
+WEB_URL = "http://127.0.0.1:3001"
+
+[[d1_databases]]
+binding = "DB"
+database_name = "line-crm"
+database_id = "YOUR_D1_DATABASE_ID"
+
+[triggers]
+crons = ["*/5 * * * *"]

@@ -64,10 +64,7 @@ export async function createConversionPoint(
   return (await getConversionPointById(db, id))!;
 }
 
-export async function deleteConversionPoint(
-  db: D1Database,
-  id: string,
-): Promise<void> {
+export async function deleteConversionPoint(db: D1Database, id: string): Promise<void> {
   await db.prepare(`DELETE FROM conversion_points WHERE id = ?`).bind(id).run();
 }
 
@@ -153,9 +150,7 @@ export async function getConversionEvents(
   values.push(limit, offset);
 
   const result = await db
-    .prepare(
-      `SELECT * FROM conversion_events ${where} ORDER BY created_at DESC LIMIT ? OFFSET ?`,
-    )
+    .prepare(`SELECT * FROM conversion_events ${where} ORDER BY created_at DESC LIMIT ? OFFSET ?`)
     .bind(...values)
     .all<ConversionEvent>();
   return result.results;

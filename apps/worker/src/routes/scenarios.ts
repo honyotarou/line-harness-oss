@@ -32,6 +32,7 @@ function serializeScenario(row: DbScenario) {
     triggerType: row.trigger_type,
     triggerTagId: row.trigger_tag_id,
     isActive: Boolean(row.is_active),
+    lineAccountId: row.line_account_id,
     createdAt: row.created_at,
     updatedAt: row.updated_at,
   };
@@ -73,15 +74,14 @@ scenarios.get('/api/scenarios', async (c) => {
     const lineAccountId = c.req.query('lineAccountId');
     let items: DbScenarioWithStepCount[];
     if (lineAccountId) {
-      const result = await c.env.DB
-        .prepare(
-          `SELECT s.*, COUNT(ss.id) as step_count
+      const result = await c.env.DB.prepare(
+        `SELECT s.*, COUNT(ss.id) as step_count
            FROM scenarios s
            LEFT JOIN scenario_steps ss ON s.id = ss.scenario_id
            WHERE s.line_account_id = ?
            GROUP BY s.id
            ORDER BY s.created_at DESC`,
-        )
+      )
         .bind(lineAccountId)
         .all<DbScenarioWithStepCount>();
       items = result.results;
@@ -150,7 +150,8 @@ scenarios.post('/api/scenarios', async (c) => {
     // Save line_account_id if provided
     if (body.lineAccountId) {
       await c.env.DB.prepare(`UPDATE scenarios SET line_account_id = ? WHERE id = ?`)
-        .bind(body.lineAccountId, scenario.id).run();
+        .bind(body.lineAccountId, scenario.id)
+        .run();
     }
 
     // createScenario() always sets is_active=1; override if the caller requested inactive
@@ -159,7 +160,16 @@ scenarios.post('/api/scenarios', async (c) => {
       if (updated) scenario = updated;
     }
 
-    return c.json({ success: true, data: serializeScenario(scenario) }, 201);
+    return c.json(
+      {
+        success: true,
+        data: {
+          ...serializeScenario(scenario),
+          lineAccountId: body.lineAccountId ?? scenario.line_account_id ?? null,
+        },
+      },
+      201,
+    );
   } catch (err) {
     console.error('POST /api/scenarios error:', err);
     return c.json({ success: false, error: 'Internal server error' }, 500);

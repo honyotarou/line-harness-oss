@@ -1,0 +1,19 @@
+# https://github.com/evilmartians/lefthook
+# After clone: pnpm exec lefthook install
+pre-commit:
+  commands:
+    harness:
+      run: pnpm harness
+      glob:
+        - apps/**/*
+        - packages/**/*
+        - tests/**/*
+        - scripts/**/*
+        - package.json
+        - pnpm-lock.yaml
+        - lefthook.yml
+    biome:
+      run: pnpm format:check
+      glob:
+        - "**/*.{ts,tsx,js,jsx,json}"
+        - biome.json

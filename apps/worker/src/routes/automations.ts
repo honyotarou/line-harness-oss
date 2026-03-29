@@ -18,8 +18,9 @@ automations.get('/api/automations', async (c) => {
     const lineAccountId = c.req.query('lineAccountId');
     let items;
     if (lineAccountId) {
-      const result = await c.env.DB
-        .prepare(`SELECT * FROM automations WHERE line_account_id = ? ORDER BY priority DESC, created_at DESC`)
+      const result = await c.env.DB.prepare(
+        `SELECT * FROM automations WHERE line_account_id = ? ORDER BY priority DESC, created_at DESC`,
+      )
         .bind(lineAccountId)
         .all();
       items = result.results as unknown as Awaited<ReturnType<typeof getAutomations>>;
@@ -37,6 +38,7 @@ automations.get('/api/automations', async (c) => {
         actions: JSON.parse(a.actions),
         isActive: Boolean(a.is_active),
         priority: a.priority,
+        lineAccountId: a.line_account_id,
         createdAt: a.created_at,
         updatedAt: a.updated_at,
       })),
@@ -66,6 +68,7 @@ automations.get('/api/automations/:id', async (c) => {
         actions: JSON.parse(item.actions),
         isActive: Boolean(item.is_active),
         priority: item.priority,
+        lineAccountId: item.line_account_id,
         createdAt: item.created_at,
         updatedAt: item.updated_at,
         logs: logs.map((l) => ({
@@ -102,20 +105,25 @@ automations.post('/api/automations', async (c) => {
     // Save line_account_id if provided
     if (body.lineAccountId) {
       await c.env.DB.prepare(`UPDATE automations SET line_account_id = ? WHERE id = ?`)
-        .bind(body.lineAccountId, item.id).run();
+        .bind(body.lineAccountId, item.id)
+        .run();
     }
-    return c.json({
-      success: true,
-      data: {
-        id: item.id,
-        name: item.name,
-        eventType: item.event_type,
-        actions: JSON.parse(item.actions),
-        isActive: Boolean(item.is_active),
-        priority: item.priority,
-        createdAt: item.created_at,
+    return c.json(
+      {
+        success: true,
+        data: {
+          id: item.id,
+          name: item.name,
+          eventType: item.event_type,
+          actions: JSON.parse(item.actions),
+          isActive: Boolean(item.is_active),
+          priority: item.priority,
+          lineAccountId: body.lineAccountId ?? item.line_account_id ?? null,
+          createdAt: item.created_at,
+        },
       },
-    }, 201);
+      201,
+    );
   } catch (err) {
     console.error('POST /api/automations error:', err);
     return c.json({ success: false, error: 'Internal server error' }, 500);
@@ -139,6 +147,7 @@ automations.put('/api/automations/:id', async (c) => {
         actions: JSON.parse(updated.actions),
         isActive: Boolean(updated.is_active),
         priority: updated.priority,
+        lineAccountId: updated.line_account_id,
       },
     });
   } catch (err) {

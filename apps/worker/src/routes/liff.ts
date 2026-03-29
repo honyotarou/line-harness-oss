@@ -3,18 +3,30 @@ import {
   getFriendByLineUserId,
   createUser,
   getUserByEmail,
+  getUserById,
   linkFriendToUser,
   upsertFriend,
   getEntryRouteByRefCode,
   recordRefTracking,
   addTagToFriend,
   getLineAccountByChannelId,
-  getLineAccounts,
   jstNow,
 } from '@line-crm/db';
 import type { Env } from '../index.js';
+import { signLiffOAuthState, verifyLiffOAuthState } from '../services/liff-oauth-state.js';
+import { resolveSafeRedirectUrl } from '../services/liff-redirect.js';
+import { verifyLineLoginIdToken } from '../services/line-login-id-token.js';
 
 const liffRoutes = new Hono<Env>();
+
+function liffStateSecret(env: Env['Bindings']): string {
+  return env.LIFF_STATE_SECRET?.trim() || env.API_KEY;
+}
+
+function emailsMatchForRecovery(a: string | null, b: string | null): boolean {
+  if (!a || !b) return false;
+  return a.trim().toLowerCase() === b.trim().toLowerCase();
+}
 
 // ─── LINE Login OAuth (bot_prompt=aggressive) ───────────────────
 
@@ -30,6 +42,7 @@ const liffRoutes = new Hono<Env>();
  *   ?utm_source=xxx, utm_medium, utm_campaign, utm_content, utm_term — UTM params
  */
 liffRoutes.get('/auth/line', async (c) => {
+  const stateSecret = liffStateSecret(c.env);
   const ref = c.req.query('ref') || '';
   const redirect = c.req.query('redirect') || '';
   const gclid = c.req.query('gclid') || '';
@@ -37,6 +50,8 @@ liffRoutes.get('/auth/line', async (c) => {
   const utmSource = c.req.query('utm_source') || '';
   const utmMedium = c.req.query('utm_medium') || '';
   const utmCampaign = c.req.query('utm_campaign') || '';
+  const utmContent = c.req.query('utm_content') || '';
+  const utmTerm = c.req.query('utm_term') || '';
   const accountParam = c.req.query('account') || '';
   const uidParam = c.req.query('uid') || ''; // existing user UUID for cross-account linking
   const baseUrl = new URL(c.req.url).origin;
@@ -65,14 +80,32 @@ liffRoutes.get('/auth/line', async (c) => {
   if (gclid) liffParams.set('gclid', gclid);
   if (fbclid) liffParams.set('fbclid', fbclid);
   if (utmSource) liffParams.set('utm_source', utmSource);
-  const liffTarget = liffParams.toString()
-    ? `${liffUrl}?${liffParams.toString()}`
-    : liffUrl;
+  if (utmMedium) liffParams.set('utm_medium', utmMedium);
+  if (utmCampaign) liffParams.set('utm_campaign', utmCampaign);
+  if (utmContent) liffParams.set('utm_content', utmContent);
+  if (utmTerm) liffParams.set('utm_term', utmTerm);
+  if (uidParam) liffParams.set('uid', uidParam);
+  if (accountParam) liffParams.set('account', accountParam);
+  const liffTarget = liffParams.toString() ? `${liffUrl}?${liffParams.toString()}` : liffUrl;
 
   // Build OAuth URL (for desktop fallback)
-  // Pack all tracking params into state so they survive the OAuth redirect
-  const state = JSON.stringify({ ref, redirect, gclid, fbclid, utmSource, utmMedium, utmCampaign, account: accountParam, uid: uidParam });
-  const encodedState = btoa(state);
+  // Pack all tracking params into signed state so they survive the OAuth redirect (tamper-resistant)
+  const encodedState = await signLiffOAuthState(
+    {
+      ref,
+      redirect,
+      gclid,
+      fbclid,
+      utmSource,
+      utmMedium,
+      utmCampaign,
+      utmContent,
+      utmTerm,
+      account: accountParam,
+      uid: uidParam,
+    },
+    stateSecret,
+  );
   const loginUrl = new URL('https://access.line.me/oauth2/v2.1/authorize');
   loginUrl.searchParams.set('response_type', 'code');
   loginUrl.searchParams.set('client_id', channelId);
@@ -80,13 +113,7 @@ liffRoutes.get('/auth/line', async (c) => {
   loginUrl.searchParams.set('scope', 'profile openid email');
   loginUrl.searchParams.set('bot_prompt', 'aggressive');
   loginUrl.searchParams.set('state', encodedState);
-
-  // Build LIFF URL with params (opens LINE app directly on mobile + QR on PC)
-  const qrParams = new URLSearchParams();
-  if (ref) qrParams.set('ref', ref);
-  if (uidParam) qrParams.set('uid', uidParam);
-  if (accountParam) qrParams.set('account', accountParam);
-  const qrUrl = qrParams.toString() ? `${liffUrl}?${qrParams.toString()}` : liffUrl;
+  const scanTarget = accountParam ? loginUrl.toString() : liffTarget;
 
   // Mobile: redirect to LIFF URL (opens LINE app directly)
   // Exception: cross-account links (account param) use OAuth directly
@@ -98,7 +125,7 @@ liffRoutes.get('/auth/line', async (c) => {
       // Cross-account: use OAuth (LIFF won't work across accounts)
       return c.redirect(loginUrl.toString());
     }
-    return c.redirect(qrUrl);
+    return c.redirect(liffTarget);
   }
 
   // PC: show QR code page
@@ -125,7 +152,7 @@ liffRoutes.get('/auth/line', async (c) => {
     <h1>LINE Harness を体験</h1>
     <p class="sub">スマートフォンで QR コードを読み取ってください</p>
     <div class="qr">
-      <img src="https://api.qrserver.com/v1/create-qr-code/?size=240x240&data=${encodeURIComponent(qrUrl)}" alt="QR Code">
+      <img src="https://api.qrserver.com/v1/create-qr-code/?size=240x240&data=${encodeURIComponent(scanTarget)}" alt="QR Code">
     </div>
     <p class="hint">LINE アプリのカメラまたは<br>スマートフォンのカメラで読み取れます</p>
     <div class="badge">LINE Harness OSS</div>
@@ -144,34 +171,28 @@ liffRoutes.get('/auth/callback', async (c) => {
   const stateParam = c.req.query('state') || '';
   const error = c.req.query('error');
 
-  // Parse state (contains ref, redirect, and ad click IDs)
-  let ref = '';
-  let redirect = '';
-  let gclid = '';
-  let fbclid = '';
-  let utmSource = '';
-  let utmMedium = '';
-  let utmCampaign = '';
-  let accountParam = '';
-  let uidParam = '';
-  try {
-    const parsed = JSON.parse(atob(stateParam));
-    ref = parsed.ref || '';
-    redirect = parsed.redirect || '';
-    gclid = parsed.gclid || '';
-    fbclid = parsed.fbclid || '';
-    utmSource = parsed.utmSource || '';
-    utmMedium = parsed.utmMedium || '';
-    utmCampaign = parsed.utmCampaign || '';
-    accountParam = parsed.account || '';
-    uidParam = parsed.uid || '';
-  } catch {
-    // ignore
-  }
-
   if (error || !code) {
     return c.html(errorPage(error || 'Authorization failed'));
   }
+
+  const parsedState = await verifyLiffOAuthState(stateParam, liffStateSecret(c.env));
+  if (!parsedState) {
+    return c.html(errorPage('Invalid or expired login state'));
+  }
+
+  const {
+    ref,
+    redirect,
+    gclid,
+    fbclid,
+    utmSource,
+    utmMedium,
+    utmCampaign,
+    utmContent,
+    utmTerm,
+    account: accountParam,
+    uid: uidParam,
+  } = parsedState;
 
   try {
     const baseUrl = new URL(c.req.url).origin;
@@ -270,18 +291,20 @@ liffRoutes.get('/auth/callback', async (c) => {
     if (existingUserId) {
       userId = existingUserId;
     } else {
-      // Cross-account linking: if uid is provided, use that existing UUID
-      if (uidParam) {
-        userId = uidParam;
-      }
-
       // Try to find by email
-      if (!userId && verified.email) {
+      if (verified.email) {
         const existingUser = await getUserByEmail(db, verified.email);
         if (existingUser) userId = existingUser.id;
       }
 
-      // Create new user only if no existing UUID found
+      const uidTrim = uidParam.trim();
+      if (!userId && uidTrim && verified.email) {
+        const saved = await getUserById(db, uidTrim);
+        if (saved && emailsMatchForRecovery(saved.email, verified.email)) {
+          userId = saved.id;
+        }
+      }
+
       if (!userId) {
         const newUser = await createUser(db, {
           email: verified.email || null,
@@ -290,7 +313,6 @@ liffRoutes.get('/auth/callback', async (c) => {
         userId = newUser.id;
       }
 
-      // Link friend to user
       await linkFriendToUser(db, friend.id, userId);
     }
 
@@ -330,6 +352,8 @@ liffRoutes.get('/auth/callback', async (c) => {
     if (utmSource) adMeta.utm_source = utmSource;
     if (utmMedium) adMeta.utm_medium = utmMedium;
     if (utmCampaign) adMeta.utm_campaign = utmCampaign;
+    if (utmContent) adMeta.utm_content = utmContent;
+    if (utmTerm) adMeta.utm_term = utmTerm;
 
     if (Object.keys(adMeta).length > 0) {
       const existingMeta = await db
@@ -345,13 +369,17 @@ liffRoutes.get('/auth/callback', async (c) => {
 
     // Auto-enroll in friend_add scenarios + immediate delivery (skip delivery window)
     try {
-      const { getScenarios, enrollFriendInScenario: enroll, getScenarioSteps } = await import('@line-crm/db');
+      const {
+        getScenarios,
+        enrollFriendInScenario: enroll,
+        getScenarioSteps,
+      } = await import('@line-crm/db');
       const { LineClient } = await import('@line-crm/line-sdk');
       const { buildMessage, expandVariables } = await import('../services/step-delivery.js');
 
       // Resolve which account this friend belongs to
       const matchedAccountId = accountParam
-        ? (await getLineAccountByChannelId(db, accountParam))?.id ?? null
+        ? ((await getLineAccountByChannelId(db, accountParam))?.id ?? null)
         : null;
 
       // Get access token for this account
@@ -364,7 +392,10 @@ liffRoutes.get('/auth/callback', async (c) => {
 
       const scenarios = await getScenarios(db);
       for (const scenario of scenarios) {
-        const scenarioAccountMatch = !scenario.line_account_id || !matchedAccountId || scenario.line_account_id === matchedAccountId;
+        const scenarioAccountMatch =
+          !scenario.line_account_id ||
+          !matchedAccountId ||
+          scenario.line_account_id === matchedAccountId;
         if (scenario.trigger_type === 'friend_add' && scenario.is_active && scenarioAccountMatch) {
           const existing = await db
             .prepare('SELECT id FROM friend_scenarios WHERE friend_id = ? AND scenario_id = ?')
@@ -382,7 +413,9 @@ liffRoutes.get('/auth/callback', async (c) => {
                 friend as { id: string; display_name: string | null; user_id: string | null },
                 c.env.WORKER_URL,
               );
-              await lineClient.pushMessage(lineUserId, [buildMessage(firstStep.message_type, expandedContent)]);
+              await lineClient.pushMessage(lineUserId, [
+                buildMessage(firstStep.message_type, expandedContent),
+              ]);
             }
           }
         }
@@ -391,9 +424,12 @@ liffRoutes.get('/auth/callback', async (c) => {
       console.error('OAuth scenario enrollment error:', err);
     }
 
-    // Redirect or show completion
+    // Redirect or show completion (only allowlisted origins — no open redirect)
     if (redirect) {
-      return c.redirect(redirect);
+      const safe = resolveSafeRedirectUrl(redirect, c.env);
+      if (safe) {
+        return c.redirect(safe);
+      }
     }
 
     // If friend is not yet following this bot, redirect to friend-add page
@@ -406,7 +442,7 @@ liffRoutes.get('/auth/callback', async (c) => {
             headers: { Authorization: `Bearer ${account.channel_access_token}` },
           });
           if (botInfo.ok) {
-            const bot = await botInfo.json() as { basicId?: string };
+            const bot = (await botInfo.json()) as { basicId?: string };
             if (bot.basicId) {
               return c.redirect(`https://line.me/R/ti/p/${bot.basicId}`);
             }
@@ -418,7 +454,6 @@ liffRoutes.get('/auth/callback', async (c) => {
     }
 
     return c.html(completionPage(displayName, pictureUrl, ref));
-
   } catch (err) {
     console.error('Auth callback error:', err);
     return c.html(errorPage('Internal error'));
@@ -427,12 +462,21 @@ liffRoutes.get('/auth/callback', async (c) => {
 
 // ─── Existing LIFF endpoints ────────────────────────────────────
 
-// POST /api/liff/profile - get friend by LINE userId (public, no auth)
+// POST /api/liff/profile — requires LINE Login ID token; sub must match lineUserId (no unauthenticated PII)
 liffRoutes.post('/api/liff/profile', async (c) => {
   try {
-    const body = await c.req.json<{ lineUserId: string }>();
-    if (!body.lineUserId) {
-      return c.json({ success: false, error: 'lineUserId is required' }, 400);
+    const body = await c.req.json<{ lineUserId: string; idToken: string }>();
+    if (!body.lineUserId || !body.idToken) {
+      return c.json({ success: false, error: 'lineUserId and idToken are required' }, 400);
+    }
+
+    const verified = await verifyLineLoginIdToken(
+      c.env.DB,
+      c.env.LINE_LOGIN_CHANNEL_ID,
+      body.idToken,
+    );
+    if (!verified || verified.sub !== body.lineUserId) {
+      return c.json({ success: false, error: 'Invalid ID token' }, 401);
     }
 
     const friend = await getFriendByLineUserId(c.env.DB, body.lineUserId);
@@ -469,30 +513,14 @@ liffRoutes.post('/api/liff/link', async (c) => {
       return c.json({ success: false, error: 'idToken is required' }, 400);
     }
 
-    // Try verifying with default Login channel, then DB accounts
-    const loginChannelIds = [c.env.LINE_LOGIN_CHANNEL_ID];
-    const dbAccounts = await getLineAccounts(c.env.DB);
-    for (const acct of dbAccounts) {
-      if (acct.login_channel_id && !loginChannelIds.includes(acct.login_channel_id)) {
-        loginChannelIds.push(acct.login_channel_id);
-      }
-    }
-
-    let verifyRes: Response | null = null;
-    for (const channelId of loginChannelIds) {
-      verifyRes = await fetch('https://api.line.me/oauth2/v2.1/verify', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-        body: new URLSearchParams({ id_token: body.idToken, client_id: channelId }),
-      });
-      if (verifyRes.ok) break;
-    }
-
-    if (!verifyRes?.ok) {
+    const verified = await verifyLineLoginIdToken(
+      c.env.DB,
+      c.env.LINE_LOGIN_CHANNEL_ID,
+      body.idToken,
+    );
+    if (!verified) {
       return c.json({ success: false, error: 'Invalid ID token' }, 401);
     }
-
-    const verified = await verifyRes.json<{ sub: string; email?: string; name?: string }>();
     const lineUserId = verified.sub;
     const email = verified.email || null;
 
@@ -505,12 +533,17 @@ liffRoutes.post('/api/liff/link', async (c) => {
     if ((friend as unknown as Record<string, unknown>).user_id) {
       // Still save ref even if already linked
       if (body.ref) {
-        await db.prepare('UPDATE friends SET ref_code = ? WHERE id = ? AND ref_code IS NULL')
-          .bind(body.ref, friend.id).run();
+        await db
+          .prepare('UPDATE friends SET ref_code = ? WHERE id = ? AND ref_code IS NULL')
+          .bind(body.ref, friend.id)
+          .run();
       }
       return c.json({
         success: true,
-        data: { userId: (friend as unknown as Record<string, unknown>).user_id, alreadyLinked: true },
+        data: {
+          userId: (friend as unknown as Record<string, unknown>).user_id,
+          alreadyLinked: true,
+        },
       });
     }
 
@@ -518,6 +551,14 @@ liffRoutes.post('/api/liff/link', async (c) => {
     if (email) {
       const existingUser = await getUserByEmail(db, email);
       if (existingUser) userId = existingUser.id;
+    }
+
+    const savedUuid = typeof body.existingUuid === 'string' ? body.existingUuid.trim() : '';
+    if (!userId && savedUuid && email) {
+      const savedUser = await getUserById(db, savedUuid);
+      if (savedUser && emailsMatchForRecovery(savedUser.email, email)) {
+        userId = savedUser.id;
+      }
     }
 
     if (!userId) {
@@ -532,8 +573,10 @@ liffRoutes.post('/api/liff/link', async (c) => {
 
     // Save ref_code from LIFF (first touch wins)
     if (body.ref) {
-      await db.prepare('UPDATE friends SET ref_code = ? WHERE id = ? AND ref_code IS NULL')
-        .bind(body.ref, friend.id).run();
+      await db
+        .prepare('UPDATE friends SET ref_code = ? WHERE id = ? AND ref_code IS NULL')
+        .bind(body.ref, friend.id)
+        .run();
 
       // Record ref tracking
       try {
@@ -544,7 +587,9 @@ liffRoutes.post('/api/liff/link', async (c) => {
           entryRouteId: route?.id ?? null,
           sourceUrl: null,
         });
-      } catch { /* silent */ }
+      } catch {
+        /* silent */
+      }
     }
 
     return c.json({
@@ -593,13 +638,21 @@ liffRoutes.get('/api/analytics/ref-summary', async (c) => {
       }>();
 
     const totalStmt = lineAccountId
-      ? db.prepare(`SELECT COUNT(*) as count FROM friends WHERE line_account_id = ?`).bind(lineAccountId)
+      ? db
+          .prepare(`SELECT COUNT(*) as count FROM friends WHERE line_account_id = ?`)
+          .bind(lineAccountId)
       : db.prepare(`SELECT COUNT(*) as count FROM friends`);
     const totalFriendsRes = await totalStmt.first<{ count: number }>();
 
     const refStmt = lineAccountId
-      ? db.prepare(`SELECT COUNT(*) as count FROM friends WHERE ref_code IS NOT NULL AND ref_code != '' AND line_account_id = ?`).bind(lineAccountId)
-      : db.prepare(`SELECT COUNT(*) as count FROM friends WHERE ref_code IS NOT NULL AND ref_code != ''`);
+      ? db
+          .prepare(
+            `SELECT COUNT(*) as count FROM friends WHERE ref_code IS NOT NULL AND ref_code != '' AND line_account_id = ?`,
+          )
+          .bind(lineAccountId)
+      : db.prepare(
+          `SELECT COUNT(*) as count FROM friends WHERE ref_code IS NOT NULL AND ref_code != ''`,
+        );
     const friendsWithRefRes = await refStmt.first<{ count: number }>();
 
     const totalFriends = totalFriendsRes?.count ?? 0;
@@ -848,7 +901,11 @@ function errorPage(message: string): string {
 }
 
 function escapeHtml(str: string): string {
-  return str.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+  return str
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;');
 }
 
 export { liffRoutes };

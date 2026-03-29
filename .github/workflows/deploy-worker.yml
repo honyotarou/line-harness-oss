@@ -28,6 +28,15 @@ jobs:
       - run: pnpm install --frozen-lockfile
       - run: pnpm --filter @line-crm/shared --filter @line-crm/line-sdk --filter @line-crm/db build
 
+      - name: Inject D1 database id (optional; when wrangler.toml uses YOUR_D1_DATABASE_ID)
+        working-directory: apps/worker
+        env:
+          D1_DATABASE_ID: ${{ secrets.D1_DATABASE_ID }}
+        run: |
+          if [ -n "$D1_DATABASE_ID" ]; then
+            sed -i.bak "s|YOUR_D1_DATABASE_ID|$D1_DATABASE_ID|g" wrangler.toml && rm -f wrangler.toml.bak
+          fi
+
       - uses: cloudflare/wrangler-action@v3
         with:
           apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}

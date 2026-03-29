@@ -1,29 +1,41 @@
-'use client'
+'use client';
 
-import { useState, useEffect, useCallback } from 'react'
-import { api } from '@/lib/api'
-import { useAccount } from '@/contexts/account-context'
-import Header from '@/components/layout/header'
-import CcPromptButton from '@/components/cc-prompt-button'
+import { useState, useEffect, useCallback } from 'react';
+import { api } from '@/lib/api';
+import { useAccount } from '@/contexts/account-context';
+import Header from '@/components/layout/header';
+import CcPromptButton from '@/components/cc-prompt-button';
 
-type AutomationEventType = "friend_add" | "tag_change" | "score_threshold" | "cv_fire" | "message_received" | "calendar_booked"
+type AutomationEventType =
+  | 'friend_add'
+  | 'tag_change'
+  | 'score_threshold'
+  | 'cv_fire'
+  | 'message_received'
+  | 'calendar_booked';
 
 interface AutomationAction {
-  type: "add_tag" | "remove_tag" | "start_scenario" | "send_message" | "send_webhook" | "switch_rich_menu"
-  params: Record<string, unknown>
+  type:
+    | 'add_tag'
+    | 'remove_tag'
+    | 'start_scenario'
+    | 'send_message'
+    | 'send_webhook'
+    | 'switch_rich_menu';
+  params: Record<string, unknown>;
 }
 
 interface Automation {
-  id: string
-  name: string
-  description: string | null
-  eventType: AutomationEventType
-  conditions: Record<string, unknown>
-  actions: AutomationAction[]
-  isActive: boolean
-  priority: number
-  createdAt: string
-  updatedAt: string
+  id: string;
+  name: string;
+  description: string | null;
+  eventType: AutomationEventType;
+  conditions: Record<string, unknown>;
+  actions: AutomationAction[];
+  isActive: boolean;
+  priority: number;
+  createdAt: string;
+  updatedAt: string;
 }
 
 const eventTypeOptions: { value: AutomationEventType; label: string }[] = [
@@ -33,7 +45,7 @@ const eventTypeOptions: { value: AutomationEventType; label: string }[] = [
   { value: 'cv_fire', label: 'CV発火' },
   { value: 'message_received', label: 'メッセージ受信' },
   { value: 'calendar_booked', label: 'カレンダー予約' },
-]
+];
 
 const eventTypeLabelMap: Record<AutomationEventType, string> = {
   friend_add: '友だち追加',
@@ -42,7 +54,7 @@ const eventTypeLabelMap: Record<AutomationEventType, string> = {
   cv_fire: 'CV発火',
   message_received: 'メッセージ受信',
   calendar_booked: 'カレンダー予約',
-}
+};
 
 const eventTypeBadgeColor: Record<AutomationEventType, string> = {
   friend_add: 'bg-green-100 text-green-700',
@@ -51,15 +63,15 @@ const eventTypeBadgeColor: Record<AutomationEventType, string> = {
   cv_fire: 'bg-red-100 text-red-700',
   message_received: 'bg-purple-100 text-purple-700',
   calendar_booked: 'bg-indigo-100 text-indigo-700',
-}
+};
 
 interface CreateFormState {
-  name: string
-  description: string
-  eventType: AutomationEventType
-  actionsJson: string
-  conditionsJson: string
-  priority: number
+  name: string;
+  description: string;
+  eventType: AutomationEventType;
+  actionsJson: string;
+  conditionsJson: string;
+  priority: number;
 }
 
 const initialForm: CreateFormState = {
@@ -69,7 +81,7 @@ const initialForm: CreateFormState = {
   actionsJson: '[\n  {\n    "type": "add_tag",\n    "params": {}\n  }\n]',
   conditionsJson: '{}',
   priority: 0,
-}
+};
 
 const ccPrompts = [
   {
@@ -88,62 +100,62 @@ const ccPrompts = [
 3. 効果の低いルールの改善提案と新規ルールの推奨
 結果をレポートしてください。`,
   },
-]
+];
 
 export default function AutomationsPage() {
-  const { selectedAccountId } = useAccount()
-  const [automations, setAutomations] = useState<Automation[]>([])
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState('')
-  const [showCreate, setShowCreate] = useState(false)
-  const [form, setForm] = useState<CreateFormState>({ ...initialForm })
-  const [saving, setSaving] = useState(false)
-  const [formError, setFormError] = useState('')
+  const { selectedAccountId } = useAccount();
+  const [automations, setAutomations] = useState<Automation[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
+  const [showCreate, setShowCreate] = useState(false);
+  const [form, setForm] = useState<CreateFormState>({ ...initialForm });
+  const [saving, setSaving] = useState(false);
+  const [formError, setFormError] = useState('');
 
   const loadAutomations = useCallback(async () => {
-    setLoading(true)
-    setError('')
+    setLoading(true);
+    setError('');
     try {
-      const res = await api.automations.list({ accountId: selectedAccountId || undefined })
+      const res = await api.automations.list({ accountId: selectedAccountId || undefined });
       if (res.success) {
-        setAutomations(res.data)
+        setAutomations(res.data);
       } else {
-        setError(res.error)
+        setError(res.error);
       }
     } catch {
-      setError('オートメーションの読み込みに失敗しました。もう一度お試しください。')
+      setError('オートメーションの読み込みに失敗しました。もう一度お試しください。');
     } finally {
-      setLoading(false)
+      setLoading(false);
     }
-  }, [selectedAccountId])
+  }, [selectedAccountId]);
 
   useEffect(() => {
-    loadAutomations()
-  }, [loadAutomations])
+    loadAutomations();
+  }, [loadAutomations]);
 
   const handleCreate = async () => {
     if (!form.name.trim()) {
-      setFormError('ルール名を入力してください')
-      return
+      setFormError('ルール名を入力してください');
+      return;
     }
 
-    let parsedActions: AutomationAction[]
-    let parsedConditions: Record<string, unknown>
+    let parsedActions: AutomationAction[];
+    let parsedConditions: Record<string, unknown>;
     try {
-      parsedActions = JSON.parse(form.actionsJson)
+      parsedActions = JSON.parse(form.actionsJson);
     } catch {
-      setFormError('アクションのJSON形式が正しくありません')
-      return
+      setFormError('アクションのJSON形式が正しくありません');
+      return;
     }
     try {
-      parsedConditions = JSON.parse(form.conditionsJson)
+      parsedConditions = JSON.parse(form.conditionsJson);
     } catch {
-      setFormError('条件のJSON形式が正しくありません')
-      return
+      setFormError('条件のJSON形式が正しくありません');
+      return;
     }
 
-    setSaving(true)
-    setFormError('')
+    setSaving(true);
+    setFormError('');
     try {
       const res = await api.automations.create({
         name: form.name,
@@ -152,39 +164,40 @@ export default function AutomationsPage() {
         actions: parsedActions,
         conditions: parsedConditions,
         priority: form.priority,
-      })
+        lineAccountId: selectedAccountId,
+      });
       if (res.success) {
-        setShowCreate(false)
-        setForm({ ...initialForm })
-        loadAutomations()
+        setShowCreate(false);
+        setForm({ ...initialForm });
+        loadAutomations();
       } else {
-        setFormError(res.error)
+        setFormError(res.error);
       }
     } catch {
-      setFormError('作成に失敗しました')
+      setFormError('作成に失敗しました');
     } finally {
-      setSaving(false)
+      setSaving(false);
     }
-  }
+  };
 
   const handleToggleActive = async (id: string, current: boolean) => {
     try {
-      await api.automations.update(id, { isActive: !current })
-      loadAutomations()
+      await api.automations.update(id, { isActive: !current });
+      loadAutomations();
     } catch {
-      setError('ステータスの変更に失敗しました')
+      setError('ステータスの変更に失敗しました');
     }
-  }
+  };
 
   const handleDelete = async (id: string) => {
-    if (!confirm('このオートメーションを削除してもよいですか？')) return
+    if (!confirm('このオートメーションを削除してもよいですか？')) return;
     try {
-      await api.automations.delete(id)
-      loadAutomations()
+      await api.automations.delete(id);
+      loadAutomations();
     } catch {
-      setError('削除に失敗しました')
+      setError('削除に失敗しました');
     }
-  }
+  };
 
   return (
     <div>
@@ -214,7 +227,9 @@ export default function AutomationsPage() {
           <h2 className="text-sm font-semibold text-gray-800 mb-4">新規オートメーションを作成</h2>
           <div className="space-y-4 max-w-lg">
             <div>
-              <label className="block text-xs font-medium text-gray-600 mb-1">ルール名 <span className="text-red-500">*</span></label>
+              <label className="block text-xs font-medium text-gray-600 mb-1">
+                ルール名 <span className="text-red-500">*</span>
+              </label>
               <input
                 type="text"
                 className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-500"
@@ -238,15 +253,21 @@ export default function AutomationsPage() {
               <select
                 className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-500 bg-white"
                 value={form.eventType}
-                onChange={(e) => setForm({ ...form, eventType: e.target.value as AutomationEventType })}
+                onChange={(e) =>
+                  setForm({ ...form, eventType: e.target.value as AutomationEventType })
+                }
               >
                 {eventTypeOptions.map((opt) => (
-                  <option key={opt.value} value={opt.value}>{opt.label}</option>
+                  <option key={opt.value} value={opt.value}>
+                    {opt.label}
+                  </option>
                 ))}
               </select>
             </div>
             <div>
-              <label className="block text-xs font-medium text-gray-600 mb-1">アクション (JSON)</label>
+              <label className="block text-xs font-medium text-gray-600 mb-1">
+                アクション (JSON)
+              </label>
               <textarea
                 className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm font-mono focus:outline-none focus:ring-2 focus:ring-green-500 resize-y"
                 rows={6}
@@ -287,7 +308,10 @@ export default function AutomationsPage() {
                 {saving ? '作成中...' : '作成'}
               </button>
               <button
-                onClick={() => { setShowCreate(false); setFormError('') }}
+                onClick={() => {
+                  setShowCreate(false);
+                  setFormError('');
+                }}
                 className="px-4 py-2 min-h-[44px] text-sm font-medium text-gray-600 bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors"
               >
                 キャンセル
@@ -301,7 +325,10 @@ export default function AutomationsPage() {
       {loading ? (
         <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
           {[...Array(3)].map((_, i) => (
-            <div key={i} className="bg-white rounded-lg border border-gray-200 p-5 animate-pulse space-y-3">
+            <div
+              key={i}
+              className="bg-white rounded-lg border border-gray-200 p-5 animate-pulse space-y-3"
+            >
               <div className="h-4 bg-gray-200 rounded w-3/4" />
               <div className="h-3 bg-gray-100 rounded w-full" />
               <div className="flex gap-4">
@@ -313,7 +340,9 @@ export default function AutomationsPage() {
         </div>
       ) : automations.length === 0 && !showCreate ? (
         <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-12 text-center">
-          <p className="text-gray-500">オートメーションがありません。「新規ルール」から作成してください。</p>
+          <p className="text-gray-500">
+            オートメーションがありません。「新規ルール」から作成してください。
+          </p>
         </div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
@@ -324,13 +353,17 @@ export default function AutomationsPage() {
             >
               {/* Header row */}
               <div className="flex items-start justify-between mb-2">
-                <h3 className="text-sm font-semibold text-gray-900 leading-tight">{automation.name}</h3>
+                <h3 className="text-sm font-semibold text-gray-900 leading-tight">
+                  {automation.name}
+                </h3>
                 <button
                   onClick={() => handleToggleActive(automation.id, automation.isActive)}
                   className={`relative inline-flex h-5 w-9 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${
                     automation.isActive ? 'bg-green-500' : 'bg-gray-300'
                   }`}
-                  title={automation.isActive ? '有効 - クリックで無効化' : '無効 - クリックで有効化'}
+                  title={
+                    automation.isActive ? '有効 - クリックで無効化' : '無効 - クリックで有効化'
+                  }
                 >
                   <span
                     className={`pointer-events-none inline-block h-4 w-4 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out ${
@@ -347,12 +380,16 @@ export default function AutomationsPage() {
 
               {/* Event type badge */}
               <div className="flex items-center gap-2 mb-3">
-                <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${eventTypeBadgeColor[automation.eventType]}`}>
+                <span
+                  className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${eventTypeBadgeColor[automation.eventType]}`}
+                >
                   {eventTypeLabelMap[automation.eventType]}
                 </span>
-                <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${
-                  automation.isActive ? 'bg-green-50 text-green-700' : 'bg-gray-100 text-gray-500'
-                }`}>
+                <span
+                  className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${
+                    automation.isActive ? 'bg-green-50 text-green-700' : 'bg-gray-100 text-gray-500'
+                  }`}
+                >
                   {automation.isActive ? '有効' : '無効'}
                 </span>
               </div>
@@ -378,5 +415,5 @@ export default function AutomationsPage() {
       )}
       <CcPromptButton prompts={ccPrompts} />
     </div>
-  )
+  );
 }

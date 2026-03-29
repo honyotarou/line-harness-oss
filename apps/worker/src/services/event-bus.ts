@@ -121,7 +121,10 @@ async function processAutomations(
 
     for (const automation of automations) {
       const conditions = JSON.parse(automation.conditions) as Record<string, unknown>;
-      const actions = JSON.parse(automation.actions) as Array<{ type: string; params: Record<string, string> }>;
+      const actions = JSON.parse(automation.actions) as Array<{
+        type: string;
+        params: Record<string, string>;
+      }>;
 
       // 条件チェック（簡易版: 条件が空なら常にマッチ）
       if (!matchConditions(conditions, payload)) continue;
@@ -155,10 +158,7 @@ async function processAutomations(
 }
 
 /** 条件マッチング */
-function matchConditions(
-  conditions: Record<string, unknown>,
-  payload: EventPayload,
-): boolean {
+function matchConditions(conditions: Record<string, unknown>, payload: EventPayload): boolean {
   // 条件が空 → 常にマッチ
   if (Object.keys(conditions).length === 0) return true;
 
@@ -308,6 +308,7 @@ async function processNotifications(
           title: `${rule.name}: ${eventType}`,
           body: JSON.stringify(payload),
           channel,
+          lineAccountId: lineAccountId ?? null,
           metadata: JSON.stringify(payload.eventData ?? {}),
         });
 

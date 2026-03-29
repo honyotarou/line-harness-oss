@@ -1,0 +1,86 @@
+name: CI
+
+on:
+  push:
+    branches: [main, master]
+  pull_request:
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  unit:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+   
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'pnpm'
+
+      - name: Install
+        run: pnpm install --frozen-lockfile
+
+      - name: Biome format check
+        run: pnpm format:check
+
+      - name: Unit tests + coverage (worker, web) and SDK tests
+        run: |
+          pnpm --filter worker test:coverage
+          pnpm --filter web test:coverage
+          pnpm --filter @line-harness/sdk test
+
+  e2e:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'pnpm'
+
+      - name: Install
+        run: pnpm install --frozen-lockfile
+
+      - name: Build workspace libs (dist for wrangler bundle)
+        run: pnpm build:libs
+
+      - name: Install Playwright Chromium
+        run: pnpm exec playwright install chromium --with-deps
+
+      - name: E2E
+        run: pnpm test:e2e
+
+  api-integration:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'pnpm'
+
+      - name: Install Hurl
+        run: |
+          set -euo pipefail
+          HURL_VER=6.1.1
+          curl -fsSL -o /tmp/hurl.deb "https://github.com/Orange-OpenSource/hurl/releases/download/${HURL_VER}/hurl_${HURL_VER}_amd64.deb"
+          sudo apt-get install -y /tmp/hurl.deb
+
+      - name: Install
+        run: pnpm install --frozen-lockfile
+
+      - name: API integration (wrangler dev --local + Hurl)
+        run: pnpm test:api

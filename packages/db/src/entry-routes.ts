@@ -88,12 +88,30 @@ export async function updateEntryRoute(
   const fields: string[] = ['updated_at = ?'];
   const values: unknown[] = [now];
 
-  if (input.name !== undefined) { fields.push('name = ?'); values.push(input.name); }
-  if (input.refCode !== undefined) { fields.push('ref_code = ?'); values.push(input.refCode); }
-  if (input.tagId !== undefined) { fields.push('tag_id = ?'); values.push(input.tagId ?? null); }
-  if (input.scenarioId !== undefined) { fields.push('scenario_id = ?'); values.push(input.scenarioId ?? null); }
-  if (input.redirectUrl !== undefined) { fields.push('redirect_url = ?'); values.push(input.redirectUrl ?? null); }
-  if (input.isActive !== undefined) { fields.push('is_active = ?'); values.push(input.isActive ? 1 : 0); }
+  if (input.name !== undefined) {
+    fields.push('name = ?');
+    values.push(input.name);
+  }
+  if (input.refCode !== undefined) {
+    fields.push('ref_code = ?');
+    values.push(input.refCode);
+  }
+  if (input.tagId !== undefined) {
+    fields.push('tag_id = ?');
+    values.push(input.tagId ?? null);
+  }
+  if (input.scenarioId !== undefined) {
+    fields.push('scenario_id = ?');
+    values.push(input.scenarioId ?? null);
+  }
+  if (input.redirectUrl !== undefined) {
+    fields.push('redirect_url = ?');
+    values.push(input.redirectUrl ?? null);
+  }
+  if (input.isActive !== undefined) {
+    fields.push('is_active = ?');
+    values.push(input.isActive ? 1 : 0);
+  }
 
   values.push(id);
 
@@ -102,10 +120,7 @@ export async function updateEntryRoute(
     .bind(...values)
     .run();
 
-  return db
-    .prepare(`SELECT * FROM entry_routes WHERE id = ?`)
-    .bind(id)
-    .first<EntryRoute>();
+  return db.prepare(`SELECT * FROM entry_routes WHERE id = ?`).bind(id).first<EntryRoute>();
 }
 
 export async function deleteEntryRoute(db: D1Database, id: string): Promise<void> {

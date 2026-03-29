@@ -1,14 +1,14 @@
-'use client'
+'use client';
 
-import { useState } from 'react'
-import PromptModal, { type PromptTemplate } from '@/components/prompt-modal'
+import { useState } from 'react';
+import PromptModal, { type PromptTemplate } from '@/components/prompt-modal';
 
 interface CcPromptButtonProps {
-  prompts: PromptTemplate[]
+  prompts: PromptTemplate[];
 }
 
 export default function CcPromptButton({ prompts }: CcPromptButtonProps) {
-  const [isOpen, setIsOpen] = useState(false)
+  const [isOpen, setIsOpen] = useState(false);
 
   return (
     <>
@@ -21,11 +21,7 @@ export default function CcPromptButton({ prompts }: CcPromptButtonProps) {
         <span className="hidden sm:inline">CCに依頼</span>
       </button>
 
-      <PromptModal
-        isOpen={isOpen}
-        onClose={() => setIsOpen(false)}
-        prompts={prompts}
-      />
+      <PromptModal isOpen={isOpen} onClose={() => setIsOpen(false)} prompts={prompts} />
     </>
-  )
+  );
 }
