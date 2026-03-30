@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
-import { api } from '@/lib/api';
+import { api, getApiBaseUrl } from '@/lib/api';
 import CcPromptButton from '@/components/cc-prompt-button';
 import { useAccount } from '@/contexts/account-context';
 
@@ -161,9 +161,9 @@ export default function DashboardPage() {
         </div>
       )}
 
-      {/* Demo banner */}
+      {/* 友だち追加はこの管理画面と同じ Worker（NEXT_PUBLIC_API_URL）へ。デモ用 URL を直書きしない。 */}
       <a
-        href="https://line-crm-worker.line-crm-api.workers.dev/auth/line?ref=dashboard"
+        href={`${getApiBaseUrl()}/auth/line?ref=dashboard`}
         target="_blank"
         rel="noopener noreferrer"
         className="block mb-6 p-4 rounded-xl border border-green-200 bg-gradient-to-r from-green-50 to-emerald-50 hover:from-green-100 hover:to-emerald-100 transition-colors"

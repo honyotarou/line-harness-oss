@@ -7,8 +7,9 @@ workers_dev = true
 # Do NOT hardcode secrets here
 
 [vars]
-WORKER_URL = "https://line-crm-worker.kenkou1359.workers.dev"
-WEB_URL = "https://line-harness-oss-web-blush.vercel.app"
+# Replace with your deployed URLs (or override in wrangler.local.toml, gitignored).
+WORKER_URL = "https://YOUR_SUBDOMAIN.workers.dev"
+WEB_URL = "https://YOUR_PROJECT.vercel.app"
 # ALLOWED_ORIGINS = "https://admin.example.com,https://preview.example.com"
 
 # D1 の実 database_id をコミットしたくない場合は wrangler.local.toml を使う（例: wrangler.local.toml.example をコピー）。

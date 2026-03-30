@@ -20,3 +20,5 @@ LINE_LOGIN_CHANNEL_ID=dev-placeholder
 LINE_LOGIN_CHANNEL_SECRET=dev-placeholder
 # Required for POST /api/integrations/stripe/webhook (HMAC signing). Use a test value locally.
 STRIPE_WEBHOOK_SECRET=whsec_local_placeholder
+# Optional; LINE に送るフォーム送信確認 Flex のフッター文言（未設定時は OSS デフォルト）
+# FORM_SUBMIT_FLEX_FOOTER=

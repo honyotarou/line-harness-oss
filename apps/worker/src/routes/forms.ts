@@ -27,6 +27,15 @@ const forms = new Hono<Env>();
 const PUBLIC_FORM_SUBMIT_LIMIT_BYTES = 64 * 1024;
 const PUBLIC_FORM_SUBMIT_RATE_LIMIT = { limit: 10, windowMs: 60_000 };
 
+/** Fallback footer in the LINE Flex after LIFF form submit. Override with Worker var `FORM_SUBMIT_FLEX_FOOTER`. */
+export const DEFAULT_FORM_SUBMIT_FLEX_FOOTER =
+  'この内容はアカウントに記録され、タグやシナリオ等に利用される場合があります。チャットでの即時返信はできない場合があります。';
+
+export function resolveFormSubmitFlexFooterText(env: { FORM_SUBMIT_FLEX_FOOTER?: string }): string {
+  const custom = env.FORM_SUBMIT_FLEX_FOOTER?.trim();
+  return custom && custom.length > 0 ? custom : DEFAULT_FORM_SUBMIT_FLEX_FOOTER;
+}
+
 function serializeForm(row: DbForm) {
   return {
     id: row.id,
@@ -252,6 +261,7 @@ forms.post('/api/forms/:id/submit', async (c) => {
     // Side effects (best-effort, don't fail the request)
     const db = c.env.DB;
     const now = jstNow();
+    const formSubmitFlexFooter = resolveFormSubmitFlexFooterText(c.env);
 
     const sideEffects: Promise<unknown>[] = [];
 
@@ -362,7 +372,7 @@ forms.post('/api/forms/:id/submit', async (c) => {
                 contents: [
                   {
                     type: 'text',
-                    text: 'この情報はメタデータに自動保存済み。今後の配信があなたに最適化されます。L社 ではフォーム回答をリアルタイムで返すことはできません。',
+                    text: formSubmitFlexFooter,
                     size: 'xxs',
                     color: '#2563EB',
                     wrap: true,

@@ -1,5 +1,5 @@
-/** Default API base when neither VITE_API_URL nor a valid browser origin is available. */
-export const DEFAULT_LIFF_API_DEV = 'http://localhost:8787';
+/** Fallback when `VITE_API_URL` / meta / origin are unavailable; set `VITE_API_URL` to your `*.workers.dev` Worker. */
+export const DEFAULT_LIFF_API_FALLBACK = 'https://YOUR_SUBDOMAIN.workers.dev';
 
 /** LINE がホストする LIFF ページのオリジン。ここでは Worker の `/api` は存在しないため API ベースに使わない。 */
 export function isLineHostedLiffPageOrigin(origin: string): boolean {
@@ -14,7 +14,7 @@ export function isLineHostedLiffPageOrigin(origin: string): boolean {
 /**
  * Resolves the Worker API base URL for LIFF fetches.
  * Order: non-empty `VITE_API_URL` → `<meta name="lh-api-base">`（ビルド時注入）→
- * 同一オリジンが Worker のときだけ `browserOrigin` → dev default。
+ * 同一オリジンが Worker のときだけ `browserOrigin` → プレースホルダ。
  */
 export function resolveLiffApiBaseUrl(
   viteApiUrl: string | undefined,
@@ -36,7 +36,7 @@ export function resolveLiffApiBaseUrl(
   ) {
     return browserOrigin.replace(/\/+$/, '');
   }
-  return DEFAULT_LIFF_API_DEV;
+  return DEFAULT_LIFF_API_FALLBACK;
 }
 
 function readMetaLhApiBase(): string | null {

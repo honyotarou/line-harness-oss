@@ -9,8 +9,9 @@ compatibility_date = "2024-12-01"
 workers_dev = true
 
 [vars]
-WORKER_URL = "https://line-crm-worker.line-crm-api.workers.dev"
-WEB_URL = "http://127.0.0.1:3001"
+# 実際の Cloudflare Worker URL と Vercel 管理画面 URL に差し替えてください。
+WORKER_URL = "https://YOUR_SUBDOMAIN.workers.dev"
+WEB_URL = "https://YOUR_PROJECT.vercel.app"
 
 [[d1_databases]]
 binding = "DB"

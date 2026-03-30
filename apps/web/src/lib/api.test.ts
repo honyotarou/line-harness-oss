@@ -20,6 +20,11 @@ describe('api object (integration via global fetch)', () => {
     vi.unstubAllGlobals();
   });
 
+  it('getApiBaseUrl returns NEXT_PUBLIC_API_URL', async () => {
+    const { getApiBaseUrl } = await import('./api');
+    expect(getApiBaseUrl()).toBe('http://worker.test');
+  });
+
   it('friends.list passes lineAccountId and pagination as query params', async () => {
     const { api } = await import('./api');
     const res = await api.friends.list({ accountId: 'acc-1', limit: '10', offset: '0' });
@@ -737,7 +742,7 @@ describe('api default base URL', () => {
     vi.resetModules();
   });
 
-  it('uses http://127.0.0.1:8787 when NEXT_PUBLIC_API_URL is unset', async () => {
+  it('uses Cloudflare placeholder when NEXT_PUBLIC_API_URL is unset', async () => {
     delete process.env.NEXT_PUBLIC_API_URL;
     vi.stubGlobal(
       'fetch',
@@ -749,7 +754,9 @@ describe('api default base URL', () => {
     vi.resetModules();
     const { api } = await import('./api');
     await api.tags.list();
-    expect(vi.mocked(globalThis.fetch).mock.calls[0]?.[0]).toBe('http://127.0.0.1:8787/api/tags');
+    expect(vi.mocked(globalThis.fetch).mock.calls[0]?.[0]).toBe(
+      'https://YOUR_SUBDOMAIN.workers.dev/api/tags',
+    );
   });
 });
 

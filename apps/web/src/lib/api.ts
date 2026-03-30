@@ -29,13 +29,19 @@ import type { Broadcast } from '@line-crm/shared';
 /** Broadcast type from API (now camelCase after worker serialization) */
 export type ApiBroadcast = Broadcast;
 
-const DEFAULT_API_URL = 'http://127.0.0.1:8787';
+/** When unset, use a placeholder; set `NEXT_PUBLIC_API_URL` in Vercel to your deployed `*.workers.dev` Worker. */
+const DEFAULT_API_URL = 'https://YOUR_SUBDOMAIN.workers.dev';
 
 /** Cross-origin admin (e.g. Vercel → workers.dev): browsers may not store/send API cookie; Bearer carries the same session token. */
 const ADMIN_SESSION_STORAGE_KEY = 'lh_admin_session_token';
 
-function resolveApiUrl(): string {
+/** Worker origin (same as API). Use for LIFF/auth links so demo URLs are not hardcoded in the UI. */
+export function getApiBaseUrl(): string {
   return process.env.NEXT_PUBLIC_API_URL || DEFAULT_API_URL;
+}
+
+function resolveApiUrl(): string {
+  return getApiBaseUrl();
 }
 
 function getStoredAdminSessionToken(): string | null {
