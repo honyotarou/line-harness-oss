@@ -1,5 +1,10 @@
 # Changelog
 
+## Unreleased
+
+### Documentation
+- README の本番構成チェックリストを Worker の `LIFF_URL` / LIFF の `VITE_API_URL` / ブラウザ CORS と `ALLOWED_ORIGINS` の関係に合わせて整理。GitHub Wiki・`docs/wiki/` はリポジトリと完全同期ではない箇所がある旨を README に明記。
+
 ## v0.2.0 (2026-03-25)
 
 ### Breaking Changes

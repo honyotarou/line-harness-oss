@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import {
-  DEFAULT_LIFF_API_DEV,
+  DEFAULT_LIFF_API_FALLBACK,
   isLineHostedLiffPageOrigin,
   resolveLiffApiBaseUrl,
 } from './api-base.js';
@@ -28,22 +28,26 @@ describe('resolveLiffApiBaseUrl', () => {
     expect(resolveLiffApiBaseUrl(undefined, 'https://line-crm-worker.example.workers.dev')).toBe(
       'https://line-crm-worker.example.workers.dev',
     );
-    expect(resolveLiffApiBaseUrl('', 'http://localhost:8787')).toBe('http://localhost:8787');
+    expect(resolveLiffApiBaseUrl('', 'https://worker.example.workers.dev')).toBe(
+      'https://worker.example.workers.dev',
+    );
   });
 
   it('strips trailing slash from origin', () => {
     expect(resolveLiffApiBaseUrl(undefined, 'https://worker.dev/')).toBe('https://worker.dev');
   });
 
-  it(`falls back to ${DEFAULT_LIFF_API_DEV} when env empty and origin missing or invalid`, () => {
-    expect(resolveLiffApiBaseUrl(undefined, null)).toBe(DEFAULT_LIFF_API_DEV);
-    expect(resolveLiffApiBaseUrl(undefined, '')).toBe(DEFAULT_LIFF_API_DEV);
-    expect(resolveLiffApiBaseUrl(undefined, 'not-a-url')).toBe(DEFAULT_LIFF_API_DEV);
-    expect(resolveLiffApiBaseUrl('   ', undefined)).toBe(DEFAULT_LIFF_API_DEV);
+  it(`falls back to ${DEFAULT_LIFF_API_FALLBACK} when env empty and origin missing or invalid`, () => {
+    expect(resolveLiffApiBaseUrl(undefined, null)).toBe(DEFAULT_LIFF_API_FALLBACK);
+    expect(resolveLiffApiBaseUrl(undefined, '')).toBe(DEFAULT_LIFF_API_FALLBACK);
+    expect(resolveLiffApiBaseUrl(undefined, 'not-a-url')).toBe(DEFAULT_LIFF_API_FALLBACK);
+    expect(resolveLiffApiBaseUrl('   ', undefined)).toBe(DEFAULT_LIFF_API_FALLBACK);
   });
 
   it('does not use liff.line.me as API base (no /api on LINE host)', () => {
-    expect(resolveLiffApiBaseUrl(undefined, 'https://liff.line.me')).toBe(DEFAULT_LIFF_API_DEV);
+    expect(resolveLiffApiBaseUrl(undefined, 'https://liff.line.me')).toBe(
+      DEFAULT_LIFF_API_FALLBACK,
+    );
   });
 
   it('uses meta lh-api-base when page is on LINE LIFF host', () => {

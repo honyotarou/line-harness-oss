@@ -151,6 +151,93 @@ describe('public form submit route', () => {
         friendId: 'friend-real',
       }),
     );
+
+    expect(lineSdkMocks.pushMessage).toHaveBeenCalled();
+    const pushed = lineSdkMocks.pushMessage.mock.calls[0]?.[1]?.[0] as {
+      type: string;
+      contents?: unknown;
+    };
+    expect(pushed?.type).toBe('flex');
+    const flexJson = JSON.stringify(pushed?.contents);
+    expect(flexJson).not.toContain('L社');
+    expect(flexJson).toContain('アカウントに記録');
+  });
+
+  it('uses FORM_SUBMIT_FLEX_FOOTER for the LINE flex footer when set', async () => {
+    dbMocks.getFormById.mockResolvedValue({
+      id: 'form-1',
+      name: '診断フォーム',
+      description: null,
+      fields: '[]',
+      on_submit_tag_id: null,
+      on_submit_scenario_id: null,
+      save_to_metadata: 0,
+      is_active: 1,
+      submit_count: 0,
+      created_at: '2026-03-25T10:00:00+09:00',
+      updated_at: '2026-03-25T10:00:00+09:00',
+    });
+    dbMocks.getLineAccounts.mockResolvedValue([]);
+    dbMocks.getFriendByLineUserId.mockResolvedValue({
+      id: 'friend-real',
+      line_user_id: 'real-user-id',
+      display_name: 'Real User',
+      metadata: '{}',
+    });
+    dbMocks.getFriendById.mockResolvedValue({
+      id: 'friend-real',
+      line_user_id: 'real-user-id',
+      display_name: 'Real User',
+      metadata: '{}',
+    });
+    dbMocks.createFormSubmission.mockImplementation(
+      async (
+        _db: D1Database,
+        input: { formId: string; friendId: string | null; data: string },
+      ) => ({
+        id: 'submission-1',
+        form_id: input.formId,
+        friend_id: input.friendId,
+        data: input.data,
+        created_at: '2026-03-25T10:00:00+09:00',
+      }),
+    );
+
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockResolvedValue({
+        ok: true,
+        json: async () => ({ sub: 'real-user-id' }),
+      }),
+    );
+
+    const { forms } = await import('../../src/routes/forms.js');
+    const app = new Hono();
+    app.route('/', forms);
+
+    const response = await app.fetch(
+      new Request('http://localhost/api/forms/form-1/submit', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          idToken: 'valid-id-token',
+          data: { name: 'Bob' },
+        }),
+      }),
+      {
+        DB: {} as D1Database,
+        LINE_LOGIN_CHANNEL_ID: 'default-login-channel',
+        LINE_CHANNEL_ACCESS_TOKEN: 'default-access-token',
+        FORM_SUBMIT_FLEX_FOOTER: 'カスタムフッター文言',
+      } as never,
+    );
+
+    expect(response.status).toBe(201);
+    const pushed = lineSdkMocks.pushMessage.mock.calls[0]?.[1]?.[0] as {
+      type: string;
+      contents?: unknown;
+    };
+    expect(JSON.stringify(pushed?.contents)).toContain('カスタムフッター文言');
   });
 
   it('rejects oversized public submissions before verifying the id token', async () => {

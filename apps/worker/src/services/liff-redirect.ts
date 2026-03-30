@@ -30,9 +30,7 @@ export function resolveSafeRedirectUrl(redirect: string, env: LiffRedirectEnv): 
     }
 
     const u = new URL(t);
-    const localhostHttp =
-      u.protocol === 'http:' && (u.hostname === 'localhost' || u.hostname === '127.0.0.1');
-    if (u.protocol !== 'https:' && !localhostHttp) return null;
+    if (u.protocol !== 'https:') return null;
     if (!allowed.has(u.origin)) return null;
     return u.href;
   } catch {

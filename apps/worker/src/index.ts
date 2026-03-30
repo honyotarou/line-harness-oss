@@ -42,6 +42,8 @@ export type Env = {
     LINE_LOGIN_CHANNEL_SECRET: string;
     WORKER_URL: string;
     WEB_URL?: string;
+    /** Optional; overrides default footer text in the LINE Flex after LIFF form submit. */
+    FORM_SUBMIT_FLEX_FOOTER?: string;
     ALLOWED_ORIGINS?: string;
     STRIPE_WEBHOOK_SECRET?: string;
     /** Optional; defaults to API_KEY. Used to HMAC-sign LINE Login OAuth `state`. */

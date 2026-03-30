@@ -4,7 +4,7 @@
 
 Cloudflare 無料枠で動く。サーバー代 0 円。Claude Code から全操作可能。
 
-**[LINE で無料体験する](https://line-crm-worker.line-crm-api.workers.dev/auth/line?ref=github)**
+**[LINE で無料体験する](https://line-crm-worker.line-crm-api.workers.dev/auth/line?ref=github)**（上記は**公式デモ用**の Worker / LINE アカウントです。自分でデプロイした場合は、管理画面のダッシュボード「友だち追加」や `NEXT_PUBLIC_API_URL` と同じ origin の `/auth/line` を使ってください。デモと自前で D1・シナリオは別物です。）
 
 ---
 
@@ -237,6 +237,8 @@ POST /api/automations
 | 安全性 | [Multi-Account & BAN](https://github.com/Shudesu/line-harness-oss/wiki/18-Multi-Account-and-BAN) |
 | 開発 | [SDK Reference](https://github.com/Shudesu/line-harness-oss/wiki/19-SDK-Reference) · [API Reference](https://github.com/Shudesu/line-harness-oss/wiki/20-API-Reference) · [Deployment](https://github.com/Shudesu/line-harness-oss/wiki/21-Deployment) · [Operations](https://github.com/Shudesu/line-harness-oss/wiki/22-Operations) · [Claude Code](https://github.com/Shudesu/line-harness-oss/wiki/23-Claude-Code-Integration) |
 
+リポジトリ内の [`docs/wiki/`](docs/wiki/) や上記 GitHub Wiki の一部は、README・`.dev.vars.example`・コードより古い記述（localhost 前提など）が残る場合があります。運用上の正は **README とコード** を優先してください。
+
 ---
 
 ## コスト
@@ -251,13 +253,29 @@ L社: 月額 21,780円〜。LINE Harness: **0円〜。**
 
 ---
 
-## ローカル開発
+## 本番相当の構成（既定）
+
+リポジトリ既定値は **localhost ではなく** Cloudflare / Vercel 向けのプレースホルダです。`apps/web/.env.example` を参照。
+
+デプロイ時に実 URL で揃える項目の目安:
+
+- **Cloudflare Worker**（`wrangler.toml` またはダッシュボード）: `WORKER_URL`・`WEB_URL`・**`LIFF_URL`** を実 URL に合わせる。`LIFF_URL` は CORS の許可オリジンに含まれ、未設定だと `POST /api/links/wrap` が 500 になります。必要に応じて **`ALLOWED_ORIGINS`** にカスタムドメインやプレビュー URL を追加する。
+- **Vercel（管理画面）**: **`NEXT_PUBLIC_API_URL`** を Worker のベース URL（末尾スラッシュなし）に合わせる。
+- **LIFF 本番ビルド**: **`VITE_API_URL`** を同じ Worker ベース URL に合わせる（`vite.config.ts` と `build-env-guard.ts` が本番でこの名前のみ厳密に要求します。任意の別名は使われません）。
+
+**ブラウザから Worker を跨ぎオリジンで叩く**とき（例: 手元の管理画面 origin が `http://localhost:3000` で Worker API に `fetch` する）、localhost は既定の CORS 許可対象に含まれないため、必要なら **`ALLOWED_ORIGINS` で明示的に許可**してください。Playwright E2E や `pnpm test:api`（Hurl が `127.0.0.1` の Worker に叩く等）は **別文脈**（主にサーバ／CLI からの HTTP）であり、上記の「ブラウザの CORS」とは切り分けて考えてください。
+
+### オプション: 手元で Worker + Web を動かす
 
 ```bash
-pnpm dev:worker    # → http://localhost:8787
-pnpm dev:web       # → http://localhost:3001
+pnpm dev:worker
+pnpm dev:web
 pnpm db:migrate:local
 ```
+
+このときは **`wrangler.local.toml`** と **`apps/web/.env.local`** で実 URL（または一時的にローカル URL）を上書きし、ブラウザ経由で API にアクセスするなら **`ALLOWED_ORIGINS`** に管理画面の origin を含めてください。
+
+詳細は [Wiki: Deployment](https://github.com/Shudesu/line-harness-oss/wiki/21-Deployment) も参照（ただし Wiki はリポジトリと完全同期ではない箇所があります。前述の「ドキュメント」節を参照）。
 
 ---
 

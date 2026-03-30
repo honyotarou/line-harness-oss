@@ -1,12 +1,3 @@
-const DEFAULT_DEV_ORIGINS = [
-  'http://localhost:3000',
-  'http://127.0.0.1:3000',
-  'http://localhost:3001',
-  'http://127.0.0.1:3001',
-  'http://localhost:8787',
-  'http://127.0.0.1:8787',
-];
-
 type CorsEnv = {
   WEB_URL?: string;
   WORKER_URL?: string;
@@ -26,8 +17,9 @@ function normalizeOrigin(value: string | undefined | null): string | null {
   }
 }
 
+/** CORS は WEB_URL / WORKER_URL / LIFF_URL / ALLOWED_ORIGINS のみ（localhost は既定に含めない）。 */
 export function buildAllowedOrigins(env: CorsEnv): string[] {
-  const origins = new Set<string>(DEFAULT_DEV_ORIGINS);
+  const origins = new Set<string>();
 
   for (const candidate of [env.WEB_URL, env.WORKER_URL, env.LIFF_URL]) {
     const origin = normalizeOrigin(candidate);
