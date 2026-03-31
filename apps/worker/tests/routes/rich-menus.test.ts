@@ -11,7 +11,12 @@ vi.mock('@line-crm/db', () => dbMocks);
 const lineSdkMocks = vi.hoisted(() => ({
   lineClientCtor: vi.fn(),
   getRichMenuList: vi.fn().mockResolvedValue({ richmenus: [{ richMenuId: 'rm-1' }] }),
+  createRichMenu: vi.fn().mockResolvedValue({ richMenuId: 'rm-created' }),
+  deleteRichMenu: vi.fn().mockResolvedValue(undefined),
+  setDefaultRichMenu: vi.fn().mockResolvedValue(undefined),
+  uploadRichMenuImage: vi.fn().mockResolvedValue(undefined),
   linkRichMenuToUser: vi.fn().mockResolvedValue(undefined),
+  unlinkRichMenuFromUser: vi.fn().mockResolvedValue(undefined),
 }));
 
 vi.mock('@line-crm/line-sdk', () => ({
@@ -19,25 +24,52 @@ vi.mock('@line-crm/line-sdk', () => ({
     lineSdkMocks.lineClientCtor(token);
     return {
       getRichMenuList: lineSdkMocks.getRichMenuList,
+      createRichMenu: lineSdkMocks.createRichMenu,
+      deleteRichMenu: lineSdkMocks.deleteRichMenu,
+      setDefaultRichMenu: lineSdkMocks.setDefaultRichMenu,
+      uploadRichMenuImage: lineSdkMocks.uploadRichMenuImage,
       linkRichMenuToUser: lineSdkMocks.linkRichMenuToUser,
-      deleteRichMenu: vi.fn(),
-      setDefaultRichMenu: vi.fn(),
-      unlinkRichMenuFromUser: vi.fn(),
-      uploadRichMenuImage: vi.fn(),
-      createRichMenu: vi.fn(),
+      unlinkRichMenuFromUser: lineSdkMocks.unlinkRichMenuFromUser,
     };
   }),
 }));
+
+const minimalMenu = {
+  size: { width: 2500, height: 843 },
+  selected: false,
+  name: 'test-menu',
+  chatBarText: 'メニュー',
+  areas: [] as { bounds: Record<string, number>; action: Record<string, string> }[],
+};
+
+const tinyPngBase64 =
+  'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==';
+
+function env(): EnvSubset {
+  return {
+    DB: {} as D1Database,
+    LINE_CHANNEL_ACCESS_TOKEN: 'default-token',
+  };
+}
+
+type EnvSubset = { DB: D1Database; LINE_CHANNEL_ACCESS_TOKEN: string };
 
 describe('rich menu routes', () => {
   beforeEach(() => {
     Object.values(dbMocks).forEach((mockFn) => mockFn.mockReset());
     lineSdkMocks.lineClientCtor.mockClear();
     lineSdkMocks.getRichMenuList.mockClear();
+    lineSdkMocks.createRichMenu.mockClear();
+    lineSdkMocks.deleteRichMenu.mockClear();
+    lineSdkMocks.setDefaultRichMenu.mockClear();
+    lineSdkMocks.uploadRichMenuImage.mockClear();
     lineSdkMocks.linkRichMenuToUser.mockClear();
+    lineSdkMocks.unlinkRichMenuFromUser.mockClear();
+    lineSdkMocks.getRichMenuList.mockResolvedValue({ richmenus: [{ richMenuId: 'rm-1' }] });
+    lineSdkMocks.createRichMenu.mockResolvedValue({ richMenuId: 'rm-created' });
   });
 
-  it('uses the requested account token when listing rich menus', async () => {
+  it('GET /api/rich-menus uses the requested account token when lineAccountId is set', async () => {
     dbMocks.getLineAccountById.mockResolvedValue({
       id: 'account-2',
       channel_access_token: 'account-2-token',
@@ -49,17 +81,137 @@ describe('rich menu routes', () => {
 
     const response = await app.fetch(
       new Request('http://localhost/api/rich-menus?lineAccountId=account-2'),
-      {
-        DB: {} as D1Database,
-        LINE_CHANNEL_ACCESS_TOKEN: 'default-token',
-      } as never,
+      env(),
     );
 
     expect(response.status).toBe(200);
     expect(lineSdkMocks.lineClientCtor).toHaveBeenCalledWith('account-2-token');
+    const json = (await response.json()) as { data: unknown[] };
+    expect(json.data).toEqual([{ richMenuId: 'rm-1' }]);
   });
 
-  it('uses the friend account token when linking a rich menu to a friend', async () => {
+  it('POST /api/rich-menus strips lineAccountId before calling LINE createRichMenu', async () => {
+    dbMocks.getLineAccountById.mockResolvedValue({
+      id: 'account-2',
+      channel_access_token: 'account-2-token',
+    });
+
+    const { richMenus } = await import('../../src/routes/rich-menus.js');
+    const app = new Hono();
+    app.route('/', richMenus);
+
+    const response = await app.fetch(
+      new Request('http://localhost/api/rich-menus', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          lineAccountId: 'account-2',
+          ...minimalMenu,
+        }),
+      }),
+      env(),
+    );
+
+    expect(response.status).toBe(201);
+    expect(lineSdkMocks.lineClientCtor).toHaveBeenCalledWith('account-2-token');
+    expect(lineSdkMocks.createRichMenu).toHaveBeenCalledTimes(1);
+    const payload = lineSdkMocks.createRichMenu.mock.calls[0][0];
+    expect(payload).not.toHaveProperty('lineAccountId');
+    expect(payload).toMatchObject({ name: 'test-menu', chatBarText: 'メニュー' });
+    const json = (await response.json()) as { data: { richMenuId: string } };
+    expect(json.data.richMenuId).toBe('rm-created');
+  });
+
+  it('POST /api/rich-menus/:id/default calls setDefaultRichMenu', async () => {
+    const { richMenus } = await import('../../src/routes/rich-menus.js');
+    const app = new Hono();
+    app.route('/', richMenus);
+
+    const response = await app.fetch(
+      new Request('http://localhost/api/rich-menus/rm-xyz/default', { method: 'POST' }),
+      env(),
+    );
+
+    expect(response.status).toBe(200);
+    expect(lineSdkMocks.setDefaultRichMenu).toHaveBeenCalledWith('rm-xyz');
+  });
+
+  it('DELETE /api/rich-menus/:id calls deleteRichMenu', async () => {
+    const { richMenus } = await import('../../src/routes/rich-menus.js');
+    const app = new Hono();
+    app.route('/', richMenus);
+
+    const response = await app.fetch(
+      new Request('http://localhost/api/rich-menus/rm-del', { method: 'DELETE' }),
+      env(),
+    );
+
+    expect(response.status).toBe(200);
+    expect(lineSdkMocks.deleteRichMenu).toHaveBeenCalledWith('rm-del');
+  });
+
+  it('POST /api/rich-menus/:id/image accepts base64 JSON and uploads PNG', async () => {
+    const { richMenus } = await import('../../src/routes/rich-menus.js');
+    const app = new Hono();
+    app.route('/', richMenus);
+
+    const response = await app.fetch(
+      new Request('http://localhost/api/rich-menus/rm-1/image', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          image: tinyPngBase64,
+          contentType: 'image/png',
+        }),
+      }),
+      env(),
+    );
+
+    expect(response.status).toBe(200);
+    expect(lineSdkMocks.uploadRichMenuImage).toHaveBeenCalledWith(
+      'rm-1',
+      expect.any(ArrayBuffer),
+      'image/png',
+    );
+  });
+
+  it('POST /api/rich-menus/:id/image returns 400 when JSON body has no image', async () => {
+    const { richMenus } = await import('../../src/routes/rich-menus.js');
+    const app = new Hono();
+    app.route('/', richMenus);
+
+    const response = await app.fetch(
+      new Request('http://localhost/api/rich-menus/rm-1/image', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ contentType: 'image/png' }),
+      }),
+      env(),
+    );
+
+    expect(response.status).toBe(400);
+    expect(lineSdkMocks.uploadRichMenuImage).not.toHaveBeenCalled();
+  });
+
+  it('POST /api/rich-menus/:id/image returns 400 for unsupported Content-Type', async () => {
+    const { richMenus } = await import('../../src/routes/rich-menus.js');
+    const app = new Hono();
+    app.route('/', richMenus);
+
+    const response = await app.fetch(
+      new Request('http://localhost/api/rich-menus/rm-1/image', {
+        method: 'POST',
+        headers: { 'Content-Type': 'text/plain' },
+        body: 'x',
+      }),
+      env(),
+    );
+
+    expect(response.status).toBe(400);
+    expect(lineSdkMocks.uploadRichMenuImage).not.toHaveBeenCalled();
+  });
+
+  it('POST /api/friends/:friendId/rich-menu uses the friend account token and links menu', async () => {
     dbMocks.getFriendById.mockResolvedValue({
       id: 'friend-1',
       line_user_id: 'line-user-1',
@@ -80,14 +232,55 @@ describe('rich menu routes', () => {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ richMenuId: 'rm-1' }),
       }),
-      {
-        DB: {} as D1Database,
-        LINE_CHANNEL_ACCESS_TOKEN: 'default-token',
-      } as never,
+      env(),
     );
 
     expect(response.status).toBe(200);
     expect(lineSdkMocks.lineClientCtor).toHaveBeenCalledWith('account-2-token');
     expect(lineSdkMocks.linkRichMenuToUser).toHaveBeenCalledWith('line-user-1', 'rm-1');
+  });
+
+  it('DELETE /api/friends/:friendId/rich-menu unlinks rich menu', async () => {
+    dbMocks.getFriendById.mockResolvedValue({
+      id: 'friend-1',
+      line_user_id: 'line-user-1',
+      line_account_id: null,
+    });
+
+    const { richMenus } = await import('../../src/routes/rich-menus.js');
+    const app = new Hono();
+    app.route('/', richMenus);
+
+    const response = await app.fetch(
+      new Request('http://localhost/api/friends/friend-1/rich-menu', { method: 'DELETE' }),
+      env(),
+    );
+
+    expect(response.status).toBe(200);
+    expect(lineSdkMocks.unlinkRichMenuFromUser).toHaveBeenCalledWith('line-user-1');
+  });
+
+  it('POST /api/friends/:friendId/rich-menu returns 400 when richMenuId is missing', async () => {
+    dbMocks.getFriendById.mockResolvedValue({
+      id: 'friend-1',
+      line_user_id: 'U1',
+      line_account_id: null,
+    });
+
+    const { richMenus } = await import('../../src/routes/rich-menus.js');
+    const app = new Hono();
+    app.route('/', richMenus);
+
+    const response = await app.fetch(
+      new Request('http://localhost/api/friends/friend-1/rich-menu', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({}),
+      }),
+      env(),
+    );
+
+    expect(response.status).toBe(400);
+    expect(lineSdkMocks.linkRichMenuToUser).not.toHaveBeenCalled();
   });
 });
