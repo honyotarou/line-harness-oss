@@ -46,6 +46,8 @@ export interface TemplateAction {
   uri?: string;
   text?: string;
   data?: string;
+  /** Shown in chat when the user taps a Flex postback action (Messaging API). */
+  displayText?: string;
 }
 
 export interface ButtonsTemplate {

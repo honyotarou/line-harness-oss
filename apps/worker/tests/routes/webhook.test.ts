@@ -23,13 +23,17 @@ const lineSdkMocks = vi.hoisted(() => ({
   getProfile: vi.fn(),
 }));
 
-vi.mock('@line-crm/line-sdk', () => ({
-  verifySignature: lineSdkMocks.verifySignature,
-  LineClient: vi.fn().mockImplementation(() => ({
-    replyMessage: lineSdkMocks.replyMessage,
-    getProfile: lineSdkMocks.getProfile,
-  })),
-}));
+vi.mock('@line-crm/line-sdk', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@line-crm/line-sdk')>();
+  return {
+    ...actual,
+    verifySignature: lineSdkMocks.verifySignature,
+    LineClient: vi.fn().mockImplementation(() => ({
+      replyMessage: lineSdkMocks.replyMessage,
+      getProfile: lineSdkMocks.getProfile,
+    })),
+  };
+});
 
 const eventBusMocks = vi.hoisted(() => ({
   fireEvent: vi.fn().mockResolvedValue(undefined),
@@ -446,6 +450,73 @@ describe('line webhook route', () => {
       'token-from-db',
       'acc-line-1',
     );
+  });
+
+  it('postback anxiety=paper updates metadata and replies with flex', async () => {
+    const { pending, ctx } = executionCtxWithPending();
+    const runMock = vi.fn().mockResolvedValue({});
+    const firstMock = vi.fn().mockResolvedValueOnce({ metadata: '{}' }).mockResolvedValue(null);
+    const db = {
+      prepare: vi.fn().mockReturnValue({
+        bind: vi.fn().mockReturnValue({
+          run: runMock,
+          first: firstMock,
+          all: vi.fn().mockResolvedValue({ results: [] }),
+        }),
+        run: runMock,
+        first: firstMock,
+        all: vi.fn().mockResolvedValue({ results: [] }),
+      }),
+    } as unknown as D1Database;
+
+    dbMocks.getFriendByLineUserId.mockResolvedValue({
+      id: 'f-pb-1',
+      line_user_id: 'Upost',
+      display_name: 'Pb',
+      user_id: null,
+    });
+
+    const { webhook } = await import('../../src/routes/webhook.js');
+    const app = new Hono();
+    app.route('/', webhook);
+
+    const body = JSON.stringify({
+      events: [
+        {
+          type: 'postback',
+          postback: { data: 'anxiety=paper' },
+          source: { type: 'user', userId: 'Upost' },
+          replyToken: 'rt-pb',
+        },
+      ],
+    });
+
+    const response = await app.fetch(
+      new Request('http://localhost/webhook', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-Line-Signature': 'ok',
+        },
+        body,
+      }),
+      {
+        DB: db,
+        LINE_CHANNEL_SECRET: 'line-secret',
+        LINE_CHANNEL_ACCESS_TOKEN: 'line-access-token',
+        WORKER_URL: 'https://worker.example.com',
+        LIFF_URL: 'https://liff.line.me/x',
+      } as never,
+      ctx,
+    );
+
+    expect(response.status).toBe(200);
+    await Promise.all(pending);
+    expect(lineSdkMocks.replyMessage).toHaveBeenCalledWith('rt-pb', [
+      expect.objectContaining({ type: 'flex' }),
+    ]);
+    expect(dbMocks.getFriendByLineUserId).toHaveBeenCalledWith(db, 'Upost');
+    expect(runMock).toHaveBeenCalled();
   });
 
   it('text message logs incoming, upserts chat, and fires message_received', async () => {

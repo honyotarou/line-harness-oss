@@ -22,3 +22,12 @@ LINE_LOGIN_CHANNEL_SECRET=dev-placeholder
 STRIPE_WEBHOOK_SECRET=whsec_local_placeholder
 # Optional; LINE に送るフォーム送信確認 Flex のフッター文言（未設定時は OSS デフォルト）
 # FORM_SUBMIT_FLEX_FOOTER=
+# Optional; 友だち追加時に不安カテゴリ選択ウェルカム Flex を返す（`1` / `true`）。postback `anxiety=*` の2通目は未設定でも処理。
+# WELCOME_ANXIETY_FLOW=1
+# LIFF_BOOKING_URL=
+# WELCOME_ANXIETY_HERO_URL=
+# WELCOME_ANXIETY_LINK_FLOW=
+# WELCOME_ANXIETY_LINK_PREP=
+# WELCOME_ANXIETY_LINK_FAQ=
+# Optional; `1` で2通目 Flex に予約用ボタンを出さず、リッチメニュー誘導のみ（リッチメニュー予約メイン運用向け）。
+# WELCOME_ANXIETY_RICH_MENU_ONLY=

@@ -1,4 +1,4 @@
-type LandingEnv = {
+export type LandingEnv = {
   LANDING_VARIANT?: string;
   LANDING_TITLE?: string;
   LANDING_SUBTITLE?: string;

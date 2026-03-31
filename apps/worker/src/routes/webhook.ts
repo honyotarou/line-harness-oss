@@ -1,6 +1,11 @@
 import { Hono } from 'hono';
 import { verifySignature, LineClient } from '@line-crm/line-sdk';
-import type { WebhookRequestBody, WebhookEvent, TextEventMessage } from '@line-crm/line-sdk';
+import type {
+  WebhookRequestBody,
+  WebhookEvent,
+  TextEventMessage,
+  PostbackEvent,
+} from '@line-crm/line-sdk';
 import {
   upsertFriend,
   updateFriendFollowStatus,
@@ -18,6 +23,12 @@ import { fireEvent } from '../services/event-bus.js';
 import { buildMessage, expandVariables } from '../services/step-delivery.js';
 import type { Env } from '../index.js';
 import { BodyTooLargeError, readTextBodyWithLimit } from '../services/request-body.js';
+import {
+  welcomeAnxietyFlowEnabled,
+  buildWelcomeAnxietyFlexMessage,
+  buildAnxietyFollowupFlexMessage,
+  parseAnxietyPostbackData,
+} from '../services/welcome-anxiety-flow.js';
 
 const webhook = new Hono<Env>();
 const LINE_WEBHOOK_LIMIT_BYTES = 256 * 1024;
@@ -85,6 +96,7 @@ webhook.post('/webhook', async (c) => {
           channelAccessToken,
           matchedAccountId,
           c.env.WORKER_URL || new URL(c.req.url).origin,
+          c.env,
         );
       } catch (err) {
         console.error('Error handling webhook event:', err);
@@ -108,6 +120,7 @@ async function handleEvent(
   lineAccessToken: string,
   lineAccountId: string | null = null,
   workerUrl?: string,
+  bindings?: Env['Bindings'],
 ): Promise<void> {
   if (event.type === 'follow') {
     const userId = event.source.type === 'user' ? event.source.userId : undefined;
@@ -136,6 +149,28 @@ async function handleEvent(
         .run();
     }
 
+    /** When set, consumes `replyToken` for branded welcome Flex; scenario step 0 (delay=0) must not reply again. */
+    let welcomeAnxietyConsumedReply = false;
+    if (bindings && welcomeAnxietyFlowEnabled(bindings)) {
+      try {
+        const welcomeMsg = buildWelcomeAnxietyFlexMessage(bindings);
+        await lineClient.replyMessage(event.replyToken, [welcomeMsg]);
+        welcomeAnxietyConsumedReply = true;
+        const welcomeLogId = crypto.randomUUID();
+        const welcomeContent =
+          welcomeMsg.type === 'flex' ? JSON.stringify(welcomeMsg.contents) : '';
+        await db
+          .prepare(
+            `INSERT INTO messages_log (id, friend_id, direction, message_type, content, broadcast_id, scenario_step_id, created_at)
+             VALUES (?, ?, 'outgoing', 'flex', ?, NULL, NULL, ?)`,
+          )
+          .bind(welcomeLogId, friend.id, welcomeContent, jstNow())
+          .run();
+      } catch (err) {
+        console.error('Failed welcome anxiety flex on follow', err);
+      }
+    }
+
     // friend_add シナリオに登録（このアカウントのシナリオのみ）
     const scenarios = await getScenarios(db);
     for (const scenario of scenarios) {
@@ -156,30 +191,36 @@ async function handleEvent(
             const firstStep = steps[0];
             if (firstStep && firstStep.delay_minutes === 0 && friendScenario.status === 'active') {
               try {
-                const expandedContent = expandVariables(
-                  firstStep.message_content,
-                  friend as { id: string; display_name: string | null; user_id: string | null },
-                );
-                const message = buildMessage(firstStep.message_type, expandedContent);
-                await lineClient.replyMessage(event.replyToken, [message]);
-                console.log(`Immediate delivery: sent step ${firstStep.id} to ${userId}`);
-
-                // Log outgoing message
-                const logId = crypto.randomUUID();
-                await db
-                  .prepare(
-                    `INSERT INTO messages_log (id, friend_id, direction, message_type, content, broadcast_id, scenario_step_id, created_at)
-                     VALUES (?, ?, 'outgoing', ?, ?, NULL, ?, ?)`,
-                  )
-                  .bind(
-                    logId,
-                    friend.id,
-                    firstStep.message_type,
+                if (!welcomeAnxietyConsumedReply) {
+                  const expandedContent = expandVariables(
                     firstStep.message_content,
-                    firstStep.id,
-                    jstNow(),
-                  )
-                  .run();
+                    friend as { id: string; display_name: string | null; user_id: string | null },
+                  );
+                  const message = buildMessage(firstStep.message_type, expandedContent);
+                  await lineClient.replyMessage(event.replyToken, [message]);
+                  console.log(`Immediate delivery: sent step ${firstStep.id} to ${userId}`);
+
+                  // Log outgoing message
+                  const logId = crypto.randomUUID();
+                  await db
+                    .prepare(
+                      `INSERT INTO messages_log (id, friend_id, direction, message_type, content, broadcast_id, scenario_step_id, created_at)
+                       VALUES (?, ?, 'outgoing', ?, ?, NULL, ?, ?)`,
+                    )
+                    .bind(
+                      logId,
+                      friend.id,
+                      firstStep.message_type,
+                      firstStep.message_content,
+                      firstStep.id,
+                      jstNow(),
+                    )
+                    .run();
+                } else {
+                  console.log(
+                    `Skipped immediate scenario step ${firstStep.id} (welcome anxiety flow used reply token)`,
+                  );
+                }
 
                 // Advance or complete the friend_scenario
                 const secondStep = steps[1] ?? null;
@@ -230,6 +271,50 @@ async function handleEvent(
     if (!userId) return;
 
     await updateFriendFollowStatus(db, userId, false);
+    return;
+  }
+
+  if (event.type === 'postback') {
+    const pb = event as PostbackEvent;
+    const userId = event.source.type === 'user' ? event.source.userId : undefined;
+    if (!userId) return;
+
+    const anxietyKey = parseAnxietyPostbackData(pb.postback.data);
+    if (!anxietyKey) return;
+
+    const friend = await getFriendByLineUserId(db, userId);
+    if (!friend) return;
+
+    const metaRow = await db
+      .prepare('SELECT metadata FROM friends WHERE id = ?')
+      .bind(friend.id)
+      .first<{ metadata: string | null }>();
+    const meta = JSON.parse(metaRow?.metadata || '{}') as Record<string, unknown>;
+    meta.anxiety = anxietyKey;
+    meta.anxiety_selected_at = jstNow();
+    await db
+      .prepare('UPDATE friends SET metadata = ?, updated_at = ? WHERE id = ?')
+      .bind(JSON.stringify(meta), jstNow(), friend.id)
+      .run();
+
+    try {
+      const followup = buildAnxietyFollowupFlexMessage(
+        anxietyKey,
+        bindings ?? { LIFF_URL: '', WORKER_URL: workerUrl ?? '' },
+      );
+      await lineClient.replyMessage(pb.replyToken, [followup]);
+      const outLogId = crypto.randomUUID();
+      const followContent = followup.type === 'flex' ? JSON.stringify(followup.contents) : '';
+      await db
+        .prepare(
+          `INSERT INTO messages_log (id, friend_id, direction, message_type, content, broadcast_id, scenario_step_id, created_at)
+           VALUES (?, ?, 'outgoing', 'flex', ?, NULL, NULL, ?)`,
+        )
+        .bind(outLogId, friend.id, followContent, jstNow())
+        .run();
+    } catch (err) {
+      console.error('Failed anxiety follow-up flex', err);
+    }
     return;
   }
 
