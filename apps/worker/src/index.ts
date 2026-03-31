@@ -3,6 +3,7 @@ import { getLineAccounts } from '@line-crm/db';
 import { authMiddleware } from './middleware/auth.js';
 import { buildAllowedOrigins, isAllowedOrigin } from './services/cors-policy.js';
 import { runScheduledJobs } from './services/scheduler.js';
+import { renderShortLinkLanding, type LandingEnv } from './ui/landing.js';
 import { authRoutes } from './routes/auth.js';
 import { webhook } from './routes/webhook.js';
 import { friends } from './routes/friends.js';
@@ -48,7 +49,19 @@ export type Env = {
     STRIPE_WEBHOOK_SECRET?: string;
     /** Optional; defaults to API_KEY. Used to HMAC-sign LINE Login OAuth `state`. */
     LIFF_STATE_SECRET?: string;
-  };
+    /** `1` / `true`: on friend add, send welcome Flex (anxiety picker) once; skip DB scenario step-0 reply if delay=0. Postback `anxiety=*` always handled when user taps buttons. */
+    WELCOME_ANXIETY_FLOW?: string;
+    /** Optional LIFF URL for booking button in anxiety follow-up (defaults to `LIFF_URL`). */
+    LIFF_BOOKING_URL?: string;
+    /** Optional hero image URL (HTTPS) for welcome Flex (e.g. mascot photo). */
+    WELCOME_ANXIETY_HERO_URL?: string;
+    /** Optional HTTPS URLs for footer links on follow-up Flex. */
+    WELCOME_ANXIETY_LINK_FLOW?: string;
+    WELCOME_ANXIETY_LINK_PREP?: string;
+    WELCOME_ANXIETY_LINK_FAQ?: string;
+    /** `1` / `true`: 2通目 Flex に予約用 LIFF ボタンを出さない（リッチメニューのみ案内）。未設定時はショートカットボタンあり。 */
+    WELCOME_ANXIETY_RICH_MENU_ONLY?: string;
+  } & LandingEnv;
 };
 
 const app = new Hono<Env>();
@@ -119,32 +132,7 @@ app.get('/r/:ref', (c) => {
   const liffUrl = c.env.LIFF_URL || 'https://liff.line.me/2009554425-4IMBmLQ9';
   const target = `${liffUrl}?ref=${encodeURIComponent(ref)}`;
 
-  return c.html(`<!DOCTYPE html>
-<html lang="ja">
-<head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width,initial-scale=1">
-<title>LINE Harness</title>
-<style>
-*{margin:0;padding:0;box-sizing:border-box}
-body{font-family:'Hiragino Sans',system-ui,sans-serif;background:#0d1117;color:#fff;display:flex;justify-content:center;align-items:center;min-height:100vh}
-.card{text-align:center;max-width:400px;width:90%;padding:48px 24px}
-h1{font-size:28px;font-weight:800;margin-bottom:8px}
-.sub{font-size:14px;color:rgba(255,255,255,0.5);margin-bottom:40px}
-.btn{display:block;width:100%;padding:18px;border:none;border-radius:12px;font-size:18px;font-weight:700;text-decoration:none;text-align:center;color:#fff;background:#06C755;transition:opacity .15s}
-.btn:active{opacity:.85}
-.note{font-size:12px;color:rgba(255,255,255,0.3);margin-top:24px;line-height:1.6}
-</style>
-</head>
-<body>
-<div class="card">
-<h1>LINE Harness</h1>
-<p class="sub">L社 / U社 の無料代替 OSS</p>
-<a href="${target}" class="btn">LINE で体験する</a>
-<p class="note">友だち追加するだけで<br>ステップ配信・フォーム・自動返信を体験できます</p>
-</div>
-</body>
-</html>`);
+  return c.html(renderShortLinkLanding(c.env, target));
 });
 
 // 404 fallback

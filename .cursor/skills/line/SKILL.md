@@ -17,6 +17,7 @@ LINE Harness OSS:
   【デザイン・要件（GAS 型・UI/新機能で先にやる）】
   0  ムードボード         Pinterest 等の画像 → design-tokens（docs/design）
   1  壁打ち・設計ヒアリング  8 Round で「何をしたいか」→ 設計サマリ（コードは OK まで出さない）
+  1.5 独自性・ブランド一貫性  デフォルト保持しつつ独自性を出す（LP/LIFF/管理画面/リッチメニュー）
 
   【ハーネス（0・1 の直後に読む・実行する）】
   2  開発ハーネス        決定論ゲート・E2E層・Hooks・コマンド表（詳細: steps-harness.md）
@@ -46,6 +47,7 @@ LINE Harness OSS:
 | ファイル | 内容 |
 |----------|------|
 | [steps-design-0-1.md](steps-design-0-1.md) | Step **0〜1**（Pinterest・トークン・8 Round 壁打ち） |
+| [steps-brand-1-5.md](steps-brand-1-5.md) | Step **1.5**（デフォルト保持＋独自性の一貫設計 壁打ち） |
 | [steps-harness.md](steps-harness.md) | Step **2**（開発ハーネス） |
 | [steps-0-3-red-green-refactor.md](steps-0-3-red-green-refactor.md) | Step **3〜6**（観点 → Red → Green → Refactor） |
 | [steps-4-8-gates.md](steps-4-8-gates.md) | Step **7〜11** + `check` |
