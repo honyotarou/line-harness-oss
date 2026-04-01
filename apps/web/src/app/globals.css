@@ -33,4 +33,32 @@
   --shadow-token-sm: 0 1px 2px rgb(43 47 46 / 0.06);
   --shadow-token-md: 0 4px 12px rgb(43 47 46 / 0.08);
   --shadow-token-lg: 0 12px 40px rgb(43 47 46 / 0.12);
+
+  /* Tailwind default palette remap (so existing templates pick up tokens). */
+  --color-white: var(--color-surface-elevated);
+  --color-black: #000;
+  --color-gray-50: var(--color-canvas);
+  --color-gray-100: var(--color-surface);
+  --color-gray-200: var(--color-border);
+  --color-gray-300: var(--color-border-strong);
+  --color-gray-400: var(--color-foreground-subtle);
+  --color-gray-500: var(--color-foreground-muted);
+  --color-gray-600: var(--color-foreground-muted);
+  --color-gray-700: var(--color-foreground);
+  --color-gray-800: var(--color-foreground);
+  --color-gray-900: var(--color-foreground);
+
+  /* Keep LINE green accents aligned with primary by default. */
+  --color-green-500: var(--color-primary);
+  --color-green-600: var(--color-primary-hover);
+}
+
+html,
+body {
+  background: var(--color-canvas);
+  color: var(--color-foreground);
+}
+
+body {
+  font-family: "Noto Sans JP", "Hiragino Sans", "Hiragino Kaku Gothic ProN", system-ui, sans-serif;
 }

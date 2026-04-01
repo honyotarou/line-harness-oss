@@ -79,9 +79,19 @@ packages/db/                 ← スキーマ
 
 ### デザイン（親 Step 0〜1）
 
-- **親 0**: ビジュアル正本（トークン・任意リッチメニュー）。**画像はチャット貼り付け**を主とする。OK 後に **`docs/design/design-tokens.json`**（＋任意 `moodboard-notes.md`）を**必ず**書く。**画面の色が変わらない**ときは `globals.css` 等へのマッピングが未実施なことが多い。
-- **親 1**: 要件＋ブランド。**設計サマリに OK が出るまで本番実装を書かない**（GAS と同型）。OK 後は **`docs/design/hearing-summary.md`** にサマリを**必ず**残す（チャットのみだと次セッションで消える）。
-- トークンは **`apps/web`** の Tailwind v4（`globals.css` / `@theme`）と **`apps/liff`** の CSS 変数に**一貫して**反映する。
+- **親 0（完了条件＝“テンプレ反映”まで）**: ビジュアル正本（トークン・任意リッチメニュー）。**画像はチャット貼り付け**を主とする。ユーザー OK 後に:
+  - **`docs/design/design-tokens.json`**（＋任意 `moodboard-notes.md`）を**必ず**書く
+  - そのトークンを **`apps/web/src/app/globals.css` の `@theme`（または `:root`）へマッピング**し、UI の色・radius・shadow が実際に変わることを担保する
+  - LIFF も触る要件がある場合は **`apps/liff`** に CSS 変数として反映する
+  - ここまでやって初めて「親 0 完了」（チャットだけ／JSON だけで止めない）
+- **親 1（完了条件＝“テンプレ修正の指示”が落ちるまで）**: 要件＋ブランド。**設計サマリに OK が出るまで本番実装を書かない**（GAS と同型）。ユーザー OK 後に:
+  - **`docs/design/hearing-summary.md`** にサマリを**必ず**残す（チャットのみで終わらせない）
+  - 既存 OSS の「どのファイルに何を反映するか」を **差分チェックリスト**まで落とす（“反映先が曖昧”な状態で Step 2 以降へ進まない）
+- **差分チェックリスト（親 0/1 の必須アウトプット）**: 各項目に「反映先ファイル」を必ず紐付ける
+  - **CORS / Origin** → `apps/worker/src/index.ts` + `apps/worker/wrangler.toml` / `.github/workflows/deploy-worker.yml`
+  - **友だち追加 `/auth/line`** → `apps/web/src/app/page.tsx` + `apps/worker/src/routes/liff.ts`
+  - **LIFF の環境変数** → `apps/liff/*` + Vercel Env（`VITE_*`）
+  - **予約の電話フォールバック** → `apps/worker/src/routes/liff.ts` + `apps/worker/src/index.ts`（env）+ `apps/worker/tests/...`
 
 ### セキュリティ・秘密情報
 

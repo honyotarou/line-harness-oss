@@ -12,6 +12,7 @@ workers_dev = true
 # 実際の Cloudflare Worker URL と Vercel 管理画面 URL に差し替えてください。
 WORKER_URL = "https://YOUR_SUBDOMAIN.workers.dev"
 WEB_URL = "https://YOUR_PROJECT.vercel.app"
+LIFF_URL = "https://liff.line.me/YOUR_LIFF_ID"
 
 [[d1_databases]]
 binding = "DB"
