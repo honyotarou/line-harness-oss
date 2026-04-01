@@ -93,93 +93,118 @@ function normalizeBookingFallbackTelUri(trimmed: string): string {
  */
 liffRoutes.get('/auth/line', async (c) => {
   const stateSecret = liffStateSecret(c.env);
-  const ref = c.req.query('ref') || '';
-  const redirect = c.req.query('redirect') || '';
-  const gclid = c.req.query('gclid') || '';
-  const fbclid = c.req.query('fbclid') || '';
-  const utmSource = c.req.query('utm_source') || '';
-  const utmMedium = c.req.query('utm_medium') || '';
-  const utmCampaign = c.req.query('utm_campaign') || '';
-  const utmContent = c.req.query('utm_content') || '';
-  const utmTerm = c.req.query('utm_term') || '';
-  const accountParam = c.req.query('account') || '';
-  const uidParam = c.req.query('uid') || ''; // existing user UUID for cross-account linking
-  const baseUrl = new URL(c.req.url).origin;
-
-  // Multi-account: resolve LINE Login channel + LIFF from DB if account param provided
-  let channelId = c.env.LINE_LOGIN_CHANNEL_ID;
-  let liffUrl = c.env.LIFF_URL;
-  if (accountParam) {
-    const account = await getLineAccountByChannelId(c.env.DB, accountParam);
-    if (account?.login_channel_id) {
-      channelId = account.login_channel_id;
-    }
-    if (account?.liff_id) {
-      liffUrl = `https://liff.line.me/${account.liff_id}`;
-    }
+  if (!stateSecret) {
+    console.error(
+      'GET /auth/line: missing API_KEY / LIFF_STATE_SECRET (required to sign OAuth state)',
+    );
+    return c.html(errorPage('サーバー設定エラー: API_KEY または LIFF_STATE_SECRET が未設定です。'));
   }
-  const callbackUrl = `${baseUrl}/auth/callback`;
 
-  // Build LIFF URL with ref + ad params (for mobile → LINE app)
-  // Extract LIFF ID from URL and pass as query param so the app can init correctly
-  const liffIdMatch = liffUrl.match(/liff\.line\.me\/([0-9]+-[A-Za-z0-9]+)/);
-  const liffParams = new URLSearchParams();
-  if (liffIdMatch) liffParams.set('liffId', liffIdMatch[1]);
-  if (ref) liffParams.set('ref', ref);
-  if (redirect) liffParams.set('redirect', redirect);
-  if (gclid) liffParams.set('gclid', gclid);
-  if (fbclid) liffParams.set('fbclid', fbclid);
-  if (utmSource) liffParams.set('utm_source', utmSource);
-  if (utmMedium) liffParams.set('utm_medium', utmMedium);
-  if (utmCampaign) liffParams.set('utm_campaign', utmCampaign);
-  if (utmContent) liffParams.set('utm_content', utmContent);
-  if (utmTerm) liffParams.set('utm_term', utmTerm);
-  if (uidParam) liffParams.set('uid', uidParam);
-  if (accountParam) liffParams.set('account', accountParam);
-  const liffTarget = liffParams.toString() ? `${liffUrl}?${liffParams.toString()}` : liffUrl;
+  try {
+    const ref = c.req.query('ref') || '';
+    const redirect = c.req.query('redirect') || '';
+    const gclid = c.req.query('gclid') || '';
+    const fbclid = c.req.query('fbclid') || '';
+    const utmSource = c.req.query('utm_source') || '';
+    const utmMedium = c.req.query('utm_medium') || '';
+    const utmCampaign = c.req.query('utm_campaign') || '';
+    const utmContent = c.req.query('utm_content') || '';
+    const utmTerm = c.req.query('utm_term') || '';
+    const accountParam = c.req.query('account') || '';
+    const uidParam = c.req.query('uid') || ''; // existing user UUID for cross-account linking
+    const baseUrl = new URL(c.req.url).origin;
 
-  // Build OAuth URL (for desktop fallback)
-  // Pack all tracking params into signed state so they survive the OAuth redirect (tamper-resistant)
-  const encodedState = await signLiffOAuthState(
-    {
-      ref,
-      redirect,
-      gclid,
-      fbclid,
-      utmSource,
-      utmMedium,
-      utmCampaign,
-      utmContent,
-      utmTerm,
-      account: accountParam,
-      uid: uidParam,
-    },
-    stateSecret,
-  );
-  const loginUrl = new URL('https://access.line.me/oauth2/v2.1/authorize');
-  loginUrl.searchParams.set('response_type', 'code');
-  loginUrl.searchParams.set('client_id', channelId);
-  loginUrl.searchParams.set('redirect_uri', callbackUrl);
-  loginUrl.searchParams.set('scope', 'profile openid email');
-  loginUrl.searchParams.set('bot_prompt', 'aggressive');
-  loginUrl.searchParams.set('state', encodedState);
-  const scanTarget = accountParam ? loginUrl.toString() : liffTarget;
-
-  // Mobile: redirect to LIFF URL (opens LINE app directly)
-  // Exception: cross-account links (account param) use OAuth directly
-  // because Account A's LIFF can't open from Account B's LINE chat
-  const ua = (c.req.header('user-agent') || '').toLowerCase();
-  const isMobile = /iphone|ipad|android|mobile/.test(ua);
-  if (isMobile) {
+    // Multi-account: resolve LINE Login channel + LIFF from DB if account param provided
+    let channelId = c.env.LINE_LOGIN_CHANNEL_ID;
+    let liffUrl = (c.env.LIFF_URL ?? '').trim();
     if (accountParam) {
-      // Cross-account: use OAuth (LIFF won't work across accounts)
-      return c.redirect(loginUrl.toString());
+      const account = await getLineAccountByChannelId(c.env.DB, accountParam);
+      if (account?.login_channel_id) {
+        channelId = account.login_channel_id;
+      }
+      if (account?.liff_id) {
+        liffUrl = `https://liff.line.me/${account.liff_id}`;
+      }
     }
-    return c.redirect(liffTarget);
-  }
 
-  // PC: show QR code page
-  return c.html(renderAuthQrPage(c.env, scanTarget));
+    // Dashboard / default friend-add link has no `account=` — needs LIFF_URL in Worker vars.
+    if (!accountParam && !liffUrl) {
+      console.error('GET /auth/line: LIFF_URL is missing (required when account query is omitted)');
+      return c.html(
+        errorPage(
+          'サーバー設定エラー: LIFF_URL が未設定です。Cloudflare Worker の Variables に、LIFF の URL（例: https://liff.line.me/1234567890-AbCdEfGh）を設定してください。',
+        ),
+      );
+    }
+
+    const callbackUrl = `${baseUrl}/auth/callback`;
+
+    // Build LIFF URL with ref + ad params (for mobile → LINE app)
+    // Extract LIFF ID from URL and pass as query param so the app can init correctly
+    const liffIdMatch = liffUrl.match(/liff\.line\.me\/([0-9]+-[A-Za-z0-9]+)/);
+    const liffParams = new URLSearchParams();
+    if (liffIdMatch) liffParams.set('liffId', liffIdMatch[1]);
+    if (ref) liffParams.set('ref', ref);
+    if (redirect) liffParams.set('redirect', redirect);
+    if (gclid) liffParams.set('gclid', gclid);
+    if (fbclid) liffParams.set('fbclid', fbclid);
+    if (utmSource) liffParams.set('utm_source', utmSource);
+    if (utmMedium) liffParams.set('utm_medium', utmMedium);
+    if (utmCampaign) liffParams.set('utm_campaign', utmCampaign);
+    if (utmContent) liffParams.set('utm_content', utmContent);
+    if (utmTerm) liffParams.set('utm_term', utmTerm);
+    if (uidParam) liffParams.set('uid', uidParam);
+    if (accountParam) liffParams.set('account', accountParam);
+    const liffTarget = liffParams.toString() ? `${liffUrl}?${liffParams.toString()}` : liffUrl;
+
+    // Build OAuth URL (for desktop fallback)
+    // Pack all tracking params into signed state so they survive the OAuth redirect (tamper-resistant)
+    const encodedState = await signLiffOAuthState(
+      {
+        ref,
+        redirect,
+        gclid,
+        fbclid,
+        utmSource,
+        utmMedium,
+        utmCampaign,
+        utmContent,
+        utmTerm,
+        account: accountParam,
+        uid: uidParam,
+      },
+      stateSecret,
+    );
+    const loginUrl = new URL('https://access.line.me/oauth2/v2.1/authorize');
+    loginUrl.searchParams.set('response_type', 'code');
+    loginUrl.searchParams.set('client_id', channelId);
+    loginUrl.searchParams.set('redirect_uri', callbackUrl);
+    loginUrl.searchParams.set('scope', 'profile openid email');
+    loginUrl.searchParams.set('bot_prompt', 'aggressive');
+    loginUrl.searchParams.set('state', encodedState);
+    const scanTarget = accountParam ? loginUrl.toString() : liffTarget;
+
+    // Mobile: redirect to LIFF URL (opens LINE app directly)
+    // Exception: cross-account links (account param) use OAuth directly
+    // because Account A's LIFF can't open from Account B's LINE chat
+    const ua = (c.req.header('user-agent') || '').toLowerCase();
+    const isMobile = /iphone|ipad|android|mobile/.test(ua);
+    if (isMobile) {
+      if (accountParam) {
+        // Cross-account: use OAuth (LIFF won't work across accounts)
+        return c.redirect(loginUrl.toString());
+      }
+      return c.redirect(liffTarget);
+    }
+
+    // PC: show QR code page
+    return c.html(renderAuthQrPage(c.env, scanTarget));
+  } catch (err) {
+    console.error('GET /auth/line error:', err);
+    return c.html(
+      errorPage('LINE ログインの開始に失敗しました。しばらくしてから再度お試しください。'),
+    );
+  }
 });
 
 /**

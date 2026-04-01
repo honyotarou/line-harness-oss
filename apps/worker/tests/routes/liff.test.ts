@@ -273,6 +273,23 @@ describe('liff auth routes', () => {
     expect(html).toContain(encodeURIComponent('https://liff.line.me/2009554425-4IMBmLQ9'));
   });
 
+  it('returns error HTML when LIFF_URL is missing and account query is omitted', async () => {
+    const { liffRoutes } = await import('../../src/routes/liff.js');
+    const app = new Hono();
+    app.route('/', liffRoutes);
+
+    const response = await app.fetch(
+      new Request('http://localhost/auth/line?ref=dashboard', {
+        headers: { 'User-Agent': 'Mozilla/5.0 iPhone' },
+      }),
+      { ...baseEnv, LIFF_URL: '', DB: {} as D1Database } as never,
+    );
+
+    expect(response.status).toBe(200);
+    const html = await response.text();
+    expect(html).toContain('LIFF_URL');
+  });
+
   it('renders an error page when OAuth returns an error on /auth/callback', async () => {
     const { liffRoutes } = await import('../../src/routes/liff.js');
     const app = new Hono();

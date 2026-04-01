@@ -5,6 +5,10 @@ workers_dev = true
 
 # API_KEY is set via `wrangler secret put API_KEY`
 # Do NOT hardcode secrets here
+#
+# Caution: every `wrangler deploy` uploads [vars] below. Placeholders overwrite
+# dashboard edits unless you use wrangler.local.toml (local) or CI injects URLs
+# (see .github/workflows/deploy-worker.yml + GitHub Secrets WORKER_URL / WEB_URL).
 
 [vars]
 # Replace with your deployed URLs (or override in wrangler.local.toml, gitignored).

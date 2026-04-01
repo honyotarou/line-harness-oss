@@ -10,7 +10,9 @@
 ## Step 0 — ムードボード・デザイン原則抽出
 
 **入力**: ムードボード画像（**Pinterest** のスクリーンショット、ボードのキャプチャ、参考 UI の貼り付け可）  
-**出力**: `docs/design/design-tokens.json` + 短い `docs/design/moodboard-notes.md`（任意）※ユーザー OK 後にファイル化
+**出力**: `docs/design/design-tokens.json` + 短い `docs/design/moodboard-notes.md`（任意）※ユーザー OK 後に**必ずファイル化**（チャットだけにしない）
+
+**UI に「反映されない」とき**: トークン JSON を置いただけでは画面は変わらない。**同一ターンまたは次ターンで** `apps/web/src/app/globals.css` の `@theme`（または `:root`）へマッピングするまでが Step 0 の完了扱い（ユーザーが「ファイルだけ先」と言った場合は例外）。
 
 **同じ親 0 で続けてよいもの**: トークンが固まったら／並行で、**リッチメニュー**のレイアウト・CTA・JSON 壁打ち → [steps-rich-menu-wallball.md](steps-rich-menu-wallball.md)（サブ 0〜7）。
 
@@ -100,9 +102,10 @@
 ### セキュリティ・運用（秘密情報・CORS・LIFF）
 ```
 
-### 設計サマリ OK 後（任意）
+### 設計サマリ OK 後（必須＋任意）
 
-- **ワイヤー**: Markdown の表／箇条書きで画面一覧、または単一 HTML の**低忠実度モック**（トークンは CSS 変数で参照）。
+- **リポに残す（必須）**: ユーザーが OK した設計サマリを、チャットと**同一内容**で **`docs/design/hearing-summary.md`** に書く（上記「設計サマリの出力フォーマット」の見出し構造でよい）。**壁打ちが「反映されない」主因は、ここを飛ばしてチャットだけで終わること**。
+- **ワイヤー**（任意）: Markdown の表／箇条書きで画面一覧、または単一 HTML の**低忠実度モック**（トークンは CSS 変数で参照）。
 - **次のステップ**: まず [steps-harness.md](steps-harness.md) の **Step 2** でゲートとコマンドを把握する。続けて [steps-0-3-red-green-refactor.md](steps-0-3-red-green-refactor.md) の **Step 3（観点）** に進み、受け入れ条件をテスト名まで落とす。
 
 ---

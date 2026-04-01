@@ -37,6 +37,20 @@ jobs:
             sed -i.bak "s|YOUR_D1_DATABASE_ID|$D1_DATABASE_ID|g" wrangler.toml && rm -f wrangler.toml.bak
           fi
 
+      # Without this, deploy overwrites Worker vars with wrangler.toml placeholders and breaks CORS.
+      - name: Inject WORKER_URL and WEB_URL (optional; GitHub Secrets)
+        working-directory: apps/worker
+        env:
+          INJECT_WORKER_URL: ${{ secrets.WORKER_URL }}
+          INJECT_WEB_URL: ${{ secrets.WEB_URL }}
+        run: |
+          if [ -n "$INJECT_WORKER_URL" ]; then
+            sed -i.bak "s|https://YOUR_SUBDOMAIN.workers.dev|$INJECT_WORKER_URL|g" wrangler.toml && rm -f wrangler.toml.bak
+          fi
+          if [ -n "$INJECT_WEB_URL" ]; then
+            sed -i.bak "s|https://YOUR_PROJECT.vercel.app|$INJECT_WEB_URL|g" wrangler.toml && rm -f wrangler.toml.bak
+          fi
+
       - uses: cloudflare/wrangler-action@v3
         with:
           apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
