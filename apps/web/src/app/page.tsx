@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { api, getApiBaseUrl } from '@/lib/api';
 import CcPromptButton from '@/components/cc-prompt-button';
 import { useAccount } from '@/contexts/account-context';
+import { Alert } from '@/components/ui/alert';
 
 const ccPrompts = [
   {
@@ -152,9 +153,9 @@ export default function DashboardPage() {
       </div>
 
       {error && (
-        <div className="mb-6 p-4 bg-[var(--color-error-muted)] border border-[var(--color-error-border)] rounded-lg text-[var(--color-error)] text-sm">
+        <Alert variant="error" className="mb-6">
           {error}
-        </div>
+        </Alert>
       )}
 
       {/* 友だち追加はこの管理画面と同じ Worker（NEXT_PUBLIC_API_URL）へ。デモ用 URL を直書きしない。 */}

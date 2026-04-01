@@ -5,6 +5,9 @@ import { api } from '@/lib/api';
 import { useAccount } from '@/contexts/account-context';
 import Header from '@/components/layout/header';
 import CcPromptButton from '@/components/cc-prompt-button';
+import { Alert } from '@/components/ui/alert';
+import { Badge } from '@/components/ui/badge';
+import { Input, Select, Textarea } from '@/components/ui/field';
 
 type AutomationEventType =
   | 'friend_add'
@@ -216,9 +219,9 @@ export default function AutomationsPage() {
 
       {/* Error */}
       {error && (
-        <div className="mb-4 p-4 bg-[var(--color-error-muted)] border border-[var(--color-error-border)] rounded-lg text-[var(--color-error)] text-sm">
+        <Alert variant="error" className="mb-4">
           {error}
-        </div>
+        </Alert>
       )}
 
       {/* Create form */}
@@ -230,9 +233,9 @@ export default function AutomationsPage() {
               <label className="block text-xs font-medium text-gray-600 mb-1">
                 ルール名 <span className="text-[var(--color-error)]">*</span>
               </label>
-              <input
+              <Input
                 type="text"
-                className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[var(--color-focus-ring)]"
+                className=""
                 placeholder="例: 友だち追加時にウェルカムタグ付与"
                 value={form.name}
                 onChange={(e) => setForm({ ...form, name: e.target.value })}
@@ -240,8 +243,8 @@ export default function AutomationsPage() {
             </div>
             <div>
               <label className="block text-xs font-medium text-gray-600 mb-1">説明</label>
-              <textarea
-                className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[var(--color-focus-ring)] resize-none"
+              <Textarea
+                className="resize-none"
                 rows={2}
                 placeholder="ルールの説明 (省略可)"
                 value={form.description}
@@ -250,8 +253,8 @@ export default function AutomationsPage() {
             </div>
             <div>
               <label className="block text-xs font-medium text-gray-600 mb-1">イベントタイプ</label>
-              <select
-                className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[var(--color-focus-ring)] bg-white"
+              <Select
+                className=""
                 value={form.eventType}
                 onChange={(e) =>
                   setForm({ ...form, eventType: e.target.value as AutomationEventType })
@@ -262,14 +265,14 @@ export default function AutomationsPage() {
                     {opt.label}
                   </option>
                 ))}
-              </select>
+              </Select>
             </div>
             <div>
               <label className="block text-xs font-medium text-gray-600 mb-1">
                 アクション (JSON)
               </label>
-              <textarea
-                className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm font-mono focus:outline-none focus:ring-2 focus:ring-[var(--color-focus-ring)] resize-y"
+              <Textarea
+                className="font-mono resize-y"
                 rows={6}
                 placeholder='[{"type": "add_tag", "params": {"tagId": "..."}}]'
                 value={form.actionsJson}
@@ -278,8 +281,8 @@ export default function AutomationsPage() {
             </div>
             <div>
               <label className="block text-xs font-medium text-gray-600 mb-1">条件 (JSON)</label>
-              <textarea
-                className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm font-mono focus:outline-none focus:ring-2 focus:ring-[var(--color-focus-ring)] resize-y"
+              <Textarea
+                className="font-mono resize-y"
                 rows={3}
                 placeholder='{"tagId": "...", "operator": "equals"}'
                 value={form.conditionsJson}
@@ -288,9 +291,9 @@ export default function AutomationsPage() {
             </div>
             <div>
               <label className="block text-xs font-medium text-gray-600 mb-1">優先度</label>
-              <input
+              <Input
                 type="number"
-                className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[var(--color-focus-ring)]"
+                className=""
                 value={form.priority}
                 onChange={(e) => setForm({ ...form, priority: parseInt(e.target.value, 10) || 0 })}
               />
@@ -380,20 +383,18 @@ export default function AutomationsPage() {
 
               {/* Event type badge */}
               <div className="flex items-center gap-2 mb-3">
-                <span
-                  className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${eventTypeBadgeColor[automation.eventType]}`}
-                >
+                <Badge className={eventTypeBadgeColor[automation.eventType]}>
                   {eventTypeLabelMap[automation.eventType]}
-                </span>
-                <span
-                  className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${
+                </Badge>
+                <Badge
+                  className={
                     automation.isActive
                       ? 'bg-[var(--color-primary-muted)] text-[var(--color-primary)]'
                       : 'bg-gray-100 text-gray-500'
-                  }`}
+                  }
                 >
                   {automation.isActive ? '有効' : '無効'}
-                </span>
+                </Badge>
               </div>
 
               {/* Meta info */}

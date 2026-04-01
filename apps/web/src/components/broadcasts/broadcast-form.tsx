@@ -4,6 +4,7 @@ import { useState } from 'react';
 import type { Tag } from '@line-crm/shared';
 import { api, type ApiBroadcast } from '@/lib/api';
 import { useAccount } from '@/contexts/account-context';
+import { Input, Select, Textarea } from '@/components/ui/field';
 
 interface BroadcastFormProps {
   tags: Tag[];
@@ -100,9 +101,9 @@ export default function BroadcastForm({ tags, onSuccess, onCancel }: BroadcastFo
           <label className="block text-xs font-medium text-gray-600 mb-1">
             配信タイトル <span className="text-[var(--color-error)]">*</span>
           </label>
-          <input
+          <Input
             type="text"
-            className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[var(--color-focus-ring)]"
+            className=""
             placeholder="例: 3月のキャンペーン告知"
             value={form.title}
             onChange={(e) => setForm({ ...form, title: e.target.value })}
@@ -154,9 +155,9 @@ export default function BroadcastForm({ tags, onSuccess, onCancel }: BroadcastFo
                     <label className="block text-xs text-gray-500 mb-1">
                       元画像URL (originalContentUrl)
                     </label>
-                    <input
+                    <Input
                       type="url"
-                      className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[var(--color-focus-ring)]"
+                      className=""
                       placeholder="https://example.com/image.png"
                       value={parsed.originalContentUrl ?? ''}
                       onChange={(e) => {
@@ -176,9 +177,9 @@ export default function BroadcastForm({ tags, onSuccess, onCancel }: BroadcastFo
                     <label className="block text-xs text-gray-500 mb-1">
                       プレビュー画像URL (previewImageUrl)
                     </label>
-                    <input
+                    <Input
                       type="url"
-                      className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[var(--color-focus-ring)]"
+                      className=""
                       placeholder="https://example.com/preview.png (空欄で元画像と同じ)"
                       value={parsed.previewImageUrl ?? ''}
                       onChange={(e) => {
@@ -197,8 +198,8 @@ export default function BroadcastForm({ tags, onSuccess, onCancel }: BroadcastFo
               );
             })()}
 
-          <textarea
-            className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[var(--color-focus-ring)] resize-y"
+          <Textarea
+            className="resize-y"
             rows={form.messageType === 'flex' ? 8 : form.messageType === 'image' ? 3 : 4}
             placeholder={
               form.messageType === 'text'
@@ -244,8 +245,8 @@ export default function BroadcastForm({ tags, onSuccess, onCancel }: BroadcastFo
             </button>
           </div>
           {form.targetType === 'tag' && (
-            <select
-              className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[var(--color-focus-ring)] bg-white"
+            <Select
+              className=""
               value={form.targetTagId}
               onChange={(e) => setForm({ ...form, targetTagId: e.target.value })}
             >
@@ -255,7 +256,7 @@ export default function BroadcastForm({ tags, onSuccess, onCancel }: BroadcastFo
                   {tag.name}
                 </option>
               ))}
-            </select>
+            </Select>
           )}
         </div>
 
@@ -287,9 +288,9 @@ export default function BroadcastForm({ tags, onSuccess, onCancel }: BroadcastFo
             </button>
           </div>
           {!form.sendNow && (
-            <input
+            <Input
               type="datetime-local"
-              className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[var(--color-focus-ring)]"
+              className=""
               value={form.scheduledAt}
               onChange={(e) => setForm({ ...form, scheduledAt: e.target.value })}
             />

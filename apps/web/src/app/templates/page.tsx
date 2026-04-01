@@ -4,6 +4,9 @@ import { useState, useEffect, useCallback } from 'react';
 import { api } from '@/lib/api';
 import Header from '@/components/layout/header';
 import CcPromptButton from '@/components/cc-prompt-button';
+import { Alert } from '@/components/ui/alert';
+import { Badge } from '@/components/ui/badge';
+import { Input, Select, Textarea } from '@/components/ui/field';
 
 interface Template {
   id: string;
@@ -160,9 +163,9 @@ export default function TemplatesPage() {
 
       {/* Error */}
       {error && (
-        <div className="mb-4 p-4 bg-[var(--color-error-muted)] border border-[var(--color-error-border)] rounded-lg text-[var(--color-error)] text-sm">
+        <Alert variant="error" className="mb-4">
           {error}
-        </div>
+        </Alert>
       )}
 
       {/* Category filter */}
@@ -209,9 +212,9 @@ export default function TemplatesPage() {
               <label className="block text-xs font-medium text-gray-600 mb-1">
                 テンプレート名 <span className="text-[var(--color-error)]">*</span>
               </label>
-              <input
+              <Input
                 type="text"
-                className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[var(--color-focus-ring)]"
+                className=""
                 placeholder="例: ウェルカムメッセージ"
                 value={form.name}
                 onChange={(e) => setForm({ ...form, name: e.target.value })}
@@ -221,9 +224,9 @@ export default function TemplatesPage() {
               <label className="block text-xs font-medium text-gray-600 mb-1">
                 カテゴリ <span className="text-[var(--color-error)]">*</span>
               </label>
-              <input
+              <Input
                 type="text"
-                className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[var(--color-focus-ring)]"
+                className=""
                 placeholder="例: 挨拶、キャンペーン、通知"
                 value={form.category}
                 onChange={(e) => setForm({ ...form, category: e.target.value })}
@@ -233,22 +236,22 @@ export default function TemplatesPage() {
               <label className="block text-xs font-medium text-gray-600 mb-1">
                 メッセージタイプ
               </label>
-              <select
-                className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[var(--color-focus-ring)] bg-white"
+              <Select
+                className=""
                 value={form.messageType}
                 onChange={(e) => setForm({ ...form, messageType: e.target.value })}
               >
                 <option value="text">テキスト</option>
                 <option value="image">画像</option>
                 <option value="flex">Flex</option>
-              </select>
+              </Select>
             </div>
             <div>
               <label className="block text-xs font-medium text-gray-600 mb-1">
                 メッセージ内容 <span className="text-[var(--color-error)]">*</span>
               </label>
-              <textarea
-                className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[var(--color-focus-ring)] resize-none"
+              <Textarea
+                className="resize-none"
                 rows={4}
                 placeholder="メッセージ内容を入力してください"
                 value={form.messageContent}
@@ -341,9 +344,9 @@ export default function TemplatesPage() {
 
                     {/* Category */}
                     <td className="px-4 py-3">
-                      <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-[var(--color-slate-muted)] text-[var(--color-slate)]">
+                      <Badge className="bg-[var(--color-slate-muted)] text-[var(--color-slate)]">
                         {template.category}
-                      </span>
+                      </Badge>
                     </td>
 
                     {/* Message Type */}

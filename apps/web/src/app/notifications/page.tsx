@@ -6,6 +6,9 @@ import { api } from '@/lib/api';
 import { useAccount } from '@/contexts/account-context';
 import Header from '@/components/layout/header';
 import CcPromptButton from '@/components/cc-prompt-button';
+import { Alert } from '@/components/ui/alert';
+import { Badge } from '@/components/ui/badge';
+import { Input, Select, Textarea } from '@/components/ui/field';
 
 interface CreateFormState {
   name: string;
@@ -219,9 +222,9 @@ export default function NotificationsPage() {
 
       {/* Error */}
       {error && (
-        <div className="mb-4 p-4 bg-[var(--color-error-muted)] border border-[var(--color-error-border)] rounded-lg text-[var(--color-error)] text-sm">
+        <Alert variant="error" className="mb-4">
           {error}
-        </div>
+        </Alert>
       )}
 
       {/* Create form */}
@@ -233,9 +236,9 @@ export default function NotificationsPage() {
               <label className="block text-xs font-medium text-gray-600 mb-1">
                 ルール名 <span className="text-[var(--color-error)]">*</span>
               </label>
-              <input
+              <Input
                 type="text"
-                className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[var(--color-focus-ring)]"
+                className=""
                 placeholder="例: 新規友だち追加通知"
                 value={form.name}
                 onChange={(e) => setForm({ ...form, name: e.target.value })}
@@ -245,9 +248,9 @@ export default function NotificationsPage() {
               <label className="block text-xs font-medium text-gray-600 mb-1">
                 イベントタイプ <span className="text-[var(--color-error)]">*</span>
               </label>
-              <input
+              <Input
                 type="text"
-                className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[var(--color-focus-ring)]"
+                className=""
                 placeholder="例: friend_add, message_received, tag_added"
                 value={form.eventType}
                 onChange={(e) => setForm({ ...form, eventType: e.target.value })}
@@ -255,9 +258,9 @@ export default function NotificationsPage() {
             </div>
             <div>
               <label className="block text-xs font-medium text-gray-600 mb-1">通知チャンネル</label>
-              <input
+              <Input
                 type="text"
-                className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[var(--color-focus-ring)]"
+                className=""
                 placeholder="email,slack,webhook (カンマ区切り)"
                 value={form.channels}
                 onChange={(e) => setForm({ ...form, channels: e.target.value })}
@@ -265,8 +268,8 @@ export default function NotificationsPage() {
             </div>
             <div>
               <label className="block text-xs font-medium text-gray-600 mb-1">条件 (JSON)</label>
-              <textarea
-                className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm font-mono focus:outline-none focus:ring-2 focus:ring-[var(--color-focus-ring)] resize-none"
+              <Textarea
+                className="font-mono resize-none"
                 rows={3}
                 placeholder='{"tagId": "xxx"}'
                 value={form.conditions}
@@ -355,12 +358,12 @@ export default function NotificationsPage() {
                 {/* Channels */}
                 <div className="flex flex-wrap gap-1">
                   {rule.channels.map((ch) => (
-                    <span
+                    <Badge
                       key={ch}
-                      className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-[var(--color-slate-muted)] text-[var(--color-slate)]"
+                      className="bg-[var(--color-slate-muted)] text-[var(--color-slate)]"
                     >
                       {ch}
-                    </span>
+                    </Badge>
                   ))}
                 </div>
 
@@ -384,8 +387,8 @@ export default function NotificationsPage() {
       <div>
         <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between mb-3">
           <h2 className="text-sm font-semibold text-gray-800">通知履歴</h2>
-          <select
-            className="border border-gray-300 rounded-lg px-3 py-1.5 min-h-[44px] text-sm focus:outline-none focus:ring-2 focus:ring-[var(--color-focus-ring)] bg-white"
+          <Select
+            className="min-h-[44px]"
             value={statusFilter}
             onChange={(e) => handleStatusFilterChange(e.target.value)}
           >
@@ -394,7 +397,7 @@ export default function NotificationsPage() {
                 {opt.label}
               </option>
             ))}
-          </select>
+          </Select>
         </div>
 
         {loading ? (
@@ -453,11 +456,7 @@ export default function NotificationsPage() {
                         </td>
                         <td className="px-4 py-3 text-sm text-gray-600">{notification.channel}</td>
                         <td className="px-4 py-3">
-                          <span
-                            className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${statusInfo.className}`}
-                          >
-                            {statusInfo.label}
-                          </span>
+                          <Badge className={statusInfo.className}>{statusInfo.label}</Badge>
                         </td>
                         <td className="px-4 py-3 text-sm text-gray-500">
                           {formatDatetime(notification.createdAt)}

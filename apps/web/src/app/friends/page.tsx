@@ -8,6 +8,8 @@ import Header from '@/components/layout/header';
 import FriendTable from '@/components/friends/friend-table';
 import CcPromptButton from '@/components/cc-prompt-button';
 import { useAccount } from '@/contexts/account-context';
+import { Alert } from '@/components/ui/alert';
+import { Select } from '@/components/ui/field';
 
 const ccPrompts = [
   {
@@ -102,8 +104,8 @@ export default function FriendsPage() {
           <label className="text-sm text-gray-600 font-medium whitespace-nowrap">
             タグで絞り込み:
           </label>
-          <select
-            className="text-sm border border-gray-300 rounded-lg px-3 py-2 min-h-[44px] bg-white focus:outline-none focus:ring-2 focus:ring-[var(--color-focus-ring)] flex-1 sm:flex-none"
+          <Select
+            className="min-h-[44px] flex-1 sm:flex-none"
             value={selectedTagId}
             onChange={(e) => handleTagFilter(e.target.value)}
           >
@@ -113,7 +115,7 @@ export default function FriendsPage() {
                 {tag.name}
               </option>
             ))}
-          </select>
+          </Select>
         </div>
         <span className="text-sm text-gray-500">
           {loading ? '読み込み中...' : `${total.toLocaleString('ja-JP')} 件`}
@@ -122,9 +124,9 @@ export default function FriendsPage() {
 
       {/* Error */}
       {error && (
-        <div className="mb-4 p-4 bg-[var(--color-error-muted)] border border-[var(--color-error-border)] rounded-lg text-[var(--color-error)] text-sm">
+        <Alert variant="error" className="mb-4">
           {error}
-        </div>
+        </Alert>
       )}
 
       {/* Loading skeleton */}

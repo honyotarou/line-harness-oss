@@ -5,6 +5,7 @@ import { api } from '@/lib/api';
 import type { ConversionPoint } from '@line-crm/shared';
 import Header from '@/components/layout/header';
 import CcPromptButton from '@/components/cc-prompt-button';
+import { Input, Select } from '@/components/ui/field';
 
 interface ConversionReportItem {
   conversionPointId: string;
@@ -116,20 +117,20 @@ export default function ConversionsPage() {
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">CV名</label>
-              <input
+              <Input
                 value={form.name}
                 onChange={(e) => setForm({ ...form, name: e.target.value })}
-                className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm"
+                className=""
                 placeholder="購入完了"
                 required
               />
             </div>
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">イベントタイプ</label>
-              <select
+              <Select
                 value={form.eventType}
                 onChange={(e) => setForm({ ...form, eventType: e.target.value })}
-                className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm"
+                className=""
                 required
               >
                 <option value="">選択...</option>
@@ -138,15 +139,15 @@ export default function ConversionsPage() {
                     {t.label}
                   </option>
                 ))}
-              </select>
+              </Select>
             </div>
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">金額 (任意)</label>
-              <input
+              <Input
                 type="number"
                 value={form.value}
                 onChange={(e) => setForm({ ...form, value: e.target.value })}
-                className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm"
+                className=""
                 placeholder="0"
               />
             </div>

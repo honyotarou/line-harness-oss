@@ -6,6 +6,8 @@ import Link from 'next/link';
 import type { Scenario, ScenarioStep, ScenarioTriggerType, MessageType } from '@line-crm/shared';
 import { api } from '@/lib/api';
 import Header from '@/components/layout/header';
+import { Alert } from '@/components/ui/alert';
+import { Input, Select, Textarea } from '@/components/ui/field';
 
 type ScenarioWithSteps = Scenario & { steps: ScenarioStep[] };
 
@@ -315,9 +317,9 @@ export default function ScenarioDetailClient({ scenarioId }: { scenarioId: strin
       />
 
       {error && (
-        <div className="mb-4 p-4 bg-[var(--color-error-muted)] border border-[var(--color-error-border)] rounded-lg text-[var(--color-error)] text-sm">
+        <Alert variant="error" className="mb-4">
           {error}
-        </div>
+        </Alert>
       )}
 
       {/* Scenario Info */}
@@ -328,17 +330,17 @@ export default function ScenarioDetailClient({ scenarioId }: { scenarioId: strin
               <label className="block text-xs font-medium text-gray-600 mb-1">
                 シナリオ名 <span className="text-[var(--color-error)]">*</span>
               </label>
-              <input
+              <Input
                 type="text"
-                className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[var(--color-focus-ring)]"
+                className=""
                 value={editForm.name}
                 onChange={(e) => setEditForm({ ...editForm, name: e.target.value })}
               />
             </div>
             <div>
               <label className="block text-xs font-medium text-gray-600 mb-1">説明</label>
-              <textarea
-                className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[var(--color-focus-ring)] resize-none"
+              <Textarea
+                className="resize-none"
                 rows={2}
                 value={editForm.description}
                 onChange={(e) => setEditForm({ ...editForm, description: e.target.value })}
@@ -346,8 +348,8 @@ export default function ScenarioDetailClient({ scenarioId }: { scenarioId: strin
             </div>
             <div>
               <label className="block text-xs font-medium text-gray-600 mb-1">トリガー</label>
-              <select
-                className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[var(--color-focus-ring)] bg-white"
+              <Select
+                className=""
                 value={editForm.triggerType}
                 onChange={(e) =>
                   setEditForm({ ...editForm, triggerType: e.target.value as ScenarioTriggerType })
@@ -358,7 +360,7 @@ export default function ScenarioDetailClient({ scenarioId }: { scenarioId: strin
                     {opt.label}
                   </option>
                 ))}
-              </select>
+              </Select>
             </div>
             <div className="flex items-center gap-2">
               <input
@@ -460,10 +462,10 @@ export default function ScenarioDetailClient({ scenarioId }: { scenarioId: strin
                   <label className="block text-xs font-medium text-gray-600 mb-1">
                     ステップ順序
                   </label>
-                  <input
+                  <Input
                     type="number"
                     min={1}
-                    className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[var(--color-focus-ring)]"
+                    className=""
                     value={stepForm.stepOrder}
                     onChange={(e) =>
                       setStepForm({ ...stepForm, stepOrder: Number(e.target.value) })
@@ -472,10 +474,10 @@ export default function ScenarioDetailClient({ scenarioId }: { scenarioId: strin
                 </div>
                 <div>
                   <label className="block text-xs font-medium text-gray-600 mb-1">遅延 (分)</label>
-                  <input
+                  <Input
                     type="number"
                     min={0}
-                    className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[var(--color-focus-ring)]"
+                    className=""
                     value={stepForm.delayMinutes}
                     onChange={(e) =>
                       setStepForm({ ...stepForm, delayMinutes: Number(e.target.value) })
@@ -490,8 +492,8 @@ export default function ScenarioDetailClient({ scenarioId }: { scenarioId: strin
                 <label className="block text-xs font-medium text-gray-600 mb-1">
                   メッセージタイプ
                 </label>
-                <select
-                  className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[var(--color-focus-ring)] bg-white"
+                <Select
+                  className=""
                   value={stepForm.messageType}
                   onChange={(e) =>
                     setStepForm({ ...stepForm, messageType: e.target.value as MessageType })
@@ -502,14 +504,14 @@ export default function ScenarioDetailClient({ scenarioId }: { scenarioId: strin
                       {opt.label}
                     </option>
                   ))}
-                </select>
+                </Select>
               </div>
               <div>
                 <label className="block text-xs font-medium text-gray-600 mb-1">
                   メッセージ内容 <span className="text-[var(--color-error)]">*</span>
                 </label>
-                <textarea
-                  className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[var(--color-focus-ring)] resize-none"
+                <Textarea
+                  className="resize-none"
                   rows={4}
                   placeholder="メッセージ内容を入力..."
                   value={stepForm.messageContent}

@@ -5,6 +5,9 @@ import { api } from '@/lib/api';
 import { useAccount } from '@/contexts/account-context';
 import Header from '@/components/layout/header';
 import CcPromptButton from '@/components/cc-prompt-button';
+import { Alert } from '@/components/ui/alert';
+import { Badge } from '@/components/ui/badge';
+import { Input, Select, Textarea } from '@/components/ui/field';
 
 interface Reminder {
   id: string;
@@ -268,9 +271,9 @@ export default function RemindersPage() {
 
       {/* Error */}
       {error && (
-        <div className="mb-4 p-4 bg-[var(--color-error-muted)] border border-[var(--color-error-border)] rounded-lg text-[var(--color-error)] text-sm">
+        <Alert variant="error" className="mb-4">
           {error}
-        </div>
+        </Alert>
       )}
 
       {/* Create form */}
@@ -282,9 +285,9 @@ export default function RemindersPage() {
               <label className="block text-xs font-medium text-gray-600 mb-1">
                 リマインダー名 <span className="text-[var(--color-error)]">*</span>
               </label>
-              <input
+              <Input
                 type="text"
-                className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[var(--color-focus-ring)]"
+                className=""
                 placeholder="例: セミナー参加リマインダー"
                 value={form.name}
                 onChange={(e) => setForm({ ...form, name: e.target.value })}
@@ -292,8 +295,8 @@ export default function RemindersPage() {
             </div>
             <div>
               <label className="block text-xs font-medium text-gray-600 mb-1">説明</label>
-              <textarea
-                className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[var(--color-focus-ring)] resize-none"
+              <Textarea
+                className="resize-none"
                 rows={2}
                 placeholder="リマインダーの説明 (省略可)"
                 value={form.description}
@@ -375,15 +378,15 @@ export default function RemindersPage() {
                         </p>
                       )}
                     </div>
-                    <span
-                      className={`ml-2 inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium shrink-0 ${
+                    <Badge
+                      className={
                         reminder.isActive
-                          ? 'bg-[var(--color-primary-muted)] text-[var(--color-primary)]'
-                          : 'bg-gray-100 text-gray-500'
-                      }`}
+                          ? 'ml-2 shrink-0 bg-[var(--color-primary-muted)] text-[var(--color-primary)]'
+                          : 'ml-2 shrink-0 bg-gray-100 text-gray-500'
+                      }
                     >
                       {reminder.isActive ? '有効' : '無効'}
-                    </span>
+                    </Badge>
                   </div>
                   <div className="flex items-center gap-4 mt-3 text-xs text-gray-400">
                     <span>作成日: {new Date(reminder.createdAt).toLocaleDateString('ja-JP')}</span>
@@ -500,9 +503,9 @@ export default function RemindersPage() {
                                 <label className="block text-xs font-medium text-gray-600 mb-1">
                                   オフセット (分)
                                 </label>
-                                <input
+                                <Input
                                   type="number"
-                                  className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[var(--color-focus-ring)]"
+                                  className=""
                                   placeholder="例: -60 (1時間前), +30 (30分後)"
                                   value={stepForm.offsetMinutes}
                                   onChange={(e) =>
@@ -520,8 +523,8 @@ export default function RemindersPage() {
                                 <label className="block text-xs font-medium text-gray-600 mb-1">
                                   メッセージタイプ
                                 </label>
-                                <select
-                                  className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[var(--color-focus-ring)] bg-white"
+                                <Select
+                                  className=""
                                   value={stepForm.messageType}
                                   onChange={(e) =>
                                     setStepForm({ ...stepForm, messageType: e.target.value })
@@ -530,15 +533,15 @@ export default function RemindersPage() {
                                   <option value="text">テキスト</option>
                                   <option value="image">画像</option>
                                   <option value="flex">Flex</option>
-                                </select>
+                                </Select>
                               </div>
                               <div>
                                 <label className="block text-xs font-medium text-gray-600 mb-1">
                                   メッセージ内容{' '}
                                   <span className="text-[var(--color-error)]">*</span>
                                 </label>
-                                <textarea
-                                  className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[var(--color-focus-ring)] resize-none"
+                                <Textarea
+                                  className="resize-none"
                                   rows={3}
                                   placeholder="メッセージ内容を入力"
                                   value={stepForm.messageContent}

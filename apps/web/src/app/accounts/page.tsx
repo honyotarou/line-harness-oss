@@ -4,6 +4,8 @@ import { useState, useEffect } from 'react';
 import { api } from '@/lib/api';
 import Header from '@/components/layout/header';
 import CcPromptButton from '@/components/cc-prompt-button';
+import { Alert } from '@/components/ui/alert';
+import { Input } from '@/components/ui/field';
 
 interface LineAccountListItem {
   id: string;
@@ -112,9 +114,9 @@ export default function AccountsPage() {
       />
 
       {error && (
-        <div className="mb-6 p-4 bg-[var(--color-error-muted)] border border-[var(--color-error-border)] rounded-lg text-[var(--color-error)] text-sm">
+        <Alert variant="error" className="mb-6">
           {error}
-        </div>
+        </Alert>
       )}
 
       {showCreate && (
@@ -125,20 +127,20 @@ export default function AccountsPage() {
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">アカウント名</label>
-              <input
+              <Input
                 value={form.name}
                 onChange={(e) => setForm({ ...form, name: e.target.value })}
-                className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm"
+                className=""
                 placeholder="メインアカウント"
                 required
               />
             </div>
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">Channel ID</label>
-              <input
+              <Input
                 value={form.channelId}
                 onChange={(e) => setForm({ ...form, channelId: e.target.value })}
-                className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm"
+                className=""
                 placeholder="123456789"
                 required
               />
@@ -147,21 +149,21 @@ export default function AccountsPage() {
               <label className="block text-sm font-medium text-gray-700 mb-1">
                 Channel Access Token
               </label>
-              <input
+              <Input
                 type="password"
                 value={form.channelAccessToken}
                 onChange={(e) => setForm({ ...form, channelAccessToken: e.target.value })}
-                className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm"
+                className=""
                 required
               />
             </div>
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">Channel Secret</label>
-              <input
+              <Input
                 type="password"
                 value={form.channelSecret}
                 onChange={(e) => setForm({ ...form, channelSecret: e.target.value })}
-                className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm"
+                className=""
                 required
               />
             </div>

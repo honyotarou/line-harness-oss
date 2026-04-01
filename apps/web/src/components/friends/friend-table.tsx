@@ -5,6 +5,7 @@ import type { Tag } from '@line-crm/shared';
 import type { FriendWithTags } from '@/lib/api';
 import { api } from '@/lib/api';
 import TagBadge from './tag-badge';
+import { Badge } from '@/components/ui/badge';
 
 interface FriendTableProps {
   friends: FriendWithTags[];
@@ -140,13 +141,11 @@ export default function FriendTable({ friends, allTags, onRefresh }: FriendTable
                     {/* Following status */}
                     <td className="px-4 py-3">
                       {friend.isFollowing ? (
-                        <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-[var(--color-primary-muted)] text-[var(--color-primary)]">
+                        <Badge className="bg-[var(--color-primary-muted)] text-[var(--color-primary)]">
                           フォロー中
-                        </span>
+                        </Badge>
                       ) : (
-                        <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-500">
-                          ブロック/退会
-                        </span>
+                        <Badge className="bg-gray-100 text-gray-500">ブロック/退会</Badge>
                       )}
                     </td>
 
@@ -154,9 +153,9 @@ export default function FriendTable({ friends, allTags, onRefresh }: FriendTable
                     <td className="px-4 py-3">
                       <div className="flex flex-wrap gap-1">
                         {(friend as unknown as { refCode?: string }).refCode && (
-                          <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-[var(--color-slate-muted)] text-[var(--color-slate)]">
+                          <Badge className="bg-[var(--color-slate-muted)] text-[var(--color-slate)]">
                             {(friend as unknown as { refCode: string }).refCode}
-                          </span>
+                          </Badge>
                         )}
                         {friend.tags.length > 0 ? (
                           friend.tags.map((tag) => <TagBadge key={tag.id} tag={tag} />)

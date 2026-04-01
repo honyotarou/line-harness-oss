@@ -4,6 +4,8 @@ import { useState, useEffect, useCallback } from 'react';
 import Header from '@/components/layout/header';
 import { api } from '@/lib/api';
 import CcPromptButton from '@/components/cc-prompt-button';
+import { Alert } from '@/components/ui/alert';
+import { Input } from '@/components/ui/field';
 
 interface ScoringRule {
   id: string;
@@ -164,9 +166,9 @@ export default function ScoringPage() {
 
       {/* Error */}
       {error && (
-        <div className="mb-4 p-4 bg-[var(--color-error-muted)] border border-[var(--color-error-border)] rounded-lg text-[var(--color-error)] text-sm">
+        <Alert variant="error" className="mb-4">
           {error}
-        </div>
+        </Alert>
       )}
 
       {/* Create form */}
@@ -178,9 +180,9 @@ export default function ScoringPage() {
               <label className="block text-xs font-medium text-gray-600 mb-1">
                 ルール名 <span className="text-[var(--color-error)]">*</span>
               </label>
-              <input
+              <Input
                 type="text"
-                className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[var(--color-focus-ring)]"
+                className=""
                 placeholder="例: メッセージ開封"
                 value={form.name}
                 onChange={(e) => setForm({ ...form, name: e.target.value })}
@@ -190,9 +192,9 @@ export default function ScoringPage() {
               <label className="block text-xs font-medium text-gray-600 mb-1">
                 イベントタイプ <span className="text-[var(--color-error)]">*</span>
               </label>
-              <input
+              <Input
                 type="text"
-                className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[var(--color-focus-ring)]"
+                className=""
                 placeholder="例: message_open, url_click, friend_add"
                 value={form.eventType}
                 onChange={(e) => setForm({ ...form, eventType: e.target.value })}
@@ -202,9 +204,9 @@ export default function ScoringPage() {
               <label className="block text-xs font-medium text-gray-600 mb-1">
                 スコア値 <span className="text-[var(--color-error)]">*</span>
               </label>
-              <input
+              <Input
                 type="number"
-                className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[var(--color-focus-ring)]"
+                className=""
                 placeholder="例: 10 (正の値で加算、負の値で減算)"
                 value={form.scoreValue}
                 onChange={(e) => setForm({ ...form, scoreValue: e.target.value })}

@@ -7,6 +7,8 @@ import { useAccount } from '@/contexts/account-context';
 import Header from '@/components/layout/header';
 import ScenarioList from '@/components/scenarios/scenario-list';
 import CcPromptButton from '@/components/cc-prompt-button';
+import { Alert } from '@/components/ui/alert';
+import { Input, Select, Textarea } from '@/components/ui/field';
 
 const ccPrompts = [
   {
@@ -152,9 +154,9 @@ export default function ScenariosPage() {
 
       {/* Error */}
       {error && (
-        <div className="mb-4 p-4 bg-[var(--color-error-muted)] border border-[var(--color-error-border)] rounded-lg text-[var(--color-error)] text-sm">
+        <Alert variant="error" className="mb-4">
           {error}
-        </div>
+        </Alert>
       )}
 
       {/* Create form */}
@@ -166,9 +168,9 @@ export default function ScenariosPage() {
               <label className="block text-xs font-medium text-gray-600 mb-1">
                 シナリオ名 <span className="text-[var(--color-error)]">*</span>
               </label>
-              <input
+              <Input
                 type="text"
-                className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[var(--color-focus-ring)]"
+                className=""
                 placeholder="例: 友だち追加ウェルカムシナリオ"
                 value={form.name}
                 onChange={(e) => setForm({ ...form, name: e.target.value })}
@@ -176,8 +178,8 @@ export default function ScenariosPage() {
             </div>
             <div>
               <label className="block text-xs font-medium text-gray-600 mb-1">説明</label>
-              <textarea
-                className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[var(--color-focus-ring)] resize-none"
+              <Textarea
+                className="resize-none"
                 rows={2}
                 placeholder="シナリオの説明 (省略可)"
                 value={form.description}
@@ -186,8 +188,8 @@ export default function ScenariosPage() {
             </div>
             <div>
               <label className="block text-xs font-medium text-gray-600 mb-1">トリガー</label>
-              <select
-                className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[var(--color-focus-ring)] bg-white"
+              <Select
+                className=""
                 value={form.triggerType}
                 onChange={(e) =>
                   setForm({ ...form, triggerType: e.target.value as ScenarioTriggerType })
@@ -198,7 +200,7 @@ export default function ScenariosPage() {
                     {opt.label}
                   </option>
                 ))}
-              </select>
+              </Select>
             </div>
             <div className="flex items-center gap-2">
               <input

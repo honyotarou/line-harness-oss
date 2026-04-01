@@ -7,6 +7,8 @@ import { useAccount } from '@/contexts/account-context';
 import Header from '@/components/layout/header';
 import BroadcastForm from '@/components/broadcasts/broadcast-form';
 import CcPromptButton from '@/components/cc-prompt-button';
+import { Alert } from '@/components/ui/alert';
+import { Badge } from '@/components/ui/badge';
 
 const ccPrompts = [
   {
@@ -127,9 +129,9 @@ export default function BroadcastsPage() {
 
       {/* Error */}
       {error && (
-        <div className="mb-4 p-4 bg-[var(--color-error-muted)] border border-[var(--color-error-border)] rounded-lg text-[var(--color-error)] text-sm">
+        <Alert variant="error" className="mb-4">
           {error}
-        </div>
+        </Alert>
       )}
 
       {/* Create form */}
@@ -216,11 +218,7 @@ export default function BroadcastsPage() {
 
                       {/* Status */}
                       <td className="px-4 py-3">
-                        <span
-                          className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${statusInfo.className}`}
-                        >
-                          {statusInfo.label}
-                        </span>
+                        <Badge className={statusInfo.className}>{statusInfo.label}</Badge>
                       </td>
 
                       {/* Target */}

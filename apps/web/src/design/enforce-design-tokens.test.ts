@@ -116,4 +116,32 @@ describe('design tokens enforcement (web)', () => {
 
     expect(offenders).toEqual([]);
   });
+
+  it('does not duplicate core UI styles in pages (use components/ui)', () => {
+    const srcRoot = join(webSrcRoot, 'app');
+    const componentRoot = join(webSrcRoot, 'components');
+    const roots = [srcRoot, componentRoot];
+
+    const files = roots
+      .flatMap((r) => listFilesRecursively(r))
+      .filter((abs) => abs.endsWith('.ts') || abs.endsWith('.tsx'));
+
+    // These patterns are allowed only inside components/ui/* (centralized look & feel).
+    const bannedSnippets = [
+      'w-full border border-gray-300 rounded-lg px-3 py-2 text-sm',
+      'bg-[var(--color-error-muted)] border border-[var(--color-error-border)] rounded-lg text-[var(--color-error)] text-sm',
+      'inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium',
+    ];
+
+    const offenders: { file: string; matches: string[] }[] = [];
+    for (const abs of files) {
+      const rel = abs.slice(webSrcRoot.length + 1);
+      if (rel.startsWith('components/ui/')) continue;
+      const text = readFileSync(abs, 'utf8');
+      const matches = bannedSnippets.filter((s) => text.includes(s));
+      if (matches.length > 0) offenders.push({ file: rel, matches });
+    }
+
+    expect(offenders).toEqual([]);
+  });
 });

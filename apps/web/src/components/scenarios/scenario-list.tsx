@@ -1,5 +1,6 @@
 import Link from 'next/link';
 import type { Scenario } from '@line-crm/shared';
+import { Badge } from '@/components/ui/badge';
 
 type ScenarioWithCount = Scenario & { stepCount?: number };
 
@@ -45,15 +46,15 @@ export default function ScenarioList({
             >
               {scenario.name}
             </Link>
-            <span
-              className={`shrink-0 inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${
+            <Badge
+              className={
                 scenario.isActive
-                  ? 'bg-[var(--color-primary-muted)] text-[var(--color-primary)]'
-                  : 'bg-gray-100 text-gray-500'
-              }`}
+                  ? 'shrink-0 bg-[var(--color-primary-muted)] text-[var(--color-primary)]'
+                  : 'shrink-0 bg-gray-100 text-gray-500'
+              }
             >
               {scenario.isActive ? '有効' : '無効'}
-            </span>
+            </Badge>
           </div>
 
           {/* Description */}

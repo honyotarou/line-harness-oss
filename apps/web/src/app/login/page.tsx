@@ -1,6 +1,7 @@
 'use client';
 import { useEffect, useState } from 'react';
 import { ApiError, api, setAdminSessionToken } from '@/lib/api';
+import { Input } from '@/components/ui/field';
 
 export default function LoginPage() {
   const [apiKey, setApiKey] = useState('');
@@ -63,12 +64,12 @@ export default function LoginPage() {
           <form onSubmit={handleLogin}>
             <div className="mb-4">
               <label className="block text-sm font-medium text-gray-700 mb-1">API Key</label>
-              <input
+              <Input
                 type="password"
                 value={apiKey}
                 onChange={(e) => setApiKey(e.target.value)}
                 placeholder="APIキーを入力"
-                className="w-full px-4 py-3 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[var(--color-focus-ring)] focus:border-transparent"
+                className="px-4 py-3 focus:border-transparent"
                 autoFocus
               />
             </div>

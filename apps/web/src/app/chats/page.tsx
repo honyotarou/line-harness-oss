@@ -5,6 +5,8 @@ import { api, fetchApi } from '@/lib/api';
 import { useAccount } from '@/contexts/account-context';
 import Header from '@/components/layout/header';
 import CcPromptButton from '@/components/cc-prompt-button';
+import { Alert } from '@/components/ui/alert';
+import { Badge } from '@/components/ui/badge';
 
 interface Chat {
   id: string;
@@ -389,9 +391,9 @@ export default function ChatsPage() {
 
       {/* Error */}
       {error && (
-        <div className="mb-4 p-4 bg-[var(--color-error-muted)] border border-[var(--color-error-border)] rounded-lg text-[var(--color-error)] text-sm">
+        <Alert variant="error" className="mb-4">
           {error}
-        </div>
+        </Alert>
       )}
 
       <div className="flex gap-4 h-[calc(100vh-120px)] lg:h-[calc(100vh-180px)]">
@@ -478,11 +480,9 @@ export default function ChatsPage() {
                             {formatDatetime(chat.lastMessageAt)}
                           </p>
                         </div>
-                        <span
-                          className={`ml-2 inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium flex-shrink-0 ${statusInfo.className}`}
-                        >
+                        <Badge className={`ml-2 flex-shrink-0 ${statusInfo.className}`}>
                           {statusInfo.label}
-                        </span>
+                        </Badge>
                       </div>
                     </button>
                   );
@@ -524,9 +524,9 @@ export default function ChatsPage() {
                             </p>
                             <p className="text-xs text-gray-400 mt-0.5">会話なし</p>
                           </div>
-                          <span className="ml-2 inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium flex-shrink-0 bg-gray-100 text-gray-500">
+                          <Badge className="ml-2 flex-shrink-0 bg-gray-100 text-gray-500">
                             新規
-                          </span>
+                          </Badge>
                         </div>
                       </button>
                     );
@@ -589,11 +589,9 @@ export default function ChatsPage() {
                     <p className="text-sm font-medium text-gray-900 truncate">
                       {chatDetail.friendName}
                     </p>
-                    <span
-                      className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium mt-1 ${statusConfig[chatDetail.status].className}`}
-                    >
+                    <Badge className={`mt-1 ${statusConfig[chatDetail.status].className}`}>
                       {statusConfig[chatDetail.status].label}
-                    </span>
+                    </Badge>
                   </div>
                 </div>
                 <div className="flex flex-wrap items-center gap-2">

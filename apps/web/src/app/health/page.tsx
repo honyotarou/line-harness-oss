@@ -4,6 +4,8 @@ import { useState, useEffect, useCallback } from 'react';
 import Header from '@/components/layout/header';
 import { api } from '@/lib/api';
 import CcPromptButton from '@/components/cc-prompt-button';
+import { Alert } from '@/components/ui/alert';
+import { Select } from '@/components/ui/field';
 
 interface LineAccount {
   id: string;
@@ -200,9 +202,9 @@ export default function HealthPage() {
 
       {/* Error */}
       {error && (
-        <div className="mb-4 p-4 bg-[var(--color-error-muted)] border border-[var(--color-error-border)] rounded-lg text-[var(--color-error)] text-sm">
+        <Alert variant="error" className="mb-4">
           {error}
-        </div>
+        </Alert>
       )}
 
       {/* Loading */}
@@ -358,10 +360,10 @@ export default function HealthPage() {
                   <label className="block text-sm font-medium text-gray-700 mb-1">
                     移行先アカウント
                   </label>
-                  <select
+                  <Select
                     value={migrateToId}
                     onChange={(e) => setMigrateToId(e.target.value)}
-                    className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-[var(--color-focus-ring)]"
+                    className=""
                     required
                   >
                     <option value="">選択してください</option>
@@ -372,7 +374,7 @@ export default function HealthPage() {
                           {a.name} ({a.channelId})
                         </option>
                       ))}
-                  </select>
+                  </Select>
                 </div>
                 <div className="flex items-center gap-3">
                   <button

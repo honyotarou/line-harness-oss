@@ -4,6 +4,9 @@ import { useState, useEffect, useCallback } from 'react';
 import Header from '@/components/layout/header';
 import { api } from '@/lib/api';
 import CcPromptButton from '@/components/cc-prompt-button';
+import { Alert } from '@/components/ui/alert';
+import { Badge } from '@/components/ui/badge';
+import { Input } from '@/components/ui/field';
 
 interface IncomingWebhook {
   id: string;
@@ -177,9 +180,9 @@ export default function WebhooksPage() {
 
       {/* Error */}
       {error && (
-        <div className="mb-4 p-4 bg-[var(--color-error-muted)] border border-[var(--color-error-border)] rounded-lg text-[var(--color-error)] text-sm">
+        <Alert variant="error" className="mb-4">
           {error}
-        </div>
+        </Alert>
       )}
 
       {/* Tabs */}
@@ -222,20 +225,20 @@ export default function WebhooksPage() {
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">名前</label>
-              <input
+              <Input
                 value={inForm.name}
                 onChange={(e) => setInForm({ ...inForm, name: e.target.value })}
-                className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm"
+                className=""
                 placeholder="LINE公式アカウント"
                 required
               />
             </div>
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">ソースタイプ</label>
-              <input
+              <Input
                 value={inForm.sourceType}
                 onChange={(e) => setInForm({ ...inForm, sourceType: e.target.value })}
-                className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm"
+                className=""
                 placeholder="line"
               />
             </div>
@@ -259,20 +262,20 @@ export default function WebhooksPage() {
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">名前</label>
-              <input
+              <Input
                 value={outForm.name}
                 onChange={(e) => setOutForm({ ...outForm, name: e.target.value })}
-                className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm"
+                className=""
                 placeholder="外部CRM連携"
                 required
               />
             </div>
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">URL</label>
-              <input
+              <Input
                 value={outForm.url}
                 onChange={(e) => setOutForm({ ...outForm, url: e.target.value })}
-                className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm"
+                className=""
                 placeholder="https://example.com/webhook"
                 required
               />
@@ -281,10 +284,10 @@ export default function WebhooksPage() {
               <label className="block text-sm font-medium text-gray-700 mb-1">
                 イベントタイプ (カンマ区切り)
               </label>
-              <input
+              <Input
                 value={outForm.eventTypes}
                 onChange={(e) => setOutForm({ ...outForm, eventTypes: e.target.value })}
-                className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm"
+                className=""
                 placeholder="friend.added, message.received"
               />
             </div>
@@ -292,10 +295,10 @@ export default function WebhooksPage() {
               <label className="block text-sm font-medium text-gray-700 mb-1">
                 シークレット (任意)
               </label>
-              <input
+              <Input
                 value={outForm.secret}
                 onChange={(e) => setOutForm({ ...outForm, secret: e.target.value })}
-                className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm"
+                className=""
                 placeholder="webhook-secret-key"
               />
             </div>
@@ -442,12 +445,12 @@ export default function WebhooksPage() {
                     <td className="px-4 py-3">
                       <div className="flex flex-wrap gap-1">
                         {wh.eventTypes.map((et) => (
-                          <span
+                          <Badge
                             key={et}
-                            className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-[var(--color-slate-muted)] text-[var(--color-slate)]"
+                            className="bg-[var(--color-slate-muted)] text-[var(--color-slate)]"
                           >
                             {et}
-                          </span>
+                          </Badge>
                         ))}
                       </div>
                     </td>

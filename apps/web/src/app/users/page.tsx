@@ -5,6 +5,8 @@ import { api } from '@/lib/api';
 import type { User } from '@line-crm/shared';
 import Header from '@/components/layout/header';
 import CcPromptButton from '@/components/cc-prompt-button';
+import { Alert } from '@/components/ui/alert';
+import { Input } from '@/components/ui/field';
 
 const ccPrompts = [
   {
@@ -109,9 +111,9 @@ export default function UsersPage() {
       />
 
       {error && (
-        <div className="mb-4 p-4 bg-[var(--color-error-muted)] border border-[var(--color-error-border)] rounded-lg text-[var(--color-error)] text-sm">
+        <Alert variant="error" className="mb-4">
           {error}
-        </div>
+        </Alert>
       )}
 
       {showCreate && (
@@ -122,37 +124,37 @@ export default function UsersPage() {
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">表示名</label>
-              <input
+              <Input
                 value={form.displayName}
                 onChange={(e) => setForm({ ...form, displayName: e.target.value })}
-                className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm"
+                className=""
                 placeholder="山田太郎"
               />
             </div>
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">メール</label>
-              <input
+              <Input
                 value={form.email}
                 onChange={(e) => setForm({ ...form, email: e.target.value })}
-                className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm"
+                className=""
                 placeholder="user@example.com"
               />
             </div>
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">電話番号</label>
-              <input
+              <Input
                 value={form.phone}
                 onChange={(e) => setForm({ ...form, phone: e.target.value })}
-                className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm"
+                className=""
                 placeholder="090-1234-5678"
               />
             </div>
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">外部ID</label>
-              <input
+              <Input
                 value={form.externalId}
                 onChange={(e) => setForm({ ...form, externalId: e.target.value })}
-                className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm"
+                className=""
                 placeholder="ext-123"
               />
             </div>
