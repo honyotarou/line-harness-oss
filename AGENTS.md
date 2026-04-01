@@ -4,7 +4,7 @@
 
 ## 必読（オンデマンド）
 
-- **LINE 統合スキル（デザイン・壁打ち・TDD・ハーネス・デプロイ）**: [`.cursor/skills/line/SKILL.md`](.cursor/skills/line/SKILL.md)（**`/line`** — GAS 型の番号メニュー；Pinterest ムードボードは Step **0**、詳細は `steps-design-0-1.md` ほか `steps-*.md`）
+- **LINE 統合スキル（デザイン・壁打ち・TDD・ハーネス・デプロイ）**: [`.cursor/skills/line/SKILL.md`](.cursor/skills/line/SKILL.md)（**`/line`** — デザイン・要件は **親 0（ビジュアル・任意リッチ）** と **親 1（8 Round＋ブランド）** の2段；リッチ枝は [`steps-rich-menu-wallball.md`](.cursor/skills/line/steps-rich-menu-wallball.md)、ほか `steps-*.md`）
 - **意思決定の履歴**: [`docs/adr/`](docs/adr/)（テスト層: [`0001`](docs/adr/0001-testing-and-harness-layers.md)、ハーネス方針: [`0002`](docs/adr/0002-harness-engineering.md)）
 
 ## よく使うコマンド（ルート）

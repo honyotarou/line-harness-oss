@@ -22,6 +22,9 @@ test.describe('post-login shell pages', () => {
     { path: '/accounts', heading: 'LINEアカウント管理' },
     { path: '/health', heading: 'BAN検知ダッシュボード' },
     { path: '/emergency', heading: '緊急コントロール' },
+    { path: '/friends', heading: '友だち管理' },
+    { path: '/users', heading: 'ユーザーUUID管理' },
+    { path: '/notifications', heading: '通知ルール設定' },
   ];
 
   for (const { path, heading } of pages) {

@@ -29,6 +29,55 @@ function emailsMatchForRecovery(a: string | null, b: string | null): boolean {
   return a.trim().toLowerCase() === b.trim().toLowerCase();
 }
 
+const BOOKING_PHONE_FALLBACK_MESSAGE =
+  'オンラインで予約を完了できない場合は、お電話にてご連絡ください。';
+
+type LiffLineUserBody = { lineUserId: string; idToken: string };
+
+type LiffFriendFromLineUserResult =
+  | { ok: true; friend: NonNullable<Awaited<ReturnType<typeof getFriendByLineUserId>>> }
+  | { ok: false; status: 400 | 401 | 404; body: { success: false; error: string } };
+
+type LiffVerifiedFriendOnlyResult =
+  | { ok: true; friend: NonNullable<Awaited<ReturnType<typeof getFriendByLineUserId>>> }
+  | { ok: false; status: 401 | 404; body: { success: false; error: string } };
+
+async function verifyLiffIdTokenAndLoadFriend(
+  db: D1Database,
+  loginChannelId: string,
+  lineUserId: string,
+  idToken: string,
+): Promise<LiffVerifiedFriendOnlyResult> {
+  const verified = await verifyLineLoginIdToken(db, loginChannelId, idToken);
+  if (!verified || verified.sub !== lineUserId) {
+    return { ok: false, status: 401, body: { success: false, error: 'Invalid ID token' } };
+  }
+  const friend = await getFriendByLineUserId(db, lineUserId);
+  if (!friend) {
+    return { ok: false, status: 404, body: { success: false, error: 'Friend not found' } };
+  }
+  return { ok: true, friend };
+}
+
+async function resolveLiffFriendFromLineUserBody(
+  db: D1Database,
+  loginChannelId: string,
+  raw: LiffLineUserBody,
+): Promise<LiffFriendFromLineUserResult> {
+  if (!raw.lineUserId || !raw.idToken) {
+    return {
+      ok: false,
+      status: 400,
+      body: { success: false, error: 'lineUserId and idToken are required' },
+    };
+  }
+  return verifyLiffIdTokenAndLoadFriend(db, loginChannelId, raw.lineUserId, raw.idToken);
+}
+
+function normalizeBookingFallbackTelUri(trimmed: string): string {
+  return trimmed.startsWith('tel:') ? trimmed : `tel:${trimmed}`;
+}
+
 // ─── LINE Login OAuth (bot_prompt=aggressive) ───────────────────
 
 /**
@@ -437,24 +486,16 @@ liffRoutes.get('/auth/callback', async (c) => {
 // POST /api/liff/profile — requires LINE Login ID token; sub must match lineUserId (no unauthenticated PII)
 liffRoutes.post('/api/liff/profile', async (c) => {
   try {
-    const body = await c.req.json<{ lineUserId: string; idToken: string }>();
-    if (!body.lineUserId || !body.idToken) {
-      return c.json({ success: false, error: 'lineUserId and idToken are required' }, 400);
-    }
-
-    const verified = await verifyLineLoginIdToken(
+    const body = await c.req.json<LiffLineUserBody>();
+    const resolved = await resolveLiffFriendFromLineUserBody(
       c.env.DB,
       c.env.LINE_LOGIN_CHANNEL_ID,
-      body.idToken,
+      body,
     );
-    if (!verified || verified.sub !== body.lineUserId) {
-      return c.json({ success: false, error: 'Invalid ID token' }, 401);
+    if (!resolved.ok) {
+      return c.json(resolved.body, resolved.status);
     }
-
-    const friend = await getFriendByLineUserId(c.env.DB, body.lineUserId);
-    if (!friend) {
-      return c.json({ success: false, error: 'Friend not found' }, 404);
-    }
+    const { friend } = resolved;
 
     return c.json({
       success: true,
@@ -467,6 +508,43 @@ liffRoutes.post('/api/liff/profile', async (c) => {
     });
   } catch (err) {
     console.error('POST /api/liff/profile error:', err);
+    return c.json({ success: false, error: 'Internal server error' }, 500);
+  }
+});
+
+// POST /api/liff/booking/phone-fallback — ID token + known friend; returns clinic tel for offline booking path
+liffRoutes.post('/api/liff/booking/phone-fallback', async (c) => {
+  try {
+    const body = await c.req.json<LiffLineUserBody>();
+    if (!body.lineUserId || !body.idToken) {
+      return c.json({ success: false, error: 'lineUserId and idToken are required' }, 400);
+    }
+
+    const telRaw = c.env.BOOKING_FALLBACK_TEL?.trim();
+    if (!telRaw) {
+      return c.json({ success: false, error: 'Booking phone fallback is not configured' }, 503);
+    }
+    const telUri = normalizeBookingFallbackTelUri(telRaw);
+
+    const resolved = await verifyLiffIdTokenAndLoadFriend(
+      c.env.DB,
+      c.env.LINE_LOGIN_CHANNEL_ID,
+      body.lineUserId,
+      body.idToken,
+    );
+    if (!resolved.ok) {
+      return c.json(resolved.body, resolved.status);
+    }
+
+    return c.json({
+      success: true,
+      data: {
+        telUri,
+        message: BOOKING_PHONE_FALLBACK_MESSAGE,
+      },
+    });
+  } catch (err) {
+    console.error('POST /api/liff/booking/phone-fallback error:', err);
     return c.json({ success: false, error: 'Internal server error' }, 500);
   }
 });

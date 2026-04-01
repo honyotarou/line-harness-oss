@@ -31,3 +31,5 @@ STRIPE_WEBHOOK_SECRET=whsec_local_placeholder
 # WELCOME_ANXIETY_LINK_FAQ=
 # Optional; `1` で2通目 Flex に予約用ボタンを出さず、リッチメニュー誘導のみ（リッチメニュー予約メイン運用向け）。
 # WELCOME_ANXIETY_RICH_MENU_ONLY=
+# Optional; LIFF でオンライン予約が完結しない場合の電話番号（tel:03-1234-5678 または E.164 風の数字列）。未設定時 POST /api/liff/booking/phone-fallback は 503。
+# BOOKING_FALLBACK_TEL=tel:0312345678

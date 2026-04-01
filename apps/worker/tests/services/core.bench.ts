@@ -39,4 +39,12 @@ describe('core helpers', () => {
   bench('isAllowedOrigin (Set lookup)', () => {
     isAllowedOrigin('https://admin.example.com', corsSet);
   });
+
+  bench('buildAllowedOrigins', () => {
+    buildAllowedOrigins({
+      WEB_URL: 'https://admin.example.com',
+      WORKER_URL: 'https://api.example.com',
+      ALLOWED_ORIGINS: 'https://a.example.com,https://b.example.com',
+    });
+  });
 });

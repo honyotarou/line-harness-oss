@@ -1,5 +1,5 @@
 import { Hono } from 'hono';
-import { LineClient } from '@line-crm/line-sdk';
+import { LineClient, type RichMenuObject } from '@line-crm/line-sdk';
 import { getFriendById } from '@line-crm/db';
 import type { Env } from '../index.js';
 import {
@@ -30,14 +30,19 @@ richMenus.get('/api/rich-menus', async (c) => {
 // POST /api/rich-menus — create a rich menu via LINE API
 richMenus.post('/api/rich-menus', async (c) => {
   try {
-    const body = await c.req.json();
+    const body = (await c.req.json()) as Record<string, unknown>;
+    const lineAccountIdFromBody =
+      typeof body.lineAccountId === 'string' ? body.lineAccountId : null;
+    const { lineAccountId: _discard, ...menuRest } = body;
+    const menuPayload = menuRest as unknown as RichMenuObject;
+
     const accessToken = await resolveLineAccessTokenForLineAccountId(
       c.env.DB,
       c.env.LINE_CHANNEL_ACCESS_TOKEN,
-      typeof body?.lineAccountId === 'string' ? body.lineAccountId : null,
+      lineAccountIdFromBody,
     );
     const lineClient = new LineClient(accessToken);
-    const result = await lineClient.createRichMenu(body);
+    const result = await lineClient.createRichMenu(menuPayload);
     return c.json({ success: true, data: result }, 201);
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);

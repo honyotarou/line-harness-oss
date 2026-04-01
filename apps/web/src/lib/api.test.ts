@@ -2,6 +2,13 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { ApiError, fetchApiCore } from './api';
 
 describe('api object (integration via global fetch)', () => {
+  it('setAdminSessionToken and clearAdminSessionToken no-op when window is undefined (SSR/Node)', async () => {
+    vi.resetModules();
+    const { setAdminSessionToken, clearAdminSessionToken } = await import('./api');
+    expect(() => setAdminSessionToken('x')).not.toThrow();
+    expect(() => clearAdminSessionToken()).not.toThrow();
+  });
+
   beforeEach(() => {
     process.env.NEXT_PUBLIC_API_URL = 'http://worker.test';
     vi.stubGlobal(

@@ -21,6 +21,7 @@ export {
   receiptMessage,
 } from './messages.js';
 export type {
+  RichMenuObject,
   AudioEventMessage,
   BroadcastRequest,
   EventMessage,

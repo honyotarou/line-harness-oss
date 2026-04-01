@@ -31,25 +31,25 @@
       "static/chunks/main-app.js",
       "static/chunks/app/friends/page.js"
     ],
-    "/scenarios/page": [
-      "static/chunks/webpack.js",
-      "static/chunks/main-app.js",
-      "static/chunks/app/scenarios/page.js"
-    ],
     "/broadcasts/page": [
       "static/chunks/webpack.js",
       "static/chunks/main-app.js",
       "static/chunks/app/broadcasts/page.js"
     ],
-    "/automations/page": [
+    "/scenarios/page": [
       "static/chunks/webpack.js",
       "static/chunks/main-app.js",
-      "static/chunks/app/automations/page.js"
+      "static/chunks/app/scenarios/page.js"
     ],
     "/scoring/page": [
       "static/chunks/webpack.js",
       "static/chunks/main-app.js",
       "static/chunks/app/scoring/page.js"
+    ],
+    "/automations/page": [
+      "static/chunks/webpack.js",
+      "static/chunks/main-app.js",
+      "static/chunks/app/automations/page.js"
     ],
     "/templates/page": [
       "static/chunks/webpack.js",
@@ -71,30 +71,30 @@
       "static/chunks/main-app.js",
       "static/chunks/app/conversions/page.js"
     ],
+    "/affiliates/page": [
+      "static/chunks/webpack.js",
+      "static/chunks/main-app.js",
+      "static/chunks/app/affiliates/page.js"
+    ],
     "/health/page": [
       "static/chunks/webpack.js",
       "static/chunks/main-app.js",
       "static/chunks/app/health/page.js"
-    ],
-    "/webhooks/page": [
-      "static/chunks/webpack.js",
-      "static/chunks/main-app.js",
-      "static/chunks/app/webhooks/page.js"
     ],
     "/accounts/page": [
       "static/chunks/webpack.js",
       "static/chunks/main-app.js",
       "static/chunks/app/accounts/page.js"
     ],
+    "/webhooks/page": [
+      "static/chunks/webpack.js",
+      "static/chunks/main-app.js",
+      "static/chunks/app/webhooks/page.js"
+    ],
     "/emergency/page": [
       "static/chunks/webpack.js",
       "static/chunks/main-app.js",
       "static/chunks/app/emergency/page.js"
-    ],
-    "/affiliates/page": [
-      "static/chunks/webpack.js",
-      "static/chunks/main-app.js",
-      "static/chunks/app/affiliates/page.js"
     ]
   }
 }

@@ -1,0 +1,59 @@
+{
+  "meta": {
+    "accent": "sage-slate",
+    "mood": "Japandi / calm neutral — 運用者 PC・エンドユーザー スマホ両対応"
+  },
+  "color": {
+    "canvas": "#F5F4F0",
+    "surface": "#FCFBF9",
+    "surface-elevated": "#FFFFFF",
+    "border": "#E6E4DF",
+    "border-strong": "#C9C5BE",
+    "foreground": "#2B2F2E",
+    "foreground-muted": "#5A605E",
+    "foreground-subtle": "#8A918F",
+    "primary": "#5B7268",
+    "primary-hover": "#4A5E56",
+    "primary-foreground": "#FAFAF8",
+    "primary-muted": "#E9EFEC",
+    "slate": "#5E6E78",
+    "slate-hover": "#4D5A62",
+    "slate-muted": "#E8ECEE",
+    "success": "#3F6B5E",
+    "success-muted": "#E8F2EE",
+    "success-border": "#B8D4CA",
+    "warning": "#9E7A3A",
+    "warning-muted": "#F8F1E4",
+    "warning-border": "#E5D4B0",
+    "error": "#9B5C5C",
+    "error-muted": "#F7EDED",
+    "error-border": "#E0B4B4",
+    "focus-ring": "#5B7268"
+  },
+  "radius": {
+    "sm": "6px",
+    "md": "10px",
+    "lg": "14px",
+    "full": "9999px"
+  },
+  "spacing": {
+    "unitPx": 8,
+    "touchMinPx": 44
+  },
+  "typography": {
+    "fontSansJa": "\"Noto Sans JP\", \"Hiragino Sans\", \"Hiragino Kaku Gothic ProN\", system-ui, sans-serif",
+    "fontSansLatin": "\"Source Sans 3\", \"Noto Sans JP\", system-ui, sans-serif",
+    "lineHeightBody": 1.65,
+    "lineHeightHeading": 1.25
+  },
+  "shadow": {
+    "sm": "0 1px 2px rgb(43 47 46 / 0.06)",
+    "md": "0 4px 12px rgb(43 47 46 / 0.08)",
+    "lg": "0 12px 40px rgb(43 47 46 / 0.12)"
+  },
+  "motion": {
+    "durationFast": "150ms",
+    "duration": "200ms",
+    "easing": "cubic-bezier(0, 0, 0.2, 1)"
+  }
+}
