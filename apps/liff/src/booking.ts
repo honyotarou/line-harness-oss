@@ -32,6 +32,11 @@ interface Slot {
   available: boolean;
 }
 
+export interface PhoneFallbackInfo {
+  telUri: string;
+  message: string;
+}
+
 interface BookingState {
   currentYear: number;
   currentMonth: number; // 0-indexed
@@ -42,6 +47,7 @@ interface BookingState {
   friendId: string | null;
   loading: boolean;
   submitting: boolean;
+  phoneFallback: PhoneFallbackInfo | null;
 }
 
 const state: BookingState = {
@@ -54,12 +60,45 @@ const state: BookingState = {
   friendId: null,
   loading: false,
   submitting: false,
+  phoneFallback: null,
 };
 
 function escapeHtml(str: string): string {
-  const div = document.createElement('div');
-  div.textContent = str;
-  return div.innerHTML;
+  return str
+    .replaceAll('&', '&amp;')
+    .replaceAll('<', '&lt;')
+    .replaceAll('>', '&gt;')
+    .replaceAll('"', '&quot;')
+    .replaceAll("'", '&#39;');
+}
+
+export function renderPhoneFallbackHtml(info: PhoneFallbackInfo | null): string {
+  if (!info?.telUri) return '';
+  return `
+    <div class="phone-fallback">
+      <p class="phone-fallback-message">${escapeHtml(info.message || '')}</p>
+      <a class="phone-fallback-btn" href="${escapeHtml(info.telUri)}">電話で相談する</a>
+    </div>
+  `;
+}
+
+export function renderBookingErrorCardHtml(opts: {
+  title?: string;
+  message: string;
+  phoneFallback: PhoneFallbackInfo | null;
+  showRetry?: boolean;
+}): string {
+  const { title = 'エラー', message, phoneFallback, showRetry = true } = opts;
+  return `
+    <div class="booking-page">
+      <div class="card">
+        <h2>${escapeHtml(title)}</h2>
+        <p class="error">${escapeHtml(message)}</p>
+        ${renderPhoneFallbackHtml(phoneFallback)}
+        ${showRetry ? `<button class="close-btn" data-action="retry" style="margin-top:16px;">やり直す</button>` : ''}
+      </div>
+    </div>
+  `;
 }
 
 function apiCall(path: string, options?: RequestInit): Promise<Response> {
@@ -163,7 +202,7 @@ function renderCalendar(): string {
 // ========== Slots Rendering ==========
 
 function renderSlots(): string {
-  const { slots, selectedDate, selectedSlot, loading } = state;
+  const { slots, selectedDate, selectedSlot, loading, phoneFallback } = state;
 
   if (!selectedDate) return '';
 
@@ -184,6 +223,7 @@ function renderSlots(): string {
       <div class="slots-section">
         <h3>${formatDateJa(selectedDate)}</h3>
         <p class="no-slots">この日は予約枠がありません</p>
+        ${renderPhoneFallbackHtml(phoneFallback)}
       </div>
     `;
   }
@@ -291,15 +331,11 @@ function renderSuccess(date: string, slot: Slot): void {
 
 function renderError(message: string): void {
   const app = getApp();
-  app.innerHTML = `
-    <div class="booking-page">
-      <div class="card">
-        <h2 style="color: #e53e3e;">エラー</h2>
-        <p class="error">${escapeHtml(message)}</p>
-        <button class="close-btn" data-action="retry" style="margin-top:16px;">やり直す</button>
-      </div>
-    </div>
-  `;
+  app.innerHTML = renderBookingErrorCardHtml({
+    message,
+    phoneFallback: state.phoneFallback,
+    showRetry: true,
+  });
   app.querySelector('[data-action="retry"]')?.addEventListener('click', () => {
     state.selectedDate = null;
     state.selectedSlot = null;
@@ -437,6 +473,28 @@ export async function initBooking(): Promise<void> {
   const profile = await liff.getProfile();
   state.profile = profile;
   const rawIdToken = liff.getIDToken();
+
+  // Best-effort: fetch "when online booking cannot be completed" phone fallback.
+  // Even if it fails, booking UI still works; fallback CTA just won't appear.
+  try {
+    if (rawIdToken) {
+      const res = await apiCall('/api/liff/booking/phone-fallback', {
+        method: 'POST',
+        body: JSON.stringify({
+          lineUserId: profile.userId,
+          idToken: rawIdToken,
+        }),
+      });
+      if (res.ok) {
+        const json = (await res.json()) as { success: boolean; data?: PhoneFallbackInfo };
+        if (json.success && json.data?.telUri) {
+          state.phoneFallback = json.data;
+        }
+      }
+    }
+  } catch {
+    // silent
+  }
 
   try {
     const profileRes = await apiCall('/api/liff/profile', {

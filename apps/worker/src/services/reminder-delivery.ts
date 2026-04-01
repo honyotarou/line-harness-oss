@@ -26,6 +26,14 @@ export async function processReminderDeliveries(
   lineAccountId?: string | null,
 ): Promise<void> {
   const now = jstNow();
+
+  // Avoid night push by default (product requirement).
+  // Quiet hours: 21:00-07:59 JST.
+  const hour = new Date(now).getHours();
+  if (hour >= 21 || hour < 8) {
+    return;
+  }
+
   const dueReminders = await getDueReminderDeliveriesByAccount(db, now, lineAccountId);
 
   for (let i = 0; i < dueReminders.length; i++) {

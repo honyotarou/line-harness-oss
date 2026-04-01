@@ -5,6 +5,7 @@ description: >-
   Pinterest ムードボード→デザイントークン→壁打ち→開発ハーネス（Step 2）→TDD→デプロイまで。
   デザイン・要件は親 **0（ビジュアル）** と **1（要件・ブランド）** の2段のみ（旧 1.5・1.6 は 1・0 に吸収）。
   Use when the user says /line, /tdd, Pinterest, ムードボード, デザイン, 壁打ち, ヒアリング,
+  整形外科, リハビリ, 問診, 初診, 再診, 保険, 来院, 診察, 予約導線,
   リッチメニュー, rich menu, LINE メニュー設計, areas bounds,
   LINE Harness OSS, line-harness-oss, LINE CRM, Cloudflare Worker, LIFF, harness, deploy, TDD.
 ---
@@ -24,6 +25,7 @@ LINE Harness OSS:
       ・8 Round: steps-design-0-1.md（ファイル内「Step 1 — 設計ヒアリング」）
       ・ブランド: steps-brand-1-5.md（LP/LIFF/管理/LINE UI の揃え方）
       ・旧番号「1.5」は本ステップと同義
+  orthopedics  整形外科（壁打ち→反映）  整形外科差分を壁打ちし、必ず repo に反映して完了（詳細: steps-orthopedics-wallball.md）
 
   【ハーネス（親0・1の直後に読む・実行する）】
   2  開発ハーネス        決定論ゲート・E2E層・Hooks・コマンド表（詳細: steps-harness.md）
@@ -55,6 +57,7 @@ LINE Harness OSS:
 | [steps-design-0-1.md](steps-design-0-1.md) | **親 0**＝見出し Step 0（ムードボード）／**親 1**＝見出し Step 1（8 Round） |
 | [steps-rich-menu-wallball.md](steps-rich-menu-wallball.md) | **親 0** のリッチメニュー枝（サブ 0〜7・任意。旧 **1.6**） |
 | [steps-brand-1-5.md](steps-brand-1-5.md) | **親 1** のブランド一貫性（旧 **1.5**） |
+| [steps-orthopedics-wallball.md](steps-orthopedics-wallball.md) | 整形外科向け「壁打ち→反映」枝（**会話だけで終わらせず** docs/UI/LIFF/worker/DB/テストまで反映） |
 | [steps-harness.md](steps-harness.md) | Step **2**（開発ハーネス） |
 | [steps-0-3-red-green-refactor.md](steps-0-3-red-green-refactor.md) | Step **3〜6**（観点 → Red → Green → Refactor） |
 | [steps-4-8-gates.md](steps-4-8-gates.md) | Step **7〜11** + `check` |

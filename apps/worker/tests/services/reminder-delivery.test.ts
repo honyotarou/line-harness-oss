@@ -150,4 +150,31 @@ describe('processReminderDeliveries', () => {
     );
     expect(dbMocks.markReminderStepDelivered).not.toHaveBeenCalled();
   });
+
+  it('does not push reminders during quiet hours (no night push)', async () => {
+    dbMocks.jstNow.mockReturnValue('2026-03-25T23:30:00+09:00');
+    dbMocks.getDueReminderDeliveriesByAccount.mockResolvedValue([
+      {
+        id: 'friend-reminder-1',
+        friend_id: 'friend-1',
+        reminder_id: 'reminder-1',
+        steps: [{ id: 'step-1', message_type: 'text', message_content: 'hello' }],
+      },
+    ]);
+    dbMocks.getFriendById.mockResolvedValue({
+      id: 'friend-1',
+      line_user_id: 'line-user-1',
+      is_following: 1,
+    });
+
+    const { processReminderDeliveries } = await import('../../src/services/reminder-delivery.js');
+    const db = createDb();
+    const lineClient = { pushMessage: vi.fn().mockResolvedValue(undefined) };
+
+    await processReminderDeliveries(db, lineClient as never, 'account-1');
+
+    expect(lineClient.pushMessage).not.toHaveBeenCalled();
+    expect(dbMocks.markReminderStepDelivered).not.toHaveBeenCalled();
+    expect(dbMocks.completeReminderIfDone).not.toHaveBeenCalled();
+  });
 });
