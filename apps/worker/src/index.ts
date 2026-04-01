@@ -131,7 +131,12 @@ app.route('/', forms);
 // Short link: /r/:ref → landing page with LINE open button
 app.get('/r/:ref', (c) => {
   const ref = c.req.param('ref');
-  const liffUrl = c.env.LIFF_URL || 'https://liff.line.me/2009554425-4IMBmLQ9';
+  const liffUrl = (c.env.LIFF_URL ?? '').trim();
+  if (!liffUrl || liffUrl.includes('YOUR_LIFF_ID')) {
+    return c.html(
+      `<!DOCTYPE html><html lang="ja"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>設定エラー</title><body style="font-family:system-ui,-apple-system; padding:24px; line-height:1.6"><h1>設定エラー</h1><p>LIFF_URL が未設定です。Cloudflare Worker の Variables に <code>https://liff.line.me/&lt;LIFF_ID&gt;</code> を設定してください。</p></body></html>`,
+    );
+  }
   const target = `${liffUrl}?ref=${encodeURIComponent(ref)}`;
 
   return c.html(renderShortLinkLanding(c.env, target));

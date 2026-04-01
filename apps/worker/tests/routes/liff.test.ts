@@ -201,6 +201,22 @@ describe('liff auth routes', () => {
     expect(target.searchParams.get('uid')).toBe('user-1');
   });
 
+  it('returns error HTML when LIFF_URL is a placeholder (YOUR_LIFF_ID)', async () => {
+    const { liffRoutes } = await import('../../src/routes/liff.js');
+    const app = new Hono();
+    app.route('/', liffRoutes);
+
+    const response = await app.fetch(new Request('http://localhost/auth/line'), {
+      ...baseEnv,
+      LIFF_URL: 'https://liff.line.me/YOUR_LIFF_ID',
+    } as never);
+
+    expect(response.status).toBe(200);
+    const html = await response.text();
+    expect(html).toContain('LIFF_URL');
+    expect(html).toContain('設定');
+  });
+
   it('uses OAuth for cross-account mobile links and preserves signed attribution state', async () => {
     dbMocks.getLineAccountByChannelId.mockResolvedValue({
       id: 'account-1',

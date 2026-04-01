@@ -66,7 +66,10 @@ pnpm dev:worker
 LINE_CHANNEL_SECRET=your-channel-secret
 LINE_CHANNEL_ACCESS_TOKEN=your-channel-access-token
 API_KEY=dev-api-key
-LIFF_URL=https://liff.line.me/YOUR_LIFF_ID
+LIFF_URL=https://liff.line.me/<YOUR_LIFF_ID>
+
+注意:
+- `YOUR_LIFF_ID` のままデプロイすると、友だち追加/QR がその URL を指してしまいます。必ず **実際の LIFF URL** に置き換えてください。
 LINE_CHANNEL_ID=your-channel-id
 LINE_LOGIN_CHANNEL_ID=your-login-channel-id
 LINE_LOGIN_CHANNEL_SECRET=your-login-channel-secret

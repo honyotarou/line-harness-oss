@@ -128,7 +128,7 @@ liffRoutes.get('/auth/line', async (c) => {
     }
 
     // Dashboard / default friend-add link has no `account=` — needs LIFF_URL in Worker vars.
-    if (!accountParam && !liffUrl) {
+    if (!accountParam && (!liffUrl || liffUrl.includes('YOUR_LIFF_ID'))) {
       console.error('GET /auth/line: LIFF_URL is missing (required when account query is omitted)');
       return c.html(
         errorPage(

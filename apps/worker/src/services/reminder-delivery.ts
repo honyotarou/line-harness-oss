@@ -29,7 +29,10 @@ export async function processReminderDeliveries(
 
   // Avoid night push by default (product requirement).
   // Quiet hours: 21:00-07:59 JST.
-  const hour = new Date(now).getHours();
+  // `jstNow()` returns an ISO-like string with `+09:00`.
+  // Never rely on host timezone (CI can be UTC). Extract the JST hour directly.
+  const hourMatch = now.match(/T(\d{2}):(\d{2}):(\d{2})/);
+  const hour = hourMatch ? Number(hourMatch[1]) : Number.NaN;
   if (hour >= 21 || hour < 8) {
     return;
   }
