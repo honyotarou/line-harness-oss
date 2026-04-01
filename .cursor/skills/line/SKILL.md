@@ -3,7 +3,9 @@ name: line
 description: >-
   LINE Harness OSS の全工程を GAS スキル型の番号メニューで実行する統合スキル。
   Pinterest ムードボード→デザイントークン→壁打ち→開発ハーネス（Step 2）→TDD→デプロイまで。
+  デザイン・要件は親 **0（ビジュアル）** と **1（要件・ブランド）** の2段のみ（旧 1.5・1.6 は 1・0 に吸収）。
   Use when the user says /line, /tdd, Pinterest, ムードボード, デザイン, 壁打ち, ヒアリング,
+  リッチメニュー, rich menu, LINE メニュー設計, areas bounds,
   LINE Harness OSS, line-harness-oss, LINE CRM, Cloudflare Worker, LIFF, harness, deploy, TDD.
 ---
 
@@ -14,12 +16,16 @@ description: >-
 ```
 LINE Harness OSS:
 
-  【デザイン・要件（GAS 型・UI/新機能で先にやる）】
-  0  ムードボード         Pinterest 等の画像 → design-tokens（docs/design）
-  1  壁打ち・設計ヒアリング  8 Round で「何をしたいか」→ 設計サマリ（コードは OK まで出さない）
-  1.5 独自性・ブランド一貫性  デフォルト保持しつつ独自性を出す（LP/LIFF/管理画面/リッチメニュー）
+  【デザイン・要件（GAS 型・UI/新機能で先にやる）— 親はこの2つだけ】
+  0  ビジュアル・LINE UI 正本  ムードボード→design-tokens／任意でリッチメニュー壁打ち
+      ・tokens: steps-design-0-1.md（ファイル内「Step 0 — ムードボード」）
+      ・リッチ: steps-rich-menu-wallball.md（サブ0〜7。指示例「リッチの3」。旧1.6もここ）
+  1  要件・ブランド壁打ち     8 Round→設計サマリ ＋ 独自性・一貫性（旧1.5）
+      ・8 Round: steps-design-0-1.md（ファイル内「Step 1 — 設計ヒアリング」）
+      ・ブランド: steps-brand-1-5.md（LP/LIFF/管理/LINE UI の揃え方）
+      ・旧番号「1.5」は本ステップと同義
 
-  【ハーネス（0・1 の直後に読む・実行する）】
+  【ハーネス（親0・1の直後に読む・実行する）】
   2  開発ハーネス        決定論ゲート・E2E層・Hooks・コマンド表（詳細: steps-harness.md）
 
   【TDD・機能追加】
@@ -46,8 +52,9 @@ LINE Harness OSS:
 
 | ファイル | 内容 |
 |----------|------|
-| [steps-design-0-1.md](steps-design-0-1.md) | Step **0〜1**（Pinterest・トークン・8 Round 壁打ち） |
-| [steps-brand-1-5.md](steps-brand-1-5.md) | Step **1.5**（デフォルト保持＋独自性の一貫設計 壁打ち） |
+| [steps-design-0-1.md](steps-design-0-1.md) | **親 0**＝見出し Step 0（ムードボード）／**親 1**＝見出し Step 1（8 Round） |
+| [steps-rich-menu-wallball.md](steps-rich-menu-wallball.md) | **親 0** のリッチメニュー枝（サブ 0〜7・任意。旧 **1.6**） |
+| [steps-brand-1-5.md](steps-brand-1-5.md) | **親 1** のブランド一貫性（旧 **1.5**） |
 | [steps-harness.md](steps-harness.md) | Step **2**（開発ハーネス） |
 | [steps-0-3-red-green-refactor.md](steps-0-3-red-green-refactor.md) | Step **3〜6**（観点 → Red → Green → Refactor） |
 | [steps-4-8-gates.md](steps-4-8-gates.md) | Step **7〜11** + `check` |
@@ -64,16 +71,16 @@ packages/sdk/tests/          ← SDK（Vitest）
 tests/e2e/                   ← Playwright（Worker API はモック）
 tests/hurl/*.hurl            ← 実 Worker（pnpm test:api）
 apps/liff/src/               ← LIFF（typecheck）
-docs/design/                 ← Step 0 の design-tokens.json 等（任意で追加）
+docs/design/                 ← 親 0 の design-tokens.json 等（任意で追加）
 packages/db/                 ← スキーマ
 ```
 
 ## 必須ルール（全ステップ共通）
 
-### デザイン（Step 0〜1）
+### デザイン（親 Step 0〜1）
 
-- **画像はチャット貼り付け**を主とする（リポに巨大バイナリを増やさない）。OK 後に **`docs/design/design-tokens.json`** など**テキスト成果物**だけコミットしてよい。
-- Step 1 では **設計サマリに OK が出るまで本番実装を書かない**（GAS と同型）。
+- **親 0**: ビジュアル正本（トークン・任意リッチメニュー）。**画像はチャット貼り付け**を主とする。OK 後に **`docs/design/design-tokens.json`** など**テキスト成果物**だけコミットしてよい。
+- **親 1**: 要件＋ブランド。**設計サマリに OK が出るまで本番実装を書かない**（GAS と同型）。
 - トークンは **`apps/web`** の Tailwind v4（`globals.css` / `@theme`）と **`apps/liff`** の CSS 変数に**一貫して**反映する。
 
 ### セキュリティ・秘密情報
@@ -109,7 +116,7 @@ packages/db/                 ← スキーマ
 
 ## ルール（GAS スキルと同型）
 
-- **新規 UI・ブランド寄せ**: **0 → 1 → 2**（ハーネスでゲートを把握）→ **3**（観点）。バグ修正・API のみなら **2**（必要なら）→ **3** からでよい。
+- **新規 UI・ブランド寄せ**: **親 0 → 親 1 → 2**（ハーネスでゲートを把握）→ **3**（観点）。バグ修正・API のみなら **2**（必要なら）→ **3** からでよい。
 - **TDD 直列**: 3→4→5→6 を基本。7 を通してから 8/9 を必要に応じて。11 または **check** でリリース相当。
 - **Step 12**: 前段が無いなら先行手順を案内。
 - **Cursor / Composer** で全工程（デプロイはターミナル主導）。

@@ -1,1 +1,36 @@
 @import "tailwindcss";
+
+/* Semantic tokens — 正本: docs/design/design-tokens.json（セージ／スレート） */
+@theme {
+  --color-canvas: #f5f4f0;
+  --color-surface: #fcfbf9;
+  --color-surface-elevated: #ffffff;
+  --color-border: #e6e4df;
+  --color-border-strong: #c9c5be;
+  --color-foreground: #2b2f2e;
+  --color-foreground-muted: #5a605e;
+  --color-foreground-subtle: #8a918f;
+  --color-primary: #5b7268;
+  --color-primary-hover: #4a5e56;
+  --color-primary-foreground: #fafaf8;
+  --color-primary-muted: #e9efec;
+  --color-slate: #5e6e78;
+  --color-slate-hover: #4d5a62;
+  --color-slate-muted: #e8ecee;
+  --color-success: #3f6b5e;
+  --color-success-muted: #e8f2ee;
+  --color-success-border: #b8d4ca;
+  --color-warning: #9e7a3a;
+  --color-warning-muted: #f8f1e4;
+  --color-warning-border: #e5d4b0;
+  --color-error: #9b5c5c;
+  --color-error-muted: #f7eded;
+  --color-error-border: #e0b4b4;
+  --color-focus-ring: #5b7268;
+  --radius-token-sm: 6px;
+  --radius-token-md: 10px;
+  --radius-token-lg: 14px;
+  --shadow-token-sm: 0 1px 2px rgb(43 47 46 / 0.06);
+  --shadow-token-md: 0 4px 12px rgb(43 47 46 / 0.08);
+  --shadow-token-lg: 0 12px 40px rgb(43 47 46 / 0.12);
+}

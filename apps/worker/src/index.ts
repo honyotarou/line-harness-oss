@@ -61,6 +61,8 @@ export type Env = {
     WELCOME_ANXIETY_LINK_FAQ?: string;
     /** `1` / `true`: 2通目 Flex に予約用 LIFF ボタンを出さない（リッチメニューのみ案内）。未設定時はショートカットボタンあり。 */
     WELCOME_ANXIETY_RICH_MENU_ONLY?: string;
+    /** Optional `tel:` URI or dialable digits for LIFF when online booking cannot complete. */
+    BOOKING_FALLBACK_TEL?: string;
   } & LandingEnv;
 };
 
