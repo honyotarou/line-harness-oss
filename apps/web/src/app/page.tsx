@@ -40,10 +40,9 @@ interface StatCardProps {
   loading: boolean;
   icon: React.ReactNode;
   href: string;
-  accentColor?: string;
 }
 
-function StatCard({ title, value, loading, icon, href, accentColor = '#06C755' }: StatCardProps) {
+function StatCard({ title, value, loading, icon, href }: StatCardProps) {
   return (
     <Link
       href={href}
@@ -60,14 +59,11 @@ function StatCard({ title, value, loading, icon, href, accentColor = '#06C755' }
             </p>
           )}
         </div>
-        <div
-          className="w-10 h-10 rounded-lg flex items-center justify-center text-white shrink-0"
-          style={{ backgroundColor: accentColor }}
-        >
+        <div className="w-10 h-10 rounded-lg flex items-center justify-center shrink-0 bg-[var(--color-primary-muted)] text-[var(--color-primary)]">
           {icon}
         </div>
       </div>
-      <p className="text-xs text-gray-400 mt-3 group-hover:text-green-600 transition-colors">
+      <p className="text-xs text-gray-400 mt-3 group-hover:text-[var(--color-primary-hover)] transition-colors">
         詳細を見る →
       </p>
     </Link>
@@ -166,7 +162,7 @@ export default function DashboardPage() {
         href={`${getApiBaseUrl()}/auth/line?ref=dashboard`}
         target="_blank"
         rel="noopener noreferrer"
-        className="block mb-6 p-4 rounded-xl border border-green-200 bg-gradient-to-r from-green-50 to-emerald-50 hover:from-green-100 hover:to-emerald-100 transition-colors"
+        className="block mb-6 p-4 rounded-xl border border-gray-200 bg-[var(--color-success-muted)] hover:bg-[var(--color-primary-muted)] transition-colors"
       >
         <div className="flex items-center justify-between">
           <div>
@@ -177,7 +173,7 @@ export default function DashboardPage() {
           </div>
           <span
             className="text-xs px-3 py-1.5 rounded-full text-white font-medium"
-            style={{ backgroundColor: '#06C755' }}
+            style={{ backgroundColor: 'var(--color-primary)' }}
           >
             友だち追加
           </span>
@@ -207,7 +203,6 @@ export default function DashboardPage() {
           value={stats.activeScenarioCount}
           loading={loading}
           href="/scenarios"
-          accentColor="#3B82F6"
           icon={
             <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path
@@ -224,7 +219,6 @@ export default function DashboardPage() {
           value={stats.broadcastCount}
           loading={loading}
           href="/broadcasts"
-          accentColor="#8B5CF6"
           icon={
             <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path
@@ -245,7 +239,6 @@ export default function DashboardPage() {
           value={stats.templateCount}
           loading={loading}
           href="/templates"
-          accentColor="#F59E0B"
           icon={
             <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path
@@ -262,7 +255,6 @@ export default function DashboardPage() {
           value={stats.automationCount}
           loading={loading}
           href="/automations"
-          accentColor="#EF4444"
           icon={
             <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path
@@ -279,7 +271,6 @@ export default function DashboardPage() {
           value={stats.scoringRuleCount}
           loading={loading}
           href="/scoring"
-          accentColor="#10B981"
           icon={
             <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path
@@ -299,12 +290,9 @@ export default function DashboardPage() {
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
           <Link
             href="/friends"
-            className="flex items-center gap-3 p-3 rounded-lg border border-gray-200 hover:border-green-300 hover:bg-green-50 transition-colors group"
+            className="flex items-center gap-3 p-3 rounded-lg border border-gray-200 hover:border-gray-300 hover:bg-[var(--color-primary-muted)] transition-colors group"
           >
-            <div
-              className="w-8 h-8 rounded-lg flex items-center justify-center text-white shrink-0"
-              style={{ backgroundColor: '#06C755' }}
-            >
+            <div className="w-8 h-8 rounded-lg flex items-center justify-center shrink-0 bg-[var(--color-primary-muted)] text-[var(--color-primary)]">
               <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path
                   strokeLinecap="round"
@@ -315,7 +303,7 @@ export default function DashboardPage() {
               </svg>
             </div>
             <div>
-              <p className="text-sm font-medium text-gray-900 group-hover:text-green-700 transition-colors">
+              <p className="text-sm font-medium text-gray-900 group-hover:text-[var(--color-primary-hover)] transition-colors">
                 友だち管理
               </p>
               <p className="text-xs text-gray-400">友だちの一覧・タグ管理</p>
@@ -324,9 +312,9 @@ export default function DashboardPage() {
 
           <Link
             href="/scenarios"
-            className="flex items-center gap-3 p-3 rounded-lg border border-gray-200 hover:border-blue-300 hover:bg-blue-50 transition-colors group"
+            className="flex items-center gap-3 p-3 rounded-lg border border-gray-200 hover:border-gray-300 hover:bg-[var(--color-primary-muted)] transition-colors group"
           >
-            <div className="w-8 h-8 rounded-lg flex items-center justify-center text-white shrink-0 bg-blue-500">
+            <div className="w-8 h-8 rounded-lg flex items-center justify-center shrink-0 bg-[var(--color-primary-muted)] text-[var(--color-primary)]">
               <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path
                   strokeLinecap="round"
@@ -337,7 +325,7 @@ export default function DashboardPage() {
               </svg>
             </div>
             <div>
-              <p className="text-sm font-medium text-gray-900 group-hover:text-blue-700 transition-colors">
+              <p className="text-sm font-medium text-gray-900 group-hover:text-[var(--color-primary-hover)] transition-colors">
                 シナリオ配信
               </p>
               <p className="text-xs text-gray-400">自動配信シナリオの作成・編集</p>
@@ -346,9 +334,9 @@ export default function DashboardPage() {
 
           <Link
             href="/broadcasts"
-            className="flex items-center gap-3 p-3 rounded-lg border border-gray-200 hover:border-purple-300 hover:bg-purple-50 transition-colors group"
+            className="flex items-center gap-3 p-3 rounded-lg border border-gray-200 hover:border-gray-300 hover:bg-[var(--color-primary-muted)] transition-colors group"
           >
-            <div className="w-8 h-8 rounded-lg flex items-center justify-center text-white shrink-0 bg-purple-500">
+            <div className="w-8 h-8 rounded-lg flex items-center justify-center shrink-0 bg-[var(--color-primary-muted)] text-[var(--color-primary)]">
               <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path
                   strokeLinecap="round"
@@ -359,7 +347,7 @@ export default function DashboardPage() {
               </svg>
             </div>
             <div>
-              <p className="text-sm font-medium text-gray-900 group-hover:text-purple-700 transition-colors">
+              <p className="text-sm font-medium text-gray-900 group-hover:text-[var(--color-primary-hover)] transition-colors">
                 一斉配信
               </p>
               <p className="text-xs text-gray-400">メッセージの一斉送信・予約</p>
@@ -368,12 +356,9 @@ export default function DashboardPage() {
 
           <Link
             href="/chats"
-            className="flex items-center gap-3 p-3 rounded-lg border border-gray-200 hover:border-green-300 hover:bg-green-50 transition-colors group"
+            className="flex items-center gap-3 p-3 rounded-lg border border-gray-200 hover:border-gray-300 hover:bg-[var(--color-primary-muted)] transition-colors group"
           >
-            <div
-              className="w-8 h-8 rounded-lg flex items-center justify-center text-white shrink-0"
-              style={{ backgroundColor: '#06C755' }}
-            >
+            <div className="w-8 h-8 rounded-lg flex items-center justify-center shrink-0 bg-[var(--color-primary-muted)] text-[var(--color-primary)]">
               <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path
                   strokeLinecap="round"
@@ -384,7 +369,7 @@ export default function DashboardPage() {
               </svg>
             </div>
             <div>
-              <p className="text-sm font-medium text-gray-900 group-hover:text-green-700 transition-colors">
+              <p className="text-sm font-medium text-gray-900 group-hover:text-[var(--color-primary-hover)] transition-colors">
                 チャット
               </p>
               <p className="text-xs text-gray-400">オペレーターチャット管理</p>
@@ -393,9 +378,9 @@ export default function DashboardPage() {
 
           <Link
             href="/health"
-            className="flex items-center gap-3 p-3 rounded-lg border border-gray-200 hover:border-red-300 hover:bg-red-50 transition-colors group"
+            className="flex items-center gap-3 p-3 rounded-lg border border-gray-200 hover:border-gray-300 hover:bg-[var(--color-primary-muted)] transition-colors group"
           >
-            <div className="w-8 h-8 rounded-lg flex items-center justify-center text-white shrink-0 bg-red-500">
+            <div className="w-8 h-8 rounded-lg flex items-center justify-center shrink-0 bg-[var(--color-primary-muted)] text-[var(--color-primary)]">
               <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path
                   strokeLinecap="round"
@@ -406,7 +391,7 @@ export default function DashboardPage() {
               </svg>
             </div>
             <div>
-              <p className="text-sm font-medium text-gray-900 group-hover:text-red-700 transition-colors">
+              <p className="text-sm font-medium text-gray-900 group-hover:text-[var(--color-primary-hover)] transition-colors">
                 BAN検知
               </p>
               <p className="text-xs text-gray-400">アカウント健康度ダッシュボード</p>
