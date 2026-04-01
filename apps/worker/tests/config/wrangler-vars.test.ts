@@ -17,6 +17,7 @@ describe('wrangler config (no third-party demo hosts in repo defaults)', () => {
   it('wrangler.toml defaults WORKER_URL / WEB_URL to Cloudflare + Vercel placeholders', () => {
     expect(wranglerToml).toMatch(/WORKER_URL = "https:\/\/YOUR_SUBDOMAIN\.workers\.dev"/);
     expect(wranglerToml).toMatch(/WEB_URL = "https:\/\/YOUR_PROJECT\.vercel\.app"/);
+    expect(wranglerToml).toMatch(/LIFF_URL = "https:\/\/liff\.line\.me\/YOUR_LIFF_ID"/);
   });
 
   it('wrangler.local.toml.example does not use public demo Worker as WORKER_URL', () => {

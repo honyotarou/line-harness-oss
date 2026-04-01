@@ -38,17 +38,21 @@ jobs:
           fi
 
       # Without this, deploy overwrites Worker vars with wrangler.toml placeholders and breaks CORS.
-      - name: Inject WORKER_URL and WEB_URL (optional; GitHub Secrets)
+      - name: Inject WORKER_URL / WEB_URL / LIFF_URL (optional; GitHub Secrets)
         working-directory: apps/worker
         env:
           INJECT_WORKER_URL: ${{ secrets.WORKER_URL }}
           INJECT_WEB_URL: ${{ secrets.WEB_URL }}
+          INJECT_LIFF_URL: ${{ secrets.LIFF_URL }}
         run: |
           if [ -n "$INJECT_WORKER_URL" ]; then
             sed -i.bak "s|https://YOUR_SUBDOMAIN.workers.dev|$INJECT_WORKER_URL|g" wrangler.toml && rm -f wrangler.toml.bak
           fi
           if [ -n "$INJECT_WEB_URL" ]; then
             sed -i.bak "s|https://YOUR_PROJECT.vercel.app|$INJECT_WEB_URL|g" wrangler.toml && rm -f wrangler.toml.bak
+          fi
+          if [ -n "$INJECT_LIFF_URL" ]; then
+            sed -i.bak "s|https://liff.line.me/YOUR_LIFF_ID|$INJECT_LIFF_URL|g" wrangler.toml && rm -f wrangler.toml.bak
           fi
 
       - uses: cloudflare/wrangler-action@v3

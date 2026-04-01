@@ -14,6 +14,8 @@ workers_dev = true
 # Replace with your deployed URLs (or override in wrangler.local.toml, gitignored).
 WORKER_URL = "https://YOUR_SUBDOMAIN.workers.dev"
 WEB_URL = "https://YOUR_PROJECT.vercel.app"
+# Required for /auth/line (friend-add flow). Keep as placeholder in repo defaults.
+LIFF_URL = "https://liff.line.me/YOUR_LIFF_ID"
 # ALLOWED_ORIGINS = "https://admin.example.com,https://preview.example.com"
 
 # D1 の実 database_id をコミットしたくない場合は wrangler.local.toml を使う（例: wrangler.local.toml.example をコピー）。
