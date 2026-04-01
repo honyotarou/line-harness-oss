@@ -36,9 +36,12 @@ interface ChatDetail extends Chat {
 type StatusFilter = 'all' | 'unread' | 'in_progress' | 'resolved';
 
 const statusConfig: Record<Chat['status'], { label: string; className: string }> = {
-  unread: { label: '未読', className: 'bg-red-100 text-red-700' },
+  unread: { label: '未読', className: 'bg-[var(--color-error-muted)] text-[var(--color-error)]' },
   in_progress: { label: '対応中', className: 'bg-yellow-100 text-yellow-700' },
-  resolved: { label: '解決済', className: 'bg-green-100 text-green-700' },
+  resolved: {
+    label: '解決済',
+    className: 'bg-[var(--color-primary-muted)] text-[var(--color-primary)]',
+  },
 };
 
 const statusFilters: { key: StatusFilter; label: string }[] = [
@@ -218,13 +221,15 @@ function DirectMessagePanel({
               <div
                 className={`max-w-[75%] rounded-2xl px-4 py-2 ${
                   msg.direction === 'outgoing'
-                    ? 'bg-green-500 text-white'
+                    ? 'bg-[var(--color-primary)] text-white'
                     : 'bg-gray-100 text-gray-900'
                 }`}
               >
                 <p className="text-sm whitespace-pre-wrap break-words">{renderContent(msg)}</p>
                 <p
-                  className={`text-xs mt-1 ${msg.direction === 'outgoing' ? 'text-green-200' : 'text-gray-400'}`}
+                  className={`text-xs mt-1 ${
+                    msg.direction === 'outgoing' ? 'text-white/70' : 'text-gray-400'
+                  }`}
                 >
                   {new Date(msg.createdAt).toLocaleString('ja-JP', {
                     hour: '2-digit',
@@ -244,13 +249,13 @@ function DirectMessagePanel({
             onChange={(e) => setMessage(e.target.value)}
             onKeyDown={(e) => e.key === 'Enter' && !e.shiftKey && handleSend()}
             placeholder="メッセージを入力..."
-            className="flex-1 border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent"
+            className="flex-1 border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[var(--color-focus-ring)] focus:border-transparent"
           />
           <button
             onClick={handleSend}
             disabled={!message.trim() || sending}
             className="px-4 py-2 rounded-lg text-white text-sm font-medium disabled:opacity-50"
-            style={{ backgroundColor: '#06C755' }}
+            style={{ backgroundColor: 'var(--color-primary)' }}
           >
             {sending ? '...' : '送信'}
           </button>
@@ -384,7 +389,7 @@ export default function ChatsPage() {
 
       {/* Error */}
       {error && (
-        <div className="mb-4 p-4 bg-red-50 border border-red-200 rounded-lg text-red-700 text-sm">
+        <div className="mb-4 p-4 bg-[var(--color-error-muted)] border border-[var(--color-error-border)] rounded-lg text-[var(--color-error)] text-sm">
           {error}
         </div>
       )}
@@ -406,7 +411,11 @@ export default function ChatsPage() {
                 className={`flex-1 px-3 py-2.5 min-h-[44px] text-xs font-medium transition-colors ${
                   statusFilter === filter.key ? 'text-white' : 'text-gray-600 hover:bg-gray-50'
                 }`}
-                style={statusFilter === filter.key ? { backgroundColor: '#06C755' } : undefined}
+                style={
+                  statusFilter === filter.key
+                    ? { backgroundColor: 'var(--color-primary)' }
+                    : undefined
+                }
               >
                 {filter.label}
               </button>
@@ -442,7 +451,9 @@ export default function ChatsPage() {
                         handleSelectChat(chat.id);
                       }}
                       className={`w-full text-left px-4 py-3 border-b border-gray-100 transition-colors ${
-                        isSelected && !selectedFriendId ? 'bg-green-50' : 'hover:bg-gray-50'
+                        isSelected && !selectedFriendId
+                          ? 'bg-[var(--color-primary-muted)]'
+                          : 'hover:bg-gray-50'
                       }`}
                     >
                       <div className="flex items-center gap-3">
@@ -490,7 +501,7 @@ export default function ChatsPage() {
                           setSelectedFriendId(friend.id);
                         }}
                         className={`w-full text-left px-4 py-3 border-b border-gray-100 transition-colors ${
-                          isSelected ? 'bg-blue-50' : 'hover:bg-gray-50'
+                          isSelected ? 'bg-[var(--color-slate-muted)]' : 'hover:bg-gray-50'
                         }`}
                       >
                         <div className="flex items-center gap-3">
@@ -589,7 +600,7 @@ export default function ChatsPage() {
                   {chatDetail.status !== 'unread' && (
                     <button
                       onClick={() => handleStatusUpdate('unread')}
-                      className="px-3 py-1 min-h-[44px] lg:min-h-0 text-xs font-medium text-red-600 bg-red-50 hover:bg-red-100 rounded-md transition-colors"
+                      className="px-3 py-1 min-h-[44px] lg:min-h-0 text-xs font-medium text-[var(--color-error)] bg-[var(--color-error-muted)] hover:bg-[var(--color-error-muted)] rounded-md transition-colors"
                     >
                       未読に戻す
                     </button>
@@ -605,7 +616,7 @@ export default function ChatsPage() {
                   {chatDetail.status !== 'resolved' && (
                     <button
                       onClick={() => handleStatusUpdate('resolved')}
-                      className="px-3 py-1 min-h-[44px] lg:min-h-0 text-xs font-medium text-green-700 bg-green-50 hover:bg-green-100 rounded-md transition-colors"
+                      className="px-3 py-1 min-h-[44px] lg:min-h-0 text-xs font-medium text-[var(--color-primary)] bg-[var(--color-primary-muted)] hover:bg-[var(--color-primary-muted)] rounded-md transition-colors"
                     >
                       解決済にする
                     </button>
@@ -691,7 +702,9 @@ export default function ChatsPage() {
                                 ? 'rounded-tl-2xl rounded-tr-md rounded-bl-2xl rounded-br-2xl text-white'
                                 : 'rounded-tl-md rounded-tr-2xl rounded-bl-2xl rounded-br-2xl bg-white text-gray-900'
                             }`}
-                            style={isOutgoing ? { backgroundColor: '#06C755' } : undefined}
+                            style={
+                              isOutgoing ? { backgroundColor: 'var(--color-primary)' } : undefined
+                            }
                           >
                             {bubbleContent}
                           </div>
@@ -717,7 +730,7 @@ export default function ChatsPage() {
                     value={notes}
                     onChange={(e) => setNotes(e.target.value)}
                     placeholder="メモを入力..."
-                    className="flex-1 text-xs border border-gray-300 rounded-md px-2 py-1 bg-white focus:outline-none focus:ring-1 focus:ring-green-500"
+                    className="flex-1 text-xs border border-gray-300 rounded-md px-2 py-1 bg-white focus:outline-none focus:ring-1 focus:ring-[var(--color-focus-ring)]"
                   />
                   <button
                     onClick={handleSaveNotes}
@@ -738,13 +751,13 @@ export default function ChatsPage() {
                     onChange={(e) => setMessageContent(e.target.value)}
                     onKeyDown={handleKeyDown}
                     placeholder="メッセージを入力..."
-                    className="flex-1 text-sm border border-gray-300 rounded-lg px-3 py-2 bg-white focus:outline-none focus:ring-2 focus:ring-green-500"
+                    className="flex-1 text-sm border border-gray-300 rounded-lg px-3 py-2 bg-white focus:outline-none focus:ring-2 focus:ring-[var(--color-focus-ring)]"
                   />
                   <button
                     onClick={handleSendMessage}
                     disabled={sending || !messageContent.trim()}
                     className="px-4 py-2 text-sm font-medium text-white rounded-lg transition-opacity hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed"
-                    style={{ backgroundColor: '#06C755' }}
+                    style={{ backgroundColor: 'var(--color-primary)' }}
                   >
                     {sending ? '送信中...' : '送信'}
                   </button>

@@ -104,7 +104,7 @@ export default function AccountsPage() {
           <button
             onClick={() => setShowCreate(!showCreate)}
             className="px-4 py-2 rounded-lg text-white text-sm font-medium"
-            style={{ backgroundColor: '#06C755' }}
+            style={{ backgroundColor: 'var(--color-primary)' }}
           >
             {showCreate ? 'キャンセル' : '+ アカウント追加'}
           </button>
@@ -112,7 +112,7 @@ export default function AccountsPage() {
       />
 
       {error && (
-        <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-lg text-red-700 text-sm">
+        <div className="mb-6 p-4 bg-[var(--color-error-muted)] border border-[var(--color-error-border)] rounded-lg text-[var(--color-error)] text-sm">
           {error}
         </div>
       )}
@@ -169,7 +169,7 @@ export default function AccountsPage() {
           <button
             type="submit"
             className="mt-4 px-4 py-2 rounded-lg text-white text-sm font-medium"
-            style={{ backgroundColor: '#06C755' }}
+            style={{ backgroundColor: 'var(--color-primary)' }}
           >
             登録
           </button>
@@ -202,7 +202,9 @@ export default function AccountsPage() {
                   ) : (
                     <div
                       className="w-10 h-10 rounded-lg flex items-center justify-center text-white font-bold text-sm"
-                      style={{ backgroundColor: account.isActive ? '#06C755' : '#9CA3AF' }}
+                      style={{
+                        backgroundColor: account.isActive ? 'var(--color-primary)' : '#9CA3AF',
+                      }}
                     >
                       {account.displayName?.charAt(0) || 'L'}
                     </div>
@@ -216,7 +218,11 @@ export default function AccountsPage() {
                 </div>
                 <button
                   onClick={() => handleToggle(account.id, account.isActive)}
-                  className={`text-xs px-2 py-0.5 rounded-full ${account.isActive ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-500'}`}
+                  className={`text-xs px-2 py-0.5 rounded-full ${
+                    account.isActive
+                      ? 'bg-[var(--color-primary-muted)] text-[var(--color-primary)]'
+                      : 'bg-gray-100 text-gray-500'
+                  }`}
                 >
                   {account.isActive ? '有効' : '無効'}
                 </button>
@@ -227,11 +233,13 @@ export default function AccountsPage() {
                   <p className="text-xs text-gray-400">友だち</p>
                 </div>
                 <div className="text-center">
-                  <p className="text-lg font-bold text-blue-600">{account.stats.activeScenarios}</p>
+                  <p className="text-lg font-bold text-[var(--color-slate)]">
+                    {account.stats.activeScenarios}
+                  </p>
                   <p className="text-xs text-gray-400">配信中</p>
                 </div>
                 <div className="text-center">
-                  <p className="text-lg font-bold text-green-600">
+                  <p className="text-lg font-bold text-[var(--color-primary)]">
                     {account.stats.messagesThisMonth}
                   </p>
                   <p className="text-xs text-gray-400">今月送信</p>
@@ -243,7 +251,7 @@ export default function AccountsPage() {
                 </p>
                 <button
                   onClick={() => handleDelete(account.id)}
-                  className="text-red-500 hover:text-red-700 text-xs"
+                  className="text-[var(--color-error)] hover:text-[var(--color-error)] text-xs"
                 >
                   削除
                 </button>

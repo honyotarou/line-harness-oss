@@ -259,7 +259,7 @@ export default function RemindersPage() {
           <button
             onClick={() => setShowCreate(true)}
             className="px-4 py-2 min-h-[44px] text-sm font-medium text-white rounded-lg transition-opacity hover:opacity-90"
-            style={{ backgroundColor: '#06C755' }}
+            style={{ backgroundColor: 'var(--color-primary)' }}
           >
             + 新規リマインダー
           </button>
@@ -268,7 +268,7 @@ export default function RemindersPage() {
 
       {/* Error */}
       {error && (
-        <div className="mb-4 p-4 bg-red-50 border border-red-200 rounded-lg text-red-700 text-sm">
+        <div className="mb-4 p-4 bg-[var(--color-error-muted)] border border-[var(--color-error-border)] rounded-lg text-[var(--color-error)] text-sm">
           {error}
         </div>
       )}
@@ -280,11 +280,11 @@ export default function RemindersPage() {
           <div className="space-y-4 max-w-lg">
             <div>
               <label className="block text-xs font-medium text-gray-600 mb-1">
-                リマインダー名 <span className="text-red-500">*</span>
+                リマインダー名 <span className="text-[var(--color-error)]">*</span>
               </label>
               <input
                 type="text"
-                className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-500"
+                className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[var(--color-focus-ring)]"
                 placeholder="例: セミナー参加リマインダー"
                 value={form.name}
                 onChange={(e) => setForm({ ...form, name: e.target.value })}
@@ -293,7 +293,7 @@ export default function RemindersPage() {
             <div>
               <label className="block text-xs font-medium text-gray-600 mb-1">説明</label>
               <textarea
-                className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-500 resize-none"
+                className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[var(--color-focus-ring)] resize-none"
                 rows={2}
                 placeholder="リマインダーの説明 (省略可)"
                 value={form.description}
@@ -301,14 +301,14 @@ export default function RemindersPage() {
               />
             </div>
 
-            {formError && <p className="text-xs text-red-600">{formError}</p>}
+            {formError && <p className="text-xs text-[var(--color-error)]">{formError}</p>}
 
             <div className="flex gap-2">
               <button
                 onClick={handleCreate}
                 disabled={saving}
                 className="px-4 py-2 min-h-[44px] text-sm font-medium text-white rounded-lg disabled:opacity-50 transition-opacity"
-                style={{ backgroundColor: '#06C755' }}
+                style={{ backgroundColor: 'var(--color-primary)' }}
               >
                 {saving ? '作成中...' : '作成'}
               </button>
@@ -378,7 +378,7 @@ export default function RemindersPage() {
                     <span
                       className={`ml-2 inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium shrink-0 ${
                         reminder.isActive
-                          ? 'bg-green-100 text-green-700'
+                          ? 'bg-[var(--color-primary-muted)] text-[var(--color-primary)]'
                           : 'bg-gray-100 text-gray-500'
                       }`}
                     >
@@ -408,7 +408,11 @@ export default function RemindersPage() {
                             ? 'bg-gray-100 text-gray-600 hover:bg-gray-200'
                             : 'text-white hover:opacity-90'
                         }`}
-                        style={!reminder.isActive ? { backgroundColor: '#06C755' } : undefined}
+                        style={
+                          !reminder.isActive
+                            ? { backgroundColor: 'var(--color-primary)' }
+                            : undefined
+                        }
                       >
                         {reminder.isActive ? '無効にする' : '有効にする'}
                       </button>
@@ -417,7 +421,7 @@ export default function RemindersPage() {
                           e.stopPropagation();
                           handleDelete(reminder.id);
                         }}
-                        className="px-3 py-1.5 min-h-[44px] text-xs font-medium text-red-500 hover:text-red-700 bg-red-50 hover:bg-red-100 rounded-md transition-colors"
+                        className="px-3 py-1.5 min-h-[44px] text-xs font-medium text-[var(--color-error)] hover:text-[var(--color-error)] bg-[var(--color-error-muted)] hover:bg-[var(--color-error-muted)] rounded-md transition-colors"
                       >
                         削除
                       </button>
@@ -442,7 +446,7 @@ export default function RemindersPage() {
                               setStepFormError('');
                             }}
                             className="px-3 py-1 min-h-[44px] text-xs font-medium text-white rounded-md transition-opacity hover:opacity-90"
-                            style={{ backgroundColor: '#06C755' }}
+                            style={{ backgroundColor: 'var(--color-primary)' }}
                           >
                             + ステップ追加
                           </button>
@@ -463,7 +467,7 @@ export default function RemindersPage() {
                                 >
                                   <div className="flex-1 min-w-0">
                                     <div className="flex items-center gap-2 mb-1">
-                                      <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-blue-100 text-blue-700">
+                                      <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-[var(--color-slate-muted)] text-[var(--color-slate)]">
                                         {formatOffset(step.offsetMinutes)}
                                       </span>
                                       <span className="text-xs text-gray-400">
@@ -476,7 +480,7 @@ export default function RemindersPage() {
                                   </div>
                                   <button
                                     onClick={() => handleDeleteStep(step.id)}
-                                    className="ml-2 shrink-0 min-h-[44px] min-w-[44px] text-xs text-red-400 hover:text-red-600 transition-colors"
+                                    className="ml-2 shrink-0 min-h-[44px] min-w-[44px] text-xs text-[var(--color-error)] hover:text-[var(--color-error)] transition-colors"
                                   >
                                     削除
                                   </button>
@@ -498,7 +502,7 @@ export default function RemindersPage() {
                                 </label>
                                 <input
                                   type="number"
-                                  className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-500"
+                                  className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[var(--color-focus-ring)]"
                                   placeholder="例: -60 (1時間前), +30 (30分後)"
                                   value={stepForm.offsetMinutes}
                                   onChange={(e) =>
@@ -517,7 +521,7 @@ export default function RemindersPage() {
                                   メッセージタイプ
                                 </label>
                                 <select
-                                  className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-500 bg-white"
+                                  className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[var(--color-focus-ring)] bg-white"
                                   value={stepForm.messageType}
                                   onChange={(e) =>
                                     setStepForm({ ...stepForm, messageType: e.target.value })
@@ -530,10 +534,11 @@ export default function RemindersPage() {
                               </div>
                               <div>
                                 <label className="block text-xs font-medium text-gray-600 mb-1">
-                                  メッセージ内容 <span className="text-red-500">*</span>
+                                  メッセージ内容{' '}
+                                  <span className="text-[var(--color-error)]">*</span>
                                 </label>
                                 <textarea
-                                  className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-500 resize-none"
+                                  className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[var(--color-focus-ring)] resize-none"
                                   rows={3}
                                   placeholder="メッセージ内容を入力"
                                   value={stepForm.messageContent}
@@ -544,7 +549,7 @@ export default function RemindersPage() {
                               </div>
 
                               {stepFormError && (
-                                <p className="text-xs text-red-600">{stepFormError}</p>
+                                <p className="text-xs text-[var(--color-error)]">{stepFormError}</p>
                               )}
 
                               <div className="flex gap-2">
@@ -552,7 +557,7 @@ export default function RemindersPage() {
                                   onClick={handleAddStep}
                                   disabled={stepSaving}
                                   className="px-4 py-2 min-h-[44px] text-sm font-medium text-white rounded-lg disabled:opacity-50 transition-opacity"
-                                  style={{ backgroundColor: '#06C755' }}
+                                  style={{ backgroundColor: 'var(--color-primary)' }}
                                 >
                                   {stepSaving ? '追加中...' : '追加'}
                                 </button>

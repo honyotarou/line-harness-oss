@@ -168,7 +168,7 @@ export default function WebhooksPage() {
           <button
             onClick={() => setShowCreate(!showCreate)}
             className="px-4 py-2 text-sm font-medium text-white rounded-lg transition-opacity hover:opacity-90"
-            style={{ backgroundColor: '#06C755' }}
+            style={{ backgroundColor: 'var(--color-primary)' }}
           >
             {showCreate ? 'キャンセル' : '+ 新規Webhook'}
           </button>
@@ -177,7 +177,7 @@ export default function WebhooksPage() {
 
       {/* Error */}
       {error && (
-        <div className="mb-4 p-4 bg-red-50 border border-red-200 rounded-lg text-red-700 text-sm">
+        <div className="mb-4 p-4 bg-[var(--color-error-muted)] border border-[var(--color-error-border)] rounded-lg text-[var(--color-error)] text-sm">
           {error}
         </div>
       )}
@@ -243,7 +243,7 @@ export default function WebhooksPage() {
           <button
             type="submit"
             className="mt-4 px-4 py-2 rounded-lg text-white text-sm font-medium"
-            style={{ backgroundColor: '#06C755' }}
+            style={{ backgroundColor: 'var(--color-primary)' }}
           >
             作成
           </button>
@@ -303,7 +303,7 @@ export default function WebhooksPage() {
           <button
             type="submit"
             className="mt-4 px-4 py-2 rounded-lg text-white text-sm font-medium"
-            style={{ backgroundColor: '#06C755' }}
+            style={{ backgroundColor: 'var(--color-primary)' }}
           >
             作成
           </button>
@@ -374,7 +374,7 @@ export default function WebhooksPage() {
                           onClick={() => handleToggleIncoming(wh.id, wh.isActive)}
                           className={`text-xs px-2 py-0.5 rounded-full ${
                             wh.isActive
-                              ? 'bg-green-100 text-green-700'
+                              ? 'bg-[var(--color-primary-muted)] text-[var(--color-primary)]'
                               : 'bg-gray-100 text-gray-500'
                           }`}
                         >
@@ -387,7 +387,7 @@ export default function WebhooksPage() {
                       <td className="px-4 py-3 text-right">
                         <button
                           onClick={() => handleDeleteIncoming(wh.id)}
-                          className="text-red-500 hover:text-red-700 text-sm"
+                          className="text-[var(--color-error)] hover:text-[var(--color-error)] text-sm"
                         >
                           削除
                         </button>
@@ -444,7 +444,7 @@ export default function WebhooksPage() {
                         {wh.eventTypes.map((et) => (
                           <span
                             key={et}
-                            className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-700"
+                            className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-[var(--color-slate-muted)] text-[var(--color-slate)]"
                           >
                             {et}
                           </span>
@@ -455,7 +455,9 @@ export default function WebhooksPage() {
                       <button
                         onClick={() => handleToggleOutgoing(wh.id, wh.isActive)}
                         className={`text-xs px-2 py-0.5 rounded-full ${
-                          wh.isActive ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-500'
+                          wh.isActive
+                            ? 'bg-[var(--color-primary-muted)] text-[var(--color-primary)]'
+                            : 'bg-gray-100 text-gray-500'
                         }`}
                       >
                         {wh.isActive ? '有効' : '無効'}
@@ -467,7 +469,7 @@ export default function WebhooksPage() {
                     <td className="px-4 py-3 text-right">
                       <button
                         onClick={() => handleDeleteOutgoing(wh.id)}
-                        className="text-red-500 hover:text-red-700 text-sm"
+                        className="text-[var(--color-error)] hover:text-[var(--color-error)] text-sm"
                       >
                         削除
                       </button>

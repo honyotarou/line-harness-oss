@@ -29,9 +29,15 @@ const ccPrompts = [
 
 const statusConfig: Record<ApiBroadcast['status'], { label: string; className: string }> = {
   draft: { label: '下書き', className: 'bg-gray-100 text-gray-600' },
-  scheduled: { label: '予約済み', className: 'bg-blue-100 text-blue-700' },
+  scheduled: {
+    label: '予約済み',
+    className: 'bg-[var(--color-slate-muted)] text-[var(--color-slate)]',
+  },
   sending: { label: '送信中', className: 'bg-yellow-100 text-yellow-700' },
-  sent: { label: '送信完了', className: 'bg-green-100 text-green-700' },
+  sent: {
+    label: '送信完了',
+    className: 'bg-[var(--color-primary-muted)] text-[var(--color-primary)]',
+  },
 };
 
 function formatDatetime(iso: string | null): string {
@@ -112,7 +118,7 @@ export default function BroadcastsPage() {
           <button
             onClick={() => setShowCreate(true)}
             className="px-4 py-2 text-sm font-medium text-white rounded-lg transition-opacity hover:opacity-90"
-            style={{ backgroundColor: '#06C755' }}
+            style={{ backgroundColor: 'var(--color-primary)' }}
           >
             + 新規配信
           </button>
@@ -121,7 +127,7 @@ export default function BroadcastsPage() {
 
       {/* Error */}
       {error && (
-        <div className="mb-4 p-4 bg-red-50 border border-red-200 rounded-lg text-red-700 text-sm">
+        <div className="mb-4 p-4 bg-[var(--color-error-muted)] border border-[var(--color-error-border)] rounded-lg text-[var(--color-error)] text-sm">
           {error}
         </div>
       )}
@@ -258,7 +264,7 @@ export default function BroadcastsPage() {
                               onClick={() => handleSend(broadcast.id)}
                               disabled={isSending}
                               className="px-3 py-1 min-h-[44px] text-xs font-medium text-white rounded-md disabled:opacity-50 transition-opacity"
-                              style={{ backgroundColor: '#06C755' }}
+                              style={{ backgroundColor: 'var(--color-primary)' }}
                             >
                               {isSending ? '送信中...' : '今すぐ送信'}
                             </button>
@@ -266,7 +272,7 @@ export default function BroadcastsPage() {
                           {(broadcast.status === 'draft' || broadcast.status === 'scheduled') && (
                             <button
                               onClick={() => handleDelete(broadcast.id)}
-                              className="px-3 py-1 min-h-[44px] text-xs font-medium text-red-500 hover:text-red-700 bg-red-50 hover:bg-red-100 rounded-md transition-colors"
+                              className="px-3 py-1 min-h-[44px] text-xs font-medium text-[var(--color-error)] hover:text-[var(--color-error)] bg-[var(--color-error-muted)] hover:bg-[var(--color-error-muted)] rounded-md transition-colors"
                             >
                               削除
                             </button>

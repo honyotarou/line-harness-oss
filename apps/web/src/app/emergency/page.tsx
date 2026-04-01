@@ -111,7 +111,7 @@ export default function EmergencyPage() {
     switch (status) {
       case 'done':
         return (
-          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-700">
+          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-[var(--color-primary-muted)] text-[var(--color-primary)]">
             <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path
                 strokeLinecap="round"
@@ -131,7 +131,7 @@ export default function EmergencyPage() {
         );
       case 'error':
         return (
-          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-700">
+          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-[var(--color-error-muted)] text-[var(--color-error)]">
             エラー
           </span>
         );
@@ -145,10 +145,10 @@ export default function EmergencyPage() {
       <Header title="緊急コントロール" />
 
       {/* Warning banner */}
-      <div className="mb-6 p-4 bg-red-50 border-2 border-red-300 rounded-lg">
+      <div className="mb-6 p-4 bg-[var(--color-error-muted)] border-2 border-[var(--color-error-border)] rounded-lg">
         <div className="flex items-start gap-3">
           <svg
-            className="w-6 h-6 text-red-500 shrink-0 mt-0.5"
+            className="w-6 h-6 text-[var(--color-error)] shrink-0 mt-0.5"
             fill="none"
             stroke="currentColor"
             viewBox="0 0 24 24"
@@ -161,8 +161,10 @@ export default function EmergencyPage() {
             />
           </svg>
           <div>
-            <p className="text-sm font-bold text-red-800">注意: この操作は即時実行されます</p>
-            <p className="text-xs text-red-600 mt-1">
+            <p className="text-sm font-bold text-[var(--color-error)]">
+              注意: この操作は即時実行されます
+            </p>
+            <p className="text-xs text-[var(--color-error)] mt-1">
               各ボタンをクリックすると確認ダイアログが表示されます。「実行」で操作が開始されます。
             </p>
           </div>
@@ -174,7 +176,7 @@ export default function EmergencyPage() {
         {actions.map((action) => (
           <div
             key={action.id}
-            className="bg-white rounded-lg shadow-sm border-2 border-red-200 p-5 flex flex-col"
+            className="bg-white rounded-lg shadow-sm border-2 border-[var(--color-error-border)] p-5 flex flex-col"
           >
             <div className="flex items-start justify-between mb-2">
               <h3 className="text-sm font-bold text-gray-900">{action.label}</h3>
@@ -183,16 +185,19 @@ export default function EmergencyPage() {
             <p className="text-xs text-gray-500 mb-4 flex-1">{action.description}</p>
 
             {action.errorMessage && (
-              <p className="text-xs text-red-600 mb-3">{action.errorMessage}</p>
+              <p className="text-xs text-[var(--color-error)] mb-3">{action.errorMessage}</p>
             )}
 
             {action.status === 'confirming' ? (
               <div className="space-y-2">
-                <p className="text-xs font-medium text-red-700">本当に実行しますか？</p>
+                <p className="text-xs font-medium text-[var(--color-error)]">
+                  本当に実行しますか？
+                </p>
                 <div className="flex gap-2">
                   <button
                     onClick={() => handleAction(action.id)}
-                    className="flex-1 px-3 py-2 min-h-[44px] text-sm font-medium text-white bg-red-600 hover:bg-red-700 rounded-lg transition-colors"
+                    className="flex-1 px-3 py-2 min-h-[44px] text-sm font-medium text-white rounded-lg transition-colors"
+                    style={{ backgroundColor: 'var(--color-error)' }}
                   >
                     実行
                   </button>
@@ -208,7 +213,8 @@ export default function EmergencyPage() {
               <button
                 onClick={() => handleAction(action.id)}
                 disabled={action.status === 'executing'}
-                className="w-full px-3 py-2 min-h-[44px] text-sm font-medium text-white bg-red-600 hover:bg-red-700 disabled:opacity-50 rounded-lg transition-colors"
+                className="w-full px-3 py-2 min-h-[44px] text-sm font-medium text-white disabled:opacity-50 rounded-lg transition-colors"
+                style={{ backgroundColor: 'var(--color-error)' }}
               >
                 {action.status === 'executing' ? '実行中...' : action.label}
               </button>
@@ -230,9 +236,9 @@ export default function EmergencyPage() {
               <span
                 className={`text-xs font-medium ${
                   action.status === 'done'
-                    ? 'text-green-600'
+                    ? 'text-[var(--color-primary)]'
                     : action.status === 'error'
-                      ? 'text-red-600'
+                      ? 'text-[var(--color-error)]'
                       : action.status === 'executing'
                         ? 'text-yellow-600'
                         : 'text-gray-400'

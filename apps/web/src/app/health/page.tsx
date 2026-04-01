@@ -38,9 +38,9 @@ interface AccountMigration {
 const riskConfig = {
   normal: {
     label: '正常',
-    color: 'bg-green-500',
-    textColor: 'text-green-700',
-    bgColor: 'bg-green-100',
+    color: 'bg-[var(--color-primary)]',
+    textColor: 'text-[var(--color-primary)]',
+    bgColor: 'bg-[var(--color-primary-muted)]',
   },
   warning: {
     label: '警告',
@@ -48,7 +48,12 @@ const riskConfig = {
     textColor: 'text-yellow-700',
     bgColor: 'bg-yellow-100',
   },
-  danger: { label: '危険', color: 'bg-red-500', textColor: 'text-red-700', bgColor: 'bg-red-100' },
+  danger: {
+    label: '危険',
+    color: 'bg-[var(--color-error)]',
+    textColor: 'text-[var(--color-error)]',
+    bgColor: 'bg-[var(--color-error-muted)]',
+  },
 };
 
 const statusConfig: Record<
@@ -56,9 +61,21 @@ const statusConfig: Record<
   { label: string; textColor: string; bgColor: string }
 > = {
   pending: { label: '待機中', textColor: 'text-gray-700', bgColor: 'bg-gray-100' },
-  in_progress: { label: '移行中', textColor: 'text-blue-700', bgColor: 'bg-blue-100' },
-  completed: { label: '完了', textColor: 'text-green-700', bgColor: 'bg-green-100' },
-  failed: { label: '失敗', textColor: 'text-red-700', bgColor: 'bg-red-100' },
+  in_progress: {
+    label: '移行中',
+    textColor: 'text-[var(--color-slate)]',
+    bgColor: 'bg-[var(--color-slate-muted)]',
+  },
+  completed: {
+    label: '完了',
+    textColor: 'text-[var(--color-primary)]',
+    bgColor: 'bg-[var(--color-primary-muted)]',
+  },
+  failed: {
+    label: '失敗',
+    textColor: 'text-[var(--color-error)]',
+    bgColor: 'bg-[var(--color-error-muted)]',
+  },
 };
 
 const ccPrompts = [
@@ -183,7 +200,7 @@ export default function HealthPage() {
 
       {/* Error */}
       {error && (
-        <div className="mb-4 p-4 bg-red-50 border border-red-200 rounded-lg text-red-700 text-sm">
+        <div className="mb-4 p-4 bg-[var(--color-error-muted)] border border-[var(--color-error-border)] rounded-lg text-[var(--color-error)] text-sm">
           {error}
         </div>
       )}
@@ -223,7 +240,7 @@ export default function HealthPage() {
                       <div className="flex items-center gap-3">
                         <div
                           className="w-10 h-10 rounded-lg flex items-center justify-center text-white font-bold text-sm"
-                          style={{ backgroundColor: '#06C755' }}
+                          style={{ backgroundColor: 'var(--color-primary)' }}
                         >
                           L
                         </div>
@@ -270,7 +287,7 @@ export default function HealthPage() {
                               setMigrateFrom(account.id);
                               setMigrateToId('');
                             }}
-                            className="px-3 py-1.5 rounded-lg text-white text-xs font-medium bg-red-500 hover:bg-red-600 transition-colors"
+                            className="px-3 py-1.5 rounded-lg text-white text-xs font-medium bg-[var(--color-error)] hover:bg-[var(--color-error)] transition-colors"
                           >
                             友だちを移行する
                           </button>
@@ -332,7 +349,7 @@ export default function HealthPage() {
 
           {/* Migration Form Modal */}
           {migrateFrom && (
-            <div className="mb-8 bg-white rounded-lg border border-red-200 p-6">
+            <div className="mb-8 bg-white rounded-lg border border-[var(--color-error-border)] p-6">
               <h2 className="text-sm font-bold text-gray-900 mb-4">
                 友だち移行: {getAccountName(migrateFrom)}
               </h2>
@@ -344,7 +361,7 @@ export default function HealthPage() {
                   <select
                     value={migrateToId}
                     onChange={(e) => setMigrateToId(e.target.value)}
-                    className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-green-500"
+                    className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-[var(--color-focus-ring)]"
                     required
                   >
                     <option value="">選択してください</option>
@@ -362,7 +379,7 @@ export default function HealthPage() {
                     type="submit"
                     disabled={migrating || !migrateToId}
                     className="px-4 py-2 rounded-lg text-white text-sm font-medium disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
-                    style={{ backgroundColor: '#06C755' }}
+                    style={{ backgroundColor: 'var(--color-primary)' }}
                   >
                     {migrating ? '移行中...' : '移行を開始'}
                   </button>
@@ -432,7 +449,10 @@ export default function HealthPage() {
                                 <div className="w-24 h-2 bg-gray-200 rounded-full overflow-hidden">
                                   <div
                                     className="h-full rounded-full transition-all"
-                                    style={{ width: `${progress}%`, backgroundColor: '#06C755' }}
+                                    style={{
+                                      width: `${progress}%`,
+                                      backgroundColor: 'var(--color-primary)',
+                                    }}
                                   />
                                 </div>
                                 <span className="text-xs text-gray-500">

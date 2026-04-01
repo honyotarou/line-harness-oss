@@ -41,13 +41,15 @@ export default function ScenarioList({
           <div className="flex items-start justify-between gap-2">
             <Link
               href={`/scenarios/detail?id=${scenario.id}`}
-              className="text-sm font-semibold text-gray-900 hover:text-green-600 transition-colors leading-tight"
+              className="text-sm font-semibold text-gray-900 hover:text-[var(--color-primary)] transition-colors leading-tight"
             >
               {scenario.name}
             </Link>
             <span
               className={`shrink-0 inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${
-                scenario.isActive ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-500'
+                scenario.isActive
+                  ? 'bg-[var(--color-primary-muted)] text-[var(--color-primary)]'
+                  : 'bg-gray-100 text-gray-500'
               }`}
             >
               {scenario.isActive ? '有効' : '無効'}
@@ -89,7 +91,7 @@ export default function ScenarioList({
           <div className="flex items-center gap-2 pt-1 border-t border-gray-100">
             <Link
               href={`/scenarios/detail?id=${scenario.id}`}
-              className="flex-1 text-center text-xs font-medium text-green-600 hover:text-green-700 py-1 min-h-[44px] flex items-center justify-center rounded-md hover:bg-green-50 transition-colors"
+              className="flex-1 text-center text-xs font-medium text-[var(--color-primary)] hover:text-[var(--color-primary-hover)] py-1 min-h-[44px] flex items-center justify-center rounded-md hover:bg-[var(--color-primary-muted)] transition-colors"
             >
               編集
             </Link>
@@ -107,7 +109,7 @@ export default function ScenarioList({
                 }
               }}
               disabled={loading}
-              className="flex-1 text-xs font-medium text-red-500 hover:text-red-700 py-1 min-h-[44px] flex items-center justify-center rounded-md hover:bg-red-50 transition-colors disabled:opacity-40"
+              className="flex-1 text-xs font-medium text-[var(--color-error)] hover:text-[var(--color-error)] py-1 min-h-[44px] flex items-center justify-center rounded-md hover:bg-[var(--color-error-muted)] transition-colors disabled:opacity-40"
             >
               削除
             </button>

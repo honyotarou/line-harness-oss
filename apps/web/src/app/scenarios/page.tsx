@@ -143,7 +143,7 @@ export default function ScenariosPage() {
           <button
             onClick={() => setShowCreate(true)}
             className="px-4 py-2 min-h-[44px] text-sm font-medium text-white rounded-lg transition-opacity hover:opacity-90"
-            style={{ backgroundColor: '#06C755' }}
+            style={{ backgroundColor: 'var(--color-primary)' }}
           >
             + 新規シナリオ
           </button>
@@ -152,7 +152,7 @@ export default function ScenariosPage() {
 
       {/* Error */}
       {error && (
-        <div className="mb-4 p-4 bg-red-50 border border-red-200 rounded-lg text-red-700 text-sm">
+        <div className="mb-4 p-4 bg-[var(--color-error-muted)] border border-[var(--color-error-border)] rounded-lg text-[var(--color-error)] text-sm">
           {error}
         </div>
       )}
@@ -164,11 +164,11 @@ export default function ScenariosPage() {
           <div className="space-y-4 max-w-lg">
             <div>
               <label className="block text-xs font-medium text-gray-600 mb-1">
-                シナリオ名 <span className="text-red-500">*</span>
+                シナリオ名 <span className="text-[var(--color-error)]">*</span>
               </label>
               <input
                 type="text"
-                className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-500"
+                className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[var(--color-focus-ring)]"
                 placeholder="例: 友だち追加ウェルカムシナリオ"
                 value={form.name}
                 onChange={(e) => setForm({ ...form, name: e.target.value })}
@@ -177,7 +177,7 @@ export default function ScenariosPage() {
             <div>
               <label className="block text-xs font-medium text-gray-600 mb-1">説明</label>
               <textarea
-                className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-500 resize-none"
+                className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[var(--color-focus-ring)] resize-none"
                 rows={2}
                 placeholder="シナリオの説明 (省略可)"
                 value={form.description}
@@ -187,7 +187,7 @@ export default function ScenariosPage() {
             <div>
               <label className="block text-xs font-medium text-gray-600 mb-1">トリガー</label>
               <select
-                className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-500 bg-white"
+                className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[var(--color-focus-ring)] bg-white"
                 value={form.triggerType}
                 onChange={(e) =>
                   setForm({ ...form, triggerType: e.target.value as ScenarioTriggerType })
@@ -206,21 +206,21 @@ export default function ScenariosPage() {
                 id="isActive"
                 checked={form.isActive}
                 onChange={(e) => setForm({ ...form, isActive: e.target.checked })}
-                className="w-4 h-4 rounded border-gray-300 text-green-600 focus:ring-green-500"
+                className="w-4 h-4 rounded border-gray-300 text-[var(--color-primary)] focus:ring-[var(--color-focus-ring)]"
               />
               <label htmlFor="isActive" className="text-sm text-gray-600">
                 作成後すぐに有効にする
               </label>
             </div>
 
-            {formError && <p className="text-xs text-red-600">{formError}</p>}
+            {formError && <p className="text-xs text-[var(--color-error)]">{formError}</p>}
 
             <div className="flex gap-2">
               <button
                 onClick={handleCreate}
                 disabled={saving}
                 className="px-4 py-2 min-h-[44px] text-sm font-medium text-white rounded-lg disabled:opacity-50 transition-opacity"
-                style={{ backgroundColor: '#06C755' }}
+                style={{ backgroundColor: 'var(--color-primary)' }}
               >
                 {saving ? '作成中...' : '作成'}
               </button>

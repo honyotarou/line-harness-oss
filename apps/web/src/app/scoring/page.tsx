@@ -139,7 +139,7 @@ export default function ScoringPage() {
           <button
             onClick={() => setShowCreate(true)}
             className="px-4 py-2 text-sm font-medium text-white rounded-lg transition-opacity hover:opacity-90"
-            style={{ backgroundColor: '#06C755' }}
+            style={{ backgroundColor: 'var(--color-primary)' }}
           >
             + 新規ルール
           </button>
@@ -155,7 +155,7 @@ export default function ScoringPage() {
           </div>
           <div className="bg-white rounded-lg border border-gray-200 p-4">
             <p className="text-xs text-gray-500">有効なルール</p>
-            <p className="text-2xl font-bold" style={{ color: '#06C755' }}>
+            <p className="text-2xl font-bold" style={{ color: 'var(--color-primary)' }}>
               {activeRules}
             </p>
           </div>
@@ -164,7 +164,7 @@ export default function ScoringPage() {
 
       {/* Error */}
       {error && (
-        <div className="mb-4 p-4 bg-red-50 border border-red-200 rounded-lg text-red-700 text-sm">
+        <div className="mb-4 p-4 bg-[var(--color-error-muted)] border border-[var(--color-error-border)] rounded-lg text-[var(--color-error)] text-sm">
           {error}
         </div>
       )}
@@ -176,11 +176,11 @@ export default function ScoringPage() {
           <div className="space-y-4 max-w-lg">
             <div>
               <label className="block text-xs font-medium text-gray-600 mb-1">
-                ルール名 <span className="text-red-500">*</span>
+                ルール名 <span className="text-[var(--color-error)]">*</span>
               </label>
               <input
                 type="text"
-                className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-500"
+                className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[var(--color-focus-ring)]"
                 placeholder="例: メッセージ開封"
                 value={form.name}
                 onChange={(e) => setForm({ ...form, name: e.target.value })}
@@ -188,11 +188,11 @@ export default function ScoringPage() {
             </div>
             <div>
               <label className="block text-xs font-medium text-gray-600 mb-1">
-                イベントタイプ <span className="text-red-500">*</span>
+                イベントタイプ <span className="text-[var(--color-error)]">*</span>
               </label>
               <input
                 type="text"
-                className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-500"
+                className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[var(--color-focus-ring)]"
                 placeholder="例: message_open, url_click, friend_add"
                 value={form.eventType}
                 onChange={(e) => setForm({ ...form, eventType: e.target.value })}
@@ -200,25 +200,25 @@ export default function ScoringPage() {
             </div>
             <div>
               <label className="block text-xs font-medium text-gray-600 mb-1">
-                スコア値 <span className="text-red-500">*</span>
+                スコア値 <span className="text-[var(--color-error)]">*</span>
               </label>
               <input
                 type="number"
-                className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-500"
+                className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[var(--color-focus-ring)]"
                 placeholder="例: 10 (正の値で加算、負の値で減算)"
                 value={form.scoreValue}
                 onChange={(e) => setForm({ ...form, scoreValue: e.target.value })}
               />
             </div>
 
-            {formError && <p className="text-xs text-red-600">{formError}</p>}
+            {formError && <p className="text-xs text-[var(--color-error)]">{formError}</p>}
 
             <div className="flex gap-2">
               <button
                 onClick={handleCreate}
                 disabled={saving}
                 className="px-4 py-2 text-sm font-medium text-white rounded-lg disabled:opacity-50 transition-opacity"
-                style={{ backgroundColor: '#06C755' }}
+                style={{ backgroundColor: 'var(--color-primary)' }}
               >
                 {saving ? '作成中...' : '作成'}
               </button>
@@ -273,12 +273,17 @@ export default function ScoringPage() {
                   <tr key={rule.id} className="hover:bg-gray-50">
                     <td className="px-4 py-3 text-sm font-medium text-gray-900">{rule.name}</td>
                     <td className="px-4 py-3">
-                      <span className="text-xs px-2 py-0.5 rounded-full bg-blue-100 text-blue-700">
+                      <span className="text-xs px-2 py-0.5 rounded-full bg-[var(--color-slate-muted)] text-[var(--color-slate)]">
                         {rule.eventType}
                       </span>
                     </td>
                     <td className="px-4 py-3 text-sm font-semibold">
-                      <span style={{ color: rule.scoreValue >= 0 ? '#06C755' : '#EF4444' }}>
+                      <span
+                        style={{
+                          color:
+                            rule.scoreValue >= 0 ? 'var(--color-success)' : 'var(--color-error)',
+                        }}
+                      >
                         {rule.scoreValue >= 0 ? `+${rule.scoreValue}` : rule.scoreValue}
                       </span>
                     </td>
@@ -286,7 +291,7 @@ export default function ScoringPage() {
                       <button
                         onClick={() => handleToggleActive(rule.id, rule.isActive)}
                         className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
-                          rule.isActive ? 'bg-green-500' : 'bg-gray-300'
+                          rule.isActive ? 'bg-[var(--color-primary)]' : 'bg-gray-300'
                         }`}
                       >
                         <span
@@ -299,7 +304,7 @@ export default function ScoringPage() {
                     <td className="px-4 py-3 text-right">
                       <button
                         onClick={() => handleDelete(rule.id)}
-                        className="text-red-500 hover:text-red-700 text-sm"
+                        className="text-[var(--color-error)] hover:text-[var(--color-error)] text-sm"
                       >
                         削除
                       </button>

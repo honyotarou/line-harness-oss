@@ -51,6 +51,31 @@
   /* Keep LINE green accents aligned with primary by default. */
   --color-green-500: var(--color-primary);
   --color-green-600: var(--color-primary-hover);
+
+  /* Collapse vivid palettes into calm tokens (admin UI should not be rainbow). */
+  --color-blue-50: var(--color-slate-muted);
+  --color-blue-100: var(--color-slate-muted);
+  --color-blue-500: var(--color-slate);
+  --color-blue-600: var(--color-slate-hover);
+
+  --color-purple-50: var(--color-slate-muted);
+  --color-purple-100: var(--color-slate-muted);
+  --color-purple-500: var(--color-slate);
+  --color-purple-600: var(--color-slate-hover);
+
+  --color-orange-50: var(--color-warning-muted);
+  --color-orange-100: var(--color-warning-muted);
+  --color-orange-500: var(--color-warning);
+  --color-orange-600: var(--color-warning);
+
+  --color-amber-50: var(--color-warning-muted);
+  --color-amber-100: var(--color-warning-muted);
+  --color-amber-500: var(--color-warning);
+
+  --color-red-50: var(--color-error-muted);
+  --color-red-100: var(--color-error-muted);
+  --color-red-500: var(--color-error);
+  --color-red-600: var(--color-error);
 }
 
 html,

@@ -101,7 +101,7 @@ export default function UsersPage() {
           <button
             onClick={() => setShowCreate(!showCreate)}
             className="px-4 py-2 min-h-[44px] rounded-lg text-white text-sm font-medium"
-            style={{ backgroundColor: '#06C755' }}
+            style={{ backgroundColor: 'var(--color-primary)' }}
           >
             {showCreate ? 'キャンセル' : '+ ユーザー作成'}
           </button>
@@ -109,7 +109,7 @@ export default function UsersPage() {
       />
 
       {error && (
-        <div className="mb-4 p-4 bg-red-50 border border-red-200 rounded-lg text-red-700 text-sm">
+        <div className="mb-4 p-4 bg-[var(--color-error-muted)] border border-[var(--color-error-border)] rounded-lg text-[var(--color-error)] text-sm">
           {error}
         </div>
       )}
@@ -160,7 +160,7 @@ export default function UsersPage() {
           <button
             type="submit"
             className="mt-4 px-4 py-2 min-h-[44px] rounded-lg text-white text-sm font-medium"
-            style={{ backgroundColor: '#06C755' }}
+            style={{ backgroundColor: 'var(--color-primary)' }}
           >
             作成
           </button>
@@ -224,7 +224,7 @@ export default function UsersPage() {
                           e.stopPropagation();
                           handleDelete(user.id);
                         }}
-                        className="text-red-500 hover:text-red-700 text-sm"
+                        className="text-[var(--color-error)] hover:text-[var(--color-error)] text-sm"
                       >
                         削除
                       </button>
@@ -243,7 +243,9 @@ export default function UsersPage() {
                             {linkedAccounts.map((a) => (
                               <div key={a.id} className="flex items-center gap-2 text-sm">
                                 <span
-                                  className={`w-2 h-2 rounded-full ${a.isFollowing ? 'bg-green-500' : 'bg-gray-300'}`}
+                                  className={`w-2 h-2 rounded-full ${
+                                    a.isFollowing ? 'bg-[var(--color-primary)]' : 'bg-gray-300'
+                                  }`}
                                 />
                                 <span className="text-gray-700">{a.displayName || 'Unknown'}</span>
                                 <span className="text-gray-400 font-mono text-xs">

@@ -57,11 +57,11 @@ const eventTypeLabelMap: Record<AutomationEventType, string> = {
 };
 
 const eventTypeBadgeColor: Record<AutomationEventType, string> = {
-  friend_add: 'bg-green-100 text-green-700',
-  tag_change: 'bg-blue-100 text-blue-700',
+  friend_add: 'bg-[var(--color-primary-muted)] text-[var(--color-primary)]',
+  tag_change: 'bg-[var(--color-slate-muted)] text-[var(--color-slate)]',
   score_threshold: 'bg-yellow-100 text-yellow-700',
-  cv_fire: 'bg-red-100 text-red-700',
-  message_received: 'bg-purple-100 text-purple-700',
+  cv_fire: 'bg-[var(--color-error-muted)] text-[var(--color-error)]',
+  message_received: 'bg-[var(--color-slate-muted)] text-[var(--color-slate)]',
   calendar_booked: 'bg-indigo-100 text-indigo-700',
 };
 
@@ -207,7 +207,7 @@ export default function AutomationsPage() {
           <button
             onClick={() => setShowCreate(true)}
             className="px-4 py-2 min-h-[44px] text-sm font-medium text-white rounded-lg transition-opacity hover:opacity-90"
-            style={{ backgroundColor: '#06C755' }}
+            style={{ backgroundColor: 'var(--color-primary)' }}
           >
             + 新規ルール
           </button>
@@ -216,7 +216,7 @@ export default function AutomationsPage() {
 
       {/* Error */}
       {error && (
-        <div className="mb-4 p-4 bg-red-50 border border-red-200 rounded-lg text-red-700 text-sm">
+        <div className="mb-4 p-4 bg-[var(--color-error-muted)] border border-[var(--color-error-border)] rounded-lg text-[var(--color-error)] text-sm">
           {error}
         </div>
       )}
@@ -228,11 +228,11 @@ export default function AutomationsPage() {
           <div className="space-y-4 max-w-lg">
             <div>
               <label className="block text-xs font-medium text-gray-600 mb-1">
-                ルール名 <span className="text-red-500">*</span>
+                ルール名 <span className="text-[var(--color-error)]">*</span>
               </label>
               <input
                 type="text"
-                className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-500"
+                className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[var(--color-focus-ring)]"
                 placeholder="例: 友だち追加時にウェルカムタグ付与"
                 value={form.name}
                 onChange={(e) => setForm({ ...form, name: e.target.value })}
@@ -241,7 +241,7 @@ export default function AutomationsPage() {
             <div>
               <label className="block text-xs font-medium text-gray-600 mb-1">説明</label>
               <textarea
-                className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-500 resize-none"
+                className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[var(--color-focus-ring)] resize-none"
                 rows={2}
                 placeholder="ルールの説明 (省略可)"
                 value={form.description}
@@ -251,7 +251,7 @@ export default function AutomationsPage() {
             <div>
               <label className="block text-xs font-medium text-gray-600 mb-1">イベントタイプ</label>
               <select
-                className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-500 bg-white"
+                className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[var(--color-focus-ring)] bg-white"
                 value={form.eventType}
                 onChange={(e) =>
                   setForm({ ...form, eventType: e.target.value as AutomationEventType })
@@ -269,7 +269,7 @@ export default function AutomationsPage() {
                 アクション (JSON)
               </label>
               <textarea
-                className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm font-mono focus:outline-none focus:ring-2 focus:ring-green-500 resize-y"
+                className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm font-mono focus:outline-none focus:ring-2 focus:ring-[var(--color-focus-ring)] resize-y"
                 rows={6}
                 placeholder='[{"type": "add_tag", "params": {"tagId": "..."}}]'
                 value={form.actionsJson}
@@ -279,7 +279,7 @@ export default function AutomationsPage() {
             <div>
               <label className="block text-xs font-medium text-gray-600 mb-1">条件 (JSON)</label>
               <textarea
-                className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm font-mono focus:outline-none focus:ring-2 focus:ring-green-500 resize-y"
+                className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm font-mono focus:outline-none focus:ring-2 focus:ring-[var(--color-focus-ring)] resize-y"
                 rows={3}
                 placeholder='{"tagId": "...", "operator": "equals"}'
                 value={form.conditionsJson}
@@ -290,20 +290,20 @@ export default function AutomationsPage() {
               <label className="block text-xs font-medium text-gray-600 mb-1">優先度</label>
               <input
                 type="number"
-                className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-500"
+                className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[var(--color-focus-ring)]"
                 value={form.priority}
                 onChange={(e) => setForm({ ...form, priority: parseInt(e.target.value, 10) || 0 })}
               />
             </div>
 
-            {formError && <p className="text-xs text-red-600">{formError}</p>}
+            {formError && <p className="text-xs text-[var(--color-error)]">{formError}</p>}
 
             <div className="flex gap-2">
               <button
                 onClick={handleCreate}
                 disabled={saving}
                 className="px-4 py-2 min-h-[44px] text-sm font-medium text-white rounded-lg disabled:opacity-50 transition-opacity"
-                style={{ backgroundColor: '#06C755' }}
+                style={{ backgroundColor: 'var(--color-primary)' }}
               >
                 {saving ? '作成中...' : '作成'}
               </button>
@@ -359,7 +359,7 @@ export default function AutomationsPage() {
                 <button
                   onClick={() => handleToggleActive(automation.id, automation.isActive)}
                   className={`relative inline-flex h-5 w-9 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${
-                    automation.isActive ? 'bg-green-500' : 'bg-gray-300'
+                    automation.isActive ? 'bg-[var(--color-primary)]' : 'bg-gray-300'
                   }`}
                   title={
                     automation.isActive ? '有効 - クリックで無効化' : '無効 - クリックで有効化'
@@ -387,7 +387,9 @@ export default function AutomationsPage() {
                 </span>
                 <span
                   className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${
-                    automation.isActive ? 'bg-green-50 text-green-700' : 'bg-gray-100 text-gray-500'
+                    automation.isActive
+                      ? 'bg-[var(--color-primary-muted)] text-[var(--color-primary)]'
+                      : 'bg-gray-100 text-gray-500'
                   }`}
                 >
                   {automation.isActive ? '有効' : '無効'}
@@ -404,7 +406,7 @@ export default function AutomationsPage() {
               <div className="flex items-center justify-end gap-2 pt-2 border-t border-gray-100">
                 <button
                   onClick={() => handleDelete(automation.id)}
-                  className="px-3 py-1 min-h-[44px] text-xs font-medium text-red-500 hover:text-red-700 bg-red-50 hover:bg-red-100 rounded-md transition-colors"
+                  className="px-3 py-1 min-h-[44px] text-xs font-medium text-[var(--color-error)] hover:text-[var(--color-error)] bg-[var(--color-error-muted)] hover:bg-[var(--color-error-muted)] rounded-md transition-colors"
                 >
                   削除
                 </button>

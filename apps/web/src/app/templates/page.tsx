@@ -151,7 +151,7 @@ export default function TemplatesPage() {
           <button
             onClick={() => setShowCreate(true)}
             className="px-4 py-2 text-sm font-medium text-white rounded-lg transition-opacity hover:opacity-90"
-            style={{ backgroundColor: '#06C755' }}
+            style={{ backgroundColor: 'var(--color-primary)' }}
           >
             + 新規テンプレート
           </button>
@@ -160,7 +160,7 @@ export default function TemplatesPage() {
 
       {/* Error */}
       {error && (
-        <div className="mb-4 p-4 bg-red-50 border border-red-200 rounded-lg text-red-700 text-sm">
+        <div className="mb-4 p-4 bg-[var(--color-error-muted)] border border-[var(--color-error-border)] rounded-lg text-[var(--color-error)] text-sm">
           {error}
         </div>
       )}
@@ -175,7 +175,9 @@ export default function TemplatesPage() {
                 ? 'text-white'
                 : 'text-gray-600 bg-gray-100 hover:bg-gray-200'
             }`}
-            style={selectedCategory === 'all' ? { backgroundColor: '#06C755' } : undefined}
+            style={
+              selectedCategory === 'all' ? { backgroundColor: 'var(--color-primary)' } : undefined
+            }
           >
             全て
           </button>
@@ -188,7 +190,9 @@ export default function TemplatesPage() {
                   ? 'text-white'
                   : 'text-gray-600 bg-gray-100 hover:bg-gray-200'
               }`}
-              style={selectedCategory === cat ? { backgroundColor: '#06C755' } : undefined}
+              style={
+                selectedCategory === cat ? { backgroundColor: 'var(--color-primary)' } : undefined
+              }
             >
               {cat}
             </button>
@@ -203,11 +207,11 @@ export default function TemplatesPage() {
           <div className="space-y-4 max-w-lg">
             <div>
               <label className="block text-xs font-medium text-gray-600 mb-1">
-                テンプレート名 <span className="text-red-500">*</span>
+                テンプレート名 <span className="text-[var(--color-error)]">*</span>
               </label>
               <input
                 type="text"
-                className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-500"
+                className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[var(--color-focus-ring)]"
                 placeholder="例: ウェルカムメッセージ"
                 value={form.name}
                 onChange={(e) => setForm({ ...form, name: e.target.value })}
@@ -215,11 +219,11 @@ export default function TemplatesPage() {
             </div>
             <div>
               <label className="block text-xs font-medium text-gray-600 mb-1">
-                カテゴリ <span className="text-red-500">*</span>
+                カテゴリ <span className="text-[var(--color-error)]">*</span>
               </label>
               <input
                 type="text"
-                className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-500"
+                className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[var(--color-focus-ring)]"
                 placeholder="例: 挨拶、キャンペーン、通知"
                 value={form.category}
                 onChange={(e) => setForm({ ...form, category: e.target.value })}
@@ -230,7 +234,7 @@ export default function TemplatesPage() {
                 メッセージタイプ
               </label>
               <select
-                className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-500 bg-white"
+                className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[var(--color-focus-ring)] bg-white"
                 value={form.messageType}
                 onChange={(e) => setForm({ ...form, messageType: e.target.value })}
               >
@@ -241,10 +245,10 @@ export default function TemplatesPage() {
             </div>
             <div>
               <label className="block text-xs font-medium text-gray-600 mb-1">
-                メッセージ内容 <span className="text-red-500">*</span>
+                メッセージ内容 <span className="text-[var(--color-error)]">*</span>
               </label>
               <textarea
-                className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-500 resize-none"
+                className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[var(--color-focus-ring)] resize-none"
                 rows={4}
                 placeholder="メッセージ内容を入力してください"
                 value={form.messageContent}
@@ -252,14 +256,14 @@ export default function TemplatesPage() {
               />
             </div>
 
-            {formError && <p className="text-xs text-red-600">{formError}</p>}
+            {formError && <p className="text-xs text-[var(--color-error)]">{formError}</p>}
 
             <div className="flex gap-2">
               <button
                 onClick={handleCreate}
                 disabled={saving}
                 className="px-4 py-2 text-sm font-medium text-white rounded-lg disabled:opacity-50 transition-opacity"
-                style={{ backgroundColor: '#06C755' }}
+                style={{ backgroundColor: 'var(--color-primary)' }}
               >
                 {saving ? '作成中...' : '作成'}
               </button>
@@ -337,7 +341,7 @@ export default function TemplatesPage() {
 
                     {/* Category */}
                     <td className="px-4 py-3">
-                      <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-700">
+                      <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-[var(--color-slate-muted)] text-[var(--color-slate)]">
                         {template.category}
                       </span>
                     </td>
@@ -356,7 +360,7 @@ export default function TemplatesPage() {
                     <td className="px-4 py-3 text-right">
                       <button
                         onClick={() => handleDelete(template.id)}
-                        className="px-3 py-1 text-xs font-medium text-red-500 hover:text-red-700 bg-red-50 hover:bg-red-100 rounded-md transition-colors"
+                        className="px-3 py-1 text-xs font-medium text-[var(--color-error)] hover:text-[var(--color-error)] bg-[var(--color-error-muted)] hover:bg-[var(--color-error-muted)] rounded-md transition-colors"
                       >
                         削除
                       </button>

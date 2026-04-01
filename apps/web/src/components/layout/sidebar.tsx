@@ -139,7 +139,12 @@ function AccountAvatar({ account, size = 32 }: { account: AccountWithStats; size
   return (
     <div
       className="rounded-full flex items-center justify-center text-white font-bold shrink-0"
-      style={{ width: size, height: size, backgroundColor: '#06C755', fontSize: size * 0.4 }}
+      style={{
+        width: size,
+        height: size,
+        backgroundColor: 'var(--color-primary)',
+        fontSize: size * 0.4,
+      }}
     >
       {displayName.charAt(0)}
     </div>
@@ -196,13 +201,15 @@ function AccountSwitcher() {
                   setOpen(false);
                 }}
                 className={`w-full flex items-center gap-2.5 px-3 py-2.5 text-left transition-colors ${
-                  isSelected ? 'bg-green-50' : 'hover:bg-gray-50'
+                  isSelected ? 'bg-[var(--color-primary-muted)]' : 'hover:bg-gray-50'
                 }`}
               >
                 <AccountAvatar account={account} size={24} />
                 <div className="flex-1 min-w-0">
                   <p
-                    className={`text-sm truncate ${isSelected ? 'font-semibold text-green-700' : 'text-gray-700'}`}
+                    className={`text-sm truncate ${
+                      isSelected ? 'font-semibold text-[var(--color-primary)]' : 'text-gray-700'
+                    }`}
                   >
                     {name}
                   </p>
@@ -212,7 +219,7 @@ function AccountSwitcher() {
                 </div>
                 {isSelected && (
                   <svg
-                    className="w-4 h-4 text-green-600 shrink-0"
+                    className="w-4 h-4 text-[var(--color-primary)] shrink-0"
                     fill="none"
                     stroke="currentColor"
                     viewBox="0 0 24 24"
@@ -267,7 +274,7 @@ export default function Sidebar() {
         <div className="flex items-center gap-2">
           <div
             className="w-8 h-8 rounded-lg flex items-center justify-center text-white font-bold text-sm"
-            style={{ backgroundColor: '#06C755' }}
+            style={{ backgroundColor: 'var(--color-primary)' }}
           >
             H
           </div>
@@ -303,10 +310,16 @@ export default function Sidebar() {
                     active
                       ? 'text-white'
                       : isDanger
-                        ? 'text-red-500 hover:bg-red-50'
+                        ? 'text-[var(--color-error)] hover:bg-[var(--color-error-muted)]'
                         : 'text-gray-600 hover:bg-gray-100 hover:text-gray-900'
                   }`}
-                  style={active ? { backgroundColor: isDanger ? '#EF4444' : '#06C755' } : {}}
+                  style={
+                    active
+                      ? {
+                          backgroundColor: isDanger ? 'var(--color-error)' : 'var(--color-primary)',
+                        }
+                      : {}
+                  }
                 >
                   <NavIcon d={item.icon} />
                   {item.label}
@@ -329,7 +342,7 @@ export default function Sidebar() {
                 window.location.assign('/login');
               });
           }}
-          className="flex items-center gap-2 text-xs text-gray-400 hover:text-red-500 transition-colors"
+          className="flex items-center gap-2 text-xs text-gray-400 hover:text-[var(--color-error)] transition-colors"
         >
           <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path
@@ -380,7 +393,7 @@ export default function Sidebar() {
         <div className="flex items-center gap-2">
           <div
             className="w-7 h-7 rounded-lg flex items-center justify-center text-white font-bold text-xs"
-            style={{ backgroundColor: '#06C755' }}
+            style={{ backgroundColor: 'var(--color-primary)' }}
           >
             H
           </div>

@@ -101,7 +101,7 @@ export default function ConversionsPage() {
           <button
             onClick={() => setShowCreate(!showCreate)}
             className="px-4 py-2 min-h-[44px] rounded-lg text-white text-sm font-medium"
-            style={{ backgroundColor: '#06C755' }}
+            style={{ backgroundColor: 'var(--color-primary)' }}
           >
             {showCreate ? 'キャンセル' : '+ CVポイント作成'}
           </button>
@@ -154,7 +154,7 @@ export default function ConversionsPage() {
           <button
             type="submit"
             className="mt-4 px-4 py-2 min-h-[44px] rounded-lg text-white text-sm font-medium"
-            style={{ backgroundColor: '#06C755' }}
+            style={{ backgroundColor: 'var(--color-primary)' }}
           >
             作成
           </button>
@@ -171,7 +171,7 @@ export default function ConversionsPage() {
             >
               <div className="flex items-center justify-between mb-2">
                 <p className="text-sm font-medium text-gray-700">{r.conversionPointName}</p>
-                <span className="text-xs px-2 py-0.5 rounded-full bg-blue-100 text-blue-700">
+                <span className="text-xs px-2 py-0.5 rounded-full bg-[var(--color-slate-muted)] text-[var(--color-slate)]">
                   {r.eventType}
                 </span>
               </div>
@@ -182,7 +182,7 @@ export default function ConversionsPage() {
                 </div>
                 {r.totalValue > 0 && (
                   <div>
-                    <p className="text-lg font-semibold text-green-600">
+                    <p className="text-lg font-semibold text-[var(--color-primary)]">
                       {r.totalValue.toLocaleString('ja-JP', { style: 'currency', currency: 'JPY' })}
                     </p>
                     <p className="text-xs text-gray-400">売上</p>
@@ -230,7 +230,7 @@ export default function ConversionsPage() {
                 <tr key={point.id} className="hover:bg-gray-50">
                   <td className="px-4 py-3 text-sm font-medium text-gray-900">{point.name}</td>
                   <td className="px-4 py-3">
-                    <span className="text-xs px-2 py-0.5 rounded-full bg-blue-100 text-blue-700">
+                    <span className="text-xs px-2 py-0.5 rounded-full bg-[var(--color-slate-muted)] text-[var(--color-slate)]">
                       {point.eventType}
                     </span>
                   </td>
@@ -243,7 +243,7 @@ export default function ConversionsPage() {
                   <td className="px-4 py-3 text-right">
                     <button
                       onClick={() => handleDelete(point.id)}
-                      className="text-red-500 hover:text-red-700 text-sm"
+                      className="text-[var(--color-error)] hover:text-[var(--color-error)] text-sm"
                     >
                       削除
                     </button>

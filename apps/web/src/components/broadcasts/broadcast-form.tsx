@@ -98,11 +98,11 @@ export default function BroadcastForm({ tags, onSuccess, onCancel }: BroadcastFo
         {/* Title */}
         <div>
           <label className="block text-xs font-medium text-gray-600 mb-1">
-            配信タイトル <span className="text-red-500">*</span>
+            配信タイトル <span className="text-[var(--color-error)]">*</span>
           </label>
           <input
             type="text"
-            className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-500"
+            className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[var(--color-focus-ring)]"
             placeholder="例: 3月のキャンペーン告知"
             value={form.title}
             onChange={(e) => setForm({ ...form, title: e.target.value })}
@@ -120,7 +120,7 @@ export default function BroadcastForm({ tags, onSuccess, onCancel }: BroadcastFo
                 onClick={() => setForm({ ...form, messageType: type })}
                 className={`px-3 py-1.5 min-h-[44px] text-xs font-medium rounded-md border transition-colors ${
                   form.messageType === type
-                    ? 'border-green-500 text-green-700 bg-green-50'
+                    ? 'border-[var(--color-primary)] text-[var(--color-primary)] bg-[var(--color-primary-muted)]'
                     : 'border-gray-300 text-gray-600 bg-white hover:border-gray-400'
                 }`}
               >
@@ -133,7 +133,7 @@ export default function BroadcastForm({ tags, onSuccess, onCancel }: BroadcastFo
         {/* Message content */}
         <div>
           <label className="block text-xs font-medium text-gray-600 mb-1">
-            メッセージ内容 <span className="text-red-500">*</span>
+            メッセージ内容 <span className="text-[var(--color-error)]">*</span>
             {(form.messageType === 'flex' || form.messageType === 'image') && (
               <span className="ml-1 text-gray-400">(JSON形式)</span>
             )}
@@ -156,7 +156,7 @@ export default function BroadcastForm({ tags, onSuccess, onCancel }: BroadcastFo
                     </label>
                     <input
                       type="url"
-                      className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-500"
+                      className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[var(--color-focus-ring)]"
                       placeholder="https://example.com/image.png"
                       value={parsed.originalContentUrl ?? ''}
                       onChange={(e) => {
@@ -178,7 +178,7 @@ export default function BroadcastForm({ tags, onSuccess, onCancel }: BroadcastFo
                     </label>
                     <input
                       type="url"
-                      className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-500"
+                      className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[var(--color-focus-ring)]"
                       placeholder="https://example.com/preview.png (空欄で元画像と同じ)"
                       value={parsed.previewImageUrl ?? ''}
                       onChange={(e) => {
@@ -198,7 +198,7 @@ export default function BroadcastForm({ tags, onSuccess, onCancel }: BroadcastFo
             })()}
 
           <textarea
-            className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-500 resize-y"
+            className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[var(--color-focus-ring)] resize-y"
             rows={form.messageType === 'flex' ? 8 : form.messageType === 'image' ? 3 : 4}
             placeholder={
               form.messageType === 'text'
@@ -225,7 +225,7 @@ export default function BroadcastForm({ tags, onSuccess, onCancel }: BroadcastFo
               onClick={() => setForm({ ...form, targetType: 'all', targetTagId: '' })}
               className={`px-3 py-1.5 min-h-[44px] text-xs font-medium rounded-md border transition-colors ${
                 form.targetType === 'all'
-                  ? 'border-green-500 text-green-700 bg-green-50'
+                  ? 'border-[var(--color-primary)] text-[var(--color-primary)] bg-[var(--color-primary-muted)]'
                   : 'border-gray-300 text-gray-600 bg-white hover:border-gray-400'
               }`}
             >
@@ -236,7 +236,7 @@ export default function BroadcastForm({ tags, onSuccess, onCancel }: BroadcastFo
               onClick={() => setForm({ ...form, targetType: 'tag' })}
               className={`px-3 py-1.5 min-h-[44px] text-xs font-medium rounded-md border transition-colors ${
                 form.targetType === 'tag'
-                  ? 'border-green-500 text-green-700 bg-green-50'
+                  ? 'border-[var(--color-primary)] text-[var(--color-primary)] bg-[var(--color-primary-muted)]'
                   : 'border-gray-300 text-gray-600 bg-white hover:border-gray-400'
               }`}
             >
@@ -245,7 +245,7 @@ export default function BroadcastForm({ tags, onSuccess, onCancel }: BroadcastFo
           </div>
           {form.targetType === 'tag' && (
             <select
-              className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-500 bg-white"
+              className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[var(--color-focus-ring)] bg-white"
               value={form.targetTagId}
               onChange={(e) => setForm({ ...form, targetTagId: e.target.value })}
             >
@@ -268,7 +268,7 @@ export default function BroadcastForm({ tags, onSuccess, onCancel }: BroadcastFo
               onClick={() => setForm({ ...form, sendNow: true, scheduledAt: '' })}
               className={`px-3 py-1.5 min-h-[44px] text-xs font-medium rounded-md border transition-colors ${
                 form.sendNow
-                  ? 'border-green-500 text-green-700 bg-green-50'
+                  ? 'border-[var(--color-primary)] text-[var(--color-primary)] bg-[var(--color-primary-muted)]'
                   : 'border-gray-300 text-gray-600 bg-white hover:border-gray-400'
               }`}
             >
@@ -279,7 +279,7 @@ export default function BroadcastForm({ tags, onSuccess, onCancel }: BroadcastFo
               onClick={() => setForm({ ...form, sendNow: false })}
               className={`px-3 py-1.5 min-h-[44px] text-xs font-medium rounded-md border transition-colors ${
                 !form.sendNow
-                  ? 'border-green-500 text-green-700 bg-green-50'
+                  ? 'border-[var(--color-primary)] text-[var(--color-primary)] bg-[var(--color-primary-muted)]'
                   : 'border-gray-300 text-gray-600 bg-white hover:border-gray-400'
               }`}
             >
@@ -289,7 +289,7 @@ export default function BroadcastForm({ tags, onSuccess, onCancel }: BroadcastFo
           {!form.sendNow && (
             <input
               type="datetime-local"
-              className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-500"
+              className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[var(--color-focus-ring)]"
               value={form.scheduledAt}
               onChange={(e) => setForm({ ...form, scheduledAt: e.target.value })}
             />
@@ -297,7 +297,7 @@ export default function BroadcastForm({ tags, onSuccess, onCancel }: BroadcastFo
         </div>
 
         {/* Error */}
-        {error && <p className="text-xs text-red-600">{error}</p>}
+        {error && <p className="text-xs text-[var(--color-error)]">{error}</p>}
 
         {/* Actions */}
         <div className="flex gap-2 pt-1">
@@ -305,7 +305,7 @@ export default function BroadcastForm({ tags, onSuccess, onCancel }: BroadcastFo
             onClick={handleSave}
             disabled={saving}
             className="px-4 py-2 min-h-[44px] text-sm font-medium text-white rounded-lg disabled:opacity-50 transition-opacity"
-            style={{ backgroundColor: '#06C755' }}
+            style={{ backgroundColor: 'var(--color-primary)' }}
           >
             {saving ? '作成中...' : '作成'}
           </button>

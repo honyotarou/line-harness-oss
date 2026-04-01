@@ -117,7 +117,9 @@ export default function AttributionPage() {
           </div>
           <div className="bg-white rounded-xl p-5 border border-gray-100">
             <p className="text-sm text-gray-500">ref 経由</p>
-            <p className="text-3xl font-bold text-green-600 mt-1">{summary.friendsWithRef}</p>
+            <p className="text-3xl font-bold text-[var(--color-primary)] mt-1">
+              {summary.friendsWithRef}
+            </p>
           </div>
           <div className="bg-white rounded-xl p-5 border border-gray-100">
             <p className="text-sm text-gray-500">ref 不明</p>
@@ -125,7 +127,9 @@ export default function AttributionPage() {
           </div>
           <div className="bg-white rounded-xl p-5 border border-gray-100">
             <p className="text-sm text-gray-500">経路数</p>
-            <p className="text-3xl font-bold text-blue-600 mt-1">{summary.routes.length}</p>
+            <p className="text-3xl font-bold text-[var(--color-slate)] mt-1">
+              {summary.routes.length}
+            </p>
           </div>
         </div>
       )}
@@ -175,7 +179,9 @@ export default function AttributionPage() {
                       className="hover:bg-gray-50 cursor-pointer"
                       onClick={() => handleRowClick(route.refCode)}
                     >
-                      <td className="px-4 py-3 text-sm font-mono text-blue-600">{route.refCode}</td>
+                      <td className="px-4 py-3 text-sm font-mono text-[var(--color-slate)]">
+                        {route.refCode}
+                      </td>
                       <td className="px-4 py-3 text-sm font-medium text-gray-900">{route.name}</td>
                       <td className="px-4 py-3 text-sm text-right font-semibold text-gray-900">
                         {route.friendCount}
@@ -193,7 +199,7 @@ export default function AttributionPage() {
                           </span>
                           <button
                             onClick={() => handleCopy(route.refCode)}
-                            className="text-xs text-blue-500 hover:text-blue-700 shrink-0"
+                            className="text-xs text-[var(--color-slate)] hover:text-[var(--color-slate-hover)] shrink-0"
                           >
                             {copiedCode === route.refCode ? 'コピー済' : 'コピー'}
                           </button>

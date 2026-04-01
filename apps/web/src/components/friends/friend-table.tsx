@@ -74,7 +74,7 @@ export default function FriendTable({ friends, allTags, onRefresh }: FriendTable
   return (
     <div className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
       {error && (
-        <div className="px-4 py-3 bg-red-50 border-b border-red-100 text-red-700 text-sm">
+        <div className="px-4 py-3 bg-[var(--color-error-muted)] border-b border-[var(--color-error-border)] text-[var(--color-error)] text-sm">
           {error}
         </div>
       )}
@@ -140,7 +140,7 @@ export default function FriendTable({ friends, allTags, onRefresh }: FriendTable
                     {/* Following status */}
                     <td className="px-4 py-3">
                       {friend.isFollowing ? (
-                        <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-700">
+                        <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-[var(--color-primary-muted)] text-[var(--color-primary)]">
                           フォロー中
                         </span>
                       ) : (
@@ -154,7 +154,7 @@ export default function FriendTable({ friends, allTags, onRefresh }: FriendTable
                     <td className="px-4 py-3">
                       <div className="flex flex-wrap gap-1">
                         {(friend as unknown as { refCode?: string }).refCode && (
-                          <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-700">
+                          <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-[var(--color-slate-muted)] text-[var(--color-slate)]">
                             {(friend as unknown as { refCode: string }).refCode}
                           </span>
                         )}
@@ -220,7 +220,7 @@ export default function FriendTable({ friends, allTags, onRefresh }: FriendTable
                                 onClick={(e) => e.stopPropagation()}
                               >
                                 <select
-                                  className="text-sm border border-gray-300 rounded-md px-2 py-1 focus:outline-none focus:ring-2 focus:ring-green-500"
+                                  className="text-sm border border-gray-300 rounded-md px-2 py-1 focus:outline-none focus:ring-2 focus:ring-[var(--color-focus-ring)]"
                                   value={selectedTagId}
                                   onChange={(e) => setSelectedTagId(e.target.value)}
                                 >
@@ -235,7 +235,7 @@ export default function FriendTable({ friends, allTags, onRefresh }: FriendTable
                                   onClick={() => handleAddTag(friend.id)}
                                   disabled={!selectedTagId || loading}
                                   className="px-3 py-1 text-xs font-medium rounded-md text-white disabled:opacity-50 transition-opacity"
-                                  style={{ backgroundColor: '#06C755' }}
+                                  style={{ backgroundColor: 'var(--color-primary)' }}
                                 >
                                   追加
                                 </button>
@@ -256,7 +256,7 @@ export default function FriendTable({ friends, allTags, onRefresh }: FriendTable
                                     e.stopPropagation();
                                     setAddingTagForFriend(friend.id);
                                   }}
-                                  className="text-xs font-medium text-green-600 hover:text-green-700 flex items-center gap-1 transition-colors"
+                                  className="text-xs font-medium text-[var(--color-primary)] hover:text-[var(--color-primary-hover)] flex items-center gap-1 transition-colors"
                                 >
                                   <svg
                                     className="w-3.5 h-3.5"
