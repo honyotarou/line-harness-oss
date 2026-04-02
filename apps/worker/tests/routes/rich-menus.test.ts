@@ -122,6 +122,35 @@ describe('rich menu routes', () => {
     expect(json.data.richMenuId).toBe('rm-created');
   });
 
+  it('POST /api/rich-menus rejects tel: actions (do not put phone on rich menu)', async () => {
+    const { richMenus } = await import('../../src/routes/rich-menus.js');
+    const app = new Hono();
+    app.route('/', richMenus);
+
+    const response = await app.fetch(
+      new Request('http://localhost/api/rich-menus', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          ...minimalMenu,
+          areas: [
+            {
+              bounds: { x: 0, y: 0, width: 1250, height: 843 },
+              action: { type: 'uri', uri: 'tel:0312345678' },
+            },
+          ],
+        }),
+      }),
+      env(),
+    );
+
+    expect(response.status).toBe(400);
+    expect(lineSdkMocks.createRichMenu).not.toHaveBeenCalled();
+    const json = (await response.json()) as { success: boolean; error: string };
+    expect(json.success).toBe(false);
+    expect(json.error).toContain('tel:');
+  });
+
   it('POST /api/rich-menus/:id/default calls setDefaultRichMenu', async () => {
     const { richMenus } = await import('../../src/routes/rich-menus.js');
     const app = new Hono();

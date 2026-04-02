@@ -36,6 +36,24 @@ richMenus.post('/api/rich-menus', async (c) => {
     const { lineAccountId: _discard, ...menuRest } = body;
     const menuPayload = menuRest as unknown as RichMenuObject;
 
+    // Policy: do not allow `tel:` links in rich menus (phone should not be shown there).
+    const areas = (menuPayload as { areas?: unknown }).areas;
+    if (Array.isArray(areas)) {
+      for (const area of areas as Array<{ action?: { type?: string; uri?: string } }>) {
+        const uri = area?.action?.type === 'uri' ? area.action.uri : undefined;
+        if (typeof uri === 'string' && uri.trim().toLowerCase().startsWith('tel:')) {
+          return c.json(
+            {
+              success: false,
+              error:
+                'Rich menu policy: `tel:` links are not allowed. Use reservation / chat consult instead.',
+            },
+            400,
+          );
+        }
+      }
+    }
+
     const accessToken = await resolveLineAccessTokenForLineAccountId(
       c.env.DB,
       c.env.LINE_CHANNEL_ACCESS_TOKEN,

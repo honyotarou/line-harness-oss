@@ -1,20 +1,6 @@
 import type { Context, Next } from 'hono';
 import type { Env } from '../index.js';
 import { isValidAdminAuthToken, readAdminSessionCookie } from '../services/admin-session.js';
-import { buildAllowedOrigins, isAllowedOrigin } from '../services/cors-policy.js';
-
-function isUnsafeMethod(method: string): boolean {
-  return method === 'POST' || method === 'PUT' || method === 'PATCH' || method === 'DELETE';
-}
-
-function originFromReferer(referer: string | undefined | null): string | null {
-  if (!referer) return null;
-  try {
-    return new URL(referer).origin;
-  } catch {
-    return null;
-  }
-}
 
 export async function authMiddleware(c: Context<Env>, next: Next): Promise<Response | void> {
   // Skip auth for the LINE webhook endpoint — it uses signature verification instead
@@ -46,18 +32,7 @@ export async function authMiddleware(c: Context<Env>, next: Next): Promise<Respo
 
   const authHeader = c.req.header('Authorization');
   const bearerToken = authHeader?.startsWith('Bearer ') ? authHeader.slice('Bearer '.length) : null;
-  const cookieToken = bearerToken ? null : readAdminSessionCookie(c);
-
-  // CSRF mitigation: when we authenticate via cookie (not Bearer), unsafe methods must be same-site.
-  if (!bearerToken && cookieToken && isUnsafeMethod(method)) {
-    const allowedOrigins = new Set(buildAllowedOrigins(c.env));
-    const requestOrigin = c.req.header('Origin') ?? originFromReferer(c.req.header('Referer'));
-    if (!isAllowedOrigin(requestOrigin, allowedOrigins)) {
-      return c.json({ success: false, error: 'CSRF origin denied' }, 403);
-    }
-  }
-
-  const token = bearerToken ?? cookieToken;
+  const token = bearerToken ?? readAdminSessionCookie(c);
   if (!token) {
     return c.json({ success: false, error: 'Unauthorized' }, 401);
   }

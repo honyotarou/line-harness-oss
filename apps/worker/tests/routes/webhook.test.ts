@@ -484,7 +484,7 @@ describe('line webhook route', () => {
       events: [
         {
           type: 'postback',
-          postback: { data: 'anxiety=paper' },
+          postback: { data: 'anxiety=ortho' },
           source: { type: 'user', userId: 'Upost' },
           replyToken: 'rt-pb',
         },
