@@ -29,6 +29,13 @@ describe('api write Content-Type policy', () => {
     expect(
       allowsApiWriteContentType('/api/webhooks/incoming/wh-1/receive', 'POST', 'text/plain'),
     ).toBe(true);
+    expect(
+      allowsApiWriteContentType(
+        '/api/webhooks/incoming/wh-1/../wh-1/receive',
+        'POST',
+        'text/plain',
+      ),
+    ).toBe(true);
   });
 
   it('allows rich menu image POST with image/png', async () => {

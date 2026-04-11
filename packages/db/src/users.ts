@@ -74,6 +74,23 @@ export async function getUserByEmail(db: D1Database, email: string): Promise<Use
   return db.prepare(`SELECT * FROM users WHERE email = ?`).bind(email).first<User>();
 }
 
+/** Case-insensitive email match (trimmed) so LINE Login email casing cannot bypass exact `getUserByEmail`. */
+export async function getUserByEmailCaseInsensitive(
+  db: D1Database,
+  email: string,
+): Promise<User | null> {
+  const t = email.trim();
+  if (!t) return null;
+  return db
+    .prepare(
+      `SELECT * FROM users
+       WHERE email IS NOT NULL AND TRIM(email) != ''
+         AND LOWER(TRIM(email)) = LOWER(?)`,
+    )
+    .bind(t)
+    .first<User>();
+}
+
 export async function getUserByPhone(db: D1Database, phone: string): Promise<User | null> {
   return db.prepare(`SELECT * FROM users WHERE phone = ?`).bind(phone).first<User>();
 }

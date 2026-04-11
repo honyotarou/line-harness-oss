@@ -58,6 +58,12 @@ describe('cf-bot-guard', () => {
       expect(isCfBotScoreProtectedRoute('/api/integrations/stripe/webhook', 'POST')).toBe(false);
       expect(isCfBotScoreProtectedRoute('/api/liff/foo', 'POST')).toBe(false);
     });
+
+    it('canonicalizes paths so dot-segments cannot skip bot checks on login or affiliate click', () => {
+      expect(isCfBotScoreProtectedRoute('/api/../api/auth/login', 'POST')).toBe(true);
+      expect(isCfBotScoreProtectedRoute('/api/segment/../affiliates/click', 'POST')).toBe(true);
+      expect(isCfBotScoreProtectedRoute('/api/../webhook', 'POST')).toBe(false);
+    });
   });
 
   describe('shouldBlockForCfBotScore', () => {

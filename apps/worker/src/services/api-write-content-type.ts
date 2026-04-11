@@ -1,3 +1,5 @@
+import { canonicalRequestPathname } from './auth-paths.js';
+
 /**
  * POST/PUT/PATCH under `/api` must declare JSON (or a `+json` subtype) so bodies are not
  * accepted as `text/plain` while routes still parse JSON. Exceptions cover binary uploads and
@@ -29,13 +31,14 @@ export function allowsApiWriteContentType(
   method: string,
   contentTypeHeader: string | undefined,
 ): boolean {
-  if (method === 'POST' && /^\/api\/webhooks\/incoming\/[^/]+\/receive$/.test(pathname)) {
+  const path = canonicalRequestPathname(pathname);
+  if (method === 'POST' && /^\/api\/webhooks\/incoming\/[^/]+\/receive$/.test(path)) {
     return true;
   }
   if (isJsonFamilyContentType(contentTypeHeader)) {
     return true;
   }
-  if (method === 'POST' && /^\/api\/rich-menus\/[^/]+\/image$/.test(pathname)) {
+  if (method === 'POST' && /^\/api\/rich-menus\/[^/]+\/image$/.test(path)) {
     const media = getDeclaredContentTypeMedia(contentTypeHeader);
     return media !== null && media.startsWith('image/');
   }

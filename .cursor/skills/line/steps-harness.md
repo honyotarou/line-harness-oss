@@ -28,6 +28,11 @@
 
 完了前に実行して結果を確認する。
 
+0. **カプセル化（レイヤー）**: `pnpm check:encapsulation`（`pnpm harness` に含まれる）  
+   - Worker: `application/*.ts` は `hono` / `routes/` を import しない；`routes/*.ts` に LINE の `api.line.me` / `access.line.me` を直書きしない；**`routes/*.ts` 全ファイル**に `ROUTE_LINE_CAPS` の行数上限（新規ルートはマップ追記必須）。  
+   - Web: `api/catalog/*`（`index.ts` 除く）は `@line-crm/shared` と `../client.js` 以外を import しない；`client.ts` は `catalog` を import しない。  
+   - 正本: `scripts/check-encapsulation.mjs`（上限はリファクタで下げる／肥大時は `application/` へ寄せてから調整）。
+
 1. **Worker 型検査**: `pnpm --filter worker typecheck`
 2. **LIFF 型検査**: `pnpm --filter liff typecheck`（`pnpm harness` に含まれる）
 3. **ユニットテスト**: ルートで `pnpm test`（worker → web → SDK）
@@ -45,7 +50,8 @@
 
 | コマンド | 内容 |
 |----------|------|
-| `pnpm harness` | Biome + Worker 型 + LIFF 型 + 全ユニット |
+| `pnpm check:encapsulation` | Worker/Web のレイヤー違反・薄いルートの行数のみ（単体でも可） |
+| `pnpm harness` | Biome + **カプセル化** + Worker 型 + LIFF 型 + LIFF build + 全ユニット |
 | `pnpm harness:ci` | Biome + LIFF 型 + `build:libs` + `next build`（web）+ カバレッジ + SDK |
 | `pnpm harness:full` | harness + Playwright + Hurl |
 
@@ -103,12 +109,15 @@ Claude Code: `.claude/hooks/pre-protect-config.sh` が `lefthook.yml` / `biome.j
 
 ## 5. モノレポの地図
 
-- `apps/worker` — Cloudflare Workers（Hono）。高リスク: `liff.ts`, `webhook.ts`
-- `apps/web` — Next.js 管理画面
-- `apps/liff` — Vite + LIFF
-- `packages/db`, `packages/shared`, `packages/line-sdk`
+- `apps/worker` — Cloudflare Workers（Hono）
+  - **`src/routes/`** — HTTP ルート（薄く保つ）
+  - **`src/application/`** — ユースケース（LIFF OAuth、Webhook 処理、OpenAPI 本文、Calendar 等）。**高リスクロジックはここ＋対応テスト**
+  - 参照例: `liff-oauth-*.ts`, `liff-json-handlers.ts`, `line-webhook-handlers.ts`, `openapi-spec.ts`, `calendar-integration.ts`
+- `apps/web` — Next.js 管理画面。API クライアントは **`src/lib/api/client.ts`** + **`src/lib/api/catalog/*.ts`**（従来どおり `@/lib/api` で import）
+- `apps/liff` — Vite + LIFF。`build` は **`@line-crm/shared` を先に build**（`pnpm harness` 内の liff build も同様）。API 基底は `src/config/liff-api-origin.ts` / `api-base.ts`
+- `packages/db`, `packages/shared`（**サブパス export** で tree-shaking / Next CSP 対策）、`packages/line-sdk`
 - `tests/e2e` — Playwright
-- `.github/workflows/ci.yml` — CI の正本
+- `.github/workflows/ci.yml` — CI の正本（LIFF 前に `build:libs` 等、ワークフローを正本とする）
 
 ## 6. ハーネス強化（MVH）
 

@@ -5,6 +5,7 @@ const dbMocks = vi.hoisted(() => ({
   getFriendByLineUserId: vi.fn(),
   createUser: vi.fn(),
   getUserByEmail: vi.fn(),
+  getUserByEmailCaseInsensitive: vi.fn(),
   getUserById: vi.fn(),
   getLineAccounts: vi.fn(),
   linkFriendToUser: vi.fn(),
@@ -20,6 +21,12 @@ const dbMocks = vi.hoisted(() => ({
 }));
 
 vi.mock('@line-crm/db', () => dbMocks);
+
+function wireUserEmailMocks() {
+  dbMocks.getUserByEmailCaseInsensitive.mockImplementation((db, email: string) =>
+    dbMocks.getUserByEmail(db, email),
+  );
+}
 
 const lineSdkMocks = vi.hoisted(() => ({
   pushMessage: vi.fn().mockResolvedValue(undefined),
@@ -197,6 +204,7 @@ describe('liff auth routes', () => {
     dbMocks.getScenarios.mockResolvedValue([]);
     dbMocks.getScenarioSteps.mockResolvedValue([]);
     dbMocks.getUserById.mockResolvedValue(null);
+    wireUserEmailMocks();
     lineSdkMocks.pushMessage.mockClear();
     vi.unstubAllGlobals();
   });
@@ -666,6 +674,7 @@ describe('liff public API routes', () => {
     Object.values(dbMocks).forEach((mockFn) => mockFn.mockReset());
     dbMocks.getLineAccounts.mockResolvedValue([]);
     dbMocks.getUserById.mockResolvedValue(null);
+    wireUserEmailMocks();
     vi.unstubAllGlobals();
   });
 
@@ -897,6 +906,61 @@ describe('liff public API routes', () => {
       success: true,
       data: { userId: 'u-existing', alreadyLinked: true },
     });
+  });
+
+  it('POST /api/liff/link links friend to user matched by case-insensitive email (no existingUuid)', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockResolvedValue(
+        new Response(JSON.stringify({ sub: 'U1', email: 'newperson@example.com', name: 'N' }), {
+          status: 200,
+          headers: { 'Content-Type': 'application/json' },
+        }),
+      ),
+    );
+
+    const db = {
+      prepare() {
+        return {
+          bind() {
+            return { run: vi.fn().mockResolvedValue(undefined) };
+          },
+        };
+      },
+    } as unknown as D1Database;
+
+    dbMocks.getFriendByLineUserId.mockResolvedValue({
+      id: 'f1',
+      line_user_id: 'U1',
+      user_id: null,
+    } as never);
+    dbMocks.getUserByEmail.mockResolvedValue(null);
+    dbMocks.getUserByEmailCaseInsensitive.mockResolvedValue({
+      id: 'uuid-ci',
+      email: 'NewPerson@example.com',
+      phone: null,
+      external_id: null,
+      display_name: 'Old',
+      created_at: 't',
+      updated_at: 't',
+    });
+
+    const { liffRoutes } = await import('../../src/routes/liff.js');
+    const app = new Hono();
+    app.route('/', liffRoutes);
+
+    const res = await app.fetch(
+      new Request('http://localhost/api/liff/link', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ idToken: 'tok' }),
+      }),
+      { ...baseEnv, DB: db } as never,
+    );
+
+    expect(res.status).toBe(200);
+    expect(dbMocks.createUser).not.toHaveBeenCalled();
+    expect(dbMocks.linkFriendToUser).toHaveBeenCalledWith(expect.anything(), 'f1', 'uuid-ci');
   });
 
   it('POST /api/liff/link reuses existingUuid when verified email matches that user', async () => {

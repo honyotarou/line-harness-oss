@@ -8,6 +8,9 @@ cd "$ROOT"
 echo "== harness: biome format =="
 pnpm exec biome format .
 
+echo "== harness: encapsulation (layers / thin routes) =="
+node scripts/check-encapsulation.mjs
+
 echo "== harness: worker typecheck =="
 pnpm --filter worker typecheck
 

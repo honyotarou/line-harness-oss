@@ -1,4 +1,5 @@
 import type { Context, Next } from 'hono';
+import { canonicalRequestPathname } from '../services/auth-paths.js';
 
 function isHttpsRequest(c: Context): boolean {
   const url = new URL(c.req.url);
@@ -23,7 +24,7 @@ export async function securityHeadersMiddleware(c: Context, next: Next): Promise
     if (isHttpsRequest(c)) {
       c.header('Strict-Transport-Security', 'max-age=31536000; includeSubDomains');
     }
-    const path = new URL(c.req.url).pathname;
+    const path = canonicalRequestPathname(new URL(c.req.url).pathname);
     if (path.startsWith('/api/')) {
       c.header('Cache-Control', 'no-store, private');
     }

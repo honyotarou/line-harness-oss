@@ -1,5 +1,7 @@
 import { buildAllowedOrigins, type AllowedOriginsEnv } from './allowed-origins.js';
 
+export type { AllowedOriginsEnv };
+
 /**
  * Returns a safe absolute https URL for post-login / LIFF `redirect=`, or null if disallowed.
  * Blocks `javascript:`, `data:`, protocol-relative `//`, and unknown https origins.

@@ -295,11 +295,37 @@ export async function getScenarioSteps(
 // Friend Scenario Enrollments
 // ============================================================
 
+function isUniqueConstraintError(e: unknown): boolean {
+  const msg = e instanceof Error ? e.message : String(e);
+  return (
+    msg.includes('UNIQUE') ||
+    msg.includes('unique') ||
+    msg.includes('SQLITE_CONSTRAINT') ||
+    msg.includes('constraint failed')
+  );
+}
+
+async function getFriendScenarioByPair(
+  db: D1Database,
+  friendId: string,
+  scenarioId: string,
+): Promise<FriendScenario | null> {
+  return db
+    .prepare(`SELECT * FROM friend_scenarios WHERE friend_id = ? AND scenario_id = ?`)
+    .bind(friendId, scenarioId)
+    .first<FriendScenario>();
+}
+
 export async function enrollFriendInScenario(
   db: D1Database,
   friendId: string,
   scenarioId: string,
 ): Promise<FriendScenario> {
+  const raced = await getFriendScenarioByPair(db, friendId, scenarioId);
+  if (raced) {
+    return raced;
+  }
+
   const id = crypto.randomUUID();
   const now = jstNow();
 
@@ -311,13 +337,21 @@ export async function enrollFriendInScenario(
 
   // A scenario with no steps is immediately completed — no stuck active enrollment.
   if (!firstStep) {
-    await db
-      .prepare(
-        `INSERT INTO friend_scenarios (id, friend_id, scenario_id, current_step_order, status, started_at, next_delivery_at, updated_at)
-         VALUES (?, ?, ?, 0, 'completed', ?, NULL, ?)`,
-      )
-      .bind(id, friendId, scenarioId, now, now)
-      .run();
+    try {
+      await db
+        .prepare(
+          `INSERT INTO friend_scenarios (id, friend_id, scenario_id, current_step_order, status, started_at, next_delivery_at, updated_at)
+           VALUES (?, ?, ?, 0, 'completed', ?, NULL, ?)`,
+        )
+        .bind(id, friendId, scenarioId, now, now)
+        .run();
+    } catch (e) {
+      if (isUniqueConstraintError(e)) {
+        const row = await getFriendScenarioByPair(db, friendId, scenarioId);
+        if (row) return row;
+      }
+      throw e;
+    }
 
     return (await db
       .prepare(`SELECT * FROM friend_scenarios WHERE id = ?`)
@@ -334,13 +368,21 @@ export async function enrollFriendInScenario(
   }
   const nextDeliveryAt = rawDate.toISOString().slice(0, -1) + '+09:00';
 
-  await db
-    .prepare(
-      `INSERT INTO friend_scenarios (id, friend_id, scenario_id, current_step_order, status, started_at, next_delivery_at, updated_at)
-       VALUES (?, ?, ?, 0, 'active', ?, ?, ?)`,
-    )
-    .bind(id, friendId, scenarioId, now, nextDeliveryAt, now)
-    .run();
+  try {
+    await db
+      .prepare(
+        `INSERT INTO friend_scenarios (id, friend_id, scenario_id, current_step_order, status, started_at, next_delivery_at, updated_at)
+         VALUES (?, ?, ?, 0, 'active', ?, ?, ?)`,
+      )
+      .bind(id, friendId, scenarioId, now, nextDeliveryAt, now)
+      .run();
+  } catch (e) {
+    if (isUniqueConstraintError(e)) {
+      const row = await getFriendScenarioByPair(db, friendId, scenarioId);
+      if (row) return row;
+    }
+    throw e;
+  }
 
   return (await db
     .prepare(`SELECT * FROM friend_scenarios WHERE id = ?`)
