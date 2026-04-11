@@ -39,7 +39,10 @@ export default function LoginPage() {
       }
     } catch (err) {
       const fromBody = errorMessageFromApi(err);
-      if (fromBody) {
+      // Worker returns `{ error: 'Unauthorized' }` for bad API key; keep a friendly JP message for admins.
+      const preferJp401 =
+        err instanceof ApiError && err.status === 401 && (!fromBody || fromBody === 'Unauthorized');
+      if (fromBody && !preferJp401) {
         setError(fromBody);
       } else if (err instanceof ApiError && err.status === 401) {
         setError(
