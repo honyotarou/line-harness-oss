@@ -1,4 +1,4 @@
-import { validateClientApiBaseUrl } from '@line-crm/shared';
+import { validateClientApiBaseUrl } from '@line-crm/shared/safe-api-base-url';
 
 /**
  * CSP for the exported admin static app (see `vercel.json`) and for `next dev` / Playwright.
