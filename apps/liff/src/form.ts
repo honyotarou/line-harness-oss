@@ -463,8 +463,19 @@ export async function initForm(formId: string | null): Promise<void> {
   renderLoading();
 
   try {
-    // Fetch profile and form definition in parallel
-    const [profile, res] = await Promise.all([liff.getProfile(), apiCall(`/api/forms/${formId}`)]);
+    const rawIdToken = liff.getIDToken();
+    if (!rawIdToken) {
+      renderFormError('ログインが必要です。LINE アプリ内で開き直してください。');
+      return;
+    }
+
+    // Fetch profile and form definition in parallel (definition requires LINE ID token)
+    const [profile, res] = await Promise.all([
+      liff.getProfile(),
+      apiCall(`/api/forms/${formId}`, {
+        headers: { Authorization: `Bearer ${rawIdToken}` },
+      }),
+    ]);
 
     state.profile = profile;
 
@@ -476,7 +487,6 @@ export async function initForm(formId: string | null): Promise<void> {
     }
 
     // Silent UUID linking (best-effort, so friend metadata saves correctly)
-    const rawIdToken = liff.getIDToken();
     if (rawIdToken) {
       apiCall('/api/liff/link', {
         method: 'POST',

@@ -519,6 +519,72 @@ describe('line webhook route', () => {
     expect(runMock).toHaveBeenCalled();
   });
 
+  it('postback anxiety still works when stored friend metadata JSON is corrupt', async () => {
+    const { pending, ctx } = executionCtxWithPending();
+    const runMock = vi.fn().mockResolvedValue({});
+    const firstMock = vi.fn().mockResolvedValueOnce({ metadata: '{bad' }).mockResolvedValue(null);
+    const db = {
+      prepare: vi.fn().mockReturnValue({
+        bind: vi.fn().mockReturnValue({
+          run: runMock,
+          first: firstMock,
+          all: vi.fn().mockResolvedValue({ results: [] }),
+        }),
+        run: runMock,
+        first: firstMock,
+        all: vi.fn().mockResolvedValue({ results: [] }),
+      }),
+    } as unknown as D1Database;
+
+    dbMocks.getFriendByLineUserId.mockResolvedValue({
+      id: 'f-pb-2',
+      line_user_id: 'Upost2',
+      display_name: 'Pb2',
+      user_id: null,
+    });
+
+    const { webhook } = await import('../../src/routes/webhook.js');
+    const app = new Hono();
+    app.route('/', webhook);
+
+    const body = JSON.stringify({
+      events: [
+        {
+          type: 'postback',
+          postback: { data: 'anxiety=ortho' },
+          source: { type: 'user', userId: 'Upost2' },
+          replyToken: 'rt-pb2',
+        },
+      ],
+    });
+
+    const response = await app.fetch(
+      new Request('http://localhost/webhook', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-Line-Signature': 'ok',
+        },
+        body,
+      }),
+      {
+        DB: db,
+        LINE_CHANNEL_SECRET: 'line-secret',
+        LINE_CHANNEL_ACCESS_TOKEN: 'line-access-token',
+        WORKER_URL: 'https://worker.example.com',
+        LIFF_URL: 'https://liff.line.me/x',
+      } as never,
+      ctx,
+    );
+
+    expect(response.status).toBe(200);
+    await Promise.all(pending);
+    expect(lineSdkMocks.replyMessage).toHaveBeenCalledWith('rt-pb2', [
+      expect.objectContaining({ type: 'flex' }),
+    ]);
+    expect(runMock).toHaveBeenCalled();
+  });
+
   it('text message logs incoming, upserts chat, and fires message_received', async () => {
     const { pending, ctx } = executionCtxWithPending();
     const db = createMessageFlowDb();

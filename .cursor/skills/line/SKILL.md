@@ -23,6 +23,7 @@ LINE Harness OSS:
       ・リッチ: steps-rich-menu-wallball.md（サブ0〜7。指示例「リッチの3」。旧1.6もここ）
   1  要件・ブランド壁打ち     8 Round→設計サマリ ＋ 独自性・一貫性（旧1.5）
       ・8 Round: steps-design-0-1.md（ファイル内「Step 1 — 設計ヒアリング」）
+      ・Composer 2: 同ファイル「Step 1 の最初（Composer 2・domain-extractor 型）」で業務分析家/レビュアーを貼り付け切替
       ・ブランド: steps-brand-1-5.md（LP/LIFF/管理/LINE UI の揃え方）
       ・旧番号「1.5」は本ステップと同義
   orthopedics  整形外科（壁打ち→反映）  整形外科差分を壁打ちし、必ず repo に反映して完了（詳細: steps-orthopedics-wallball.md）

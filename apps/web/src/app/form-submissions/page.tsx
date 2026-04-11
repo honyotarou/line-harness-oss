@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
+import { tryParseJsonRecord } from '@line-crm/shared';
 import { api, fetchApi } from '@/lib/api';
 import Header from '@/components/layout/header';
 import { useAccount } from '@/contexts/account-context';
@@ -68,7 +69,12 @@ export default function FormSubmissionsPage() {
           setSubmissions(
             res.data.map((s) => ({
               ...s,
-              data: typeof s.data === 'string' ? JSON.parse(s.data) : s.data,
+              data:
+                typeof s.data === 'string'
+                  ? (tryParseJsonRecord(s.data) ?? {})
+                  : s.data && typeof s.data === 'object' && !Array.isArray(s.data)
+                    ? s.data
+                    : {},
               friendName: s.friendId ? friendMap.get(s.friendId) || '不明' : '不明',
             })),
           );

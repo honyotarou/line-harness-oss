@@ -89,11 +89,66 @@ describe('incoming webhook receive route', () => {
     expect(eventBusMocks.fireEvent).toHaveBeenCalledOnce();
   });
 
-  it('rejects oversized payloads before dispatching events', async () => {
+  it('rejects receive when the webhook has no signing secret configured', async () => {
     dbMocks.getIncomingWebhookById.mockResolvedValue({
       id: 'incoming-1',
       source_type: 'custom',
       secret: null,
+      is_active: 1,
+    });
+
+    const { webhooks } = await import('../../src/routes/webhooks.js');
+    const app = new Hono();
+    app.route('/', webhooks);
+
+    const response = await app.fetch(
+      new Request('http://localhost/api/webhooks/incoming/incoming-1/receive', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ok: true }),
+      }),
+      { DB: {} as D1Database } as never,
+    );
+
+    expect(response.status).toBe(503);
+    expect(eventBusMocks.fireEvent).not.toHaveBeenCalled();
+  });
+
+  it('rejects JSON null or primitive bodies after signature verification', async () => {
+    dbMocks.getIncomingWebhookById.mockResolvedValue({
+      id: 'incoming-1',
+      source_type: 'custom',
+      secret: 'top-secret',
+      is_active: 1,
+    });
+
+    const { webhooks } = await import('../../src/routes/webhooks.js');
+    const app = new Hono();
+    app.route('/', webhooks);
+
+    for (const body of ['null', '42', '"x"']) {
+      const response = await app.fetch(
+        new Request('http://localhost/api/webhooks/incoming/incoming-1/receive', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'X-Webhook-Signature': sign('top-secret', body),
+          },
+          body,
+        }),
+        { DB: {} as D1Database } as never,
+      );
+
+      expect(response.status).toBe(400);
+    }
+    expect(eventBusMocks.fireEvent).not.toHaveBeenCalled();
+  });
+
+  it('rejects oversized payloads before dispatching events', async () => {
+    dbMocks.getIncomingWebhookById.mockResolvedValue({
+      id: 'incoming-1',
+      source_type: 'custom',
+      secret: 'top-secret',
       is_active: 1,
     });
 
@@ -122,7 +177,7 @@ describe('incoming webhook receive route', () => {
     dbMocks.getIncomingWebhookById.mockResolvedValue({
       id: 'incoming-1',
       source_type: 'custom',
-      secret: null,
+      secret: 'top-secret',
       is_active: 1,
     });
 
@@ -132,14 +187,16 @@ describe('incoming webhook receive route', () => {
 
     let response: Response | undefined;
     for (let attempt = 0; attempt < 21; attempt += 1) {
+      const body = JSON.stringify({ ok: true });
       response = await app.fetch(
         new Request('http://localhost/api/webhooks/incoming/incoming-1/receive', {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
             'CF-Connecting-IP': '198.51.100.30',
+            'X-Webhook-Signature': sign('top-secret', body),
           },
-          body: JSON.stringify({ ok: true }),
+          body,
         }),
         { DB: {} as D1Database } as never,
       );

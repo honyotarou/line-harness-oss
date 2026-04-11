@@ -1,7 +1,9 @@
 import { Hono } from 'hono';
 import { getLineAccounts } from '@line-crm/db';
 import { authMiddleware } from './middleware/auth.js';
+import { cloudflareAccessMiddleware } from './middleware/cloudflare-access.js';
 import { buildAllowedOrigins, isAllowedOrigin } from './services/cors-policy.js';
+import { enforceRateLimit } from './services/request-rate-limit.js';
 import { runScheduledJobs } from './services/scheduler.js';
 import { renderShortLinkLanding, type LandingEnv } from './ui/landing.js';
 import { authRoutes } from './routes/auth.js';
@@ -32,6 +34,10 @@ import { trackedLinks } from './routes/tracked-links.js';
 import { forms } from './routes/forms.js';
 
 export type Env = {
+  Variables: {
+    /** Set by {@link cloudflareAccessMiddleware} after JWT verification. */
+    cfAccessJwtPayload?: Record<string, unknown>;
+  };
   Bindings: {
     DB: D1Database;
     LINE_CHANNEL_SECRET: string;
@@ -49,6 +55,8 @@ export type Env = {
     STRIPE_WEBHOOK_SECRET?: string;
     /** Optional; defaults to API_KEY. Used to HMAC-sign LINE Login OAuth `state`. */
     LIFF_STATE_SECRET?: string;
+    /** Optional; defaults to API_KEY. HMAC secret for signed `?f=` on tracked links (GET /t/:id). */
+    TRACKING_LINK_SECRET?: string;
     /** `1` / `true`: on friend add, send welcome Flex (anxiety picker) once; skip DB scenario step-0 reply if delay=0. Postback `anxiety=*` always handled when user taps buttons. */
     WELCOME_ANXIETY_FLOW?: string;
     /** Optional LIFF URL for booking button in anxiety follow-up (defaults to `LIFF_URL`). */
@@ -63,6 +71,17 @@ export type Env = {
     WELCOME_ANXIETY_RICH_MENU_ONLY?: string;
     /** Optional `tel:` URI or dialable digits for LIFF when online booking cannot complete. */
     BOOKING_FALLBACK_TEL?: string;
+    /** `1` / `true` / `yes` / `on`: hide `/docs` and `/openapi.json` (reduce production reconnaissance). */
+    DISABLE_PUBLIC_OPENAPI?: string;
+    /**
+     * `1` / `true` / `yes` / `on`: require valid `Cf-Access-Jwt-Assertion` on protected routes
+     * (Cloudflare Zero Trust / Access in front of this Worker). Set with CLOUDFLARE_ACCESS_TEAM_DOMAIN.
+     */
+    REQUIRE_CLOUDFLARE_ACCESS_JWT?: string;
+    /** e.g. `yourteam.cloudflareaccess.com` — used to fetch JWKS and validate JWT `iss`. */
+    CLOUDFLARE_ACCESS_TEAM_DOMAIN?: string;
+    /** Optional comma-separated allowlist for JWT `email` claim after signature verification. */
+    CLOUDFLARE_ACCESS_ALLOWED_EMAILS?: string;
   } & LandingEnv;
 };
 
@@ -84,7 +103,10 @@ app.use('*', async (c, next) => {
 
   c.header('Access-Control-Allow-Origin', origin);
   c.header('Access-Control-Allow-Credentials', 'true');
-  c.header('Access-Control-Allow-Headers', 'Authorization, Content-Type');
+  c.header(
+    'Access-Control-Allow-Headers',
+    'Authorization, Content-Type, Cf-Access-Jwt-Assertion, CF-Access-Jwt-Assertion',
+  );
   c.header('Access-Control-Allow-Methods', 'GET, HEAD, PUT, PATCH, POST, DELETE, OPTIONS');
   c.header('Access-Control-Max-Age', '86400');
   c.header('Vary', 'Origin');
@@ -95,6 +117,9 @@ app.use('*', async (c, next) => {
 
   return next();
 });
+
+// Optional Cloudflare Access gate (JWT) — same public paths as auth; runs first
+app.use('*', cloudflareAccessMiddleware);
 
 // Auth middleware — skips /webhook and /docs automatically
 app.use('*', authMiddleware);
@@ -128,8 +153,20 @@ app.route('/', richMenus);
 app.route('/', trackedLinks);
 app.route('/', forms);
 
+const SHORT_LINK_LANDING_RATE_LIMIT = { limit: 120, windowMs: 60_000 };
+
 // Short link: /r/:ref → landing page with LINE open button
-app.get('/r/:ref', (c) => {
+app.get('/r/:ref', async (c) => {
+  const limited = await enforceRateLimit(c, {
+    bucket: 'short-link-landing',
+    db: c.env.DB,
+    limit: SHORT_LINK_LANDING_RATE_LIMIT.limit,
+    windowMs: SHORT_LINK_LANDING_RATE_LIMIT.windowMs,
+  });
+  if (limited) {
+    return limited;
+  }
+
   const ref = c.req.param('ref');
   const liffUrl = (c.env.LIFF_URL ?? '').trim();
   if (!liffUrl || liffUrl.includes('YOUR_LIFF_ID')) {

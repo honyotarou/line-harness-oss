@@ -2,6 +2,11 @@ import { Hono } from 'hono';
 import { getTags, createTag, deleteTag } from '@line-crm/db';
 import type { Tag as DbTag } from '@line-crm/db';
 import type { Env } from '../index.js';
+import {
+  DEFAULT_ADMIN_JSON_BODY_LIMIT_BYTES,
+  jsonBodyReadErrorResponse,
+  readJsonBodyWithLimit,
+} from '../services/request-body.js';
 
 const tags = new Hono<Env>();
 
@@ -28,7 +33,10 @@ tags.get('/api/tags', async (c) => {
 // POST /api/tags - create tag
 tags.post('/api/tags', async (c) => {
   try {
-    const body = await c.req.json<{ name: string; color?: string }>();
+    const body = await readJsonBodyWithLimit<{ name: string; color?: string }>(
+      c.req.raw,
+      DEFAULT_ADMIN_JSON_BODY_LIMIT_BYTES,
+    );
 
     if (!body.name) {
       return c.json({ success: false, error: 'name is required' }, 400);
@@ -41,6 +49,8 @@ tags.post('/api/tags', async (c) => {
 
     return c.json({ success: true, data: serializeTag(tag) }, 201);
   } catch (err) {
+    const jr = jsonBodyReadErrorResponse(err);
+    if (jr) return c.json(jr.body, jr.status);
     console.error('POST /api/tags error:', err);
     return c.json({ success: false, error: 'Internal server error' }, 500);
   }

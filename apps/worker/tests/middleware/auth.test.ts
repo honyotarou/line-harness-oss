@@ -57,6 +57,25 @@ describe('authMiddleware', () => {
     expect(response.status).toBe(200);
   });
 
+  it('allows protected routes with lowercase bearer scheme prefix', async () => {
+    const { issueAdminSessionToken } = await import('../../src/services/admin-session.js');
+    const now = Math.floor(Date.now() / 1000);
+    const token = await issueAdminSessionToken('secret', {
+      issuedAt: now,
+      expiresInSeconds: 3600,
+    });
+    const app = createApp();
+
+    const response = await app.fetch(
+      new Request('http://localhost/private', {
+        headers: { Authorization: `bearer ${token}` },
+      }),
+      { API_KEY: 'secret' } as never,
+    );
+
+    expect(response.status).toBe(200);
+  });
+
   it('allows protected routes with a valid admin session cookie', async () => {
     const { issueAdminSessionToken } = await import('../../src/services/admin-session.js');
     const now = Math.floor(Date.now() / 1000);

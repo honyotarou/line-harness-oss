@@ -80,4 +80,49 @@ describe('calendar booking route', () => {
       }),
     );
   });
+
+  it('lists calendar bookings with null metadata when stored JSON is corrupt', async () => {
+    dbMocks.getCalendarBookings.mockResolvedValue([
+      {
+        id: 'book-1',
+        connection_id: 'conn-1',
+        friend_id: 'friend-1',
+        event_id: null,
+        title: 'Visit',
+        start_at: '2026-03-25T11:00:00+09:00',
+        end_at: '2026-03-25T12:00:00+09:00',
+        status: 'confirmed',
+        metadata: '{not-json',
+        created_at: '2026-03-25T10:00:00+09:00',
+      },
+    ]);
+
+    const { calendar } = await import('../../src/routes/calendar.js');
+    const app = new Hono();
+    app.route('/', calendar);
+
+    const response = await app.fetch(
+      new Request('http://localhost/api/integrations/google-calendar/bookings'),
+      { DB: {} as D1Database } as never,
+    );
+
+    expect(response.status).toBe(200);
+    await expect(response.json()).resolves.toEqual({
+      success: true,
+      data: [
+        {
+          id: 'book-1',
+          connectionId: 'conn-1',
+          friendId: 'friend-1',
+          eventId: null,
+          title: 'Visit',
+          startAt: '2026-03-25T11:00:00+09:00',
+          endAt: '2026-03-25T12:00:00+09:00',
+          status: 'confirmed',
+          metadata: null,
+          createdAt: '2026-03-25T10:00:00+09:00',
+        },
+      ],
+    });
+  });
 });

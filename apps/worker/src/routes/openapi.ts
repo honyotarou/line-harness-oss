@@ -1,7 +1,14 @@
 import { Hono } from 'hono';
 import type { Env } from '../index.js';
+import { enforceRateLimit } from '../services/request-rate-limit.js';
 
 const openapi = new Hono<Env>();
+const OPENAPI_PUBLIC_RATE_LIMIT = { limit: 60, windowMs: 60_000 };
+
+function isOpenApiDocumentationDisabled(env: { DISABLE_PUBLIC_OPENAPI?: string }): boolean {
+  const v = env.DISABLE_PUBLIC_OPENAPI?.trim().toLowerCase();
+  return v === '1' || v === 'true' || v === 'yes' || v === 'on';
+}
 
 const spec = {
   openapi: '3.1.0',
@@ -738,12 +745,36 @@ const spec = {
 };
 
 // GET /openapi.json - raw spec
-openapi.get('/openapi.json', (c) => {
+openapi.get('/openapi.json', async (c) => {
+  if (isOpenApiDocumentationDisabled(c.env)) {
+    return c.json({ success: false, error: 'Not found' }, 404);
+  }
+  const limited = await enforceRateLimit(c, {
+    bucket: 'openapi-spec',
+    db: c.env.DB,
+    limit: OPENAPI_PUBLIC_RATE_LIMIT.limit,
+    windowMs: OPENAPI_PUBLIC_RATE_LIMIT.windowMs,
+  });
+  if (limited) {
+    return limited;
+  }
   return c.json(spec);
 });
 
 // GET /docs - Swagger UI
-openapi.get('/docs', (c) => {
+openapi.get('/docs', async (c) => {
+  if (isOpenApiDocumentationDisabled(c.env)) {
+    return c.json({ success: false, error: 'Not found' }, 404);
+  }
+  const limited = await enforceRateLimit(c, {
+    bucket: 'openapi-docs',
+    db: c.env.DB,
+    limit: OPENAPI_PUBLIC_RATE_LIMIT.limit,
+    windowMs: OPENAPI_PUBLIC_RATE_LIMIT.windowMs,
+  });
+  if (limited) {
+    return limited;
+  }
   const html = `<!DOCTYPE html>
 <html lang="ja">
 <head>

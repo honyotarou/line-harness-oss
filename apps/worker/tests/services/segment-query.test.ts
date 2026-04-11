@@ -61,5 +61,17 @@ describe('buildSegmentQuery', () => {
         rules: [{ type: 'is_following', value: 'yes' as never }],
       }),
     ).toThrow('is_following rule requires a boolean value');
+
+    expect(() =>
+      buildSegmentQuery({
+        operator: 'AND',
+        rules: [
+          {
+            type: 'metadata_equals',
+            value: { key: 'evil.path', value: 'x' },
+          },
+        ],
+      }),
+    ).toThrow(/metadata key must be 1–64 chars/);
   });
 });

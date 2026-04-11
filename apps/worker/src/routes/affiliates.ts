@@ -10,8 +10,19 @@ import {
   getAffiliateReport,
 } from '@line-crm/db';
 import type { Env } from '../index.js';
+import { isSafeHttpsOutboundUrl } from '../services/outbound-url.js';
+import {
+  DEFAULT_ADMIN_JSON_BODY_LIMIT_BYTES,
+  DEFAULT_PUBLIC_JSON_BODY_LIMIT_BYTES,
+  jsonBodyReadErrorResponse,
+  readJsonBodyWithLimit,
+} from '../services/request-body.js';
+import { enforceRateLimit } from '../services/request-rate-limit.js';
 
 const affiliates = new Hono<Env>();
+const AFFILIATE_CLICK_RATE_LIMIT = { limit: 30, windowMs: 60_000 };
+/** Max stored landing URL length on public click endpoint (DoS / log abuse mitigation). */
+export const AFFILIATE_CLICK_URL_MAX_LENGTH = 2048;
 
 function serializeAffiliate(row: {
   id: string;
@@ -59,11 +70,11 @@ affiliates.get('/api/affiliates/:id', async (c) => {
 // POST /api/affiliates - create
 affiliates.post('/api/affiliates', async (c) => {
   try {
-    const body = await c.req.json<{
+    const body = await readJsonBodyWithLimit<{
       name: string;
       code: string;
       commissionRate?: number;
-    }>();
+    }>(c.req.raw, DEFAULT_ADMIN_JSON_BODY_LIMIT_BYTES);
 
     if (!body.name || !body.code) {
       return c.json({ success: false, error: 'name and code are required' }, 400);
@@ -72,6 +83,8 @@ affiliates.post('/api/affiliates', async (c) => {
     const item = await createAffiliate(c.env.DB, body);
     return c.json({ success: true, data: serializeAffiliate(item) }, 201);
   } catch (err) {
+    const jr = jsonBodyReadErrorResponse(err);
+    if (jr) return c.json(jr.body, jr.status);
     console.error('POST /api/affiliates error:', err);
     return c.json({ success: false, error: 'Internal server error' }, 500);
   }
@@ -81,11 +94,11 @@ affiliates.post('/api/affiliates', async (c) => {
 affiliates.put('/api/affiliates/:id', async (c) => {
   try {
     const id = c.req.param('id');
-    const body = await c.req.json<{
+    const body = await readJsonBodyWithLimit<{
       name?: string;
       commissionRate?: number;
       isActive?: boolean;
-    }>();
+    }>(c.req.raw, DEFAULT_ADMIN_JSON_BODY_LIMIT_BYTES);
 
     const updated = await updateAffiliate(c.env.DB, id, {
       name: body.name,
@@ -98,6 +111,8 @@ affiliates.put('/api/affiliates/:id', async (c) => {
     }
     return c.json({ success: true, data: serializeAffiliate(updated) });
   } catch (err) {
+    const jr = jsonBodyReadErrorResponse(err);
+    if (jr) return c.json(jr.body, jr.status);
     console.error('PUT /api/affiliates/:id error:', err);
     return c.json({ success: false, error: 'Internal server error' }, 500);
   }
@@ -135,13 +150,48 @@ affiliates.get('/api/affiliates/:id/report', async (c) => {
 // POST /api/affiliates/click - record click (public endpoint tracked by ref param)
 affiliates.post('/api/affiliates/click', async (c) => {
   try {
-    const body = await c.req.json<{
+    const limited = await enforceRateLimit(c, {
+      bucket: 'affiliate-click',
+      db: c.env.DB,
+      limit: AFFILIATE_CLICK_RATE_LIMIT.limit,
+      windowMs: AFFILIATE_CLICK_RATE_LIMIT.windowMs,
+    });
+    if (limited) {
+      return limited;
+    }
+
+    const body = await readJsonBodyWithLimit<{
       code: string;
       url?: string | null;
-    }>();
+    }>(c.req.raw, DEFAULT_PUBLIC_JSON_BODY_LIMIT_BYTES);
 
     if (!body.code) {
       return c.json({ success: false, error: 'code is required' }, 400);
+    }
+
+    if (body.url !== undefined && body.url !== null && typeof body.url !== 'string') {
+      return c.json({ success: false, error: 'url must be a string or null' }, 400);
+    }
+
+    let clickUrl: string | null = null;
+    if (typeof body.url === 'string') {
+      const t = body.url.trim();
+      if (t.length > AFFILIATE_CLICK_URL_MAX_LENGTH) {
+        return c.json({ success: false, error: 'url is too long' }, 400);
+      }
+      if (t.length > 0) {
+        if (!isSafeHttpsOutboundUrl(t)) {
+          return c.json(
+            {
+              success: false,
+              error:
+                'url must be a public https URL (private IPs, localhost, and metadata endpoints are not allowed)',
+            },
+            400,
+          );
+        }
+        clickUrl = t;
+      }
     }
 
     const affiliate = await getAffiliateByCode(c.env.DB, body.code);
@@ -150,9 +200,11 @@ affiliates.post('/api/affiliates/click', async (c) => {
     }
 
     const ipAddress = c.req.header('CF-Connecting-IP') ?? c.req.header('X-Forwarded-For') ?? null;
-    await recordAffiliateClick(c.env.DB, affiliate.id, body.url, ipAddress);
+    await recordAffiliateClick(c.env.DB, affiliate.id, clickUrl, ipAddress);
     return c.json({ success: true, data: null }, 201);
   } catch (err) {
+    const jr = jsonBodyReadErrorResponse(err);
+    if (jr) return c.json(jr.body, jr.status);
     console.error('POST /api/affiliates/click error:', err);
     return c.json({ success: false, error: 'Internal server error' }, 500);
   }

@@ -12,6 +12,11 @@ import {
 } from '@line-crm/db';
 import type { User as DbUser } from '@line-crm/db';
 import type { Env } from '../index.js';
+import {
+  DEFAULT_ADMIN_JSON_BODY_LIMIT_BYTES,
+  jsonBodyReadErrorResponse,
+  readJsonBodyWithLimit,
+} from '../services/request-body.js';
 
 const users = new Hono<Env>();
 
@@ -56,12 +61,12 @@ users.get('/api/users/:id', async (c) => {
 // POST /api/users - create
 users.post('/api/users', async (c) => {
   try {
-    const body = await c.req.json<{
+    const body = await readJsonBodyWithLimit<{
       email?: string | null;
       phone?: string | null;
       externalId?: string | null;
       displayName?: string | null;
-    }>();
+    }>(c.req.raw, DEFAULT_ADMIN_JSON_BODY_LIMIT_BYTES);
 
     if (!body.email && !body.phone && !body.externalId) {
       return c.json(
@@ -73,6 +78,8 @@ users.post('/api/users', async (c) => {
     const user = await createUser(c.env.DB, body);
     return c.json({ success: true, data: serializeUser(user) }, 201);
   } catch (err) {
+    const jr = jsonBodyReadErrorResponse(err);
+    if (jr) return c.json(jr.body, jr.status);
     console.error('POST /api/users error:', err);
     return c.json({ success: false, error: 'Internal server error' }, 500);
   }
@@ -82,12 +89,12 @@ users.post('/api/users', async (c) => {
 users.put('/api/users/:id', async (c) => {
   try {
     const id = c.req.param('id');
-    const body = await c.req.json<{
+    const body = await readJsonBodyWithLimit<{
       email?: string | null;
       phone?: string | null;
       externalId?: string | null;
       displayName?: string | null;
-    }>();
+    }>(c.req.raw, DEFAULT_ADMIN_JSON_BODY_LIMIT_BYTES);
 
     const updated = await updateUser(c.env.DB, id, {
       email: body.email,
@@ -101,6 +108,8 @@ users.put('/api/users/:id', async (c) => {
     }
     return c.json({ success: true, data: serializeUser(updated) });
   } catch (err) {
+    const jr = jsonBodyReadErrorResponse(err);
+    if (jr) return c.json(jr.body, jr.status);
     console.error('PUT /api/users/:id error:', err);
     return c.json({ success: false, error: 'Internal server error' }, 500);
   }
@@ -121,7 +130,10 @@ users.delete('/api/users/:id', async (c) => {
 users.post('/api/users/:id/link', async (c) => {
   try {
     const userId = c.req.param('id');
-    const body = await c.req.json<{ friendId: string }>();
+    const body = await readJsonBodyWithLimit<{ friendId: string }>(
+      c.req.raw,
+      DEFAULT_ADMIN_JSON_BODY_LIMIT_BYTES,
+    );
 
     if (!body.friendId) {
       return c.json({ success: false, error: 'friendId is required' }, 400);
@@ -142,6 +154,8 @@ users.post('/api/users/:id/link', async (c) => {
     await linkFriendToUser(c.env.DB, body.friendId, userId);
     return c.json({ success: true, data: null });
   } catch (err) {
+    const jr = jsonBodyReadErrorResponse(err);
+    if (jr) return c.json(jr.body, jr.status);
     console.error('POST /api/users/:id/link error:', err);
     return c.json({ success: false, error: 'Internal server error' }, 500);
   }
@@ -170,7 +184,10 @@ users.get('/api/users/:id/accounts', async (c) => {
 // POST /api/users/match - find user by email or phone
 users.post('/api/users/match', async (c) => {
   try {
-    const body = await c.req.json<{ email?: string; phone?: string }>();
+    const body = await readJsonBodyWithLimit<{ email?: string; phone?: string }>(
+      c.req.raw,
+      DEFAULT_ADMIN_JSON_BODY_LIMIT_BYTES,
+    );
     if (!body.email && !body.phone) {
       return c.json({ success: false, error: 'email or phone is required' }, 400);
     }
@@ -188,6 +205,8 @@ users.post('/api/users/match', async (c) => {
     }
     return c.json({ success: true, data: serializeUser(user) });
   } catch (err) {
+    const jr = jsonBodyReadErrorResponse(err);
+    if (jr) return c.json(jr.body, jr.status);
     console.error('POST /api/users/match error:', err);
     return c.json({ success: false, error: 'Internal server error' }, 500);
   }

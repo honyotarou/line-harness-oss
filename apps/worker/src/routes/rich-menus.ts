@@ -6,6 +6,12 @@ import {
   resolveLineAccessTokenForFriend,
   resolveLineAccessTokenForLineAccountId,
 } from '../services/line-account-routing.js';
+import {
+  DEFAULT_ADMIN_JSON_BODY_LIMIT_BYTES,
+  RICH_MENU_IMAGE_JSON_BODY_LIMIT_BYTES,
+  jsonBodyReadErrorResponse,
+  readJsonBodyWithLimit,
+} from '../services/request-body.js';
 
 const richMenus = new Hono<Env>();
 
@@ -30,7 +36,10 @@ richMenus.get('/api/rich-menus', async (c) => {
 // POST /api/rich-menus — create a rich menu via LINE API
 richMenus.post('/api/rich-menus', async (c) => {
   try {
-    const body = (await c.req.json()) as Record<string, unknown>;
+    const body = await readJsonBodyWithLimit<Record<string, unknown>>(
+      c.req.raw,
+      DEFAULT_ADMIN_JSON_BODY_LIMIT_BYTES,
+    );
     const lineAccountIdFromBody =
       typeof body.lineAccountId === 'string' ? body.lineAccountId : null;
     const { lineAccountId: _discard, ...menuRest } = body;
@@ -63,6 +72,8 @@ richMenus.post('/api/rich-menus', async (c) => {
     const result = await lineClient.createRichMenu(menuPayload);
     return c.json({ success: true, data: result }, 201);
   } catch (err) {
+    const jr = jsonBodyReadErrorResponse(err);
+    if (jr) return c.json(jr.body, jr.status);
     const message = err instanceof Error ? err.message : String(err);
     console.error('POST /api/rich-menus error:', message);
     return c.json({ success: false, error: `Failed to create rich menu: ${message}` }, 500);
@@ -111,7 +122,10 @@ richMenus.post('/api/rich-menus/:id/default', async (c) => {
 richMenus.post('/api/friends/:friendId/rich-menu', async (c) => {
   try {
     const friendId = c.req.param('friendId');
-    const body = await c.req.json<{ richMenuId: string }>();
+    const body = await readJsonBodyWithLimit<{ richMenuId: string }>(
+      c.req.raw,
+      DEFAULT_ADMIN_JSON_BODY_LIMIT_BYTES,
+    );
 
     if (!body.richMenuId) {
       return c.json({ success: false, error: 'richMenuId is required' }, 400);
@@ -133,6 +147,8 @@ richMenus.post('/api/friends/:friendId/rich-menu', async (c) => {
 
     return c.json({ success: true, data: null });
   } catch (err) {
+    const jr = jsonBodyReadErrorResponse(err);
+    if (jr) return c.json(jr.body, jr.status);
     const message = err instanceof Error ? err.message : String(err);
     console.error('POST /api/friends/:friendId/rich-menu error:', message);
     return c.json({ success: false, error: `Failed to link rich menu to friend: ${message}` }, 500);
@@ -182,7 +198,10 @@ richMenus.post('/api/rich-menus/:id/image', async (c) => {
 
     if (contentType.includes('application/json')) {
       // Accept base64 encoded image in JSON body
-      const body = await c.req.json<{ image: string; contentType?: string }>();
+      const body = await readJsonBodyWithLimit<{ image: string; contentType?: string }>(
+        c.req.raw,
+        RICH_MENU_IMAGE_JSON_BODY_LIMIT_BYTES,
+      );
       if (!body.image) {
         return c.json({ success: false, error: 'image (base64) is required' }, 400);
       }
@@ -220,6 +239,8 @@ richMenus.post('/api/rich-menus/:id/image', async (c) => {
 
     return c.json({ success: true, data: null });
   } catch (err) {
+    const jr = jsonBodyReadErrorResponse(err);
+    if (jr) return c.json(jr.body, jr.status);
     const message = err instanceof Error ? err.message : String(err);
     console.error('POST /api/rich-menus/:id/image error:', message);
     return c.json({ success: false, error: `Failed to upload rich menu image: ${message}` }, 500);

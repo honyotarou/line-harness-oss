@@ -1,6 +1,10 @@
-import { describe, expect, it } from 'vitest';
+import { beforeEach, describe, expect, it } from 'vitest';
+import { resetRequestRateLimits } from '../../src/services/request-rate-limit.js';
 
 describe('short link landing (/r/:ref)', () => {
+  beforeEach(() => {
+    resetRequestRateLimits();
+  });
   const baseEnv = {
     DB: {} as unknown as D1Database,
     LINE_CHANNEL_SECRET: 'secret',

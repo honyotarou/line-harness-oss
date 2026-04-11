@@ -32,6 +32,12 @@ export type ApiBroadcast = Broadcast;
 /** When unset, use a placeholder; set `NEXT_PUBLIC_API_URL` in Vercel to your deployed `*.workers.dev` Worker. */
 const DEFAULT_API_URL = 'https://YOUR_SUBDOMAIN.workers.dev';
 
+/** `1` / `true` / `yes` / `on`: POST `/api/auth/login` with `{}`; Cloudflare Access must forward `Cf-Access-Jwt-Assertion` to the Worker. */
+export function useCloudflareAccessLoginMode(): boolean {
+  const v = process.env.NEXT_PUBLIC_USE_CLOUDFLARE_ACCESS_LOGIN?.trim().toLowerCase();
+  return v === '1' || v === 'true' || v === 'yes' || v === 'on';
+}
+
 /** Cross-origin admin (e.g. Vercel → workers.dev): browsers may not store/send API cookie; Bearer carries the same session token. */
 const ADMIN_SESSION_STORAGE_KEY = 'lh_admin_session_token';
 
@@ -147,11 +153,18 @@ export type FriendWithTags = Friend & { tags: Tag[] };
 
 export const api = {
   auth: {
-    login: (apiKey: string) =>
-      fetchApi<ApiResponse<{ expiresAt: string; sessionToken: string }>>('/api/auth/login', {
-        method: 'POST',
-        body: JSON.stringify({ apiKey }),
-      }),
+    login: (apiKey?: string) => {
+      const body = useCloudflareAccessLoginMode()
+        ? JSON.stringify({})
+        : JSON.stringify({ apiKey: apiKey ?? '' });
+      return fetchApi<ApiResponse<{ expiresAt: string; sessionToken: string; email?: string }>>(
+        '/api/auth/login',
+        {
+          method: 'POST',
+          body,
+        },
+      );
+    },
     session: () => fetchApi<ApiResponse<{ authenticated: boolean }>>('/api/auth/session'),
     logout: async () => {
       try {

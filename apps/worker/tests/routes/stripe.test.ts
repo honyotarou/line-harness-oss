@@ -18,7 +18,7 @@ vi.mock('../../src/services/event-bus.js', () => ({
 async function stripeWebhookSignature(
   secret: string,
   rawBody: string,
-  timestamp = '1234567890',
+  timestamp = String(Math.floor(Date.now() / 1000)),
 ): Promise<string> {
   const encoder = new TextEncoder();
   const signedPayload = `${timestamp}.${rawBody}`;
@@ -90,6 +90,67 @@ describe('stripe routes', () => {
     });
   });
 
+  it('caps stripe events list limit query passed to the database layer', async () => {
+    dbMocks.getStripeEvents.mockResolvedValue([]);
+
+    const { stripe } = await import('../../src/routes/stripe.js');
+    const app = new Hono();
+    app.route('/', stripe);
+
+    const response = await app.fetch(
+      new Request('http://localhost/api/integrations/stripe/events?limit=99999'),
+      makeEnv(),
+    );
+
+    expect(response.status).toBe(200);
+    expect(dbMocks.getStripeEvents).toHaveBeenCalledWith(
+      expect.anything(),
+      expect.objectContaining({ limit: 500 }),
+    );
+    await response.json();
+  });
+
+  it('returns null metadata when stored stripe_events.metadata is corrupt JSON', async () => {
+    dbMocks.getStripeEvents.mockResolvedValue([
+      {
+        id: 'event-bad',
+        stripe_event_id: 'evt_bad',
+        event_type: 'charge.succeeded',
+        friend_id: null,
+        amount: null,
+        currency: null,
+        metadata: '{not-json',
+        processed_at: '2026-03-26T10:00:00+09:00',
+      },
+    ]);
+
+    const { stripe } = await import('../../src/routes/stripe.js');
+    const app = new Hono();
+    app.route('/', stripe);
+
+    const response = await app.fetch(
+      new Request('http://localhost/api/integrations/stripe/events'),
+      makeEnv(),
+    );
+
+    expect(response.status).toBe(200);
+    await expect(response.json()).resolves.toEqual({
+      success: true,
+      data: [
+        {
+          id: 'event-bad',
+          stripeEventId: 'evt_bad',
+          eventType: 'charge.succeeded',
+          friendId: null,
+          amount: null,
+          currency: null,
+          metadata: null,
+          processedAt: '2026-03-26T10:00:00+09:00',
+        },
+      ],
+    });
+  });
+
   it('rejects webhook when STRIPE_WEBHOOK_SECRET is not configured', async () => {
     const { stripe } = await import('../../src/routes/stripe.js');
     const app = new Hono();
@@ -140,6 +201,30 @@ describe('stripe routes', () => {
     );
 
     expect(response.status).toBe(401);
+    expect(dbMocks.createStripeEvent).not.toHaveBeenCalled();
+  });
+
+  it('returns 400 when webhook body is not valid JSON after signature verification', async () => {
+    const { stripe } = await import('../../src/routes/stripe.js');
+    const app = new Hono();
+    app.route('/', stripe);
+
+    const rawBody = '{not-json';
+    const sig = await stripeWebhookSignature('whsec_test_secret', rawBody);
+
+    const response = await app.fetch(
+      new Request('http://localhost/api/integrations/stripe/webhook', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Stripe-Signature': sig,
+        },
+        body: rawBody,
+      }),
+      makeEnv(),
+    );
+
+    expect(response.status).toBe(400);
     expect(dbMocks.createStripeEvent).not.toHaveBeenCalled();
   });
 

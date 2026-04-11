@@ -64,7 +64,8 @@ function normalizeMetadata(
   return Object.keys(payload).length > 0 ? JSON.stringify(payload) : null;
 }
 
-function computeRetryDelayMs(attemptCount: number, baseRetryMs: number): number {
+/** Exponential backoff for failed deliveries; capped at MAX_RETRY_DELAY_MS. */
+export function computeDeliveryRetryDelayMs(attemptCount: number, baseRetryMs: number): number {
   const exponent = Math.max(attemptCount - 1, 0);
   return Math.min(baseRetryMs * 2 ** exponent, MAX_RETRY_DELAY_MS);
 }
@@ -165,7 +166,8 @@ export async function markDeliveryAttemptFailed(
   const nextRetryAt = exhausted
     ? null
     : new Date(
-        nowMs + computeRetryDelayMs(attemptCount, options?.baseRetryMs ?? DEFAULT_RETRY_BASE_MS),
+        nowMs +
+          computeDeliveryRetryDelayMs(attemptCount, options?.baseRetryMs ?? DEFAULT_RETRY_BASE_MS),
       ).toISOString();
 
   await db

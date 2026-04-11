@@ -50,7 +50,10 @@ export function resetRequestRateLimits(): void {
 export function getRequestClientAddress(request: Request): string {
   const cfConnectingIp = request.headers.get('CF-Connecting-IP');
   if (cfConnectingIp) {
-    return cfConnectingIp.trim();
+    const t = cfConnectingIp.trim();
+    if (t) {
+      return t;
+    }
   }
 
   const xForwardedFor = request.headers.get('X-Forwarded-For');

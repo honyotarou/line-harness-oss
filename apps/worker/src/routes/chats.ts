@@ -13,6 +13,12 @@ import {
 } from '@line-crm/db';
 import type { Env } from '../index.js';
 import { resolveLineAccessTokenForFriend } from '../services/line-account-routing.js';
+import {
+  DEFAULT_ADMIN_JSON_BODY_LIMIT_BYTES,
+  jsonBodyReadErrorResponse,
+  readJsonBodyWithLimit,
+} from '../services/request-body.js';
+import { clampListLimit, clampOffset } from '../services/query-limits.js';
 
 const chats = new Hono<Env>();
 
@@ -41,7 +47,10 @@ chats.get('/api/operators', async (c) => {
 
 chats.post('/api/operators', async (c) => {
   try {
-    const body = await c.req.json<{ name: string; email: string; role?: string }>();
+    const body = await readJsonBodyWithLimit<{ name: string; email: string; role?: string }>(
+      c.req.raw,
+      DEFAULT_ADMIN_JSON_BODY_LIMIT_BYTES,
+    );
     if (!body.name || !body.email)
       return c.json({ success: false, error: 'name and email are required' }, 400);
     const item = await createOperator(c.env.DB, body);
@@ -50,6 +59,8 @@ chats.post('/api/operators', async (c) => {
       201,
     );
   } catch (err) {
+    const jr = jsonBodyReadErrorResponse(err);
+    if (jr) return c.json(jr.body, jr.status);
     console.error('POST /api/operators error:', err);
     return c.json({ success: false, error: 'Internal server error' }, 500);
   }
@@ -58,8 +69,11 @@ chats.post('/api/operators', async (c) => {
 chats.put('/api/operators/:id', async (c) => {
   try {
     const id = c.req.param('id');
-    const body = await c.req.json();
-    await updateOperator(c.env.DB, id, body);
+    const body = await readJsonBodyWithLimit<Record<string, unknown>>(
+      c.req.raw,
+      DEFAULT_ADMIN_JSON_BODY_LIMIT_BYTES,
+    );
+    await updateOperator(c.env.DB, id, body as never);
     const updated = await getOperatorById(c.env.DB, id);
     if (!updated) return c.json({ success: false, error: 'Not found' }, 404);
     return c.json({
@@ -73,6 +87,8 @@ chats.put('/api/operators/:id', async (c) => {
       },
     });
   } catch (err) {
+    const jr = jsonBodyReadErrorResponse(err);
+    if (jr) return c.json(jr.body, jr.status);
     console.error('PUT /api/operators/:id error:', err);
     return c.json({ success: false, error: 'Internal server error' }, 500);
   }
@@ -119,10 +135,12 @@ chats.get('/api/chats', async (c) => {
     if (conditions.length > 0) {
       sql += ' WHERE ' + conditions.join(' AND ');
     }
-    sql += ' ORDER BY c.last_message_at DESC';
+    sql += ' ORDER BY c.last_message_at DESC LIMIT ? OFFSET ?';
+    const listLimit = clampListLimit(c.req.query('limit'), 200, 500);
+    const listOffset = clampOffset(c.req.query('offset'), 500_000);
+    bindings.push(listLimit, listOffset);
 
-    const stmt =
-      bindings.length > 0 ? c.env.DB.prepare(sql).bind(...bindings) : c.env.DB.prepare(sql);
+    const stmt = c.env.DB.prepare(sql).bind(...bindings);
     const result = await stmt.all();
 
     return c.json({
@@ -197,11 +215,11 @@ chats.get('/api/chats/:id', async (c) => {
 
 chats.post('/api/chats', async (c) => {
   try {
-    const body = await c.req.json<{
+    const body = await readJsonBodyWithLimit<{
       friendId: string;
       operatorId?: string;
       lineAccountId?: string | null;
-    }>();
+    }>(c.req.raw, DEFAULT_ADMIN_JSON_BODY_LIMIT_BYTES);
     if (!body.friendId) return c.json({ success: false, error: 'friendId is required' }, 400);
     const item = await createChat(c.env.DB, body);
     // Save line_account_id if provided
@@ -228,6 +246,8 @@ chats.post('/api/chats', async (c) => {
       201,
     );
   } catch (err) {
+    const jr = jsonBodyReadErrorResponse(err);
+    if (jr) return c.json(jr.body, jr.status);
     console.error('POST /api/chats error:', err);
     return c.json({ success: false, error: 'Internal server error' }, 500);
   }
@@ -237,11 +257,11 @@ chats.post('/api/chats', async (c) => {
 chats.put('/api/chats/:id', async (c) => {
   try {
     const id = c.req.param('id');
-    const body = await c.req.json<{
+    const body = await readJsonBodyWithLimit<{
       operatorId?: string | null;
       status?: string;
       notes?: string;
-    }>();
+    }>(c.req.raw, DEFAULT_ADMIN_JSON_BODY_LIMIT_BYTES);
     await updateChat(c.env.DB, id, body);
     const updated = await getChatById(c.env.DB, id);
     if (!updated) return c.json({ success: false, error: 'Not found' }, 404);
@@ -260,6 +280,8 @@ chats.put('/api/chats/:id', async (c) => {
       },
     });
   } catch (err) {
+    const jr = jsonBodyReadErrorResponse(err);
+    if (jr) return c.json(jr.body, jr.status);
     console.error('PUT /api/chats/:id error:', err);
     return c.json({ success: false, error: 'Internal server error' }, 500);
   }
@@ -272,7 +294,10 @@ chats.post('/api/chats/:id/send', async (c) => {
     const chat = await getChatById(c.env.DB, chatId);
     if (!chat) return c.json({ success: false, error: 'Chat not found' }, 404);
 
-    const body = await c.req.json<{ messageType?: string; content: string }>();
+    const body = await readJsonBodyWithLimit<{ messageType?: string; content: string }>(
+      c.req.raw,
+      DEFAULT_ADMIN_JSON_BODY_LIMIT_BYTES,
+    );
     if (!body.content) return c.json({ success: false, error: 'content is required' }, 400);
 
     const friend = await c.env.DB.prepare(`SELECT * FROM friends WHERE id = ?`)
@@ -293,7 +318,15 @@ chats.post('/api/chats/:id/send', async (c) => {
     if (messageType === 'text') {
       await lineClient.pushTextMessage(friend.line_user_id, body.content);
     } else if (messageType === 'flex') {
-      const contents = JSON.parse(body.content);
+      let contents: unknown;
+      try {
+        contents = JSON.parse(body.content);
+      } catch {
+        return c.json({ success: false, error: 'Invalid flex JSON in content' }, 400);
+      }
+      if (contents === null || typeof contents !== 'object' || Array.isArray(contents)) {
+        return c.json({ success: false, error: 'Flex content must be a single JSON object' }, 400);
+      }
       await lineClient.pushFlexMessage(friend.line_user_id, 'Message', contents);
     }
 
@@ -310,6 +343,8 @@ chats.post('/api/chats/:id/send', async (c) => {
 
     return c.json({ success: true, data: { sent: true, messageId: logId } });
   } catch (err) {
+    const jr = jsonBodyReadErrorResponse(err);
+    if (jr) return c.json(jr.body, jr.status);
     console.error('POST /api/chats/:id/send error:', err);
     return c.json({ success: false, error: 'Internal server error' }, 500);
   }

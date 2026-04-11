@@ -46,6 +46,34 @@ describe('tag routes', () => {
     });
   });
 
+  it('rejects POST body larger than admin JSON limit with 413', async () => {
+    const { DEFAULT_ADMIN_JSON_BODY_LIMIT_BYTES } = await import(
+      '../../src/services/request-body.js'
+    );
+    const { tags } = await import('../../src/routes/tags.js');
+    const app = new Hono();
+    app.route('/', tags);
+
+    const response = await app.fetch(
+      new Request('http://localhost/api/tags', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Content-Length': String(DEFAULT_ADMIN_JSON_BODY_LIMIT_BYTES + 1),
+        },
+        body: 'x',
+      }),
+      { DB: {} as D1Database } as never,
+    );
+
+    expect(response.status).toBe(413);
+    await expect(response.json()).resolves.toEqual({
+      success: false,
+      error: 'Request body too large',
+    });
+    expect(dbMocks.createTag).not.toHaveBeenCalled();
+  });
+
   it('rejects creating a tag without a name', async () => {
     const { tags } = await import('../../src/routes/tags.js');
     const app = new Hono();

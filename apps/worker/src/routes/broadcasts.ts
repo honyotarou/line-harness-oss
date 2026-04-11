@@ -17,6 +17,11 @@ import { processSegmentSend } from '../services/segment-send.js';
 import type { SegmentCondition } from '../services/segment-query.js';
 import type { Env } from '../index.js';
 import { resolveLineAccessTokenForLineAccountId } from '../services/line-account-routing.js';
+import {
+  DEFAULT_ADMIN_JSON_BODY_LIMIT_BYTES,
+  jsonBodyReadErrorResponse,
+  readJsonBodyWithLimit,
+} from '../services/request-body.js';
 
 const broadcasts = new Hono<Env>();
 
@@ -80,7 +85,7 @@ broadcasts.get('/api/broadcasts/:id', async (c) => {
 // POST /api/broadcasts - create
 broadcasts.post('/api/broadcasts', async (c) => {
   try {
-    const body = await c.req.json<{
+    const body = await readJsonBodyWithLimit<{
       title: string;
       messageType: BroadcastMessageType;
       messageContent: string;
@@ -88,7 +93,7 @@ broadcasts.post('/api/broadcasts', async (c) => {
       targetTagId?: string | null;
       scheduledAt?: string | null;
       lineAccountId?: string | null;
-    }>();
+    }>(c.req.raw, DEFAULT_ADMIN_JSON_BODY_LIMIT_BYTES);
 
     if (!body.title || !body.messageType || !body.messageContent || !body.targetType) {
       return c.json(
@@ -156,14 +161,14 @@ broadcasts.put('/api/broadcasts/:id', async (c) => {
       );
     }
 
-    const body = await c.req.json<{
+    const body = await readJsonBodyWithLimit<{
       title?: string;
       messageType?: BroadcastMessageType;
       messageContent?: string;
       targetType?: BroadcastTargetType;
       targetTagId?: string | null;
       scheduledAt?: string | null;
-    }>();
+    }>(c.req.raw, DEFAULT_ADMIN_JSON_BODY_LIMIT_BYTES);
 
     // Keep status in sync with scheduledAt changes
     let statusUpdate: 'draft' | 'scheduled' | undefined;
@@ -183,6 +188,8 @@ broadcasts.put('/api/broadcasts/:id', async (c) => {
 
     return c.json({ success: true, data: updated ? serializeBroadcast(updated) : null });
   } catch (err) {
+    const jr = jsonBodyReadErrorResponse(err);
+    if (jr) return c.json(jr.body, jr.status);
     console.error('PUT /api/broadcasts/:id error:', err);
     return c.json({ success: false, error: 'Internal server error' }, 500);
   }
@@ -254,7 +261,10 @@ broadcasts.post('/api/broadcasts/:id/send-segment', async (c) => {
       return c.json({ success: false, error: 'Broadcast is already sent or sending' }, 400);
     }
 
-    const body = await c.req.json<{ conditions: SegmentCondition }>();
+    const body = await readJsonBodyWithLimit<{ conditions: SegmentCondition }>(
+      c.req.raw,
+      DEFAULT_ADMIN_JSON_BODY_LIMIT_BYTES,
+    );
 
     if (!body.conditions || !body.conditions.operator || !Array.isArray(body.conditions.rules)) {
       return c.json(
@@ -274,6 +284,8 @@ broadcasts.post('/api/broadcasts/:id/send-segment', async (c) => {
     const result = await getBroadcastById(c.env.DB, id);
     return c.json({ success: true, data: result ? serializeBroadcast(result) : null });
   } catch (err) {
+    const jr = jsonBodyReadErrorResponse(err);
+    if (jr) return c.json(jr.body, jr.status);
     console.error('POST /api/broadcasts/:id/send-segment error:', err);
     return c.json({ success: false, error: 'Internal server error' }, 500);
   }

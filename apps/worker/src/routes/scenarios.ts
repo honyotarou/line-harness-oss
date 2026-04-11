@@ -20,6 +20,11 @@ import type {
   MessageType,
 } from '@line-crm/db';
 import type { Env } from '../index.js';
+import {
+  DEFAULT_ADMIN_JSON_BODY_LIMIT_BYTES,
+  jsonBodyReadErrorResponse,
+  readJsonBodyWithLimit,
+} from '../services/request-body.js';
 
 const scenarios = new Hono<Env>();
 
@@ -127,14 +132,14 @@ scenarios.get('/api/scenarios/:id', async (c) => {
 // POST /api/scenarios - create
 scenarios.post('/api/scenarios', async (c) => {
   try {
-    const body = await c.req.json<{
+    const body = await readJsonBodyWithLimit<{
       name: string;
       description?: string | null;
       triggerType: ScenarioTriggerType;
       triggerTagId?: string | null;
       isActive?: boolean;
       lineAccountId?: string | null;
-    }>();
+    }>(c.req.raw, DEFAULT_ADMIN_JSON_BODY_LIMIT_BYTES);
 
     if (!body.name || !body.triggerType) {
       return c.json({ success: false, error: 'name and triggerType are required' }, 400);
@@ -171,6 +176,8 @@ scenarios.post('/api/scenarios', async (c) => {
       201,
     );
   } catch (err) {
+    const jr = jsonBodyReadErrorResponse(err);
+    if (jr) return c.json(jr.body, jr.status);
     console.error('POST /api/scenarios error:', err);
     return c.json({ success: false, error: 'Internal server error' }, 500);
   }
@@ -180,13 +187,13 @@ scenarios.post('/api/scenarios', async (c) => {
 scenarios.put('/api/scenarios/:id', async (c) => {
   try {
     const id = c.req.param('id');
-    const body = await c.req.json<{
+    const body = await readJsonBodyWithLimit<{
       name?: string;
       description?: string | null;
       triggerType?: ScenarioTriggerType;
       triggerTagId?: string | null;
       isActive?: boolean;
-    }>();
+    }>(c.req.raw, DEFAULT_ADMIN_JSON_BODY_LIMIT_BYTES);
 
     const updated = await updateScenario(c.env.DB, id, {
       name: body.name,
@@ -202,6 +209,8 @@ scenarios.put('/api/scenarios/:id', async (c) => {
 
     return c.json({ success: true, data: serializeScenario(updated) });
   } catch (err) {
+    const jr = jsonBodyReadErrorResponse(err);
+    if (jr) return c.json(jr.body, jr.status);
     console.error('PUT /api/scenarios/:id error:', err);
     return c.json({ success: false, error: 'Internal server error' }, 500);
   }
@@ -223,7 +232,7 @@ scenarios.delete('/api/scenarios/:id', async (c) => {
 scenarios.post('/api/scenarios/:id/steps', async (c) => {
   try {
     const scenarioId = c.req.param('id');
-    const body = await c.req.json<{
+    const body = await readJsonBodyWithLimit<{
       stepOrder: number;
       delayMinutes?: number;
       messageType: MessageType;
@@ -231,7 +240,7 @@ scenarios.post('/api/scenarios/:id/steps', async (c) => {
       conditionType?: string | null;
       conditionValue?: string | null;
       nextStepOnFalse?: number | null;
-    }>();
+    }>(c.req.raw, DEFAULT_ADMIN_JSON_BODY_LIMIT_BYTES);
 
     if (body.stepOrder === undefined || !body.messageType || !body.messageContent) {
       return c.json(
@@ -253,6 +262,8 @@ scenarios.post('/api/scenarios/:id/steps', async (c) => {
 
     return c.json({ success: true, data: serializeStep(step) }, 201);
   } catch (err) {
+    const jr = jsonBodyReadErrorResponse(err);
+    if (jr) return c.json(jr.body, jr.status);
     console.error('POST /api/scenarios/:id/steps error:', err);
     return c.json({ success: false, error: 'Internal server error' }, 500);
   }
@@ -262,7 +273,7 @@ scenarios.post('/api/scenarios/:id/steps', async (c) => {
 scenarios.put('/api/scenarios/:id/steps/:stepId', async (c) => {
   try {
     const stepId = c.req.param('stepId');
-    const body = await c.req.json<{
+    const body = await readJsonBodyWithLimit<{
       stepOrder?: number;
       delayMinutes?: number;
       messageType?: MessageType;
@@ -270,7 +281,7 @@ scenarios.put('/api/scenarios/:id/steps/:stepId', async (c) => {
       conditionType?: string | null;
       conditionValue?: string | null;
       nextStepOnFalse?: number | null;
-    }>();
+    }>(c.req.raw, DEFAULT_ADMIN_JSON_BODY_LIMIT_BYTES);
 
     const updated = await updateScenarioStep(c.env.DB, stepId, {
       step_order: body.stepOrder,
@@ -288,6 +299,8 @@ scenarios.put('/api/scenarios/:id/steps/:stepId', async (c) => {
 
     return c.json({ success: true, data: serializeStep(updated) });
   } catch (err) {
+    const jr = jsonBodyReadErrorResponse(err);
+    if (jr) return c.json(jr.body, jr.status);
     console.error('PUT /api/scenarios/:id/steps/:stepId error:', err);
     return c.json({ success: false, error: 'Internal server error' }, 500);
   }

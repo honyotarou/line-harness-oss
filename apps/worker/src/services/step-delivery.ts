@@ -14,6 +14,8 @@ import {
   markDeliveryAttemptFailed,
   markDeliveryAttemptSucceeded,
 } from './delivery-reliability.js';
+import { tryParseJsonLoose, tryParseJsonRecord } from './safe-json.js';
+import { buildMessageFromStoredContent } from './stored-line-message.js';
 
 /**
  * Replace template variables in message content.
@@ -46,7 +48,11 @@ export function expandVariables(
     result = result.replace(/\{\{#if_ref\}\}[\s\S]*?\{\{\/if_ref\}\}/g, '');
   }
   if (apiOrigin) {
-    result = result.replace(/\{\{auth_url:([^}]+)\}\}/g, (_match, channelId) => {
+    result = result.replace(/\{\{auth_url:([^}]+)\}\}/g, (_match, channelIdRaw) => {
+      const channelId = String(channelIdRaw).trim();
+      if (!/^[-a-zA-Z0-9._]{1,128}$/.test(channelId)) {
+        return '';
+      }
       const params = new URLSearchParams({ account: channelId, ref: 'cross-link' });
       if (friend.user_id) params.set('uid', friend.user_id);
       return `${apiOrigin}/auth/line?${params.toString()}`;
@@ -123,10 +129,7 @@ async function processSingleDelivery(
     await completeFriendScenario(db, fs.id);
     return;
   }
-  const metadata = JSON.parse((friend as { metadata?: string }).metadata || '{}') as Record<
-    string,
-    unknown
-  >;
+  const metadata = tryParseJsonRecord((friend as { metadata?: string }).metadata || '{}') ?? {};
   const preferredHour =
     typeof metadata.preferred_hour === 'number' ? metadata.preferred_hour : undefined;
 
@@ -278,21 +281,39 @@ async function evaluateCondition(
       return !tag;
     }
     case 'metadata_equals': {
-      const { key, value } = JSON.parse(step.condition_value) as { key: string; value: unknown };
+      const parsed = tryParseJsonLoose(step.condition_value);
+      if (
+        parsed === null ||
+        typeof parsed !== 'object' ||
+        Array.isArray(parsed) ||
+        typeof (parsed as Record<string, unknown>).key !== 'string'
+      ) {
+        return false;
+      }
+      const { key, value } = parsed as { key: string; value: unknown };
       const friend = await db
         .prepare('SELECT metadata FROM friends WHERE id = ?')
         .bind(friendId)
         .first<{ metadata: string }>();
-      const metadata = JSON.parse(friend?.metadata || '{}') as Record<string, unknown>;
+      const metadata = tryParseJsonRecord(friend?.metadata || '{}') ?? {};
       return metadata[key] === value;
     }
     case 'metadata_not_equals': {
-      const { key, value } = JSON.parse(step.condition_value) as { key: string; value: unknown };
+      const parsed = tryParseJsonLoose(step.condition_value);
+      if (
+        parsed === null ||
+        typeof parsed !== 'object' ||
+        Array.isArray(parsed) ||
+        typeof (parsed as Record<string, unknown>).key !== 'string'
+      ) {
+        return false;
+      }
+      const { key, value } = parsed as { key: string; value: unknown };
       const friend = await db
         .prepare('SELECT metadata FROM friends WHERE id = ?')
         .bind(friendId)
         .first<{ metadata: string }>();
-      const metadata = JSON.parse(friend?.metadata || '{}') as Record<string, unknown>;
+      const metadata = tryParseJsonRecord(friend?.metadata || '{}') ?? {};
       return metadata[key] !== value;
     }
     default:
@@ -300,83 +321,8 @@ async function evaluateCondition(
   }
 }
 
-/** Recursively find the first text element in a Flex Message for altText */
-function extractFlexAltText(obj: unknown, depth = 0): string | null {
-  if (depth > 10 || !obj || typeof obj !== 'object') return null;
-  const node = obj as Record<string, unknown>;
-  if (node.type === 'text' && typeof node.text === 'string') {
-    return node.text.slice(0, 100);
-  }
-  if (Array.isArray(node.contents)) {
-    for (const child of node.contents) {
-      const found = extractFlexAltText(child, depth + 1);
-      if (found) return found;
-    }
-  }
-  for (const key of ['header', 'body', 'footer']) {
-    if (node[key]) {
-      const found = extractFlexAltText(node[key], depth + 1);
-      if (found) return found;
-    }
-  }
-  return null;
-}
-
-/** Remove empty text nodes from Flex JSON (caused by conditional blocks) */
-function cleanEmptyNodes(obj: unknown): void {
-  if (!obj || typeof obj !== 'object') return;
-  const node = obj as Record<string, unknown>;
-  for (const key of ['header', 'body', 'footer']) {
-    if (node[key]) cleanEmptyNodes(node[key]);
-  }
-  if (Array.isArray(node.contents)) {
-    node.contents = (node.contents as unknown[]).filter((c) => {
-      if (c && typeof c === 'object' && (c as Record<string, unknown>).type === 'text') {
-        const text = (c as Record<string, unknown>).text;
-        return typeof text === 'string' && text.trim().length > 0;
-      }
-      return true;
-    });
-    for (const c of node.contents as unknown[]) cleanEmptyNodes(c);
-  }
-}
-
 export function buildMessage(messageType: string, messageContent: string): Message {
-  if (messageType === 'text') {
-    return { type: 'text', text: messageContent };
-  }
-
-  if (messageType === 'image') {
-    // messageContent is expected to be JSON: { originalContentUrl, previewImageUrl }
-    try {
-      const parsed = JSON.parse(messageContent) as {
-        originalContentUrl: string;
-        previewImageUrl: string;
-      };
-      return {
-        type: 'image',
-        originalContentUrl: parsed.originalContentUrl,
-        previewImageUrl: parsed.previewImageUrl,
-      };
-    } catch {
-      // Fallback: treat as text if parsing fails
-      return { type: 'text', text: messageContent };
-    }
-  }
-
-  if (messageType === 'flex') {
-    try {
-      const contents = JSON.parse(messageContent);
-      // Remove empty text nodes (from {{#if_ref}} conditional blocks)
-      cleanEmptyNodes(contents);
-      // Extract first text element for altText (shown in notifications)
-      const altText = extractFlexAltText(contents) || 'お知らせ';
-      return { type: 'flex', altText, contents };
-    } catch {
-      return { type: 'text', text: messageContent };
-    }
-  }
-
-  // Fallback
-  return { type: 'text', text: messageContent };
+  return buildMessageFromStoredContent(messageType, messageContent, {
+    flexAltFallback: 'お知らせ',
+  });
 }

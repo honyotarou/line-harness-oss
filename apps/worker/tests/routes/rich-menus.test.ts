@@ -90,6 +90,34 @@ describe('rich menu routes', () => {
     expect(json.data).toEqual([{ richMenuId: 'rm-1' }]);
   });
 
+  it('POST /api/rich-menus returns 413 when Content-Length exceeds admin JSON limit', async () => {
+    const { DEFAULT_ADMIN_JSON_BODY_LIMIT_BYTES } = await import(
+      '../../src/services/request-body.js'
+    );
+    const { richMenus } = await import('../../src/routes/rich-menus.js');
+    const app = new Hono();
+    app.route('/', richMenus);
+
+    const over = DEFAULT_ADMIN_JSON_BODY_LIMIT_BYTES + 1;
+    const response = await app.fetch(
+      new Request('http://localhost/api/rich-menus', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Content-Length': String(over),
+        },
+        body: 'x'.repeat(over),
+      }),
+      env(),
+    );
+
+    expect(response.status).toBe(413);
+    const json = (await response.json()) as { success: boolean; error: string };
+    expect(json.success).toBe(false);
+    expect(json.error).toBe('Request body too large');
+    expect(lineSdkMocks.createRichMenu).not.toHaveBeenCalled();
+  });
+
   it('POST /api/rich-menus strips lineAccountId before calling LINE createRichMenu', async () => {
     dbMocks.getLineAccountById.mockResolvedValue({
       id: 'account-2',

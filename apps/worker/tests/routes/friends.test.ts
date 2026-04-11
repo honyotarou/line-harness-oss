@@ -78,6 +78,68 @@ function createDb() {
   } as unknown as D1Database;
 }
 
+function createDbCorruptFriendMetadata() {
+  return {
+    prepare(sql: string) {
+      return {
+        bind(...bindings: unknown[]) {
+          return {
+            async all<T>() {
+              if (sql.includes('SELECT f.* FROM friends f')) {
+                const [lineAccountId] = bindings as [string, number, number];
+                return {
+                  results: [
+                    {
+                      id: 'friend-1',
+                      line_user_id: 'U123',
+                      display_name: 'Scoped friend',
+                      picture_url: null,
+                      status_message: 'hello',
+                      is_following: 1,
+                      line_account_id: lineAccountId,
+                      metadata: '{not-json',
+                      ref_code: 'lp-1',
+                      user_id: 'user-1',
+                      created_at: '2026-03-25T10:00:00+09:00',
+                      updated_at: '2026-03-25T10:00:00+09:00',
+                    },
+                  ] as T[],
+                };
+              }
+
+              if (sql.includes('SELECT ref_code, COUNT(*) as count FROM friends')) {
+                return {
+                  results: [
+                    { ref_code: 'lp-1', count: 2 },
+                    { ref_code: 'lp-2', count: 1 },
+                  ] as T[],
+                };
+              }
+
+              throw new Error(`Unexpected SQL: ${sql}`);
+            },
+            async first<T>() {
+              if (sql.includes('SELECT COUNT(*) as count FROM friends f')) {
+                return { count: 1 } as T;
+              }
+
+              if (
+                sql.includes(
+                  'SELECT COUNT(*) as count FROM friends WHERE line_account_id = ? AND ref_code IS NOT NULL',
+                )
+              ) {
+                return { count: 3 } as T;
+              }
+
+              throw new Error(`Unexpected SQL: ${sql}`);
+            },
+          };
+        },
+      };
+    },
+  } as unknown as D1Database;
+}
+
 describe('friends routes', () => {
   beforeEach(() => {
     Object.values(dbMocks).forEach((mockFn) => mockFn.mockReset());
@@ -124,6 +186,39 @@ describe('friends routes', () => {
     });
   });
 
+  it('caps friends list limit query to reduce abuse of large LIMIT scans', async () => {
+    const { friends } = await import('../../src/routes/friends.js');
+    const app = new Hono();
+    app.route('/', friends);
+
+    const response = await app.fetch(
+      new Request('http://localhost/api/friends?lineAccountId=account-1&limit=99999&offset=0'),
+      { DB: createDb() } as never,
+    );
+
+    expect(response.status).toBe(200);
+    const json = (await response.json()) as { data: { limit: number } };
+    expect(json.data.limit).toBe(200);
+  });
+
+  it('returns empty metadata object when stored friend metadata JSON is corrupt', async () => {
+    const { friends } = await import('../../src/routes/friends.js');
+    const app = new Hono();
+    app.route('/', friends);
+
+    const response = await app.fetch(
+      new Request('http://localhost/api/friends?lineAccountId=account-1&limit=10&offset=0'),
+      { DB: createDbCorruptFriendMetadata() } as never,
+    );
+
+    expect(response.status).toBe(200);
+    const json = (await response.json()) as {
+      success: boolean;
+      data: { items: Array<{ metadata: Record<string, unknown> }> };
+    };
+    expect(json.data.items[0].metadata).toEqual({});
+  });
+
   it('uses batch tag query instead of N+1 individual queries', async () => {
     const { friends } = await import('../../src/routes/friends.js');
     const app = new Hono();
@@ -162,5 +257,142 @@ describe('friends routes', () => {
         totalWithRef: 3,
       },
     });
+  });
+
+  it('rejects metadata PATCH when body exceeds size limit', async () => {
+    dbMocks.getFriendById.mockResolvedValue({
+      id: 'friend-1',
+      line_user_id: 'U123',
+      display_name: 'X',
+      picture_url: null,
+      status_message: null,
+      is_following: 1,
+      line_account_id: null,
+      metadata: '{}',
+      ref_code: null,
+      user_id: null,
+      created_at: '2026-03-25T10:00:00+09:00',
+      updated_at: '2026-03-25T10:00:00+09:00',
+    });
+
+    const { friends } = await import('../../src/routes/friends.js');
+    const app = new Hono();
+    app.route('/', friends);
+
+    const response = await app.fetch(
+      new Request('http://localhost/api/friends/friend-1/metadata', {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          'Content-Length': String(70 * 1024),
+        },
+        body: JSON.stringify({ k: 1 }),
+      }),
+      { DB: {} as D1Database } as never,
+    );
+
+    expect(response.status).toBe(413);
+  });
+
+  it('returns 400 when metadata PATCH body is a JSON array', async () => {
+    dbMocks.getFriendById.mockResolvedValue({
+      id: 'friend-1',
+      line_user_id: 'U123',
+      display_name: 'X',
+      picture_url: null,
+      status_message: null,
+      is_following: 1,
+      line_account_id: null,
+      metadata: '{}',
+      ref_code: null,
+      user_id: null,
+      created_at: '2026-03-25T10:00:00+09:00',
+      updated_at: '2026-03-25T10:00:00+09:00',
+    });
+
+    const { friends } = await import('../../src/routes/friends.js');
+    const app = new Hono();
+    app.route('/', friends);
+
+    const response = await app.fetch(
+      new Request('http://localhost/api/friends/friend-1/metadata', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify([1, 2]),
+      }),
+      { DB: {} as D1Database } as never,
+    );
+
+    expect(response.status).toBe(400);
+    const json = (await response.json()) as { success: boolean; error?: string };
+    expect(json.success).toBe(false);
+    expect(json.error).toMatch(/object/i);
+  });
+
+  it('returns 400 when metadata PATCH body is invalid JSON', async () => {
+    dbMocks.getFriendById.mockResolvedValue({
+      id: 'friend-1',
+      line_user_id: 'U123',
+      display_name: 'X',
+      picture_url: null,
+      status_message: null,
+      is_following: 1,
+      line_account_id: null,
+      metadata: '{}',
+      ref_code: null,
+      user_id: null,
+      created_at: '2026-03-25T10:00:00+09:00',
+      updated_at: '2026-03-25T10:00:00+09:00',
+    });
+
+    const { friends } = await import('../../src/routes/friends.js');
+    const app = new Hono();
+    app.route('/', friends);
+
+    const response = await app.fetch(
+      new Request('http://localhost/api/friends/friend-1/metadata', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: '{',
+      }),
+      { DB: {} as D1Database } as never,
+    );
+
+    expect(response.status).toBe(400);
+  });
+
+  it('returns 422 when stored metadata is corrupt JSON', async () => {
+    dbMocks.getFriendById.mockResolvedValue({
+      id: 'friend-1',
+      line_user_id: 'U123',
+      display_name: 'X',
+      picture_url: null,
+      status_message: null,
+      is_following: 1,
+      line_account_id: null,
+      metadata: '{not-json',
+      ref_code: null,
+      user_id: null,
+      created_at: '2026-03-25T10:00:00+09:00',
+      updated_at: '2026-03-25T10:00:00+09:00',
+    });
+
+    const { friends } = await import('../../src/routes/friends.js');
+    const app = new Hono();
+    app.route('/', friends);
+
+    const response = await app.fetch(
+      new Request('http://localhost/api/friends/friend-1/metadata', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ k: 1 }),
+      }),
+      { DB: {} as D1Database } as never,
+    );
+
+    expect(response.status).toBe(422);
+    const json = (await response.json()) as { success: boolean; error?: string };
+    expect(json.success).toBe(false);
+    expect(json.error).toMatch(/metadata|JSON/i);
   });
 });

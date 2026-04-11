@@ -156,4 +156,48 @@ describe('processStepDeliveries', () => {
     );
     expect(dbMocks.advanceFriendScenario).not.toHaveBeenCalled();
   });
+
+  it('treats corrupt friend metadata as empty when reading preferred delivery hour', async () => {
+    dbMocks.getFriendScenariosDueForDelivery.mockResolvedValue([
+      {
+        id: 'friend-scenario-1',
+        friend_id: 'friend-1',
+        scenario_id: 'scenario-1',
+        current_step_order: 0,
+        status: 'active',
+        next_delivery_at: '2026-03-25T10:00:00+09:00',
+      },
+    ]);
+    dbMocks.getFriendById.mockResolvedValue({
+      id: 'friend-1',
+      line_user_id: 'line-user-1',
+      display_name: 'Alice',
+      user_id: 'user-1',
+      ref_code: null,
+      is_following: 1,
+      metadata: '{bad-json',
+      line_account_id: 'account-1',
+    });
+    dbMocks.getScenarioSteps.mockResolvedValue([
+      {
+        id: 'step-1',
+        step_order: 1,
+        delay_minutes: 0,
+        message_type: 'text',
+        message_content: 'hello',
+        condition_type: null,
+        condition_value: null,
+        next_step_on_false: null,
+      },
+    ]);
+
+    const { processStepDeliveries } = await import('../../src/services/step-delivery.js');
+    const db = createDb();
+    const lineClient = { pushMessage: vi.fn().mockResolvedValue(undefined) };
+
+    await processStepDeliveries(db, lineClient as never, 'https://worker.example.com', 'account-1');
+
+    expect(lineClient.pushMessage).toHaveBeenCalled();
+    expect(reliabilityMocks.markDeliveryAttemptSucceeded).toHaveBeenCalled();
+  });
 });

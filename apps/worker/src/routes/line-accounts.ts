@@ -10,6 +10,11 @@ import type { LineAccount as DbLineAccount } from '@line-crm/db';
 import type { Env } from '../index.js';
 import { loadLineAccountStats } from '../services/line-account-stats.js';
 import { loadLineAccountProfile } from '../services/line-account-profile-cache.js';
+import {
+  DEFAULT_ADMIN_JSON_BODY_LIMIT_BYTES,
+  jsonBodyReadErrorResponse,
+  readJsonBodyWithLimit,
+} from '../services/request-body.js';
 
 const lineAccounts = new Hono<Env>();
 const PROFILE_LOOKUP_CONCURRENCY = 3;
@@ -104,12 +109,12 @@ lineAccounts.get('/api/line-accounts/:id', async (c) => {
 // POST /api/line-accounts - create
 lineAccounts.post('/api/line-accounts', async (c) => {
   try {
-    const body = await c.req.json<{
+    const body = await readJsonBodyWithLimit<{
       channelId: string;
       name: string;
       channelAccessToken: string;
       channelSecret: string;
-    }>();
+    }>(c.req.raw, DEFAULT_ADMIN_JSON_BODY_LIMIT_BYTES);
 
     if (!body.channelId || !body.name || !body.channelAccessToken || !body.channelSecret) {
       return c.json(
@@ -133,12 +138,12 @@ lineAccounts.post('/api/line-accounts', async (c) => {
 lineAccounts.put('/api/line-accounts/:id', async (c) => {
   try {
     const id = c.req.param('id');
-    const body = await c.req.json<{
+    const body = await readJsonBodyWithLimit<{
       name?: string;
       channelAccessToken?: string;
       channelSecret?: string;
       isActive?: boolean;
-    }>();
+    }>(c.req.raw, DEFAULT_ADMIN_JSON_BODY_LIMIT_BYTES);
 
     const updated = await updateLineAccount(c.env.DB, id, {
       name: body.name,
@@ -152,6 +157,8 @@ lineAccounts.put('/api/line-accounts/:id', async (c) => {
     }
     return c.json({ success: true, data: serializeLineAccount(updated) });
   } catch (err) {
+    const jr = jsonBodyReadErrorResponse(err);
+    if (jr) return c.json(jr.body, jr.status);
     console.error('PUT /api/line-accounts/:id error:', err);
     return c.json({ success: false, error: 'Internal server error' }, 500);
   }

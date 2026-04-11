@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback } from 'react';
 
 import Link from 'next/link';
 import type { Scenario, ScenarioStep, ScenarioTriggerType, MessageType } from '@line-crm/shared';
+import { tryParseJsonLoose, tryParseJsonObjectForPreview } from '@line-crm/shared';
 import { api } from '@/lib/api';
 import Header from '@/components/layout/header';
 import { Alert } from '@/components/ui/alert';
@@ -53,8 +54,12 @@ const emptyStepForm: StepFormState = {
 };
 
 function FlexPreview({ content }: { content: string }) {
+  const parsedRoot = tryParseJsonLoose(content);
+  if (parsedRoot === null || typeof parsedRoot !== 'object' || Array.isArray(parsedRoot)) {
+    return <p className="text-xs text-[var(--color-error)]">Flex JSON パースエラー</p>;
+  }
   try {
-    const parsed = JSON.parse(content);
+    const parsed = parsedRoot as Record<string, unknown>;
     // Extract visible text from Flex JSON
     const texts: string[] = [];
     const extractTexts = (obj: Record<string, unknown>) => {
@@ -101,28 +106,28 @@ function FlexPreview({ content }: { content: string }) {
 }
 
 function ImagePreview({ content }: { content: string }) {
-  try {
-    const parsed = JSON.parse(content);
-    const url = parsed.previewImageUrl || parsed.originalContentUrl;
-    return (
-      <div>
-        <span className="text-xs font-medium text-[var(--color-slate)] bg-[var(--color-slate-muted)] px-2 py-0.5 rounded mb-2 inline-block">
-          画像
-        </span>
-        {url ? (
-          <img
-            src={url}
-            alt="preview"
-            className="max-w-[200px] rounded-lg border border-gray-200 mt-1"
-          />
-        ) : (
-          <p className="text-xs text-gray-400">プレビューなし</p>
-        )}
-      </div>
-    );
-  } catch {
+  const parsed = tryParseJsonObjectForPreview(content);
+  if (!parsed) {
     return <p className="text-xs text-[var(--color-error)]">画像 JSON パースエラー</p>;
   }
+  const urlRaw = parsed.previewImageUrl ?? parsed.originalContentUrl;
+  const url = typeof urlRaw === 'string' ? urlRaw : undefined;
+  return (
+    <div>
+      <span className="text-xs font-medium text-[var(--color-slate)] bg-[var(--color-slate-muted)] px-2 py-0.5 rounded mb-2 inline-block">
+        画像
+      </span>
+      {url ? (
+        <img
+          src={url}
+          alt="preview"
+          className="max-w-[200px] rounded-lg border border-gray-200 mt-1"
+        />
+      ) : (
+        <p className="text-xs text-gray-400">プレビューなし</p>
+      )}
+    </div>
+  );
 }
 
 export default function ScenarioDetailClient({ scenarioId }: { scenarioId: string }) {

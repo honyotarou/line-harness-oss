@@ -63,6 +63,33 @@ function createLiffDb(): D1Database {
   } as unknown as D1Database;
 }
 
+function createLiffDbCorruptFriendMetadata(): D1Database {
+  return {
+    prepare(sql: string) {
+      return {
+        bind(..._args: unknown[]) {
+          return {
+            run: vi.fn().mockResolvedValue(undefined),
+            first: vi.fn(async <T>() => {
+              if (sql.includes('metadata FROM friends')) {
+                return { metadata: '{bad' } as T;
+              }
+              if (sql.includes('friend_scenarios')) {
+                return null as T;
+              }
+              if (sql.includes('entry_routes WHERE ref_code')) {
+                return null as T;
+              }
+              return null as T;
+            }),
+            all: vi.fn().mockResolvedValue({ results: [] }),
+          };
+        },
+      };
+    },
+  } as unknown as D1Database;
+}
+
 function lineOAuthFetchSuccess(verified: { sub: string; email?: string; name?: string }) {
   return vi.fn(async (input: RequestInfo | URL) => {
     const url =
@@ -381,6 +408,45 @@ describe('liff auth routes', () => {
       'friend-1',
       'user-new-1',
     );
+  });
+
+  it('completes /auth/callback when merging ad params over corrupt friend metadata JSON', async () => {
+    vi.stubGlobal(
+      'fetch',
+      lineOAuthFetchSuccess({ sub: 'U-line-ad', email: 'ad@example.com', name: 'AdUser' }),
+    );
+
+    dbMocks.upsertFriend.mockResolvedValue({
+      id: 'friend-ad',
+      line_user_id: 'U-line-ad',
+      display_name: 'AdUser',
+      picture_url: null,
+      status_message: null,
+      is_following: 1,
+      ref_code: null,
+      metadata: null,
+      user_id: null,
+      line_account_id: null,
+      created_at: '2026-03-26T10:00:00+09:00',
+      updated_at: '2026-03-26T10:00:00+09:00',
+    } as never);
+
+    dbMocks.createUser.mockResolvedValue({ id: 'user-ad-1' } as never);
+
+    const state = await signedOAuthState({ gclid: 'gc-corrupt-meta' });
+    const { liffRoutes } = await import('../../src/routes/liff.js');
+    const app = new Hono();
+    app.route('/', liffRoutes);
+
+    const response = await app.fetch(
+      new Request(
+        `http://localhost/auth/callback?code=auth-code-ad&state=${encodeURIComponent(state)}`,
+      ),
+      { ...baseEnv, DB: createLiffDbCorruptFriendMetadata() } as never,
+    );
+
+    expect(response.status).toBe(200);
+    expect(await response.text()).toContain('登録完了');
   });
 
   it('redirects after /auth/callback when state contains redirect', async () => {

@@ -1,3 +1,4 @@
+import type { Context } from 'hono';
 import { Hono } from 'hono';
 import {
   getForms,
@@ -14,14 +15,19 @@ import { getFriendByLineUserId, getFriendById } from '@line-crm/db';
 import { addTagToFriend, enrollFriendInScenario } from '@line-crm/db';
 import type { Form as DbForm, FormSubmission as DbFormSubmission } from '@line-crm/db';
 import type { Env } from '../index.js';
+import { isValidAdminAuthToken, readAdminSessionCookie } from '../services/admin-session.js';
+import { parseBearerAuthorization } from '../services/bearer-authorization.js';
 import { collectLineLoginChannelIds, verifyLineIdToken } from '../services/line-id-token.js';
 import { resolveLineAccessTokenForFriend } from '../services/line-account-routing.js';
 import {
   BodyTooLargeError,
+  DEFAULT_ADMIN_JSON_BODY_LIMIT_BYTES,
   InvalidJsonBodyError,
+  jsonBodyReadErrorResponse,
   readJsonBodyWithLimit,
 } from '../services/request-body.js';
 import { enforceRateLimit } from '../services/request-rate-limit.js';
+import { tryParseJsonArray, tryParseJsonRecord } from '../services/safe-json.js';
 
 const forms = new Hono<Env>();
 const PUBLIC_FORM_SUBMIT_LIMIT_BYTES = 64 * 1024;
@@ -41,7 +47,7 @@ function serializeForm(row: DbForm) {
     id: row.id,
     name: row.name,
     description: row.description,
-    fields: JSON.parse(row.fields || '[]') as unknown[],
+    fields: tryParseJsonArray(row.fields || '[]'),
     onSubmitTagId: row.on_submit_tag_id,
     onSubmitScenarioId: row.on_submit_scenario_id,
     saveToMetadata: Boolean(row.save_to_metadata),
@@ -52,12 +58,37 @@ function serializeForm(row: DbForm) {
   };
 }
 
+/** LIFF-facing shape: no internal automation IDs or metrics. */
+function serializeFormPublic(row: DbForm) {
+  return {
+    id: row.id,
+    name: row.name,
+    description: row.description,
+    fields: tryParseJsonArray(row.fields || '[]'),
+    isActive: Boolean(row.is_active),
+  };
+}
+
+async function resolveFormDefinitionReader(c: Context<Env>): Promise<'admin' | 'line' | null> {
+  const bearer = parseBearerAuthorization(c.req.header('Authorization')) ?? '';
+  const cookieToken = readAdminSessionCookie(c);
+  const token = bearer || cookieToken || '';
+  if (!token) return null;
+  if (await isValidAdminAuthToken(c.env.API_KEY, token)) return 'admin';
+  const channelIds = collectLineLoginChannelIds(
+    c.env.LINE_LOGIN_CHANNEL_ID,
+    await getLineAccounts(c.env.DB),
+  );
+  if (await verifyLineIdToken(token, channelIds)) return 'line';
+  return null;
+}
+
 function serializeSubmission(row: DbFormSubmission) {
   return {
     id: row.id,
     formId: row.form_id,
     friendId: row.friend_id,
-    data: JSON.parse(row.data || '{}') as Record<string, unknown>,
+    data: tryParseJsonRecord(row.data || '{}') ?? {},
     createdAt: row.created_at,
   };
 }
@@ -73,15 +104,24 @@ forms.get('/api/forms', async (c) => {
   }
 });
 
-// GET /api/forms/:id — get form
+// GET /api/forms/:id — get form (admin session or LINE Login ID token; not anonymous)
 forms.get('/api/forms/:id', async (c) => {
   try {
+    const mode = await resolveFormDefinitionReader(c);
+    if (!mode) {
+      return c.json({ success: false, error: 'Unauthorized' }, 401);
+    }
+
     const id = c.req.param('id');
     const form = await getFormById(c.env.DB, id);
     if (!form) {
       return c.json({ success: false, error: 'Form not found' }, 404);
     }
-    return c.json({ success: true, data: serializeForm(form) });
+
+    if (mode === 'admin') {
+      return c.json({ success: true, data: serializeForm(form) });
+    }
+    return c.json({ success: true, data: serializeFormPublic(form) });
   } catch (err) {
     console.error('GET /api/forms/:id error:', err);
     return c.json({ success: false, error: 'Internal server error' }, 500);
@@ -91,14 +131,14 @@ forms.get('/api/forms/:id', async (c) => {
 // POST /api/forms — create form
 forms.post('/api/forms', async (c) => {
   try {
-    const body = await c.req.json<{
+    const body = await readJsonBodyWithLimit<{
       name: string;
       description?: string | null;
       fields?: unknown[];
       onSubmitTagId?: string | null;
       onSubmitScenarioId?: string | null;
       saveToMetadata?: boolean;
-    }>();
+    }>(c.req.raw, DEFAULT_ADMIN_JSON_BODY_LIMIT_BYTES);
 
     if (!body.name) {
       return c.json({ success: false, error: 'name is required' }, 400);
@@ -115,6 +155,8 @@ forms.post('/api/forms', async (c) => {
 
     return c.json({ success: true, data: serializeForm(form) }, 201);
   } catch (err) {
+    const jr = jsonBodyReadErrorResponse(err);
+    if (jr) return c.json(jr.body, jr.status);
     console.error('POST /api/forms error:', err);
     return c.json({ success: false, error: 'Internal server error' }, 500);
   }
@@ -124,7 +166,7 @@ forms.post('/api/forms', async (c) => {
 forms.put('/api/forms/:id', async (c) => {
   try {
     const id = c.req.param('id');
-    const body = await c.req.json<{
+    const body = await readJsonBodyWithLimit<{
       name?: string;
       description?: string | null;
       fields?: unknown[];
@@ -132,7 +174,7 @@ forms.put('/api/forms/:id', async (c) => {
       onSubmitScenarioId?: string | null;
       saveToMetadata?: boolean;
       isActive?: boolean;
-    }>();
+    }>(c.req.raw, DEFAULT_ADMIN_JSON_BODY_LIMIT_BYTES);
 
     const updated = await updateForm(c.env.DB, id, {
       name: body.name,
@@ -150,6 +192,8 @@ forms.put('/api/forms/:id', async (c) => {
 
     return c.json({ success: true, data: serializeForm(updated) });
   } catch (err) {
+    const jr = jsonBodyReadErrorResponse(err);
+    if (jr) return c.json(jr.body, jr.status);
     console.error('PUT /api/forms/:id error:', err);
     return c.json({ success: false, error: 'Internal server error' }, 500);
   }
@@ -221,7 +265,7 @@ forms.post('/api/forms/:id/submit', async (c) => {
     }
 
     // Validate required fields
-    const fields = JSON.parse(form.fields || '[]') as Array<{
+    const fields = tryParseJsonArray(form.fields || '[]') as Array<{
       name: string;
       label: string;
       type: string;
@@ -271,7 +315,7 @@ forms.post('/api/forms/:id/submit', async (c) => {
         (async () => {
           const existingFriend = await getFriendById(db, friendId);
           if (!existingFriend) return;
-          const existing = JSON.parse(existingFriend.metadata || '{}') as Record<string, unknown>;
+          const existing = tryParseJsonRecord(existingFriend.metadata || '{}') ?? {};
           const merged = { ...existing, ...submissionData };
           await db
             .prepare(`UPDATE friends SET metadata = ?, updated_at = ? WHERE id = ?`)
@@ -312,11 +356,9 @@ forms.post('/api/forms/:id/submit', async (c) => {
         // Build Flex card showing their answers
         const entries = Object.entries(submissionData as Record<string, unknown>);
         const answerRows = entries.map(([key, value]) => {
-          const field = form.fields
-            ? (JSON.parse(form.fields) as Array<{ name: string; label: string }>).find(
-                (f: { name: string }) => f.name === key,
-              )
-            : null;
+          const field = (
+            tryParseJsonArray(form.fields ?? '[]') as Array<{ name: string; label: string }>
+          ).find((f: { name: string }) => f.name === key);
           const label = field?.label || key;
           const val = Array.isArray(value) ? value.join(', ') : String(value || '-') || '-';
           return {

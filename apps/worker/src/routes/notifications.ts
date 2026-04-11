@@ -8,6 +8,13 @@ import {
   getNotifications,
 } from '@line-crm/db';
 import type { Env } from '../index.js';
+import {
+  DEFAULT_ADMIN_JSON_BODY_LIMIT_BYTES,
+  jsonBodyReadErrorResponse,
+  readJsonBodyWithLimit,
+} from '../services/request-body.js';
+import { parseStringArrayJson, tryParseJsonRecord } from '../services/safe-json.js';
+import { clampListLimit } from '../services/query-limits.js';
 
 const notifications = new Hono<Env>();
 
@@ -33,8 +40,8 @@ notifications.get('/api/notifications/rules', async (c) => {
         id: r.id,
         name: r.name,
         eventType: r.event_type,
-        conditions: JSON.parse(r.conditions),
-        channels: JSON.parse(r.channels),
+        conditions: tryParseJsonRecord(r.conditions) ?? {},
+        channels: parseStringArrayJson(r.channels) ?? [],
         lineAccountId: r.line_account_id,
         isActive: Boolean(r.is_active),
         createdAt: r.created_at,
@@ -57,8 +64,8 @@ notifications.get('/api/notifications/rules/:id', async (c) => {
         id: item.id,
         name: item.name,
         eventType: item.event_type,
-        conditions: JSON.parse(item.conditions),
-        channels: JSON.parse(item.channels),
+        conditions: tryParseJsonRecord(item.conditions) ?? {},
+        channels: parseStringArrayJson(item.channels) ?? [],
         lineAccountId: item.line_account_id,
         isActive: Boolean(item.is_active),
         createdAt: item.created_at,
@@ -72,13 +79,13 @@ notifications.get('/api/notifications/rules/:id', async (c) => {
 
 notifications.post('/api/notifications/rules', async (c) => {
   try {
-    const body = await c.req.json<{
+    const body = await readJsonBodyWithLimit<{
       name: string;
       eventType: string;
       conditions?: Record<string, unknown>;
       channels?: string[];
       lineAccountId?: string | null;
-    }>();
+    }>(c.req.raw, DEFAULT_ADMIN_JSON_BODY_LIMIT_BYTES);
     if (!body.name || !body.eventType)
       return c.json({ success: false, error: 'name and eventType are required' }, 400);
     const item = await createNotificationRule(c.env.DB, body);
@@ -89,7 +96,7 @@ notifications.post('/api/notifications/rules', async (c) => {
           id: item.id,
           name: item.name,
           eventType: item.event_type,
-          channels: JSON.parse(item.channels),
+          channels: parseStringArrayJson(item.channels) ?? [],
           lineAccountId: item.line_account_id,
           createdAt: item.created_at,
         },
@@ -97,6 +104,8 @@ notifications.post('/api/notifications/rules', async (c) => {
       201,
     );
   } catch (err) {
+    const jr = jsonBodyReadErrorResponse(err);
+    if (jr) return c.json(jr.body, jr.status);
     console.error('POST /api/notifications/rules error:', err);
     return c.json({ success: false, error: 'Internal server error' }, 500);
   }
@@ -105,8 +114,11 @@ notifications.post('/api/notifications/rules', async (c) => {
 notifications.put('/api/notifications/rules/:id', async (c) => {
   try {
     const id = c.req.param('id');
-    const body = await c.req.json();
-    await updateNotificationRule(c.env.DB, id, body);
+    const body = await readJsonBodyWithLimit<Record<string, unknown>>(
+      c.req.raw,
+      DEFAULT_ADMIN_JSON_BODY_LIMIT_BYTES,
+    );
+    await updateNotificationRule(c.env.DB, id, body as never);
     const updated = await getNotificationRuleById(c.env.DB, id);
     if (!updated) return c.json({ success: false, error: 'Not found' }, 404);
     return c.json({
@@ -115,12 +127,14 @@ notifications.put('/api/notifications/rules/:id', async (c) => {
         id: updated.id,
         name: updated.name,
         eventType: updated.event_type,
-        channels: JSON.parse(updated.channels),
+        channels: parseStringArrayJson(updated.channels) ?? [],
         lineAccountId: updated.line_account_id,
         isActive: Boolean(updated.is_active),
       },
     });
   } catch (err) {
+    const jr = jsonBodyReadErrorResponse(err);
+    if (jr) return c.json(jr.body, jr.status);
     console.error('PUT /api/notifications/rules/:id error:', err);
     return c.json({ success: false, error: 'Internal server error' }, 500);
   }
@@ -141,7 +155,7 @@ notifications.delete('/api/notifications/rules/:id', async (c) => {
 notifications.get('/api/notifications', async (c) => {
   try {
     const status = c.req.query('status') ?? undefined;
-    const limit = Number(c.req.query('limit') ?? '100');
+    const limit = clampListLimit(c.req.query('limit'), 100, 500);
     const lineAccountId = c.req.query('lineAccountId') ?? undefined;
     let items;
     if (lineAccountId) {
@@ -172,7 +186,7 @@ notifications.get('/api/notifications', async (c) => {
         channel: n.channel,
         status: n.status,
         lineAccountId: n.line_account_id,
-        metadata: n.metadata ? JSON.parse(n.metadata) : null,
+        metadata: n.metadata ? tryParseJsonRecord(n.metadata) : null,
         createdAt: n.created_at,
       })),
     });

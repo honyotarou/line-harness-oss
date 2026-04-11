@@ -13,16 +13,15 @@ import {
   readJsonBodyWithLimit,
 } from '../services/request-body.js';
 import { enforceRateLimit } from '../services/request-rate-limit.js';
+import { parseBearerAuthorization } from '../services/bearer-authorization.js';
+import { isCloudflareAccessEnforced } from '../services/cloudflare-access-jwt.js';
 
 const authRoutes = new Hono<Env>();
 const LOGIN_BODY_LIMIT_BYTES = 8 * 1024;
 const LOGIN_RATE_LIMIT = { limit: 5, windowMs: 60_000 };
 
 function getBearerToken(header: string | undefined): string | null {
-  if (!header || !header.startsWith('Bearer ')) {
-    return null;
-  }
-  return header.slice('Bearer '.length);
+  return parseBearerAuthorization(header);
 }
 
 function getAdminAuthToken(c: { req: { header: (name: string) => string | undefined } }):
@@ -47,12 +46,39 @@ authRoutes.post('/api/auth/login', async (c) => {
       return limited;
     }
 
-    const body = await readJsonBodyWithLimit<{ apiKey?: string }>(
+    const body = await readJsonBodyWithLimit<Record<string, unknown>>(
       c.req.raw,
       LOGIN_BODY_LIMIT_BYTES,
     );
-    if (!body.apiKey || body.apiKey !== c.env.API_KEY) {
-      return c.json({ success: false, error: 'Unauthorized' }, 401);
+
+    if (isCloudflareAccessEnforced(c.env)) {
+      const apiKeyRaw = body.apiKey;
+      if (apiKeyRaw !== undefined && apiKeyRaw !== null && String(apiKeyRaw).trim() !== '') {
+        return c.json(
+          {
+            success: false,
+            error:
+              'apiKey must not be sent when Cloudflare Access is enforced; complete Google login at the Access gate, then call login with an empty JSON object {}.',
+          },
+          400,
+        );
+      }
+      const accessPayload = c.get('cfAccessJwtPayload');
+      if (!accessPayload) {
+        return c.json(
+          {
+            success: false,
+            error:
+              'Cloudflare Access JWT missing; ensure Cf-Access-Jwt-Assertion reaches the Worker.',
+          },
+          401,
+        );
+      }
+    } else {
+      const apiKey = typeof body.apiKey === 'string' ? body.apiKey : '';
+      if (!apiKey || apiKey !== c.env.API_KEY) {
+        return c.json({ success: false, error: 'Unauthorized' }, 401);
+      }
     }
 
     const token = await issueAdminSessionToken(c.env.API_KEY);
@@ -62,12 +88,17 @@ authRoutes.post('/api/auth/login', async (c) => {
       ? new Date(payload.exp * 1000).toISOString()
       : new Date(Date.now() + 12 * 60 * 60_000).toISOString();
 
+    const cfPayload = isCloudflareAccessEnforced(c.env) ? c.get('cfAccessJwtPayload') : undefined;
+    const emailFromAccess =
+      cfPayload && typeof cfPayload.email === 'string' ? cfPayload.email : undefined;
+
     return c.json({
       success: true,
       data: {
         expiresAt,
         /** Same value as HttpOnly cookie; use when the admin UI and API are on different sites (cross-origin cookies blocked). */
         sessionToken: token,
+        ...(emailFromAccess ? { email: emailFromAccess } : {}),
       },
     });
   } catch (err) {

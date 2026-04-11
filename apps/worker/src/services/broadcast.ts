@@ -7,8 +7,8 @@ import {
 } from '@line-crm/db';
 import type { Broadcast } from '@line-crm/db';
 import type { LineClient } from '@line-crm/line-sdk';
-import type { Message } from '@line-crm/line-sdk';
 import { calculateStaggerDelay, sleep, addMessageVariation } from './stealth.js';
+import { buildMessageFromStoredContent } from './stored-line-message.js';
 import {
   beginDeliveryAttempt,
   markDeliveryAttemptFailed,
@@ -47,7 +47,9 @@ export async function processBroadcastSend(
   // Mark as sending only after the delivery slot is reserved.
   await updateBroadcastStatus(db, broadcastId, 'sending');
 
-  const message = buildMessage(broadcast.message_type, broadcast.message_content);
+  const message = buildMessageFromStoredContent(broadcast.message_type, broadcast.message_content, {
+    flexAltFallback: 'Message',
+  });
   let totalCount = 0;
   let successCount = 0;
   const resetStatus = broadcast.status === 'scheduled' ? 'scheduled' : 'draft';
@@ -160,37 +162,4 @@ export async function processScheduledBroadcasts(
       // Continue with next broadcast
     }
   }
-}
-
-function buildMessage(messageType: string, messageContent: string): Message {
-  if (messageType === 'text') {
-    return { type: 'text', text: messageContent };
-  }
-
-  if (messageType === 'image') {
-    try {
-      const parsed = JSON.parse(messageContent) as {
-        originalContentUrl: string;
-        previewImageUrl: string;
-      };
-      return {
-        type: 'image',
-        originalContentUrl: parsed.originalContentUrl,
-        previewImageUrl: parsed.previewImageUrl,
-      };
-    } catch {
-      return { type: 'text', text: messageContent };
-    }
-  }
-
-  if (messageType === 'flex') {
-    try {
-      const contents = JSON.parse(messageContent);
-      return { type: 'flex', altText: 'Message', contents };
-    } catch {
-      return { type: 'text', text: messageContent };
-    }
-  }
-
-  return { type: 'text', text: messageContent };
 }
