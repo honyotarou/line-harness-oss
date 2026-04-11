@@ -79,7 +79,7 @@ describe('攻撃者サイクル 301–350（セキュリティバッチ）', () 
 
   it('cycle 308: computeDeliveryRetryDelayMs with zero base returns zero', async () => {
     const { computeDeliveryRetryDelayMs } = await import(
-      '../../src/services/delivery-reliability.js'
+      '../../src/services/delivery-retry-backoff.js'
     );
     expect(computeDeliveryRetryDelayMs(1, 0)).toBe(0);
   });
@@ -229,7 +229,7 @@ describe('攻撃者サイクル 301–350（セキュリティバッチ）', () 
   });
 
   it('cycle 327: expandVariables clears name when display_name null', async () => {
-    const { expandVariables } = await import('../../src/services/step-delivery.js');
+    const { expandVariables } = await import('../../src/services/message-expand-variables.js');
     expect(expandVariables('Hi {{name}}', { id: '1', display_name: null, user_id: 'u' })).toBe(
       'Hi ',
     );
@@ -358,7 +358,7 @@ describe('攻撃者サイクル 301–350（セキュリティバッチ）', () 
   });
 
   it('cycle 346: expandVariables substitutes friend_id', async () => {
-    const { expandVariables } = await import('../../src/services/step-delivery.js');
+    const { expandVariables } = await import('../../src/services/message-expand-variables.js');
     expect(
       expandVariables('id={{friend_id}}', { id: 'fid-9', display_name: 'N', user_id: 'u' }),
     ).toBe('id=fid-9');
@@ -366,7 +366,7 @@ describe('攻撃者サイクル 301–350（セキュリティバッチ）', () 
 
   it('cycle 347: computeDeliveryRetryDelayMs caps at one hour for huge attempt count', async () => {
     const { computeDeliveryRetryDelayMs } = await import(
-      '../../src/services/delivery-reliability.js'
+      '../../src/services/delivery-retry-backoff.js'
     );
     expect(computeDeliveryRetryDelayMs(25, 1_000_000)).toBe(3_600_000);
   });

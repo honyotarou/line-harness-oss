@@ -115,14 +115,14 @@ describe('攻撃者サイクル 201–250（セキュリティバッチ）', () 
 
   it('cycle 211: computeDeliveryRetryDelayMs first attempt uses base only', async () => {
     const { computeDeliveryRetryDelayMs } = await import(
-      '../../src/services/delivery-reliability.js'
+      '../../src/services/delivery-retry-backoff.js'
     );
     expect(computeDeliveryRetryDelayMs(1, 300_000)).toBe(300_000);
   });
 
   it('cycle 212: computeDeliveryRetryDelayMs doubles per extra attempt', async () => {
     const { computeDeliveryRetryDelayMs } = await import(
-      '../../src/services/delivery-reliability.js'
+      '../../src/services/delivery-retry-backoff.js'
     );
     expect(computeDeliveryRetryDelayMs(2, 300_000)).toBe(600_000);
     expect(computeDeliveryRetryDelayMs(3, 300_000)).toBe(1_200_000);
@@ -130,7 +130,7 @@ describe('攻撃者サイクル 201–250（セキュリティバッチ）', () 
 
   it('cycle 213: computeDeliveryRetryDelayMs caps at one hour', async () => {
     const { computeDeliveryRetryDelayMs } = await import(
-      '../../src/services/delivery-reliability.js'
+      '../../src/services/delivery-retry-backoff.js'
     );
     expect(computeDeliveryRetryDelayMs(99, 300_000)).toBe(60 * 60_000);
   });
@@ -382,7 +382,7 @@ describe('攻撃者サイクル 201–250（セキュリティバッチ）', () 
   });
 
   it('cycle 240: expandVariables leaves auth_url token when apiOrigin missing', async () => {
-    const { expandVariables } = await import('../../src/services/step-delivery.js');
+    const { expandVariables } = await import('../../src/services/message-expand-variables.js');
     const out = expandVariables('x {{auth_url:2001234567}} y', {
       id: '1',
       display_name: 'N',

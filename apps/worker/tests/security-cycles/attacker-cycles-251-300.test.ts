@@ -99,20 +99,20 @@ describe('攻撃者サイクル 251–300（セキュリティバッチ）', () 
 
   it('cycle 265: computeDeliveryRetryDelayMs uses base when attemptCount is 0', async () => {
     const { computeDeliveryRetryDelayMs } = await import(
-      '../../src/services/delivery-reliability.js'
+      '../../src/services/delivery-retry-backoff.js'
     );
     expect(computeDeliveryRetryDelayMs(0, 400)).toBe(400);
   });
 
   it('cycle 266: computeDeliveryRetryDelayMs attemptCount 0 matches attemptCount 1 base delay', async () => {
     const { computeDeliveryRetryDelayMs } = await import(
-      '../../src/services/delivery-reliability.js'
+      '../../src/services/delivery-retry-backoff.js'
     );
     expect(computeDeliveryRetryDelayMs(0, 300_000)).toBe(computeDeliveryRetryDelayMs(1, 300_000));
   });
 
   it('cycle 267: expandVariables drops auth_url when channel id exceeds 128 chars', async () => {
-    const { expandVariables } = await import('../../src/services/step-delivery.js');
+    const { expandVariables } = await import('../../src/services/message-expand-variables.js');
     const id = 'a'.repeat(129);
     const out = expandVariables(
       `{{auth_url:${id}}}`,
@@ -123,7 +123,7 @@ describe('攻撃者サイクル 251–300（セキュリティバッチ）', () 
   });
 
   it('cycle 268: expandVariables keeps auth_url at exactly 128 char channel id', async () => {
-    const { expandVariables } = await import('../../src/services/step-delivery.js');
+    const { expandVariables } = await import('../../src/services/message-expand-variables.js');
     const id = 'b'.repeat(128);
     const out = expandVariables(
       `{{auth_url:${id}}}`,

@@ -110,7 +110,7 @@ describe('攻撃者サイクル 151–200（セキュリティバッチ）', () 
   });
 
   it('cycle 158: expandVariables drops auth_url when channel id has spaces', async () => {
-    const { expandVariables } = await import('../../src/services/step-delivery.js');
+    const { expandVariables } = await import('../../src/services/message-expand-variables.js');
     const out = expandVariables(
       'x {{auth_url:bad id}} y',
       { id: 'f1', display_name: 'N', user_id: 'u1' },
@@ -120,7 +120,7 @@ describe('攻撃者サイクル 151–200（セキュリティバッチ）', () 
   });
 
   it('cycle 159: expandVariables drops auth_url when channel id has script-like chars', async () => {
-    const { expandVariables } = await import('../../src/services/step-delivery.js');
+    const { expandVariables } = await import('../../src/services/message-expand-variables.js');
     const out = expandVariables(
       'x {{auth_url:chan<script>}} y',
       { id: 'f1', display_name: 'N', user_id: 'u1' },
@@ -130,7 +130,7 @@ describe('攻撃者サイクル 151–200（セキュリティバッチ）', () 
   });
 
   it('cycle 160: expandVariables builds auth_url for safe LINE-style channel id', async () => {
-    const { expandVariables } = await import('../../src/services/step-delivery.js');
+    const { expandVariables } = await import('../../src/services/message-expand-variables.js');
     const out = expandVariables(
       'go {{auth_url:2001234567}} end',
       { id: 'f1', display_name: 'N', user_id: 'u9' },
@@ -430,7 +430,7 @@ describe('攻撃者サイクル 151–200（セキュリティバッチ）', () 
   });
 
   it('cycle 193: expandVariables strips if_ref block when no ref_code', async () => {
-    const { expandVariables } = await import('../../src/services/step-delivery.js');
+    const { expandVariables } = await import('../../src/services/message-expand-variables.js');
     const out = expandVariables('a {{#if_ref}}SECRET{{/if_ref}} b', {
       id: '1',
       display_name: 'x',
@@ -440,7 +440,7 @@ describe('攻撃者サイクル 151–200（セキュリティバッチ）', () 
   });
 
   it('cycle 194: expandVariables keeps if_ref when ref_code set', async () => {
-    const { expandVariables } = await import('../../src/services/step-delivery.js');
+    const { expandVariables } = await import('../../src/services/message-expand-variables.js');
     const out = expandVariables('a {{#if_ref}}R{{/if_ref}} b', {
       id: '1',
       display_name: 'x',

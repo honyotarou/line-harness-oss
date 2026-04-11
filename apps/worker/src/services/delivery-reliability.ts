@@ -1,8 +1,10 @@
 import { createNotification, jstNow } from '@line-crm/db';
+import { computeDeliveryRetryDelayMs } from './delivery-retry-backoff.js';
+
+export { computeDeliveryRetryDelayMs };
 
 const DEFAULT_MAX_ATTEMPTS = 3;
 const DEFAULT_RETRY_BASE_MS = 5 * 60_000;
-const MAX_RETRY_DELAY_MS = 60 * 60_000;
 
 type DeliveryOperationStatus = 'pending' | 'sent' | 'failed';
 
@@ -62,12 +64,6 @@ function normalizeMetadata(
   }
 
   return Object.keys(payload).length > 0 ? JSON.stringify(payload) : null;
-}
-
-/** Exponential backoff for failed deliveries; capped at MAX_RETRY_DELAY_MS. */
-export function computeDeliveryRetryDelayMs(attemptCount: number, baseRetryMs: number): number {
-  const exponent = Math.max(attemptCount - 1, 0);
-  return Math.min(baseRetryMs * 2 ** exponent, MAX_RETRY_DELAY_MS);
 }
 
 async function getDeliveryOperation(
