@@ -39,6 +39,7 @@ describe('runScheduledJobs', () => {
       expect.objectContaining({ token: 'shared-token' }),
       'https://worker.example.com',
       null,
+      undefined,
     );
     expect(processStepDeliveries).toHaveBeenNthCalledWith(
       2,
@@ -46,6 +47,7 @@ describe('runScheduledJobs', () => {
       expect.objectContaining({ token: 'shared-token' }),
       'https://worker.example.com',
       'account-1',
+      undefined,
     );
     expect(processStepDeliveries).toHaveBeenNthCalledWith(
       3,
@@ -53,6 +55,7 @@ describe('runScheduledJobs', () => {
       expect.objectContaining({ token: 'account-2-token' }),
       'https://worker.example.com',
       'account-2',
+      undefined,
     );
     expect(processScheduledBroadcasts).toHaveBeenCalledTimes(3);
     expect(processReminderDeliveries).toHaveBeenCalledTimes(3);

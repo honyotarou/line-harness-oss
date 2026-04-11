@@ -1,6 +1,14 @@
 import { describe, expect, it } from 'vitest';
 
 describe('cors policy helpers', () => {
+  it('skips CORS header logic when Origin is absent (non-browser clients)', async () => {
+    const { shouldApplyCorsForOriginHeader } = await import('../../src/services/cors-policy.js');
+    expect(shouldApplyCorsForOriginHeader(undefined)).toBe(false);
+    expect(shouldApplyCorsForOriginHeader('')).toBe(false);
+    expect(shouldApplyCorsForOriginHeader('   ')).toBe(false);
+    expect(shouldApplyCorsForOriginHeader('https://admin.example.com')).toBe(true);
+  });
+
   it('allows configured dashboard and liff origins', async () => {
     const { buildAllowedOrigins, isAllowedOrigin } = await import(
       '../../src/services/cors-policy.js'
@@ -18,6 +26,26 @@ describe('cors policy helpers', () => {
     expect(origins).toContain('https://liff.line.me');
     expect(origins).toContain('https://preview.example.com');
     expect(isAllowedOrigin('https://staging.example.com', origins)).toBe(true);
+  });
+
+  it('rejects the literal Origin string "null" (sandboxed / opaque origins)', async () => {
+    const { buildAllowedOrigins, isAllowedOrigin } = await import(
+      '../../src/services/cors-policy.js'
+    );
+
+    const origins = buildAllowedOrigins({
+      WEB_URL: 'https://admin.example.com',
+    });
+
+    expect(isAllowedOrigin('null', origins)).toBe(false);
+    expect(isAllowedOrigin('Null', origins)).toBe(false);
+  });
+
+  it('exports CORS allow-headers including CSRF client header for browser admin', async () => {
+    const { ACCESS_CONTROL_ALLOW_HEADERS } = await import('../../src/services/cors-policy.js');
+    const { ADMIN_BROWSER_CLIENT_HEADER } = await import('@line-crm/shared');
+    expect(ACCESS_CONTROL_ALLOW_HEADERS).toContain(ADMIN_BROWSER_CLIENT_HEADER);
+    expect(ACCESS_CONTROL_ALLOW_HEADERS).toContain('Authorization');
   });
 
   it('rejects unknown origins', async () => {

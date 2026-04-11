@@ -12,7 +12,9 @@ import {
   deleteOutgoingWebhook,
 } from '@line-crm/db';
 import type { Env } from '../index.js';
-import { isSafeHttpsOutboundUrl } from '../services/outbound-url.js';
+import { assertHttpsOutboundUrlResolvedSafe } from '../services/outbound-url-resolve.js';
+import { tryConsumeIncomingWebhookPayload } from '../services/incoming-webhook-dedup.js';
+import { maskSigningSecretForList } from '../services/signing-secret-display.js';
 import { verifySignedPayload } from '../services/signed-payload.js';
 import {
   DEFAULT_ADMIN_JSON_BODY_LIMIT_BYTES,
@@ -25,7 +27,34 @@ import { parseStringArrayJson } from '../services/safe-json.js';
 
 const webhooks = new Hono<Env>();
 const INCOMING_WEBHOOK_LIMIT_BYTES = 64 * 1024;
-const INCOMING_WEBHOOK_RATE_LIMIT = { limit: 20, windowMs: 60_000 };
+
+function buildIncomingWebhookUpdates(body: Record<string, unknown>): Partial<{
+  name: string;
+  sourceType: string;
+  secret: string;
+  isActive: boolean;
+}> {
+  const updates: Partial<{
+    name: string;
+    sourceType: string;
+    secret: string;
+    isActive: boolean;
+  }> = {};
+  if (typeof body.name === 'string') updates.name = body.name;
+  const st = body.sourceType ?? body.source_type;
+  if (typeof st === 'string') updates.sourceType = st;
+  if (body.secret !== undefined && body.secret !== null) {
+    updates.secret = String(body.secret);
+  }
+  const ia = body.isActive ?? body.is_active;
+  if (typeof ia === 'boolean') updates.isActive = ia;
+  else if (ia === 0 || ia === 1) updates.isActive = Boolean(ia);
+  return updates;
+}
+const INCOMING_WEBHOOK_PER_ID_RATE_LIMIT = { limit: 20, windowMs: 60_000 };
+
+/** Shared by all `/api/webhooks/incoming/:id/receive` — caps total hits per client IP (mitigates ID scanning). */
+export const INCOMING_WEBHOOK_GLOBAL_RATE_LIMIT = { limit: 100, windowMs: 60_000 };
 
 // ========== 受信Webhook ==========
 
@@ -38,7 +67,7 @@ webhooks.get('/api/webhooks/incoming', async (c) => {
         id: w.id,
         name: w.name,
         sourceType: w.source_type,
-        secret: w.secret,
+        secret: maskSigningSecretForList(w.secret),
         isActive: Boolean(w.is_active),
         createdAt: w.created_at,
         updatedAt: w.updated_at,
@@ -108,7 +137,7 @@ webhooks.put('/api/webhooks/incoming/:id', async (c) => {
         );
       }
     }
-    await updateIncomingWebhook(c.env.DB, id, body as never);
+    await updateIncomingWebhook(c.env.DB, id, buildIncomingWebhookUpdates(body));
     const updated = await getIncomingWebhookById(c.env.DB, id);
     if (!updated) return c.json({ success: false, error: 'Not found' }, 404);
     return c.json({
@@ -150,7 +179,7 @@ webhooks.get('/api/webhooks/outgoing', async (c) => {
         name: w.name,
         url: w.url,
         eventTypes: parseStringArrayJson(w.event_types) ?? [],
-        secret: w.secret,
+        secret: maskSigningSecretForList(w.secret),
         isActive: Boolean(w.is_active),
         createdAt: w.created_at,
         updatedAt: w.updated_at,
@@ -172,15 +201,9 @@ webhooks.post('/api/webhooks/outgoing', async (c) => {
     }>(c.req.raw, DEFAULT_ADMIN_JSON_BODY_LIMIT_BYTES);
     if (!body.name || !body.url)
       return c.json({ success: false, error: 'name and url are required' }, 400);
-    if (!isSafeHttpsOutboundUrl(body.url)) {
-      return c.json(
-        {
-          success: false,
-          error:
-            'url must be a public https URL (private IPs, localhost, and metadata endpoints are not allowed)',
-        },
-        400,
-      );
+    const outboundOk = await assertHttpsOutboundUrlResolvedSafe(body.url, fetch);
+    if (!outboundOk.ok) {
+      return c.json({ success: false, error: outboundOk.reason }, 400);
     }
     const item = await createOutgoingWebhook(c.env.DB, {
       ...body,
@@ -216,15 +239,9 @@ webhooks.put('/api/webhooks/outgoing/:id', async (c) => {
       DEFAULT_ADMIN_JSON_BODY_LIMIT_BYTES,
     );
     if (body.url !== undefined && body.url !== null && String(body.url).trim() !== '') {
-      if (!isSafeHttpsOutboundUrl(String(body.url))) {
-        return c.json(
-          {
-            success: false,
-            error:
-              'url must be a public https URL (private IPs, localhost, and metadata endpoints are not allowed)',
-          },
-          400,
-        );
+      const outboundOk = await assertHttpsOutboundUrlResolvedSafe(String(body.url), fetch);
+      if (!outboundOk.ok) {
+        return c.json({ success: false, error: outboundOk.reason }, 400);
       }
     }
     await updateOutgoingWebhook(c.env.DB, id, body);
@@ -262,11 +279,21 @@ webhooks.delete('/api/webhooks/outgoing/:id', async (c) => {
 
 webhooks.post('/api/webhooks/incoming/:id/receive', async (c) => {
   try {
+    const limitedGlobal = await enforceRateLimit(c, {
+      bucket: 'incoming-webhook:global',
+      db: c.env.DB,
+      limit: INCOMING_WEBHOOK_GLOBAL_RATE_LIMIT.limit,
+      windowMs: INCOMING_WEBHOOK_GLOBAL_RATE_LIMIT.windowMs,
+    });
+    if (limitedGlobal) {
+      return limitedGlobal;
+    }
+
     const limited = await enforceRateLimit(c, {
       bucket: `incoming-webhook:${c.req.param('id')}`,
       db: c.env.DB,
-      limit: INCOMING_WEBHOOK_RATE_LIMIT.limit,
-      windowMs: INCOMING_WEBHOOK_RATE_LIMIT.windowMs,
+      limit: INCOMING_WEBHOOK_PER_ID_RATE_LIMIT.limit,
+      windowMs: INCOMING_WEBHOOK_PER_ID_RATE_LIMIT.windowMs,
     });
     if (limited) {
       return limited;
@@ -303,6 +330,11 @@ webhooks.post('/api/webhooks/incoming/:id/receive', async (c) => {
     }
     if (body === null || typeof body !== 'object') {
       return c.json({ success: false, error: 'Webhook JSON body must be an object or array' }, 400);
+    }
+
+    const firstDelivery = await tryConsumeIncomingWebhookPayload(c.env.DB, id, rawBody);
+    if (!firstDelivery) {
+      return c.json({ success: true, data: { received: true, source: wh.source_type } });
     }
 
     // イベントバスに発火: source_type をイベントタイプとして使用

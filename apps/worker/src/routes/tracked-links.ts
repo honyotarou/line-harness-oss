@@ -16,7 +16,7 @@ import {
   trackingLinkSigningSecret,
   verifyTrackedLinkFriendToken,
 } from '../services/tracking-friend-token.js';
-import { isSafeHttpsOutboundUrl } from '../services/outbound-url.js';
+import { assertHttpsOutboundUrlResolvedSafe } from '../services/outbound-url-resolve.js';
 import {
   DEFAULT_ADMIN_JSON_BODY_LIMIT_BYTES,
   jsonBodyReadErrorResponse,
@@ -136,7 +136,8 @@ trackedLinks.post('/api/tracked-links', async (c) => {
       return c.json({ success: false, error: 'name and originalUrl are required' }, 400);
     }
 
-    if (!isSafeHttpsOutboundUrl(originalUrl)) {
+    const outboundOk = await assertHttpsOutboundUrlResolvedSafe(originalUrl, fetch);
+    if (!outboundOk.ok) {
       return c.json({ success: false, error: TRACKED_LINK_ORIGINAL_URL_ERROR }, 400);
     }
 
@@ -185,7 +186,8 @@ trackedLinks.get('/t/:linkId', async (c) => {
     return c.json({ success: false, error: 'Link not found' }, 404);
   }
 
-  if (!isSafeHttpsOutboundUrl(link.original_url)) {
+  const outboundOk = await assertHttpsOutboundUrlResolvedSafe(link.original_url, fetch);
+  if (!outboundOk.ok) {
     return c.json({ success: false, error: 'Link not found' }, 404);
   }
 

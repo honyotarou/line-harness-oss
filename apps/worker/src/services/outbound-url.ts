@@ -1,7 +1,12 @@
 /**
  * SSRF mitigation for server-initiated HTTPS fetches (outgoing webhooks, automation send_webhook).
- * Hostname-based only; does not follow redirects (fetch caller should not follow redirects if added later).
+ * Hostname-based only; combine with {@link OUTBOUND_HTTPS_FETCH_REDIRECT_MANUAL} so 3xx cannot bypass checks.
  */
+
+/** Spread into `fetch(url, { ...init, ...OUTBOUND_HTTPS_FETCH_REDIRECT_MANUAL })` for admin-configured HTTPS URLs. */
+export const OUTBOUND_HTTPS_FETCH_REDIRECT_MANUAL: Pick<RequestInit, 'redirect'> = {
+  redirect: 'manual',
+};
 
 function normalizeIpv6Host(hostname: string): string {
   if (hostname.startsWith('[') && hostname.endsWith(']')) {
@@ -85,6 +90,23 @@ export function isSafeHttpsOutboundUrl(urlString: string): boolean {
     return !isBlockedIpv6(ipv6);
   }
 
+  return true;
+}
+
+/**
+ * True if a DNS A/AAAA `data` value (or bare host/IP string) resolves to a disallowed address.
+ * Unknown shapes are treated as blocked.
+ */
+export function isBlockedResolvedAddress(addr: string): boolean {
+  const t = addr.trim();
+  const ipv4 = parseIpv4(t);
+  if (ipv4) {
+    return isBlockedIpv4(ipv4);
+  }
+  const v6 = normalizeIpv6Host(t);
+  if (v6.includes(':')) {
+    return isBlockedIpv6(v6);
+  }
   return true;
 }
 

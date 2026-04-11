@@ -1,3 +1,11 @@
+export type ExpandVariablesOptions = {
+  /**
+   * When set, `{{auth_url:CHANNEL}}` expands only if CHANNEL is in this set.
+   * When `apiOrigin` is set but this is omitted or empty, auth_url tokens are stripped (safe default).
+   */
+  allowedAuthUrlChannelIds?: ReadonlySet<string> | readonly string[];
+};
+
 /**
  * Replace template variables in message content.
  *
@@ -5,7 +13,7 @@
  * - {{name}}                → friend's display name
  * - {{uid}}                 → friend's user UUID
  * - {{friend_id}}           → friend's internal ID
- * - {{auth_url:CHANNEL_ID}} → full /auth/line URL with uid for cross-account linking
+ * - {{auth_url:CHANNEL_ID}} → full /auth/line URL with uid for cross-account linking (allowlist required when apiOrigin is set)
  */
 export function expandVariables(
   content: string,
@@ -16,6 +24,7 @@ export function expandVariables(
     ref_code?: string | null;
   },
   apiOrigin?: string,
+  options?: ExpandVariablesOptions,
 ): string {
   let result = content;
   result = result.replace(/\{\{name\}\}/g, friend.display_name || '');
@@ -29,9 +38,16 @@ export function expandVariables(
     result = result.replace(/\{\{#if_ref\}\}[\s\S]*?\{\{\/if_ref\}\}/g, '');
   }
   if (apiOrigin) {
+    const rawAllow = options?.allowedAuthUrlChannelIds;
+    const allowSet =
+      rawAllow === undefined ? null : rawAllow instanceof Set ? rawAllow : new Set(rawAllow);
+
     result = result.replace(/\{\{auth_url:([^}]+)\}\}/g, (_match, channelIdRaw) => {
       const channelId = String(channelIdRaw).trim();
       if (!/^[-a-zA-Z0-9._]{1,128}$/.test(channelId)) {
+        return '';
+      }
+      if (allowSet === null || allowSet.size === 0 || !allowSet.has(channelId)) {
         return '';
       }
       const params = new URLSearchParams({ account: channelId, ref: 'cross-link' });

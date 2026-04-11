@@ -8,13 +8,14 @@ import {
   getAutomationLogs,
 } from '@line-crm/db';
 import type { Env } from '../index.js';
-import { unsafeSendWebhookUrlInActions } from '../services/outbound-url.js';
+import { assertSendWebhookActionsDnsSafe } from '../services/outbound-url-resolve.js';
 import {
   DEFAULT_ADMIN_JSON_BODY_LIMIT_BYTES,
   jsonBodyReadErrorResponse,
   readJsonBodyWithLimit,
 } from '../services/request-body.js';
 import { tryParseJsonArray, tryParseJsonLoose, tryParseJsonRecord } from '../services/safe-json.js';
+import { validateAutomationActions } from '../services/automation-actions.js';
 import { clampListLimit } from '../services/query-limits.js';
 
 const automations = new Hono<Env>();
@@ -109,9 +110,13 @@ automations.post('/api/automations', async (c) => {
     if (!body.name || !body.eventType || !body.actions) {
       return c.json({ success: false, error: 'name, eventType, actions are required' }, 400);
     }
-    const outboundErr = unsafeSendWebhookUrlInActions(body.actions);
-    if (outboundErr) {
-      return c.json({ success: false, error: outboundErr }, 400);
+    const actionsValid = validateAutomationActions(body.actions);
+    if (!actionsValid.ok) {
+      return c.json({ success: false, error: actionsValid.error }, 400);
+    }
+    const outboundOk = await assertSendWebhookActionsDnsSafe(body.actions, fetch);
+    if (!outboundOk.ok) {
+      return c.json({ success: false, error: outboundOk.reason }, 400);
     }
     const item = await createAutomation(c.env.DB, body);
     // Save line_account_id if provided
@@ -152,9 +157,13 @@ automations.put('/api/automations/:id', async (c) => {
       DEFAULT_ADMIN_JSON_BODY_LIMIT_BYTES,
     );
     if (body.actions !== undefined) {
-      const outboundErr = unsafeSendWebhookUrlInActions(body.actions);
-      if (outboundErr) {
-        return c.json({ success: false, error: outboundErr }, 400);
+      const actionsValidPut = validateAutomationActions(body.actions);
+      if (!actionsValidPut.ok) {
+        return c.json({ success: false, error: actionsValidPut.error }, 400);
+      }
+      const outboundOk = await assertSendWebhookActionsDnsSafe(body.actions, fetch);
+      if (!outboundOk.ok) {
+        return c.json({ success: false, error: outboundOk.reason }, 400);
       }
     }
     await updateAutomation(c.env.DB, id, body as never);

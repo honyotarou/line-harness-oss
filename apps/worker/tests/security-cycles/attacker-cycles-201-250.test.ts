@@ -245,7 +245,7 @@ describe('攻撃者サイクル 201–250（セキュリティバッチ）', () 
     await expect(verifySignedPayload('s', 'p', '   ')).resolves.toBe(false);
   });
 
-  it('cycle 227: getRequestClientAddress skips empty CF-Connecting-IP', async () => {
+  it('cycle 227: getRequestClientAddress ignores spoofable X-Forwarded-For when CF-Connecting-IP empty (non-local)', async () => {
     const { getRequestClientAddress } = await import('../../src/services/request-rate-limit.js');
     const req = new Request('http://x/', {
       headers: {
@@ -253,7 +253,7 @@ describe('攻撃者サイクル 201–250（セキュリティバッチ）', () 
         'X-Forwarded-For': '198.51.100.2',
       },
     });
-    expect(getRequestClientAddress(req)).toBe('198.51.100.2');
+    expect(getRequestClientAddress(req)).toBe('anonymous');
   });
 
   it('cycle 228: checkRateLimit with limit 0 blocks immediately', async () => {

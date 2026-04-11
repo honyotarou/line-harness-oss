@@ -1,5 +1,20 @@
 name: Deploy Worker
 
+# Secrets: CLOUDFLARE_API_TOKEN, CLOUDFLARE_ACCOUNT_ID (required for deploy).
+# Prefer a token scoped to this Worker + D1 only (not account-wide). Rotate periodically.
+# Human operators should not need production dashboard access if CI deploys; use separate CF subaccounts for prod vs dev when possible.
+#
+# Production surface (set via `wrangler secret put` / dashboard / vars — not committed):
+# - API_KEY, ADMIN_SESSION_SECRET, LINE_*, STRIPE_WEBHOOK_SECRET, etc. — never in git.
+# - DISABLE_PUBLIC_OPENAPI=1 unless you intentionally expose /openapi.json.
+# - ALLOWED_HOSTNAMES for your API hostname(s); REQUIRE_CLOUDFLARE_ACCESS_JWT on workers.dev or Zero Trust.
+# - Optional WAF/Bot: enable Cloudflare Bot Management on the zone, then MIN_CF_BOT_SCORE (e.g. 30) on the Worker.
+# - Multi LINE accounts on one Worker: MULTI_LINE_ACCOUNT_QUERY_REQUIRES_LINE_ACCOUNT_ID=1
+# - REQUIRE_ADMIN_SESSION_SECRET=1 + ADMIN_SESSION_SECRET (wrangler secret) so sessions are not signed with API_KEY
+# - BROADCAST_SEND_SECRET + X-Broadcast-Send-Secret header for /api/broadcasts/:id/send (second factor for mass send)
+#
+# After schema changes (e.g. admin_principal_roles), run D1 migrations against remote before relying on new features.
+
 # Configure CLOUDFLARE_API_TOKEN and CLOUDFLARE_ACCOUNT_ID secrets to enable auto-deploy
 on:
   workflow_dispatch:

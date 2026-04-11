@@ -86,7 +86,7 @@ describe('request rate limit helpers', () => {
     ).toMatchObject({ allowed: false, remaining: 0 });
   });
 
-  it('extracts the first client IP from proxy headers', async () => {
+  it('extracts the first client IP from X-Forwarded-For on localhost', async () => {
     const { getRequestClientAddress } = await import('../../src/services/request-rate-limit.js');
 
     const request = new Request('http://localhost/test', {
@@ -96,6 +96,31 @@ describe('request rate limit helpers', () => {
     });
 
     expect(getRequestClientAddress(request)).toBe('203.0.113.10');
+  });
+
+  it('does not trust X-Forwarded-For on non-local hostnames without CF-Connecting-IP', async () => {
+    const { getRequestClientAddress } = await import('../../src/services/request-rate-limit.js');
+
+    const request = new Request('https://worker.example.com/test', {
+      headers: {
+        'X-Forwarded-For': '203.0.113.99',
+      },
+    });
+
+    expect(getRequestClientAddress(request)).toBe('anonymous');
+  });
+
+  it('prefers CF-Connecting-IP when present', async () => {
+    const { getRequestClientAddress } = await import('../../src/services/request-rate-limit.js');
+
+    const request = new Request('https://worker.example.com/test', {
+      headers: {
+        'CF-Connecting-IP': '198.51.100.1',
+        'X-Forwarded-For': '203.0.113.99',
+      },
+    });
+
+    expect(getRequestClientAddress(request)).toBe('198.51.100.1');
   });
 
   it('persists rate limit counters in D1 when a database is provided', async () => {

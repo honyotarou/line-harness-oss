@@ -15,6 +15,11 @@ import {
   jsonBodyReadErrorResponse,
   readJsonBodyWithLimit,
 } from '../services/request-body.js';
+import {
+  resolveLineAccountScopeForRequest,
+  resourceLineAccountVisibleInScope,
+  validateScopedLineAccountQueryParam,
+} from '../services/admin-line-account-scope.js';
 
 const lineAccounts = new Hono<Env>();
 const PROFILE_LOOKUP_CONCURRENCY = 3;
@@ -62,7 +67,19 @@ function serializeLineAccount(row: DbLineAccount) {
 lineAccounts.get('/api/line-accounts', async (c) => {
   try {
     const db = c.env.DB;
-    const items = await getLineAccounts(db);
+    const lineAccountId = c.req.query('lineAccountId');
+    const scope = await resolveLineAccountScopeForRequest(db, c);
+    const q = validateScopedLineAccountQueryParam(scope, lineAccountId);
+    if (!q.ok) {
+      return c.json({ success: false, error: q.error }, q.status);
+    }
+
+    let items = await getLineAccounts(db);
+    if (scope.mode === 'restricted' && lineAccountId) {
+      items = items.filter((row) => row.id === lineAccountId);
+    } else if (scope.mode === 'all' && lineAccountId) {
+      items = items.filter((row) => row.id === lineAccountId);
+    }
     const statsByAccount = await loadLineAccountStats(db);
 
     const results = await mapWithConcurrencyLimit(
@@ -92,11 +109,15 @@ lineAccounts.get('/api/line-accounts', async (c) => {
   }
 });
 
-// GET /api/line-accounts/:id - get single (includes secrets)
+// GET /api/line-accounts/:id - get single (tokens/secrets never serialized)
 lineAccounts.get('/api/line-accounts/:id', async (c) => {
   try {
+    const scope = await resolveLineAccountScopeForRequest(c.env.DB, c);
     const account = await getLineAccountById(c.env.DB, c.req.param('id'));
     if (!account) {
+      return c.json({ success: false, error: 'LINE account not found' }, 404);
+    }
+    if (!resourceLineAccountVisibleInScope(scope, account.id)) {
       return c.json({ success: false, error: 'LINE account not found' }, 404);
     }
     return c.json({ success: true, data: serializeLineAccount(account) });
@@ -109,6 +130,17 @@ lineAccounts.get('/api/line-accounts/:id', async (c) => {
 // POST /api/line-accounts - create
 lineAccounts.post('/api/line-accounts', async (c) => {
   try {
+    const scope = await resolveLineAccountScopeForRequest(c.env.DB, c);
+    if (scope.mode !== 'all') {
+      return c.json(
+        {
+          success: false,
+          error: 'Forbidden: creating LINE accounts requires an unrestricted admin principal',
+        },
+        403,
+      );
+    }
+
     const body = await readJsonBodyWithLimit<{
       channelId: string;
       name: string;
@@ -138,6 +170,15 @@ lineAccounts.post('/api/line-accounts', async (c) => {
 lineAccounts.put('/api/line-accounts/:id', async (c) => {
   try {
     const id = c.req.param('id');
+    const scopePut = await resolveLineAccountScopeForRequest(c.env.DB, c);
+    const existingPut = await getLineAccountById(c.env.DB, id);
+    if (!existingPut) {
+      return c.json({ success: false, error: 'LINE account not found' }, 404);
+    }
+    if (!resourceLineAccountVisibleInScope(scopePut, existingPut.id)) {
+      return c.json({ success: false, error: 'LINE account not found' }, 404);
+    }
+
     const body = await readJsonBodyWithLimit<{
       name?: string;
       channelAccessToken?: string;
@@ -167,7 +208,16 @@ lineAccounts.put('/api/line-accounts/:id', async (c) => {
 // DELETE /api/line-accounts/:id - delete
 lineAccounts.delete('/api/line-accounts/:id', async (c) => {
   try {
-    await deleteLineAccount(c.env.DB, c.req.param('id'));
+    const idDel = c.req.param('id');
+    const scopeDel = await resolveLineAccountScopeForRequest(c.env.DB, c);
+    const existingDel = await getLineAccountById(c.env.DB, idDel);
+    if (!existingDel) {
+      return c.json({ success: false, error: 'LINE account not found' }, 404);
+    }
+    if (!resourceLineAccountVisibleInScope(scopeDel, existingDel.id)) {
+      return c.json({ success: false, error: 'LINE account not found' }, 404);
+    }
+    await deleteLineAccount(c.env.DB, idDel);
     return c.json({ success: true, data: null });
   } catch (err) {
     console.error('DELETE /api/line-accounts/:id error:', err);

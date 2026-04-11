@@ -121,6 +121,39 @@ describe('verifyCloudflareAccessJwt', () => {
     if (!r.ok) expect(r.reason).toMatch(/email/i);
   });
 
+  it('rejects allowlist when only preferred_username is set (email claim required)', async () => {
+    const teamDomain = 'testteam.cloudflareaccess.com';
+    const issuer = `https://${teamDomain}`;
+
+    const { privateKey, publicKey } = await jose.generateKeyPair('RS256', { extractable: true });
+    const pubJwk = await jose.exportJWK(publicKey);
+    pubJwk.kid = 'kid-pu';
+    pubJwk.alg = 'RS256';
+    pubJwk.use = 'sig';
+
+    const jwt = await new jose.SignJWT({ preferred_username: 'good@example.com' })
+      .setProtectedHeader({ alg: 'RS256', kid: 'kid-pu' })
+      .setIssuer(issuer)
+      .setExpirationTime('1h')
+      .sign(privateKey);
+
+    const fetchFn = vi
+      .fn()
+      .mockResolvedValue(new Response(JSON.stringify({ keys: [pubJwk] }), { status: 200 }));
+
+    const { verifyCloudflareAccessJwt } = await import(
+      '../../src/services/cloudflare-access-jwt.js'
+    );
+    const r = await verifyCloudflareAccessJwt({
+      jwt,
+      teamDomain,
+      allowedEmails: 'good@example.com',
+      fetchFn,
+    });
+    expect(r.ok).toBe(false);
+    if (!r.ok) expect(r.reason).toMatch(/email/i);
+  });
+
   it('rejects expired jwt', async () => {
     const teamDomain = 'testteam.cloudflareaccess.com';
     const issuer = `https://${teamDomain}`;
@@ -150,5 +183,76 @@ describe('verifyCloudflareAccessJwt', () => {
       fetchFn,
     });
     expect(r.ok).toBe(false);
+  });
+
+  it('rejects wrong aud when expectedAudience is set', async () => {
+    const teamDomain = 'testteam.cloudflareaccess.com';
+    const issuer = `https://${teamDomain}`;
+
+    const { privateKey, publicKey } = await jose.generateKeyPair('RS256', { extractable: true });
+    const pubJwk = await jose.exportJWK(publicKey);
+    pubJwk.kid = 'kid-aud-wrong';
+    pubJwk.alg = 'RS256';
+    pubJwk.use = 'sig';
+
+    const jwt = await new jose.SignJWT({})
+      .setProtectedHeader({ alg: 'RS256', kid: 'kid-aud-wrong' })
+      .setIssuer(issuer)
+      .setAudience('some-other-app')
+      .setExpirationTime('1h')
+      .sign(privateKey);
+
+    const fetchFn = vi
+      .fn()
+      .mockResolvedValue(new Response(JSON.stringify({ keys: [pubJwk] }), { status: 200 }));
+
+    const { verifyCloudflareAccessJwt } = await import(
+      '../../src/services/cloudflare-access-jwt.js'
+    );
+    const r = await verifyCloudflareAccessJwt({
+      jwt,
+      teamDomain,
+      expectedAudience: 'line-harness-admin',
+      fetchFn,
+    });
+    expect(r.ok).toBe(false);
+    if (!r.ok) expect(r.reason).toMatch(/audience/i);
+  });
+
+  it('accepts aud array when it includes expectedAudience', async () => {
+    const teamDomain = 'testteam.cloudflareaccess.com';
+    const issuer = `https://${teamDomain}`;
+
+    const { privateKey, publicKey } = await jose.generateKeyPair('RS256', { extractable: true });
+    const pubJwk = await jose.exportJWK(publicKey);
+    pubJwk.kid = 'kid-aud-arr';
+    pubJwk.alg = 'RS256';
+    pubJwk.use = 'sig';
+
+    const jwt = await new jose.SignJWT({})
+      .setProtectedHeader({ alg: 'RS256', kid: 'kid-aud-arr' })
+      .setIssuer(issuer)
+      .setAudience(['other', 'line-harness-admin'])
+      .setExpirationTime('1h')
+      .sign(privateKey);
+
+    const fetchFn = vi.fn().mockImplementation((url: string) => {
+      expect(url).toBe(`https://${teamDomain}/cdn-cgi/access/certs`);
+      return new Response(JSON.stringify({ keys: [pubJwk] }), {
+        status: 200,
+        headers: { 'Content-Type': 'application/json' },
+      });
+    });
+
+    const { verifyCloudflareAccessJwt } = await import(
+      '../../src/services/cloudflare-access-jwt.js'
+    );
+    const r = await verifyCloudflareAccessJwt({
+      jwt,
+      teamDomain,
+      expectedAudience: 'line-harness-admin',
+      fetchFn,
+    });
+    expect(r.ok).toBe(true);
   });
 });

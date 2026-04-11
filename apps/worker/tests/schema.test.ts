@@ -5,7 +5,45 @@ import { describe, expect, it } from 'vitest';
 const schemaPath = resolve(process.cwd(), '../../packages/db/schema.sql');
 const schema = readFileSync(schemaPath, 'utf8');
 
+const migration011Path = resolve(
+  process.cwd(),
+  '../../packages/db/migrations/011_admin_principal_roles.sql',
+);
+
+const migration012Path = resolve(
+  process.cwd(),
+  '../../packages/db/migrations/012_line_webhook_event_dedup.sql',
+);
+
+const migration013Path = resolve(
+  process.cwd(),
+  '../../packages/db/migrations/013_incoming_webhook_payload_dedup.sql',
+);
+
+const migration015Path = resolve(
+  process.cwd(),
+  '../../packages/db/migrations/015_admin_session_revocations.sql',
+);
+
 describe('schema.sql', () => {
+  it('migration 011 matches admin_principal_roles DDL', () => {
+    const m011 = readFileSync(migration011Path, 'utf8');
+    expect(m011).toContain('CREATE TABLE IF NOT EXISTS admin_principal_roles');
+    expect(m011).toContain("CHECK (role IN ('admin', 'viewer'))");
+  });
+
+  it('migration 012 matches line_webhook_processed_events DDL', () => {
+    const m012 = readFileSync(migration012Path, 'utf8');
+    expect(m012).toContain('CREATE TABLE IF NOT EXISTS line_webhook_processed_events');
+    expect(m012).toContain('webhook_event_id');
+  });
+
+  it('migration 013 matches incoming_webhook_processed_payloads DDL', () => {
+    const m013 = readFileSync(migration013Path, 'utf8');
+    expect(m013).toContain('CREATE TABLE IF NOT EXISTS incoming_webhook_processed_payloads');
+    expect(m013).toContain('payload_hash');
+  });
+
   it('includes runtime tables introduced after the initial schema', () => {
     expect(schema).toContain('CREATE TABLE IF NOT EXISTS entry_routes');
     expect(schema).toContain('CREATE TABLE IF NOT EXISTS ref_tracking');
@@ -17,6 +55,10 @@ describe('schema.sql', () => {
     expect(schema).toContain('CREATE TABLE IF NOT EXISTS line_account_profile_cache');
     expect(schema).toContain('CREATE TABLE IF NOT EXISTS delivery_operations');
     expect(schema).toContain('CREATE TABLE IF NOT EXISTS delivery_dead_letters');
+    expect(schema).toContain('CREATE TABLE IF NOT EXISTS admin_principal_roles');
+    expect(schema).toContain('CREATE TABLE IF NOT EXISTS line_webhook_processed_events');
+    expect(schema).toContain('CREATE TABLE IF NOT EXISTS incoming_webhook_processed_payloads');
+    expect(schema).toContain('CREATE TABLE IF NOT EXISTS admin_session_revocations');
   });
 
   it('defines friend columns required by runtime code', () => {

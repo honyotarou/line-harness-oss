@@ -10,6 +10,11 @@
       "types": "./dist/index.d.ts",
       "import": "./dist/index.js",
       "default": "./src/index.ts"
+    },
+    "./safe-api-base-url": {
+      "types": "./dist/safe-api-base-url.d.ts",
+      "import": "./dist/safe-api-base-url.js",
+      "default": "./dist/safe-api-base-url.js"
     }
   },
   "files": ["dist", "src"],

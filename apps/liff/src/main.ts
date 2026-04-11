@@ -18,6 +18,8 @@ import { getLiffApiBaseUrl } from './api-base.js';
 import { formatLiffUserVisibleError } from './submit-error-message.js';
 import { initBooking } from './booking.js';
 import { initForm } from './form.js';
+import { getSafeRedirectFromCurrentUrl } from './liff-redirect.js';
+import { sanitizeLineProfilePictureUrlForHtml } from './safe-line-picture-url.js';
 
 declare const liff: {
   init(config: { liffId: string }): Promise<void>;
@@ -66,11 +68,6 @@ function getPage(): string | null {
   return params.get('page');
 }
 
-function getRedirectUrl(): string | null {
-  const params = new URLSearchParams(window.location.search);
-  return params.get('redirect');
-}
-
 function getRef(): string | null {
   const params = new URLSearchParams(window.location.search);
   return params.get('ref');
@@ -103,11 +100,12 @@ function escapeHtml(str: string): string {
 function showFriendAdd(profile: { displayName: string; pictureUrl?: string }) {
   const container = document.getElementById('app')!;
   const friendAddUrl = BOT_BASIC_ID ? `https://line.me/R/ti/p/${BOT_BASIC_ID}` : '#';
+  const safePic = sanitizeLineProfilePictureUrlForHtml(profile.pictureUrl);
 
   container.innerHTML = `
     <div class="card">
       <div class="profile">
-        ${profile.pictureUrl ? `<img src="${profile.pictureUrl}" alt="" />` : ''}
+        ${safePic ? `<img src="${escapeHtml(safePic)}" alt="" />` : ''}
         <p class="name">${escapeHtml(profile.displayName)} さん</p>
       </div>
       <p class="message">まずは友だち追加をお願いします</p>
@@ -139,12 +137,13 @@ function showCompletion(
 ) {
   const container = document.getElementById('app')!;
   const ref = getRef();
+  const safePic = sanitizeLineProfilePictureUrlForHtml(profile.pictureUrl);
   container.innerHTML = `
     <div class="card">
       <div class="check-icon">${isRecovery ? '🔄' : '✓'}</div>
       <h2>${isRecovery ? 'おかえりなさい！' : '登録完了！'}</h2>
       <div class="profile">
-        ${profile.pictureUrl ? `<img src="${profile.pictureUrl}" alt="" />` : ''}
+        ${safePic ? `<img src="${escapeHtml(safePic)}" alt="" />` : ''}
         <p class="name">${escapeHtml(profile.displayName)} さん</p>
       </div>
       <p class="message">
@@ -179,7 +178,7 @@ function showError(message: string) {
 // ─── Core Flow ──────────────────────────────────────────
 
 async function linkAndAddFlow() {
-  const redirectUrl = getRedirectUrl();
+  const redirectUrl = getSafeRedirectFromCurrentUrl();
   const ref = getRef();
 
   try {

@@ -4,8 +4,15 @@ import type { Env } from '../index.js';
 import { verifyStripeSignature } from '../services/stripe-signature.js';
 import { tryParseJsonRecord } from '../services/safe-json.js';
 import { clampListLimit } from '../services/query-limits.js';
+import {
+  jsonBodyReadErrorResponse,
+  readTextBodyWithLimit,
+  STRIPE_WEBHOOK_RAW_BODY_LIMIT_BYTES,
+} from '../services/request-body.js';
+import { enforceRateLimit } from '../services/request-rate-limit.js';
 
 const stripe = new Hono<Env>();
+const STRIPE_WEBHOOK_RATE_LIMIT = { limit: 120, windowMs: 60_000 };
 
 interface StripeWebhookBody {
   id: string;
@@ -53,6 +60,16 @@ stripe.get('/api/integrations/stripe/events', async (c) => {
 
 stripe.post('/api/integrations/stripe/webhook', async (c) => {
   try {
+    const limited = await enforceRateLimit(c, {
+      bucket: 'stripe-webhook',
+      db: c.env.DB,
+      limit: STRIPE_WEBHOOK_RATE_LIMIT.limit,
+      windowMs: STRIPE_WEBHOOK_RATE_LIMIT.windowMs,
+    });
+    if (limited) {
+      return limited;
+    }
+
     const stripeSecret = c.env.STRIPE_WEBHOOK_SECRET?.trim();
     if (!stripeSecret) {
       return c.json(
@@ -61,8 +78,18 @@ stripe.post('/api/integrations/stripe/webhook', async (c) => {
       );
     }
 
+    let rawBody: string;
+    try {
+      rawBody = await readTextBodyWithLimit(c.req.raw, STRIPE_WEBHOOK_RAW_BODY_LIMIT_BYTES);
+    } catch (err) {
+      const jr = jsonBodyReadErrorResponse(err);
+      if (jr) {
+        return c.json(jr.body, jr.status);
+      }
+      throw err;
+    }
+
     const sigHeader = c.req.header('Stripe-Signature') ?? '';
-    const rawBody = await c.req.text();
     const valid = await verifyStripeSignature(stripeSecret, rawBody, sigHeader);
     if (!valid) {
       return c.json({ success: false, error: 'Stripe signature verification failed' }, 401);

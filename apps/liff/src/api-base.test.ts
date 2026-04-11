@@ -44,6 +44,11 @@ describe('resolveLiffApiBaseUrl', () => {
     expect(resolveLiffApiBaseUrl('   ', undefined)).toBe(DEFAULT_LIFF_API_FALLBACK);
   });
 
+  it('rejects non-local http and unsafe https in dev by falling back to the default', () => {
+    expect(resolveLiffApiBaseUrl('http://evil.example', null)).toBe(DEFAULT_LIFF_API_FALLBACK);
+    expect(resolveLiffApiBaseUrl('https://user:pass@x.com', null)).toBe(DEFAULT_LIFF_API_FALLBACK);
+  });
+
   it('does not use liff.line.me as API base (no /api on LINE host)', () => {
     expect(resolveLiffApiBaseUrl(undefined, 'https://liff.line.me')).toBe(
       DEFAULT_LIFF_API_FALLBACK,

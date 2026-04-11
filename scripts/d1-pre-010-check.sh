@@ -10,7 +10,12 @@ cd "$ROOT/apps/worker"
 
 export WRANGLER_SEND_METRICS=false
 
-WR=(pnpm exec wrangler d1 execute line-crm)
+WR_EXTRA=()
+if [[ -f wrangler.local.toml ]]; then
+  WR_EXTRA=(-c wrangler.local.toml)
+fi
+
+WR=(pnpm exec wrangler "${WR_EXTRA[@]}" d1 execute line-crm)
 if [ "$TARGET" = "remote" ]; then
   WR+=(--remote)
 else

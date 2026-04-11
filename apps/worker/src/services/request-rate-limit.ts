@@ -47,6 +47,19 @@ export function resetRequestRateLimits(): void {
   requestsSinceCleanup = 0;
 }
 
+function isLocalDevHostname(hostname: string): boolean {
+  return (
+    hostname === 'localhost' ||
+    hostname === '127.0.0.1' ||
+    hostname === '[::1]' ||
+    hostname === '::1'
+  );
+}
+
+/**
+ * Prefer `CF-Connecting-IP` (trusted on Cloudflare). Avoid trusting `X-Forwarded-For` on public
+ * hostnames — it is spoofable when the Worker is reached without CF inserting the real client IP.
+ */
 export function getRequestClientAddress(request: Request): string {
   const cfConnectingIp = request.headers.get('CF-Connecting-IP');
   if (cfConnectingIp) {
@@ -56,14 +69,23 @@ export function getRequestClientAddress(request: Request): string {
     }
   }
 
-  const xForwardedFor = request.headers.get('X-Forwarded-For');
-  if (xForwardedFor) {
-    return xForwardedFor.split(',')[0]?.trim() || 'anonymous';
+  let hostname = '';
+  try {
+    hostname = new URL(request.url).hostname;
+  } catch {
+    hostname = '';
   }
 
-  const xRealIp = request.headers.get('X-Real-IP');
-  if (xRealIp) {
-    return xRealIp.trim();
+  if (isLocalDevHostname(hostname)) {
+    const xForwardedFor = request.headers.get('X-Forwarded-For');
+    if (xForwardedFor) {
+      return xForwardedFor.split(',')[0]?.trim() || 'local';
+    }
+    const xRealIp = request.headers.get('X-Real-IP');
+    if (xRealIp?.trim()) {
+      return xRealIp.trim();
+    }
+    return 'local';
   }
 
   return 'anonymous';

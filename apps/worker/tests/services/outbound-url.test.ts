@@ -1,6 +1,8 @@
 import { describe, expect, it } from 'vitest';
 import {
+  isBlockedResolvedAddress,
   isSafeHttpsOutboundUrl,
+  OUTBOUND_HTTPS_FETCH_REDIRECT_MANUAL,
   unsafeSendWebhookUrlInActions,
 } from '../../src/services/outbound-url.js';
 
@@ -41,6 +43,26 @@ describe('isSafeHttpsOutboundUrl', () => {
     expect(isSafeHttpsOutboundUrl('')).toBe(false);
     expect(isSafeHttpsOutboundUrl('not-a-url')).toBe(false);
     expect(isSafeHttpsOutboundUrl('https://')).toBe(false);
+  });
+});
+
+describe('isBlockedResolvedAddress', () => {
+  it('blocks RFC1918 and loopback literals from DNS data', () => {
+    expect(isBlockedResolvedAddress('192.168.0.1')).toBe(true);
+    expect(isBlockedResolvedAddress('10.0.0.1')).toBe(true);
+    expect(isBlockedResolvedAddress('127.0.0.1')).toBe(true);
+    expect(isBlockedResolvedAddress('fe80::1')).toBe(true);
+  });
+
+  it('allows public IPv4 and IPv6', () => {
+    expect(isBlockedResolvedAddress('8.8.8.8')).toBe(false);
+    expect(isBlockedResolvedAddress('2001:4860:4860::8888')).toBe(false);
+  });
+});
+
+describe('OUTBOUND_HTTPS_FETCH_REDIRECT_MANUAL', () => {
+  it('disables redirect following so URL allowlist cannot be bypassed via 3xx', () => {
+    expect(OUTBOUND_HTTPS_FETCH_REDIRECT_MANUAL.redirect).toBe('manual');
   });
 });
 

@@ -187,6 +187,18 @@ richMenus.delete('/api/friends/:friendId/rich-menu', async (c) => {
 
 export { richMenus };
 
+function richMenuImageBytesMatchFormat(
+  buf: ArrayBuffer,
+  kind: 'image/png' | 'image/jpeg',
+): boolean {
+  const u = new Uint8Array(buf);
+  if (u.byteLength < 8) return false;
+  if (kind === 'image/png') {
+    return u[0] === 0x89 && u[1] === 0x50 && u[2] === 0x4e && u[3] === 0x47;
+  }
+  return u[0] === 0xff && u[1] === 0xd8 && u[2] === 0xff;
+}
+
 // POST /api/rich-menus/:id/image — upload rich menu image (accepts base64 body or binary)
 richMenus.post('/api/rich-menus/:id/image', async (c) => {
   try {
@@ -224,6 +236,18 @@ richMenus.post('/api/rich-menus/:id/image', async (c) => {
         {
           success: false,
           error: 'Content-Type must be application/json (with base64) or image/png or image/jpeg',
+        },
+        400,
+      );
+    }
+
+    const declared: 'image/png' | 'image/jpeg' =
+      imageContentType === 'image/jpeg' ? 'image/jpeg' : 'image/png';
+    if (!richMenuImageBytesMatchFormat(imageData, declared)) {
+      return c.json(
+        {
+          success: false,
+          error: 'Image bytes do not match declared PNG or JPEG format',
         },
         400,
       );

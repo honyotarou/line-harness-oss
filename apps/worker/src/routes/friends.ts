@@ -1,3 +1,4 @@
+import type { Context } from 'hono';
 import { Hono } from 'hono';
 import {
   getFriends,
@@ -24,8 +25,39 @@ import {
 } from '../services/request-body.js';
 import { mergeFriendMetadataPatch } from '../services/friend-metadata-merge.js';
 import { clampListLimit, clampOffset } from '../services/query-limits.js';
+import {
+  resolveLineAccountScopeForRequest,
+  resourceLineAccountVisibleInScope,
+  validateScopedLineAccountQueryParam,
+} from '../services/admin-line-account-scope.js';
 
 const friends = new Hono<Env>();
+
+async function jsonIfLineAccountQueryInvalid(
+  c: Context<Env>,
+  lineAccountId: string | null | undefined,
+): Promise<Response | null> {
+  const scope = await resolveLineAccountScopeForRequest(c.env.DB, c);
+  const r = validateScopedLineAccountQueryParam(scope, lineAccountId);
+  if (!r.ok) {
+    return c.json({ success: false, error: r.error }, r.status);
+  }
+  return null;
+}
+
+async function jsonIfFriendOutOfScope(
+  c: Context<Env>,
+  friend: DbFriend | null,
+): Promise<Response | null> {
+  if (!friend) {
+    return c.json({ success: false, error: 'Friend not found' }, 404);
+  }
+  const scope = await resolveLineAccountScopeForRequest(c.env.DB, c);
+  if (!resourceLineAccountVisibleInScope(scope, friend.line_account_id)) {
+    return c.json({ success: false, error: 'Friend not found' }, 404);
+  }
+  return null;
+}
 const FRIEND_METADATA_PATCH_LIMIT_BYTES = 64 * 1024;
 
 /** Convert a D1 snake_case Friend row to the shared camelCase shape */
@@ -63,6 +95,11 @@ friends.get('/api/friends', async (c) => {
     const offset = clampOffset(c.req.query('offset'), 500_000);
     const tagId = c.req.query('tagId');
     const lineAccountId = c.req.query('lineAccountId');
+
+    const denied = await jsonIfLineAccountQueryInvalid(c, lineAccountId);
+    if (denied) {
+      return denied;
+    }
 
     const db = c.env.DB;
 
@@ -122,6 +159,12 @@ friends.get('/api/friends', async (c) => {
 friends.get('/api/friends/count', async (c) => {
   try {
     const lineAccountId = c.req.query('lineAccountId');
+
+    const denied = await jsonIfLineAccountQueryInvalid(c, lineAccountId);
+    if (denied) {
+      return denied;
+    }
+
     let count: number;
     if (lineAccountId) {
       const row = await c.env.DB.prepare(
@@ -144,6 +187,12 @@ friends.get('/api/friends/count', async (c) => {
 friends.get('/api/friends/ref-stats', async (c) => {
   try {
     const lineAccountId = c.req.query('lineAccountId');
+
+    const denied = await jsonIfLineAccountQueryInvalid(c, lineAccountId);
+    if (denied) {
+      return denied;
+    }
+
     const where = lineAccountId ? 'WHERE line_account_id = ?' : 'WHERE ref_code IS NOT NULL';
     const binds = lineAccountId ? [lineAccountId] : [];
     const stmt = c.env.DB.prepare(
@@ -179,14 +228,16 @@ friends.get('/api/friends/:id', async (c) => {
 
     const [friend, tags] = await Promise.all([getFriendById(db, id), getFriendTags(db, id)]);
 
-    if (!friend) {
-      return c.json({ success: false, error: 'Friend not found' }, 404);
+    const scopeDenied = await jsonIfFriendOutOfScope(c, friend);
+    if (scopeDenied) {
+      return scopeDenied;
     }
 
+    const f = friend!;
     return c.json({
       success: true,
       data: {
-        ...serializeFriend(friend),
+        ...serializeFriend(f),
         tags: tags.map(serializeTag),
       },
     });
@@ -210,6 +261,12 @@ friends.post('/api/friends/:id/tags', async (c) => {
     }
 
     const db = c.env.DB;
+    const friend = await getFriendById(db, friendId);
+    const scopeDenied = await jsonIfFriendOutOfScope(c, friend);
+    if (scopeDenied) {
+      return scopeDenied;
+    }
+
     await addTagToFriend(db, friendId, body.tagId);
 
     // Enroll in tag_added scenarios that match this tag
@@ -251,6 +308,12 @@ friends.delete('/api/friends/:id/tags/:tagId', async (c) => {
     const friendId = c.req.param('id');
     const tagId = c.req.param('tagId');
 
+    const friend = await getFriendById(c.env.DB, friendId);
+    const scopeDenied = await jsonIfFriendOutOfScope(c, friend);
+    if (scopeDenied) {
+      return scopeDenied;
+    }
+
     await removeTagFromFriend(c.env.DB, friendId, tagId);
 
     // イベントバス発火: tag_change
@@ -270,10 +333,12 @@ friends.put('/api/friends/:id/metadata', async (c) => {
     const db = c.env.DB;
 
     const friend = await getFriendById(db, friendId);
-    if (!friend) {
-      return c.json({ success: false, error: 'Friend not found' }, 404);
+    const scopeDeniedMeta = await jsonIfFriendOutOfScope(c, friend);
+    if (scopeDeniedMeta) {
+      return scopeDeniedMeta;
     }
 
+    const friendRow = friend!;
     let body: Record<string, unknown>;
     try {
       body = await readJsonBodyWithLimit<Record<string, unknown>>(
@@ -287,7 +352,7 @@ friends.put('/api/friends/:id/metadata', async (c) => {
     }
     let existing: Record<string, unknown>;
     try {
-      existing = JSON.parse(friend.metadata || '{}') as Record<string, unknown>;
+      existing = JSON.parse(friendRow.metadata || '{}') as Record<string, unknown>;
     } catch {
       return c.json(
         { success: false, error: 'Stored friend metadata is invalid JSON; fix in DB before merge' },
@@ -326,6 +391,12 @@ friends.put('/api/friends/:id/metadata', async (c) => {
 friends.get('/api/friends/:id/messages', async (c) => {
   try {
     const friendId = c.req.param('id');
+    const friend = await getFriendById(c.env.DB, friendId);
+    const scopeDenied = await jsonIfFriendOutOfScope(c, friend);
+    if (scopeDenied) {
+      return scopeDenied;
+    }
+
     const msgLimit = clampListLimit(c.req.query('limit'), 200, 500);
     const msgOffset = clampOffset(c.req.query('offset'), 500_000);
     const result = await c.env.DB.prepare(
@@ -362,10 +433,12 @@ friends.post('/api/friends/:id/messages', async (c) => {
 
     const db = c.env.DB;
     const friend = await getFriendById(db, friendId);
-    if (!friend) {
-      return c.json({ success: false, error: 'Friend not found' }, 404);
+    const scopeDeniedMsg = await jsonIfFriendOutOfScope(c, friend);
+    if (scopeDeniedMsg) {
+      return scopeDeniedMsg;
     }
 
+    const friendRow = friend!;
     const { LineClient } = await import('@line-crm/line-sdk');
     const accessToken = await resolveLineAccessTokenForFriend(
       db,
@@ -376,7 +449,7 @@ friends.post('/api/friends/:id/messages', async (c) => {
     const messageType = body.messageType ?? 'text';
 
     const message = buildMessage(messageType, body.content);
-    await lineClient.pushMessage(friend.line_user_id, [message]);
+    await lineClient.pushMessage(friendRow.line_user_id, [message]);
 
     // Log outgoing message
     const logId = crypto.randomUUID();
@@ -385,7 +458,7 @@ friends.post('/api/friends/:id/messages', async (c) => {
         `INSERT INTO messages_log (id, friend_id, direction, message_type, content, broadcast_id, scenario_step_id, created_at)
          VALUES (?, ?, 'outgoing', ?, ?, NULL, NULL, ?)`,
       )
-      .bind(logId, friend.id, messageType, body.content, jstNow())
+      .bind(logId, friendRow.id, messageType, body.content, jstNow())
       .run();
 
     return c.json({ success: true, data: { messageId: logId } });

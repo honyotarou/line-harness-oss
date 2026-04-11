@@ -129,6 +129,7 @@ describe('攻撃者サイクル 251–300（セキュリティバッチ）', () 
       `{{auth_url:${id}}}`,
       { id: '1', display_name: 'N', user_id: 'u' },
       'https://w.example',
+      { allowedAuthUrlChannelIds: new Set([id]) },
     );
     expect(out).toContain(`account=${id}`);
     expect(out.startsWith('https://w.example/auth/line?')).toBe(true);

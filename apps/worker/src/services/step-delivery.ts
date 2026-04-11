@@ -6,6 +6,7 @@ import {
   getFriendById,
   jstNow,
 } from '@line-crm/db';
+import { buildAuthUrlChannelAllowlist } from './auth-url-allowlist.js';
 import type { LineClient } from '@line-crm/line-sdk';
 import type { Message } from '@line-crm/line-sdk';
 import { jitterDeliveryTime, addJitter, sleep } from './stealth.js';
@@ -46,6 +47,7 @@ export async function processStepDeliveries(
   lineClient: LineClient,
   workerUrl?: string,
   lineAccountId?: string | null,
+  defaultLineChannelId?: string,
 ): Promise<void> {
   // Skip delivery outside 9:00-23:00 JST window
   const jstHour = new Date(Date.now() + 9 * 60 * 60_000).getUTCHours();
@@ -61,7 +63,7 @@ export async function processStepDeliveries(
       if (i > 0) {
         await sleep(addJitter(50, 200));
       }
-      await processSingleDelivery(db, lineClient, fs, workerUrl);
+      await processSingleDelivery(db, lineClient, fs, workerUrl, defaultLineChannelId);
     } catch (err) {
       console.error(`Error processing friend_scenario ${fs.id}:`, err);
       // Continue with next one
@@ -81,6 +83,7 @@ async function processSingleDelivery(
     next_delivery_at: string | null;
   },
   workerUrl?: string,
+  defaultLineChannelId?: string,
 ): Promise<void> {
   // Get friend first to read preferred delivery hour from metadata
   const friend = await getFriendById(db, fs.friend_id);
@@ -148,8 +151,16 @@ async function processSingleDelivery(
     }
   }
 
+  const authAllow = await buildAuthUrlChannelAllowlist(
+    db,
+    { line_account_id: (friend as { line_account_id?: string | null }).line_account_id },
+    defaultLineChannelId ?? '',
+  );
+
   // Expand template variables ({{name}}, {{uid}}, {{auth_url:CHANNEL_ID}}, etc.)
-  const expandedContent = expandVariables(currentStep.message_content, friend, workerUrl);
+  const expandedContent = expandVariables(currentStep.message_content, friend, workerUrl, {
+    allowedAuthUrlChannelIds: authAllow,
+  });
   const message = buildMessage(currentStep.message_type, expandedContent);
   const attempt = {
     idempotencyKey: `step:${fs.id}:${currentStep.id}`,
@@ -179,14 +190,7 @@ async function processSingleDelivery(
         `INSERT INTO messages_log (id, friend_id, direction, message_type, content, broadcast_id, scenario_step_id, created_at)
          VALUES (?, ?, 'outgoing', ?, ?, NULL, ?, ?)`,
       )
-      .bind(
-        logId,
-        friend.id,
-        currentStep.message_type,
-        currentStep.message_content,
-        currentStep.id,
-        jstNow(),
-      )
+      .bind(logId, friend.id, currentStep.message_type, expandedContent, currentStep.id, jstNow())
       .run();
 
     // Determine next step (find the step after currentStep in the sorted list)
@@ -276,7 +280,7 @@ async function evaluateCondition(
       return metadata[key] !== value;
     }
     default:
-      return true;
+      return false;
   }
 }
 

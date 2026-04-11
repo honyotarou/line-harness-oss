@@ -95,4 +95,22 @@ describe('scoring routes', () => {
       },
     });
   });
+
+  it('rejects manual scoreChange outside the allowed range', async () => {
+    const { scoring } = await import('../../src/routes/scoring.js');
+    const app = new Hono();
+    app.route('/', scoring);
+
+    const response = await app.fetch(
+      new Request('http://localhost/api/friends/f1/score', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ scoreChange: 999_999 }),
+      }),
+      { DB: {} as D1Database } as never,
+    );
+
+    expect(response.status).toBe(400);
+    expect(dbMocks.addScore).not.toHaveBeenCalled();
+  });
 });

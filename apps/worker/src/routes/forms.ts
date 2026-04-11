@@ -15,7 +15,11 @@ import { getFriendByLineUserId, getFriendById } from '@line-crm/db';
 import { addTagToFriend, enrollFriendInScenario } from '@line-crm/db';
 import type { Form as DbForm, FormSubmission as DbFormSubmission } from '@line-crm/db';
 import type { Env } from '../index.js';
-import { isValidAdminAuthToken, readAdminSessionCookie } from '../services/admin-session.js';
+import {
+  isValidAdminAuthToken,
+  readAdminSessionCookie,
+  resolveAdminSessionSecret,
+} from '../services/admin-session.js';
 import { parseBearerAuthorization } from '../services/bearer-authorization.js';
 import { collectLineLoginChannelIds, verifyLineIdToken } from '../services/line-id-token.js';
 import { resolveLineAccessTokenForFriend } from '../services/line-account-routing.js';
@@ -27,6 +31,7 @@ import {
   readJsonBodyWithLimit,
 } from '../services/request-body.js';
 import { enforceRateLimit } from '../services/request-rate-limit.js';
+import { pickFormFieldValuesForMetadataMerge } from '../services/form-metadata-filter.js';
 import { tryParseJsonArray, tryParseJsonRecord } from '../services/safe-json.js';
 
 const forms = new Hono<Env>();
@@ -74,7 +79,9 @@ async function resolveFormDefinitionReader(c: Context<Env>): Promise<'admin' | '
   const cookieToken = readAdminSessionCookie(c);
   const token = bearer || cookieToken || '';
   if (!token) return null;
-  if (await isValidAdminAuthToken(c.env.API_KEY, token)) return 'admin';
+  const sessionSecret = resolveAdminSessionSecret(c.env);
+  if (sessionSecret && (await isValidAdminAuthToken(sessionSecret, token, c.env.DB)))
+    return 'admin';
   const channelIds = collectLineLoginChannelIds(
     c.env.LINE_LOGIN_CHANNEL_ID,
     await getLineAccounts(c.env.DB),
@@ -115,6 +122,11 @@ forms.get('/api/forms/:id', async (c) => {
     const id = c.req.param('id');
     const form = await getFormById(c.env.DB, id);
     if (!form) {
+      return c.json({ success: false, error: 'Form not found' }, 404);
+    }
+
+    // LINE Login can only fetch active forms — avoids leaking draft definitions by ID.
+    if (mode === 'line' && !form.is_active) {
       return c.json({ success: false, error: 'Form not found' }, 404);
     }
 
@@ -316,7 +328,11 @@ forms.post('/api/forms/:id/submit', async (c) => {
           const existingFriend = await getFriendById(db, friendId);
           if (!existingFriend) return;
           const existing = tryParseJsonRecord(existingFriend.metadata || '{}') ?? {};
-          const merged = { ...existing, ...submissionData };
+          const allowedPatch = pickFormFieldValuesForMetadataMerge(
+            submissionData as Record<string, unknown>,
+            fields,
+          );
+          const merged = { ...existing, ...allowedPatch };
           await db
             .prepare(`UPDATE friends SET metadata = ?, updated_at = ? WHERE id = ?`)
             .bind(JSON.stringify(merged), now, friendId)

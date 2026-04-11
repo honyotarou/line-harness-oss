@@ -15,6 +15,7 @@
     "test:api": "bash scripts/api-integration.sh",
     "format": "biome format --write .",
     "format:check": "biome format .",
+    "audit:ci": "pnpm audit --audit-level=high",
     "harness": "bash scripts/harness-check.sh",
     "harness:ci": "bash scripts/harness-ci-parity.sh",
     "harness:full": "bash scripts/harness-full.sh",
@@ -22,6 +23,14 @@
     "db:pre-010-check": "bash scripts/d1-pre-010-check.sh local",
     "db:pre-010-check:remote": "bash scripts/d1-pre-010-check.sh remote",
     "db:apply-010:local": "bash scripts/d1-apply-010.sh local",
+    "db:apply-011:local": "bash scripts/d1-apply-011.sh local",
+    "db:apply-011:remote": "bash scripts/d1-apply-011.sh remote",
+    "db:apply-012:local": "bash scripts/d1-apply-012.sh local",
+    "db:apply-012:remote": "bash scripts/d1-apply-012.sh remote",
+    "db:apply-013:local": "bash scripts/d1-apply-013.sh local",
+    "db:apply-013:remote": "bash scripts/d1-apply-013.sh remote",
+    "db:apply-015:local": "bash scripts/d1-apply-015.sh local",
+    "db:apply-015:remote": "bash scripts/d1-apply-015.sh remote",
     "smoke:staging": "bash scripts/liff-staging-smoke.sh",
     "deploy:worker": "pnpm --filter worker run deploy",
     "deploy:web": "pnpm --filter web build",
@@ -31,6 +40,15 @@
   "packageManager": "pnpm@9.15.4",
   "engines": {
     "node": ">=20"
+  },
+  "pnpm": {
+    "overrides": {
+      "axios": ">=1.15.0",
+      "defu": ">=6.1.5",
+      "next": "^15.5.15",
+      "picomatch": ">=4.0.4",
+      "undici": ">=6.24.0"
+    }
   },
   "devDependencies": {
     "@biomejs/biome": "^1.9.4",

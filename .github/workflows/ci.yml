@@ -26,8 +26,14 @@ jobs:
       - name: Install
         run: pnpm install --frozen-lockfile
 
+      - name: Dependency audit (pnpm audit)
+        run: pnpm audit:ci
+
       - name: Biome format check
         run: pnpm format:check
+
+      - name: Build workspace libs (shared dist for LIFF Vite + Next transpilePackages)
+        run: pnpm build:libs
 
       - name: LIFF typecheck
         run: pnpm --filter liff typecheck
@@ -36,9 +42,6 @@ jobs:
         run: pnpm --filter liff build
         env:
           VITE_API_URL: https://ci.liff.api.placeholder.invalid
-
-      - name: Build workspace libs (Next transpilePackages)
-        run: pnpm build:libs
 
       - name: Web production build (next build)
         run: pnpm --filter web build

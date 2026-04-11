@@ -1,6 +1,10 @@
 # Copy to `.dev.vars` for local `wrangler dev` (never commit `.dev.vars`).
 # CI uses this file as-is for API integration tests.
 #
+# Optional (Cloudflare Bot Management on a real zone; local dev usually has no `cf` score):
+# MIN_CF_BOT_SCORE=30
+# REQUIRE_CF_BOT_SIGNAL=1
+#
 # Cloudflare 側の認証情報はここには書きません。
 # - 手元の wrangler: `pnpm exec wrangler login`（資格情報はユーザーディレクトリに保存）
 # - D1 のバインド / database_id: 既定は `wrangler.toml`（プレースホルダ）。実 ID を Git に載せないなら
@@ -10,6 +14,8 @@
 # Worker のコードが読むのは下記のキーだけです。
 
 API_KEY=local-dev-api-key-change-me
+# OpenAPI (/openapi.json, /docs) is disabled unless explicitly enabled. Set for local docs and scripts/api-integration.sh.
+ENABLE_PUBLIC_OPENAPI=1
 # Optional; defaults to API_KEY. HMAC secret for LINE Login OAuth `state` (use a long random value in production).
 # LIFF_STATE_SECRET=
 LINE_CHANNEL_SECRET=dev-placeholder

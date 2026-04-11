@@ -10,7 +10,7 @@ import {
   getAffiliateReport,
 } from '@line-crm/db';
 import type { Env } from '../index.js';
-import { isSafeHttpsOutboundUrl } from '../services/outbound-url.js';
+import { assertHttpsOutboundUrlResolvedSafe } from '../services/outbound-url-resolve.js';
 import {
   DEFAULT_ADMIN_JSON_BODY_LIMIT_BYTES,
   DEFAULT_PUBLIC_JSON_BODY_LIMIT_BYTES,
@@ -180,22 +180,16 @@ affiliates.post('/api/affiliates/click', async (c) => {
         return c.json({ success: false, error: 'url is too long' }, 400);
       }
       if (t.length > 0) {
-        if (!isSafeHttpsOutboundUrl(t)) {
-          return c.json(
-            {
-              success: false,
-              error:
-                'url must be a public https URL (private IPs, localhost, and metadata endpoints are not allowed)',
-            },
-            400,
-          );
+        const outboundOk = await assertHttpsOutboundUrlResolvedSafe(t, fetch);
+        if (!outboundOk.ok) {
+          return c.json({ success: false, error: outboundOk.reason }, 400);
         }
         clickUrl = t;
       }
     }
 
     const affiliate = await getAffiliateByCode(c.env.DB, body.code);
-    if (!affiliate) {
+    if (!affiliate || !affiliate.is_active) {
       return c.json({ success: false, error: 'Affiliate not found' }, 404);
     }
 

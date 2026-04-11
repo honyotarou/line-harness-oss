@@ -1,5 +1,5 @@
 import { Hono } from 'hono';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { issueAdminSessionToken } from '../../src/services/admin-session.js';
 import {
   issueTrackedLinkFriendToken,
@@ -24,6 +24,23 @@ const API_KEY = 'test-api-key-for-tracking';
 describe('tracked link routes', () => {
   beforeEach(() => {
     Object.values(dbMocks).forEach((mockFn) => mockFn.mockReset());
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockImplementation(async (input: RequestInfo) => {
+        const url = typeof input === 'string' ? input : input.url;
+        if (url.includes('cloudflare-dns.com/dns-query')) {
+          return new Response(
+            JSON.stringify({ Status: 0, Answer: [{ type: 1, data: '93.184.216.34' }] }),
+            { status: 200, headers: { 'Content-Type': 'application/dns-json' } },
+          );
+        }
+        return new Response('', { status: 404 });
+      }),
+    );
+  });
+
+  afterEach(() => {
+    vi.unstubAllGlobals();
   });
 
   it('redirects without an execution context and records anonymous click when f is omitted', async () => {
@@ -259,6 +276,46 @@ describe('tracked link routes', () => {
       original_url: 'javascript:evil()',
       tag_id: null,
       scenario_id: null,
+      is_active: 1,
+      click_count: 0,
+      created_at: '2026-03-26T10:00:00+09:00',
+      updated_at: '2026-03-26T10:00:00+09:00',
+    });
+
+    const { trackedLinks } = await import('../../src/routes/tracked-links.js');
+    const app = new Hono();
+    app.route('/', trackedLinks);
+
+    const response = await app.fetch(new Request('http://localhost/t/link-1'), {
+      DB: {} as D1Database,
+      API_KEY,
+    } as never);
+
+    expect(response.status).toBe(404);
+    expect(dbMocks.recordLinkClick).not.toHaveBeenCalled();
+  });
+
+  it('GET /t/:id returns 404 when DNS resolves the hostname to a private address', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockImplementation(async (input: RequestInfo) => {
+        const url = typeof input === 'string' ? input : input.url;
+        if (url.includes('cloudflare-dns.com/dns-query')) {
+          return new Response(
+            JSON.stringify({ Status: 0, Answer: [{ type: 1, data: '192.168.1.1' }] }),
+            { status: 200, headers: { 'Content-Type': 'application/dns-json' } },
+          );
+        }
+        return new Response('', { status: 404 });
+      }),
+    );
+
+    dbMocks.getTrackedLinkById.mockResolvedValue({
+      id: 'link-1',
+      name: 'Promo',
+      original_url: 'https://evil-dns.example/offer',
+      tag_id: 'tag-1',
+      scenario_id: 'scenario-1',
       is_active: 1,
       click_count: 0,
       created_at: '2026-03-26T10:00:00+09:00',

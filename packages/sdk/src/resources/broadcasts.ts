@@ -44,12 +44,15 @@ export class BroadcastsResource {
   }
 
   async send(id: string): Promise<Broadcast> {
-    const res = await this.http.post<ApiResponse<Broadcast>>(`/api/broadcasts/${id}/send`);
+    const res = await this.http.post<ApiResponse<Broadcast>>(`/api/broadcasts/${id}/send`, {
+      confirm: true,
+    });
     return res.data;
   }
 
   async sendToSegment(id: string, conditions: SegmentCondition): Promise<Broadcast> {
     const res = await this.http.post<ApiResponse<Broadcast>>(`/api/broadcasts/${id}/send-segment`, {
+      confirm: true,
       conditions,
     });
     return res.data;

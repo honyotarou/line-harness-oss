@@ -25,6 +25,12 @@ import {
   jsonBodyReadErrorResponse,
   readJsonBodyWithLimit,
 } from '../services/request-body.js';
+import {
+  resolveLineAccountScopeForRequest,
+  resourceLineAccountVisibleInScope,
+  validateScopedLineAccountBody,
+  validateScopedLineAccountQueryParam,
+} from '../services/admin-line-account-scope.js';
 
 const scenarios = new Hono<Env>();
 
@@ -77,6 +83,12 @@ function serializeFriendScenario(row: DbFriendScenario) {
 scenarios.get('/api/scenarios', async (c) => {
   try {
     const lineAccountId = c.req.query('lineAccountId');
+    const scope = await resolveLineAccountScopeForRequest(c.env.DB, c);
+    const q = validateScopedLineAccountQueryParam(scope, lineAccountId);
+    if (!q.ok) {
+      return c.json({ success: false, error: q.error }, q.status);
+    }
+
     let items: DbScenarioWithStepCount[];
     if (lineAccountId) {
       const result = await c.env.DB.prepare(
@@ -116,6 +128,11 @@ scenarios.get('/api/scenarios/:id', async (c) => {
       return c.json({ success: false, error: 'Scenario not found' }, 404);
     }
 
+    const scopeOne = await resolveLineAccountScopeForRequest(c.env.DB, c);
+    if (!resourceLineAccountVisibleInScope(scopeOne, scenario.line_account_id)) {
+      return c.json({ success: false, error: 'Scenario not found' }, 404);
+    }
+
     return c.json({
       success: true,
       data: {
@@ -145,6 +162,12 @@ scenarios.post('/api/scenarios', async (c) => {
       return c.json({ success: false, error: 'name and triggerType are required' }, 400);
     }
 
+    const scopeCreate = await resolveLineAccountScopeForRequest(c.env.DB, c);
+    const bodyLine = validateScopedLineAccountBody(scopeCreate, body.lineAccountId);
+    if (!bodyLine.ok) {
+      return c.json({ success: false, error: bodyLine.error }, bodyLine.status);
+    }
+
     let scenario = await createScenario(c.env.DB, {
       name: body.name,
       description: body.description ?? null,
@@ -153,9 +176,9 @@ scenarios.post('/api/scenarios', async (c) => {
     });
 
     // Save line_account_id if provided
-    if (body.lineAccountId) {
+    if (bodyLine.lineAccountId) {
       await c.env.DB.prepare(`UPDATE scenarios SET line_account_id = ? WHERE id = ?`)
-        .bind(body.lineAccountId, scenario.id)
+        .bind(bodyLine.lineAccountId, scenario.id)
         .run();
     }
 
@@ -170,7 +193,7 @@ scenarios.post('/api/scenarios', async (c) => {
         success: true,
         data: {
           ...serializeScenario(scenario),
-          lineAccountId: body.lineAccountId ?? scenario.line_account_id ?? null,
+          lineAccountId: bodyLine.lineAccountId ?? scenario.line_account_id ?? null,
         },
       },
       201,
@@ -187,6 +210,15 @@ scenarios.post('/api/scenarios', async (c) => {
 scenarios.put('/api/scenarios/:id', async (c) => {
   try {
     const id = c.req.param('id');
+    const existingPut = await getScenarioById(c.env.DB, id);
+    if (!existingPut) {
+      return c.json({ success: false, error: 'Scenario not found' }, 404);
+    }
+    const scopePut = await resolveLineAccountScopeForRequest(c.env.DB, c);
+    if (!resourceLineAccountVisibleInScope(scopePut, existingPut.line_account_id)) {
+      return c.json({ success: false, error: 'Scenario not found' }, 404);
+    }
+
     const body = await readJsonBodyWithLimit<{
       name?: string;
       description?: string | null;
@@ -220,6 +252,14 @@ scenarios.put('/api/scenarios/:id', async (c) => {
 scenarios.delete('/api/scenarios/:id', async (c) => {
   try {
     const id = c.req.param('id');
+    const existingDel = await getScenarioById(c.env.DB, id);
+    if (!existingDel) {
+      return c.json({ success: false, error: 'Scenario not found' }, 404);
+    }
+    const scopeDel = await resolveLineAccountScopeForRequest(c.env.DB, c);
+    if (!resourceLineAccountVisibleInScope(scopeDel, existingDel.line_account_id)) {
+      return c.json({ success: false, error: 'Scenario not found' }, 404);
+    }
     await deleteScenario(c.env.DB, id);
     return c.json({ success: true, data: null });
   } catch (err) {
@@ -249,6 +289,15 @@ scenarios.post('/api/scenarios/:id/steps', async (c) => {
       );
     }
 
+    const scenarioForStep = await getScenarioById(c.env.DB, scenarioId);
+    if (!scenarioForStep) {
+      return c.json({ success: false, error: 'Scenario not found' }, 404);
+    }
+    const scopeStep = await resolveLineAccountScopeForRequest(c.env.DB, c);
+    if (!resourceLineAccountVisibleInScope(scopeStep, scenarioForStep.line_account_id)) {
+      return c.json({ success: false, error: 'Scenario not found' }, 404);
+    }
+
     const step = await createScenarioStep(c.env.DB, {
       scenarioId,
       stepOrder: body.stepOrder,
@@ -272,6 +321,16 @@ scenarios.post('/api/scenarios/:id/steps', async (c) => {
 // PUT /api/scenarios/:id/steps/:stepId - update step (accepts camelCase)
 scenarios.put('/api/scenarios/:id/steps/:stepId', async (c) => {
   try {
+    const scenarioIdParam = c.req.param('id');
+    const scenarioForPutStep = await getScenarioById(c.env.DB, scenarioIdParam);
+    if (!scenarioForPutStep) {
+      return c.json({ success: false, error: 'Scenario not found' }, 404);
+    }
+    const scopePutStep = await resolveLineAccountScopeForRequest(c.env.DB, c);
+    if (!resourceLineAccountVisibleInScope(scopePutStep, scenarioForPutStep.line_account_id)) {
+      return c.json({ success: false, error: 'Scenario not found' }, 404);
+    }
+
     const stepId = c.req.param('stepId');
     const body = await readJsonBodyWithLimit<{
       stepOrder?: number;
@@ -296,6 +355,9 @@ scenarios.put('/api/scenarios/:id/steps/:stepId', async (c) => {
     if (!updated) {
       return c.json({ success: false, error: 'Step not found' }, 404);
     }
+    if (updated.scenario_id !== scenarioIdParam) {
+      return c.json({ success: false, error: 'Step not found' }, 404);
+    }
 
     return c.json({ success: true, data: serializeStep(updated) });
   } catch (err) {
@@ -309,6 +371,16 @@ scenarios.put('/api/scenarios/:id/steps/:stepId', async (c) => {
 // DELETE /api/scenarios/:id/steps/:stepId - delete step
 scenarios.delete('/api/scenarios/:id/steps/:stepId', async (c) => {
   try {
+    const scenarioIdDel = c.req.param('id');
+    const scenarioForDelStep = await getScenarioById(c.env.DB, scenarioIdDel);
+    if (!scenarioForDelStep) {
+      return c.json({ success: false, error: 'Scenario not found' }, 404);
+    }
+    const scopeDelStep = await resolveLineAccountScopeForRequest(c.env.DB, c);
+    if (!resourceLineAccountVisibleInScope(scopeDelStep, scenarioForDelStep.line_account_id)) {
+      return c.json({ success: false, error: 'Scenario not found' }, 404);
+    }
+
     const stepId = c.req.param('stepId');
     await deleteScenarioStep(c.env.DB, stepId);
     return c.json({ success: true, data: null });
@@ -336,6 +408,22 @@ scenarios.post('/api/scenarios/:id/enroll/:friendId', async (c) => {
     }
     if (!friend) {
       return c.json({ success: false, error: 'Friend not found' }, 404);
+    }
+
+    const scopeEnroll = await resolveLineAccountScopeForRequest(db, c);
+    if (!resourceLineAccountVisibleInScope(scopeEnroll, scenario.line_account_id)) {
+      return c.json({ success: false, error: 'Scenario not found' }, 404);
+    }
+    if (!resourceLineAccountVisibleInScope(scopeEnroll, friend.line_account_id)) {
+      return c.json({ success: false, error: 'Friend not found' }, 404);
+    }
+    const sa = scenario.line_account_id ?? null;
+    const fa = friend.line_account_id ?? null;
+    if (String(sa) !== String(fa)) {
+      return c.json(
+        { success: false, error: 'Friend and scenario must belong to the same LINE account' },
+        400,
+      );
     }
 
     const enrollment = await enrollFriendInScenario(db, friendId, scenarioId);

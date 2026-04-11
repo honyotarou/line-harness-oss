@@ -47,7 +47,26 @@ export async function verifyLineIdToken(
           throw new Error(`LINE ID token verification failed for ${channelId}`);
         }
 
-        return response.json<VerifiedLineIdToken>();
+        const data = (await response.json()) as {
+          sub?: string;
+          aud?: string;
+          name?: string;
+          picture?: string;
+          email?: string;
+        };
+        if (typeof data.sub !== 'string' || data.sub.length === 0) {
+          throw new Error('LINE ID token missing sub');
+        }
+        if (data.aud !== channelId) {
+          throw new Error('LINE ID token aud does not match channel');
+        }
+
+        return {
+          sub: data.sub,
+          name: data.name,
+          picture: data.picture,
+          email: data.email,
+        } satisfies VerifiedLineIdToken;
       }),
     );
   } catch {

@@ -1,15 +1,4 @@
-/** Cloudflare Access forwards this header to the origin after successful login. */
-export const CF_ACCESS_JWT_HEADER = 'cf-access-jwt-assertion';
-
-export function isCloudflareAccessEnforced(env: {
-  REQUIRE_CLOUDFLARE_ACCESS_JWT?: string;
-  CLOUDFLARE_ACCESS_TEAM_DOMAIN?: string;
-}): boolean {
-  const flag = env.REQUIRE_CLOUDFLARE_ACCESS_JWT?.trim().toLowerCase();
-  const on = flag === '1' || flag === 'true' || flag === 'yes' || flag === 'on';
-  const domain = env.CLOUDFLARE_ACCESS_TEAM_DOMAIN?.trim();
-  return on && Boolean(domain && domain.length > 0);
-}
+import { getValidatedAccessEmailFromPayload } from './cloudflare-access-principal.js';
 
 function base64UrlToBytes(input: string): Uint8Array {
   const padded = input
@@ -30,11 +19,19 @@ function decodeJsonB64url(part: string): unknown {
   return JSON.parse(text) as unknown;
 }
 
+function jwtAudienceMatchesClaim(aud: unknown, expected: string): boolean {
+  if (typeof aud === 'string') return aud === expected;
+  if (Array.isArray(aud)) return aud.some((x) => typeof x === 'string' && x === expected);
+  return false;
+}
+
 export type VerifyCloudflareAccessJwtInput = {
   jwt: string;
   teamDomain: string;
-  /** Optional comma-separated emails (case-insensitive). When set, payload.email must match. */
+  /** Optional comma-separated emails (case-insensitive). When set, resolved principal email must match. */
   allowedEmails?: string | undefined;
+  /** When set, JWT `aud` must equal this string (or include it when `aud` is an array). */
+  expectedAudience?: string | undefined;
   fetchFn?: typeof fetch;
 };
 
@@ -56,7 +53,7 @@ interface CfCertsResponse {
 }
 
 /**
- * Verifies {@link CF_ACCESS_JWT_HEADER} using Cloudflare Access JWKS
+ * Verifies the `Cf-Access-Jwt-Assertion` header using Cloudflare Access JWKS
  * (`https://<team-domain>/cdn-cgi/access/certs`).
  *
  * @see https://developers.cloudflare.com/cloudflare-one/identity/authorization-cookies/validating-json/
@@ -108,8 +105,8 @@ export async function verifyCloudflareAccessJwt(
         .map((s) => s.trim().toLowerCase())
         .filter(Boolean),
     );
-    const email = String(payload.email ?? '').toLowerCase();
-    if (!email || !set.has(email)) {
+    const principalEmail = getValidatedAccessEmailFromPayload(payload);
+    if (!principalEmail || !set.has(principalEmail)) {
       return { ok: false, reason: 'Email not allowed for Cloudflare Access' };
     }
   }
@@ -181,6 +178,11 @@ export async function verifyCloudflareAccessJwt(
 
   if (!valid) {
     return { ok: false, reason: 'Invalid JWT signature' };
+  }
+
+  const audExpect = input.expectedAudience?.trim();
+  if (audExpect && !jwtAudienceMatchesClaim(payload.aud, audExpect)) {
+    return { ok: false, reason: 'Invalid JWT audience' };
   }
 
   return { ok: true, payload };

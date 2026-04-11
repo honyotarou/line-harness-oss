@@ -5,7 +5,8 @@ import { describe, expect, it } from 'vitest';
 
 const workerRoot = join(dirname(fileURLToPath(import.meta.url)), '../..');
 const wranglerToml = readFileSync(join(workerRoot, 'wrangler.toml'), 'utf8');
-const localExample = readFileSync(join(workerRoot, 'wrangler.local.toml.example'), 'utf8');
+const localExamplePath = join(workerRoot, 'wrangler.local.toml.example');
+const localExample = readFileSync(localExamplePath, 'utf8');
 
 describe('wrangler config (no third-party demo hosts in repo defaults)', () => {
   it('wrangler.toml [vars] does not commit another maintainer production URLs', () => {
@@ -20,8 +21,32 @@ describe('wrangler config (no third-party demo hosts in repo defaults)', () => {
     expect(wranglerToml).toMatch(/LIFF_URL = "https:\/\/liff\.line\.me\/YOUR_LIFF_ID"/);
   });
 
-  it('wrangler.local.toml.example does not use public demo Worker as WORKER_URL', () => {
+  it('wrangler.local.toml.example documents standalone config and D1 placeholder', () => {
+    expect(localExample).toMatch(/-c wrangler\.local\.toml/);
     expect(localExample).not.toMatch(/line-crm-api\.workers\.dev/);
     expect(localExample).toMatch(/YOUR_SUBDOMAIN\.workers\.dev/);
+    expect(localExample).toMatch(/YOUR_D1_DATABASE_ID/);
+  });
+
+  it('wrangler.toml comments document public OpenAPI enable/disable vars', () => {
+    expect(wranglerToml).toMatch(/ENABLE_PUBLIC_OPENAPI/);
+    expect(wranglerToml).toMatch(/DISABLE_PUBLIC_OPENAPI/);
+  });
+
+  it('wrangler.toml comments document optional Bot Management vars', () => {
+    expect(wranglerToml).toMatch(/MIN_CF_BOT_SCORE/);
+    expect(wranglerToml).toMatch(/REQUIRE_CF_BOT_SIGNAL/);
+  });
+
+  it('wrangler.toml comments document multi-account, session secret, and broadcast send guard', () => {
+    expect(wranglerToml).toMatch(/MULTI_LINE_ACCOUNT_QUERY_REQUIRES_LINE_ACCOUNT_ID/);
+    expect(wranglerToml).toMatch(/REQUIRE_ADMIN_SESSION_SECRET/);
+    expect(wranglerToml).toMatch(/BROADCAST_SEND_SECRET/);
+  });
+
+  it('wrangler.toml documents optional admin RBAC table and Cloudflare ops hygiene', () => {
+    expect(wranglerToml).toMatch(/admin_principal_roles/);
+    expect(wranglerToml).toMatch(/REQUIRE_ADMIN_PRINCIPAL_ALLOWLIST/);
+    expect(wranglerToml).toMatch(/least-privilege/);
   });
 });
