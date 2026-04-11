@@ -1,5 +1,7 @@
+import { validateClientApiBaseUrl } from '@line-crm/shared';
+
 /** Fallback when `VITE_API_URL` / meta / origin are unavailable; set `VITE_API_URL` to your `*.workers.dev` Worker. */
-export const DEFAULT_LIFF_API_FALLBACK = 'https://YOUR_SUBDOMAIN.workers.dev';
+export const DEFAULT_LIFF_API_FALLBACK = 'https://your_subdomain.workers.dev';
 
 /** LINE がホストする LIFF ページのオリジン。ここでは Worker の `/api` は存在しないため API ベースに使わない。 */
 export function isLineHostedLiffPageOrigin(origin: string): boolean {
@@ -9,6 +11,21 @@ export function isLineHostedLiffPageOrigin(origin: string): boolean {
   } catch {
     return false;
   }
+}
+
+function finalizeLiffApiCandidate(candidate: string): string {
+  const isProd = import.meta.env.PROD;
+  const validated = validateClientApiBaseUrl(candidate, {
+    allowPlaceholderTemplate: !isProd,
+  });
+  if (validated.ok) {
+    return validated.normalizedOrigin;
+  }
+  if (isProd) {
+    throw new Error(`Invalid LIFF API base URL: ${validated.reason}`);
+  }
+  console.warn(`[line-harness liff] API base URL rejected: ${validated.reason}`);
+  return DEFAULT_LIFF_API_FALLBACK;
 }
 
 /**
@@ -23,20 +40,20 @@ export function resolveLiffApiBaseUrl(
 ): string {
   const trimmed = typeof viteApiUrl === 'string' ? viteApiUrl.trim() : '';
   if (trimmed !== '') {
-    return trimmed.replace(/\/+$/, '');
+    return finalizeLiffApiCandidate(trimmed.replace(/\/+$/, ''));
   }
   const meta = typeof metaApiBase === 'string' ? metaApiBase.trim() : '';
   if (meta !== '' && /^https?:\/\//i.test(meta)) {
-    return meta.replace(/\/+$/, '');
+    return finalizeLiffApiCandidate(meta.replace(/\/+$/, ''));
   }
   if (
     browserOrigin &&
     /^https?:\/\//i.test(browserOrigin) &&
     !isLineHostedLiffPageOrigin(browserOrigin)
   ) {
-    return browserOrigin.replace(/\/+$/, '');
+    return finalizeLiffApiCandidate(browserOrigin.replace(/\/+$/, ''));
   }
-  return DEFAULT_LIFF_API_FALLBACK;
+  return finalizeLiffApiCandidate(DEFAULT_LIFF_API_FALLBACK);
 }
 
 function readMetaLhApiBase(): string | null {

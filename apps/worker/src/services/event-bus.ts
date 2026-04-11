@@ -21,12 +21,51 @@ import {
   jstNow,
 } from '@line-crm/db';
 import { LineClient } from '@line-crm/line-sdk';
-import { isSafeHttpsOutboundUrl } from './outbound-url.js';
+import { fetchHttpsUrlAfterDnsAssertion } from './outbound-https-fetch.js';
 import { parseStringArrayJson, tryParseJsonLoose, tryParseJsonRecord } from './safe-json.js';
 
-interface EventPayload {
+export interface EventPayload {
   friendId?: string;
   eventData?: Record<string, unknown>;
+}
+
+/**
+ * Automation `conditions` JSON must be explicit: empty `{}` does not match (prevents “always on” backdoors).
+ * Use `{ "match_always": true }` only when an admin intentionally wants every event of that type to run the rule.
+ * Unknown keys are rejected. Supported: `score_threshold`, `tag_id`.
+ */
+export function matchAutomationConditions(
+  conditions: Record<string, unknown>,
+  payload: EventPayload,
+): boolean {
+  if (conditions.match_always === true) {
+    return true;
+  }
+
+  const keys = Object.keys(conditions);
+  if (keys.length === 0) {
+    return false;
+  }
+
+  const allowedKeys = new Set(['score_threshold', 'tag_id']);
+  for (const k of keys) {
+    if (!allowedKeys.has(k)) {
+      return false;
+    }
+  }
+
+  if (conditions.score_threshold !== undefined && payload.eventData) {
+    const currentScore = payload.eventData.currentScore as number | undefined;
+    if (currentScore !== undefined && currentScore < (conditions.score_threshold as number)) {
+      return false;
+    }
+  }
+
+  if (conditions.tag_id !== undefined && payload.eventData) {
+    if (payload.eventData.tagId !== conditions.tag_id) return false;
+  }
+
+  return true;
 }
 
 /**
@@ -57,10 +96,6 @@ async function fireOutgoingWebhooks(
     const webhooks = await getActiveOutgoingWebhooksByEvent(db, eventType);
     for (const wh of webhooks) {
       try {
-        if (!isSafeHttpsOutboundUrl(wh.url)) {
-          console.error(`送信Webhook ${wh.id} skipped: unsafe or disallowed URL`);
-          continue;
-        }
         const body = JSON.stringify({
           event: eventType,
           timestamp: jstNow(),
@@ -86,7 +121,15 @@ async function fireOutgoingWebhooks(
           headers['X-Webhook-Signature'] = hexSignature;
         }
 
-        await fetch(wh.url, { method: 'POST', headers, body });
+        const outbound = await fetchHttpsUrlAfterDnsAssertion(wh.url, fetch, {
+          method: 'POST',
+          headers,
+          body,
+        });
+        if (!outbound.ok) {
+          console.error(`送信Webhook ${wh.id} skipped: ${outbound.reason}`);
+          continue;
+        }
       } catch (err) {
         console.error(`送信Webhook ${wh.id} への通知失敗:`, err);
       }
@@ -173,8 +216,7 @@ async function processAutomations(
       const conditions = conditionsParsed as Record<string, unknown>;
       const actions = actionsParsed as Array<{ type: string; params: Record<string, string> }>;
 
-      // 条件チェック（簡易版: 条件が空なら常にマッチ）
-      if (!matchConditions(conditions, payload)) continue;
+      if (!matchAutomationConditions(conditions, payload)) continue;
 
       const results: Array<{ action: string; success: boolean; error?: string }> = [];
 
@@ -202,27 +244,6 @@ async function processAutomations(
   } catch (err) {
     console.error('processAutomations error:', err);
   }
-}
-
-/** 条件マッチング */
-function matchConditions(conditions: Record<string, unknown>, payload: EventPayload): boolean {
-  // 条件が空 → 常にマッチ
-  if (Object.keys(conditions).length === 0) return true;
-
-  // score_threshold チェック
-  if (conditions.score_threshold !== undefined && payload.eventData) {
-    const currentScore = payload.eventData.currentScore as number | undefined;
-    if (currentScore !== undefined && currentScore < (conditions.score_threshold as number)) {
-      return false;
-    }
-  }
-
-  // tag_id チェック
-  if (conditions.tag_id !== undefined && payload.eventData) {
-    if (payload.eventData.tagId !== conditions.tag_id) return false;
-  }
-
-  return true;
 }
 
 /** アクション実行 */
@@ -282,14 +303,14 @@ async function executeAction(
       if (!url) {
         throw new Error('send_webhook requires params.url');
       }
-      if (!isSafeHttpsOutboundUrl(url)) {
-        throw new Error('send_webhook URL is not allowed (use public https only)');
-      }
-      await fetch(url, {
+      const outbound = await fetchHttpsUrlAfterDnsAssertion(url, fetch, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ friendId, ...payload.eventData }),
       });
+      if (!outbound.ok) {
+        throw new Error(outbound.reason);
+      }
       break;
     }
 
@@ -337,7 +358,7 @@ async function executeAction(
     }
 
     default:
-      console.warn(`未知のアクションタイプ: ${action.type}`);
+      throw new Error(`Unknown automation action type: ${action.type}`);
   }
 }
 

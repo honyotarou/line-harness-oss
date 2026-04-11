@@ -1,5 +1,6 @@
 import { Hono } from 'hono';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { resetRequestRateLimits } from '../../src/services/request-rate-limit.js';
 
 const dbMocks = vi.hoisted(() => ({
   getStripeEvents: vi.fn(),
@@ -46,7 +47,12 @@ function makeEnv(overrides: Partial<{ DB: D1Database; STRIPE_WEBHOOK_SECRET: str
 
 describe('stripe routes', () => {
   beforeEach(() => {
+    resetRequestRateLimits();
     Object.values(dbMocks).forEach((mockFn) => mockFn.mockReset());
+  });
+
+  afterEach(() => {
+    resetRequestRateLimits();
   });
 
   it('lists stripe events with parsed metadata', async () => {
@@ -177,6 +183,34 @@ describe('stripe routes', () => {
     expect(dbMocks.createStripeEvent).not.toHaveBeenCalled();
   });
 
+  it('rejects webhook when body exceeds size limit before signature verification', async () => {
+    const { STRIPE_WEBHOOK_RAW_BODY_LIMIT_BYTES } = await import(
+      '../../src/services/request-body.js'
+    );
+    const { stripe } = await import('../../src/routes/stripe.js');
+    const app = new Hono();
+    app.route('/', stripe);
+
+    const response = await app.fetch(
+      new Request('http://localhost/api/integrations/stripe/webhook', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Content-Length': String(STRIPE_WEBHOOK_RAW_BODY_LIMIT_BYTES + 1),
+        },
+        body: '{}',
+      }),
+      makeEnv(),
+    );
+
+    expect(response.status).toBe(413);
+    await expect(response.json()).resolves.toMatchObject({
+      success: false,
+      error: expect.stringMatching(/too large/i),
+    });
+    expect(dbMocks.createStripeEvent).not.toHaveBeenCalled();
+  });
+
   it('rejects webhook when signature is invalid', async () => {
     const { stripe } = await import('../../src/routes/stripe.js');
     const app = new Hono();
@@ -289,5 +323,28 @@ describe('stripe routes', () => {
         processedAt: '2026-03-26T10:00:00+09:00',
       },
     });
+  });
+
+  it('rate limits excessive Stripe webhook POSTs from a single client IP', async () => {
+    const { stripe } = await import('../../src/routes/stripe.js');
+    const app = new Hono();
+    app.route('/', stripe);
+
+    let last = 200;
+    for (let i = 0; i < 122; i++) {
+      const response = await app.fetch(
+        new Request('http://localhost/api/integrations/stripe/webhook', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'CF-Connecting-IP': '203.0.113.51',
+          },
+          body: '{}',
+        }),
+        makeEnv(),
+      );
+      last = response.status;
+    }
+    expect(last).toBe(429);
   });
 });

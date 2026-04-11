@@ -1,5 +1,6 @@
 import { Hono } from 'hono';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { resetRequestRateLimits } from '../../src/services/request-rate-limit.js';
 
 const dbMocks = vi.hoisted(() => ({
   upsertFriend: vi.fn(),
@@ -58,6 +59,46 @@ function executionCtxWithPending() {
   };
 }
 
+/** D1 stub: first seen `webhookEventId` inserts; duplicates get `changes: 0`. */
+function createLineWebhookDedupDb() {
+  const seen = new Set<string>();
+  return {
+    prepare: vi.fn((sql: string) => {
+      if (sql.includes('line_webhook_processed_events')) {
+        if (sql.includes('INSERT')) {
+          return {
+            bind: vi.fn((webhookEventId: string, _ms: number) => ({
+              run: vi.fn(async () => {
+                if (seen.has(webhookEventId)) return { meta: { changes: 0 } };
+                seen.add(webhookEventId);
+                return { meta: { changes: 1 } };
+              }),
+              first: vi.fn(),
+              all: vi.fn().mockResolvedValue({ results: [] }),
+            })),
+          };
+        }
+        if (sql.includes('DELETE')) {
+          return {
+            bind: vi.fn(() => ({
+              run: vi.fn().mockResolvedValue({ meta: { changes: 0 } }),
+              first: vi.fn(),
+              all: vi.fn().mockResolvedValue({ results: [] }),
+            })),
+          };
+        }
+      }
+      return {
+        bind: vi.fn(() => ({
+          run: vi.fn().mockResolvedValue({}),
+          first: vi.fn(),
+          all: vi.fn().mockResolvedValue({ results: [] }),
+        })),
+      };
+    }),
+  } as unknown as D1Database;
+}
+
 /** Minimal D1 mock for text message path (incoming log + empty auto_replies). */
 function createMessageFlowDb() {
   const chain = {
@@ -77,6 +118,7 @@ function createMessageFlowDb() {
 
 describe('line webhook route', () => {
   beforeEach(() => {
+    resetRequestRateLimits();
     vi.resetModules();
     Object.values(dbMocks).forEach((mockFn) => mockFn.mockReset());
     dbMocks.getLineAccounts.mockResolvedValue([]);
@@ -85,6 +127,10 @@ describe('line webhook route', () => {
     lineSdkMocks.replyMessage.mockClear();
     lineSdkMocks.getProfile.mockClear();
     eventBusMocks.fireEvent.mockClear();
+  });
+
+  afterEach(() => {
+    resetRequestRateLimits();
   });
 
   it('rejects oversized webhook payloads before signature verification', async () => {
@@ -643,5 +689,93 @@ describe('line webhook route', () => {
       'line-access-token',
       null,
     );
+  });
+
+  it('does not run unfollow handler twice for the same webhookEventId (replay)', async () => {
+    const pending: Promise<unknown>[] = [];
+    const executionCtx = {
+      waitUntil: (p: Promise<unknown>) => {
+        pending.push(p);
+      },
+    } as ExecutionContext;
+
+    const db = createLineWebhookDedupDb();
+    const { webhook } = await import('../../src/routes/webhook.js');
+    const app = new Hono();
+    app.route('/', webhook);
+
+    const body = JSON.stringify({
+      events: [
+        {
+          type: 'unfollow',
+          webhookEventId: '01JTESTUNFOLLOWREPLAY01',
+          timestamp: 123,
+          source: { type: 'user', userId: 'UreplayX' },
+          mode: 'active',
+          deliveryContext: { isRedelivery: false },
+        },
+      ],
+    });
+
+    for (let round = 0; round < 2; round++) {
+      const response = await app.fetch(
+        new Request('http://localhost/webhook', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'X-Line-Signature': 'ok',
+          },
+          body,
+        }),
+        {
+          DB: db,
+          LINE_CHANNEL_SECRET: 'line-secret',
+          LINE_CHANNEL_ACCESS_TOKEN: 'line-access-token',
+          WORKER_URL: 'https://worker.example.com',
+        } as never,
+        executionCtx,
+      );
+      expect(response.status).toBe(200);
+    }
+
+    await Promise.all(pending);
+    expect(dbMocks.updateFriendFollowStatus).toHaveBeenCalledTimes(1);
+    expect(dbMocks.updateFriendFollowStatus).toHaveBeenCalledWith(
+      expect.anything(),
+      'UreplayX',
+      false,
+    );
+  });
+
+  it('rate limits excessive POST /webhook from a single client IP', async () => {
+    const { webhook } = await import('../../src/routes/webhook.js');
+    const app = new Hono();
+    app.route('/', webhook);
+
+    const env = {
+      DB: {} as D1Database,
+      LINE_CHANNEL_SECRET: 'line-secret',
+      LINE_CHANNEL_ACCESS_TOKEN: 'line-access-token',
+      WORKER_URL: 'https://worker.example.com',
+    } as never;
+
+    const body = JSON.stringify({ events: [] });
+    let last = 200;
+    for (let i = 0; i < 302; i++) {
+      const response = await app.fetch(
+        new Request('http://localhost/webhook', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'CF-Connecting-IP': '203.0.113.50',
+            'X-Line-Signature': 'x',
+          },
+          body,
+        }),
+        env,
+      );
+      last = response.status;
+    }
+    expect(last).toBe(429);
   });
 });

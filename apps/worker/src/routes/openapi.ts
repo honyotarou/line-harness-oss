@@ -5,9 +5,20 @@ import { enforceRateLimit } from '../services/request-rate-limit.js';
 const openapi = new Hono<Env>();
 const OPENAPI_PUBLIC_RATE_LIMIT = { limit: 60, windowMs: 60_000 };
 
-function isOpenApiDocumentationDisabled(env: { DISABLE_PUBLIC_OPENAPI?: string }): boolean {
-  const v = env.DISABLE_PUBLIC_OPENAPI?.trim().toLowerCase();
-  return v === '1' || v === 'true' || v === 'yes' || v === 'on';
+/**
+ * `/docs` and `/openapi.json` are off unless explicitly enabled (reduces production reconnaissance).
+ * Set `ENABLE_PUBLIC_OPENAPI=1` for Swagger UI + spec. `DISABLE_PUBLIC_OPENAPI=1` always wins (off).
+ */
+export function isOpenApiDocumentationEnabled(env: {
+  ENABLE_PUBLIC_OPENAPI?: string;
+  DISABLE_PUBLIC_OPENAPI?: string;
+}): boolean {
+  const disable = env.DISABLE_PUBLIC_OPENAPI?.trim().toLowerCase();
+  if (disable === '1' || disable === 'true' || disable === 'yes' || disable === 'on') {
+    return false;
+  }
+  const enable = env.ENABLE_PUBLIC_OPENAPI?.trim().toLowerCase();
+  return enable === '1' || enable === 'true' || enable === 'yes' || enable === 'on';
 }
 
 const spec = {
@@ -746,7 +757,7 @@ const spec = {
 
 // GET /openapi.json - raw spec
 openapi.get('/openapi.json', async (c) => {
-  if (isOpenApiDocumentationDisabled(c.env)) {
+  if (!isOpenApiDocumentationEnabled(c.env)) {
     return c.json({ success: false, error: 'Not found' }, 404);
   }
   const limited = await enforceRateLimit(c, {
@@ -763,7 +774,7 @@ openapi.get('/openapi.json', async (c) => {
 
 // GET /docs - Swagger UI
 openapi.get('/docs', async (c) => {
-  if (isOpenApiDocumentationDisabled(c.env)) {
+  if (!isOpenApiDocumentationEnabled(c.env)) {
     return c.json({ success: false, error: 'Not found' }, 404);
   }
   const limited = await enforceRateLimit(c, {

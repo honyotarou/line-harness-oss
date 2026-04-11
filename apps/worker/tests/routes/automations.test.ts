@@ -1,5 +1,5 @@
 import { Hono } from 'hono';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 const dbMocks = vi.hoisted(() => ({
   getAutomations: vi.fn(),
@@ -55,6 +55,23 @@ function createDb() {
 describe('automations routes', () => {
   beforeEach(() => {
     Object.values(dbMocks).forEach((mockFn) => mockFn.mockReset());
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockImplementation(async (input: RequestInfo) => {
+        const url = typeof input === 'string' ? input : input.url;
+        if (url.includes('cloudflare-dns.com/dns-query')) {
+          return new Response(
+            JSON.stringify({ Status: 0, Answer: [{ type: 1, data: '93.184.216.34' }] }),
+            { status: 200, headers: { 'Content-Type': 'application/dns-json' } },
+          );
+        }
+        return new Response('', { status: 404 });
+      }),
+    );
+  });
+
+  afterEach(() => {
+    vi.unstubAllGlobals();
   });
 
   it('filters automations by LINE account and exposes lineAccountId in list responses', async () => {
@@ -95,7 +112,7 @@ describe('automations routes', () => {
       description: 'account scoped',
       event_type: 'friend_add',
       conditions: '{}',
-      actions: '[]',
+      actions: '[{"type":"add_tag","params":{"tagId":"tag-x"}}]',
       line_account_id: null,
       is_active: 1,
       priority: 5,
@@ -114,7 +131,7 @@ describe('automations routes', () => {
         body: JSON.stringify({
           name: 'Scoped automation',
           eventType: 'friend_add',
-          actions: [],
+          actions: [{ type: 'add_tag', params: { tagId: 'tag-x' } }],
           priority: 5,
           lineAccountId: 'account-1',
         }),
@@ -135,13 +152,38 @@ describe('automations routes', () => {
         id: 'automation-1',
         name: 'Scoped automation',
         eventType: 'friend_add',
-        actions: [],
+        actions: [{ type: 'add_tag', params: { tagId: 'tag-x' } }],
         isActive: true,
         priority: 5,
         lineAccountId: 'account-1',
         createdAt: '2026-03-25T10:00:00+09:00',
       },
     });
+  });
+
+  it('rejects create when automation action type is not allowlisted', async () => {
+    const { automations } = await import('../../src/routes/automations.js');
+    const app = new Hono();
+    app.route('/', automations);
+
+    const response = await app.fetch(
+      new Request('http://localhost/api/automations', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          name: 'Bad',
+          eventType: 'friend_add',
+          actions: [{ type: 'exec_shell', params: { cmd: 'rm -rf /' } }],
+        }),
+      }),
+      { DB: createDb() } as never,
+    );
+
+    expect(response.status).toBe(400);
+    const json = (await response.json()) as { success: boolean; error: string };
+    expect(json.success).toBe(false);
+    expect(json.error).toMatch(/allowed|allowlisted/i);
+    expect(dbMocks.createAutomation).not.toHaveBeenCalled();
   });
 
   it('returns empty conditions and actions when stored automation JSON is corrupt', async () => {
@@ -274,6 +316,39 @@ describe('automations routes', () => {
           name: 'Bad hook',
           eventType: 'friend_add',
           actions: [{ type: 'send_webhook', params: { url: 'https://127.0.0.1/x' } }],
+        }),
+      }),
+      { DB: createDb() } as never,
+    );
+
+    expect(response.status).toBe(400);
+    expect(dbMocks.createAutomation).not.toHaveBeenCalled();
+  });
+
+  it('rejects create when send_webhook hostname DNS-resolves to private space', async () => {
+    vi.unstubAllGlobals();
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockResolvedValue(
+        new Response(JSON.stringify({ Status: 0, Answer: [{ type: 1, data: '192.168.99.1' }] }), {
+          status: 200,
+          headers: { 'Content-Type': 'application/dns-json' },
+        }),
+      ),
+    );
+
+    const { automations } = await import('../../src/routes/automations.js');
+    const app = new Hono();
+    app.route('/', automations);
+
+    const response = await app.fetch(
+      new Request('http://localhost/api/automations', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          name: 'Dns bad',
+          eventType: 'friend_add',
+          actions: [{ type: 'send_webhook', params: { url: 'https://fake-public.example/x' } }],
         }),
       }),
       { DB: createDb() } as never,

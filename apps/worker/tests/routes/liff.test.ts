@@ -90,10 +90,21 @@ function createLiffDbCorruptFriendMetadata(): D1Database {
   } as unknown as D1Database;
 }
 
-function lineOAuthFetchSuccess(verified: { sub: string; email?: string; name?: string }) {
+function lineOAuthFetchSuccess(verified: {
+  sub: string;
+  email?: string;
+  name?: string;
+  pictureUrl?: string;
+}) {
   return vi.fn(async (input: RequestInfo | URL) => {
     const url =
       typeof input === 'string' ? input : input instanceof Request ? input.url : input.toString();
+    if (url.includes('cloudflare-dns.com/dns-query')) {
+      return new Response(
+        JSON.stringify({ Status: 0, Answer: [{ type: 1, data: '93.184.216.34' }] }),
+        { status: 200, headers: { 'Content-Type': 'application/dns-json' } },
+      );
+    }
     if (url.includes('/oauth2/v2.1/token')) {
       return new Response(
         JSON.stringify({
@@ -118,7 +129,8 @@ function lineOAuthFetchSuccess(verified: { sub: string; email?: string; name?: s
         JSON.stringify({
           userId: verified.sub,
           displayName: verified.name ?? 'LINE User',
-          pictureUrl: 'https://p.example/x',
+          pictureUrl:
+            verified.pictureUrl ?? 'https://profile.line-scdn.net/0hNfOaBcDeFgHiJkLmNoPqRsTuVwXyZ',
         }),
         { status: 200 },
       );
@@ -200,7 +212,7 @@ describe('liff auth routes', () => {
 
     const response = await app.fetch(
       new Request(
-        'http://localhost/auth/line?ref=ref-1&redirect=https%3A%2F%2Fexample.com%2Fdone&gclid=g-1&fbclid=fb-1&utm_source=google&utm_medium=cpc&utm_campaign=spring&utm_content=banner&utm_term=crm&uid=user-1',
+        'http://localhost/auth/line?ref=ref-1&redirect=https%3A%2F%2Fclient.example%2Fdone&gclid=g-1&fbclid=fb-1&utm_source=google&utm_medium=cpc&utm_campaign=spring&utm_content=banner&utm_term=crm&uid=user-1',
         {
           headers: { 'User-Agent': 'Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X)' },
         },
@@ -217,7 +229,7 @@ describe('liff auth routes', () => {
     expect(target.origin + target.pathname).toBe('https://liff.line.me/2009554425-4IMBmLQ9');
     expect(target.searchParams.get('liffId')).toBe('2009554425-4IMBmLQ9');
     expect(target.searchParams.get('ref')).toBe('ref-1');
-    expect(target.searchParams.get('redirect')).toBe('https://example.com/done');
+    expect(target.searchParams.get('redirect')).toBe('https://client.example/done');
     expect(target.searchParams.get('gclid')).toBe('g-1');
     expect(target.searchParams.get('fbclid')).toBe('fb-1');
     expect(target.searchParams.get('utm_source')).toBe('google');
@@ -226,6 +238,27 @@ describe('liff auth routes', () => {
     expect(target.searchParams.get('utm_content')).toBe('banner');
     expect(target.searchParams.get('utm_term')).toBe('crm');
     expect(target.searchParams.get('uid')).toBe('user-1');
+  });
+
+  it('omits disallowlisted redirect from the mobile LIFF URL (open-redirect hardening)', async () => {
+    const { liffRoutes } = await import('../../src/routes/liff.js');
+    const app = new Hono();
+    app.route('/', liffRoutes);
+
+    const response = await app.fetch(
+      new Request('http://localhost/auth/line?ref=r&redirect=https%3A%2F%2Fevil.example%2Fphish', {
+        headers: { 'User-Agent': 'Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X)' },
+      }),
+      {
+        ...baseEnv,
+        DB: {} as D1Database,
+      } as never,
+    );
+
+    expect(response.status).toBe(302);
+    const target = new URL(response.headers.get('Location')!);
+    expect(target.searchParams.get('ref')).toBe('r');
+    expect(target.searchParams.has('redirect')).toBe(false);
   });
 
   it('returns error HTML when LIFF_URL is a placeholder (YOUR_LIFF_ID)', async () => {
@@ -265,7 +298,7 @@ describe('liff auth routes', () => {
 
     const response = await app.fetch(
       new Request(
-        'http://localhost/auth/line?account=channel-1&ref=ref-2&redirect=https%3A%2F%2Fexample.com%2Fcross&utm_source=google&utm_medium=cpc&utm_campaign=spring&utm_content=hero&utm_term=crm',
+        'http://localhost/auth/line?account=channel-1&ref=ref-2&redirect=https%3A%2F%2Fclient.example%2Fcross&utm_source=google&utm_medium=cpc&utm_campaign=spring&utm_content=hero&utm_term=crm',
         {
           headers: { 'User-Agent': 'Mozilla/5.0 (Android 14; Mobile)' },
         },
@@ -290,7 +323,7 @@ describe('liff auth routes', () => {
     expect(state).not.toBeNull();
     expect(state!.account).toBe('channel-1');
     expect(state!.ref).toBe('ref-2');
-    expect(state!.redirect).toBe('https://example.com/cross');
+    expect(state!.redirect).toBe('https://client.example/cross');
     expect(state!.utmSource).toBe('google');
     expect(state!.utmMedium).toBe('cpc');
     expect(state!.utmCampaign).toBe('spring');
@@ -410,6 +443,52 @@ describe('liff auth routes', () => {
     );
   });
 
+  it('strips non-LINE pictureUrl from OAuth completion HTML (XSS / unsafe src)', async () => {
+    vi.stubGlobal(
+      'fetch',
+      lineOAuthFetchSuccess({
+        sub: 'U-line-xss',
+        email: 'xss@example.com',
+        name: 'Bad',
+        pictureUrl: 'javascript:alert(1)',
+      }),
+    );
+
+    dbMocks.upsertFriend.mockResolvedValue({
+      id: 'friend-xss',
+      line_user_id: 'U-line-xss',
+      display_name: 'Bad',
+      picture_url: null,
+      status_message: null,
+      is_following: 1,
+      ref_code: null,
+      metadata: null,
+      user_id: null,
+      line_account_id: null,
+      created_at: '2026-03-26T10:00:00+09:00',
+      updated_at: '2026-03-26T10:00:00+09:00',
+    } as never);
+
+    dbMocks.createUser.mockResolvedValue({ id: 'user-xss' } as never);
+
+    const state = await signedOAuthState();
+    const { liffRoutes } = await import('../../src/routes/liff.js');
+    const app = new Hono();
+    app.route('/', liffRoutes);
+
+    const response = await app.fetch(
+      new Request(
+        `http://localhost/auth/callback?code=code-xss&state=${encodeURIComponent(state)}`,
+      ),
+      { ...baseEnv, DB: createLiffDb() } as never,
+    );
+
+    expect(response.status).toBe(200);
+    const html = await response.text();
+    expect(html).toContain('登録完了');
+    expect(html).not.toMatch(/javascript:/i);
+  });
+
   it('completes /auth/callback when merging ad params over corrupt friend metadata JSON', async () => {
     vi.stubGlobal(
       'fetch',
@@ -479,6 +558,59 @@ describe('liff auth routes', () => {
 
     expect(response.status).toBe(302);
     expect(response.headers.get('Location')).toBe('https://client.example/after');
+  });
+
+  it('skips redirect after /auth/callback when redirect target DNS resolves private', async () => {
+    const oauth = lineOAuthFetchSuccess({ sub: 'U-line-dns', name: 'Dns' });
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async (input: RequestInfo | URL) => {
+        const url =
+          typeof input === 'string'
+            ? input
+            : input instanceof Request
+              ? input.url
+              : input.toString();
+        if (url.includes('cloudflare-dns.com/dns-query')) {
+          return new Response(
+            JSON.stringify({ Status: 0, Answer: [{ type: 1, data: '192.168.77.1' }] }),
+            { status: 200, headers: { 'Content-Type': 'application/dns-json' } },
+          );
+        }
+        return oauth(input);
+      }),
+    );
+
+    dbMocks.upsertFriend.mockResolvedValue({
+      id: 'friend-dns',
+      line_user_id: 'U-line-dns',
+      display_name: 'Dns',
+      picture_url: null,
+      status_message: null,
+      is_following: 1,
+      ref_code: null,
+      metadata: null,
+      user_id: null,
+      line_account_id: null,
+      created_at: '2026-03-26T10:00:00+09:00',
+      updated_at: '2026-03-26T10:00:00+09:00',
+    } as never);
+    dbMocks.createUser.mockResolvedValue({ id: 'user-dns' } as never);
+
+    const state = await signedOAuthState({ redirect: 'https://client.example/after' });
+    const { liffRoutes } = await import('../../src/routes/liff.js');
+    const app = new Hono();
+    app.route('/', liffRoutes);
+
+    const response = await app.fetch(
+      new Request(
+        `http://localhost/auth/callback?code=code-dns&state=${encodeURIComponent(state)}`,
+      ),
+      { ...baseEnv, DB: createLiffDb() } as never,
+    );
+
+    expect(response.status).toBe(200);
+    expect(await response.text()).toContain('登録完了');
   });
 
   it('returns an error HTML when token exchange fails on /auth/callback', async () => {
@@ -1010,6 +1142,24 @@ describe('liff public API routes', () => {
   });
 
   it('POST /api/links/wrap validates url and returns wrapped LIFF URL', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockImplementation(async (input: RequestInfo | URL) => {
+        const url =
+          typeof input === 'string'
+            ? input
+            : input instanceof Request
+              ? input.url
+              : input.toString();
+        if (url.includes('cloudflare-dns.com/dns-query')) {
+          return new Response(
+            JSON.stringify({ Status: 0, Answer: [{ type: 1, data: '93.184.216.34' }] }),
+            { status: 200, headers: { 'Content-Type': 'application/dns-json' } },
+          );
+        }
+        return new Response('', { status: 404 });
+      }),
+    );
     const { liffRoutes } = await import('../../src/routes/liff.js');
     const app = new Hono();
     app.route('/', liffRoutes);
@@ -1018,7 +1168,7 @@ describe('liff public API routes', () => {
       new Request('http://localhost/api/links/wrap', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ url: 'https://example.com/page', ref: 'ad1' }),
+        body: JSON.stringify({ url: 'https://client.example/page', ref: 'ad1' }),
       }),
       { ...baseEnv, DB: {} as D1Database } as never,
     );
@@ -1048,6 +1198,24 @@ describe('liff public API routes', () => {
   });
 
   it('POST /api/links/wrap returns 500 when LIFF_URL is missing', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockImplementation(async (input: RequestInfo | URL) => {
+        const url =
+          typeof input === 'string'
+            ? input
+            : input instanceof Request
+              ? input.url
+              : input.toString();
+        if (url.includes('cloudflare-dns.com/dns-query')) {
+          return new Response(
+            JSON.stringify({ Status: 0, Answer: [{ type: 1, data: '93.184.216.34' }] }),
+            { status: 200, headers: { 'Content-Type': 'application/dns-json' } },
+          );
+        }
+        return new Response('', { status: 404 });
+      }),
+    );
     const { liffRoutes } = await import('../../src/routes/liff.js');
     const app = new Hono();
     app.route('/', liffRoutes);
@@ -1056,7 +1224,7 @@ describe('liff public API routes', () => {
       new Request('http://localhost/api/links/wrap', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ url: 'https://a.com' }),
+        body: JSON.stringify({ url: 'https://client.example/' }),
       }),
       {
         ...baseEnv,
@@ -1066,5 +1234,48 @@ describe('liff public API routes', () => {
     );
 
     expect(res.status).toBe(500);
+  });
+
+  it('POST /api/links/wrap returns 400 for disallowed redirect origins (open redirect hardening)', async () => {
+    const { liffRoutes } = await import('../../src/routes/liff.js');
+    const app = new Hono();
+    app.route('/', liffRoutes);
+
+    const res = await app.fetch(
+      new Request('http://localhost/api/links/wrap', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ url: 'https://evil.example/phish' }),
+      }),
+      { ...baseEnv, DB: {} as D1Database } as never,
+    );
+
+    expect(res.status).toBe(400);
+  });
+
+  it('POST /api/links/wrap returns 400 when allowlisted host DNS-resolves private', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockResolvedValue(
+        new Response(JSON.stringify({ Status: 0, Answer: [{ type: 1, data: '10.10.10.10' }] }), {
+          status: 200,
+          headers: { 'Content-Type': 'application/dns-json' },
+        }),
+      ),
+    );
+    const { liffRoutes } = await import('../../src/routes/liff.js');
+    const app = new Hono();
+    app.route('/', liffRoutes);
+
+    const res = await app.fetch(
+      new Request('http://localhost/api/links/wrap', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ url: 'https://client.example/safe-path' }),
+      }),
+      { ...baseEnv, DB: {} as D1Database } as never,
+    );
+
+    expect(res.status).toBe(400);
   });
 });

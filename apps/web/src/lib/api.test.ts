@@ -10,7 +10,7 @@ describe('api object (integration via global fetch)', () => {
   });
 
   beforeEach(() => {
-    process.env.NEXT_PUBLIC_API_URL = 'http://worker.test';
+    process.env.NEXT_PUBLIC_API_URL = 'https://worker.test';
     vi.stubGlobal(
       'fetch',
       vi.fn().mockResolvedValue({
@@ -29,7 +29,7 @@ describe('api object (integration via global fetch)', () => {
 
   it('getApiBaseUrl returns NEXT_PUBLIC_API_URL', async () => {
     const { getApiBaseUrl } = await import('./api');
-    expect(getApiBaseUrl()).toBe('http://worker.test');
+    expect(getApiBaseUrl()).toBe('https://worker.test');
   });
 
   it('friends.list passes lineAccountId and pagination as query params', async () => {
@@ -37,7 +37,7 @@ describe('api object (integration via global fetch)', () => {
     const res = await api.friends.list({ accountId: 'acc-1', limit: '10', offset: '0' });
     expect(res.success).toBe(true);
     expect(globalThis.fetch).toHaveBeenCalledWith(
-      'http://worker.test/api/friends?offset=0&limit=10&lineAccountId=acc-1',
+      'https://worker.test/api/friends?offset=0&limit=10&lineAccountId=acc-1',
       expect.objectContaining({ credentials: 'include' }),
     );
   });
@@ -54,7 +54,7 @@ describe('api object (integration via global fetch)', () => {
     const { api } = await import('./api');
     await api.auth.login('secret-key');
     expect(globalThis.fetch).toHaveBeenCalledWith(
-      'http://worker.test/api/auth/login',
+      'https://worker.test/api/auth/login',
       expect.objectContaining({
         method: 'POST',
         body: JSON.stringify({ apiKey: 'secret-key' }),
@@ -67,7 +67,7 @@ describe('api object (integration via global fetch)', () => {
     const { api } = await import('./api');
     await api.auth.login();
     expect(globalThis.fetch).toHaveBeenCalledWith(
-      'http://worker.test/api/auth/login',
+      'https://worker.test/api/auth/login',
       expect.objectContaining({
         method: 'POST',
         body: JSON.stringify({}),
@@ -80,7 +80,7 @@ describe('api object (integration via global fetch)', () => {
     const { api } = await import('./api');
     await api.scenarios.list({ accountId: 'acc-9' });
     expect(globalThis.fetch).toHaveBeenCalledWith(
-      'http://worker.test/api/scenarios?lineAccountId=acc-9',
+      'https://worker.test/api/scenarios?lineAccountId=acc-9',
       expect.objectContaining({ credentials: 'include' }),
     );
   });
@@ -89,7 +89,7 @@ describe('api object (integration via global fetch)', () => {
     const { api } = await import('./api');
     await api.scenarios.list();
     expect(globalThis.fetch).toHaveBeenCalledWith(
-      'http://worker.test/api/scenarios',
+      'https://worker.test/api/scenarios',
       expect.objectContaining({ credentials: 'include' }),
     );
   });
@@ -98,7 +98,7 @@ describe('api object (integration via global fetch)', () => {
     const { api } = await import('./api');
     await api.broadcasts.list({ accountId: 'b1' });
     expect(globalThis.fetch).toHaveBeenCalledWith(
-      'http://worker.test/api/broadcasts?lineAccountId=b1',
+      'https://worker.test/api/broadcasts?lineAccountId=b1',
       expect.objectContaining({ credentials: 'include' }),
     );
   });
@@ -107,7 +107,7 @@ describe('api object (integration via global fetch)', () => {
     const { api } = await import('./api');
     await api.broadcasts.list();
     expect(globalThis.fetch).toHaveBeenCalledWith(
-      'http://worker.test/api/broadcasts',
+      'https://worker.test/api/broadcasts',
       expect.objectContaining({ credentials: 'include' }),
     );
   });
@@ -116,7 +116,7 @@ describe('api object (integration via global fetch)', () => {
     const { api } = await import('./api');
     await api.tags.create({ name: 'VIP', color: '#f00' });
     expect(globalThis.fetch).toHaveBeenCalledWith(
-      'http://worker.test/api/tags',
+      'https://worker.test/api/tags',
       expect.objectContaining({
         method: 'POST',
         body: JSON.stringify({ name: 'VIP', color: '#f00' }),
@@ -128,7 +128,7 @@ describe('api object (integration via global fetch)', () => {
     const { api } = await import('./api');
     await api.tags.delete('tag-1');
     expect(globalThis.fetch).toHaveBeenCalledWith(
-      'http://worker.test/api/tags/tag-1',
+      'https://worker.test/api/tags/tag-1',
       expect.objectContaining({ method: 'DELETE' }),
     );
   });
@@ -137,7 +137,7 @@ describe('api object (integration via global fetch)', () => {
     const { api } = await import('./api');
     await api.lineAccounts.list();
     expect(globalThis.fetch).toHaveBeenCalledWith(
-      'http://worker.test/api/line-accounts',
+      'https://worker.test/api/line-accounts',
       expect.objectContaining({ credentials: 'include' }),
     );
   });
@@ -146,7 +146,7 @@ describe('api object (integration via global fetch)', () => {
     const { api } = await import('./api');
     await api.users.list();
     expect(globalThis.fetch).toHaveBeenCalledWith(
-      'http://worker.test/api/users',
+      'https://worker.test/api/users',
       expect.objectContaining({ credentials: 'include' }),
     );
   });
@@ -155,7 +155,7 @@ describe('api object (integration via global fetch)', () => {
     const { api } = await import('./api');
     await api.conversions.points();
     expect(globalThis.fetch).toHaveBeenCalledWith(
-      'http://worker.test/api/conversions/points',
+      'https://worker.test/api/conversions/points',
       expect.objectContaining({ credentials: 'include' }),
     );
   });
@@ -164,7 +164,7 @@ describe('api object (integration via global fetch)', () => {
     const { api } = await import('./api');
     await api.health.getHealth('acc-1');
     expect(globalThis.fetch).toHaveBeenCalledWith(
-      'http://worker.test/api/accounts/acc-1/health',
+      'https://worker.test/api/accounts/acc-1/health',
       expect.objectContaining({ credentials: 'include' }),
     );
   });
@@ -173,7 +173,7 @@ describe('api object (integration via global fetch)', () => {
     const { api } = await import('./api');
     await api.health.migrations();
     expect(globalThis.fetch).toHaveBeenCalledWith(
-      'http://worker.test/api/accounts/migrations',
+      'https://worker.test/api/accounts/migrations',
       expect.objectContaining({ credentials: 'include' }),
     );
   });
@@ -182,7 +182,7 @@ describe('api object (integration via global fetch)', () => {
     const { api } = await import('./api');
     await api.health.migrate('from-1', { toAccountId: 'to-2' });
     expect(globalThis.fetch).toHaveBeenCalledWith(
-      'http://worker.test/api/accounts/from-1/migrate',
+      'https://worker.test/api/accounts/from-1/migrate',
       expect.objectContaining({
         method: 'POST',
         body: JSON.stringify({ toAccountId: 'to-2' }),
@@ -194,7 +194,7 @@ describe('api object (integration via global fetch)', () => {
     const { api } = await import('./api');
     await api.notifications.rules.list({ lineAccountId: 'la-1' });
     expect(globalThis.fetch).toHaveBeenCalledWith(
-      'http://worker.test/api/notifications/rules?lineAccountId=la-1',
+      'https://worker.test/api/notifications/rules?lineAccountId=la-1',
       expect.objectContaining({ credentials: 'include' }),
     );
   });
@@ -203,7 +203,7 @@ describe('api object (integration via global fetch)', () => {
     const { api } = await import('./api');
     await api.notifications.rules.list();
     expect(globalThis.fetch).toHaveBeenCalledWith(
-      'http://worker.test/api/notifications/rules',
+      'https://worker.test/api/notifications/rules',
       expect.objectContaining({ credentials: 'include' }),
     );
   });
@@ -212,7 +212,7 @@ describe('api object (integration via global fetch)', () => {
     const { api } = await import('./api');
     await api.notifications.list({ lineAccountId: 'la-1', limit: '50', status: 'sent' });
     const url = vi.mocked(globalThis.fetch).mock.calls.at(-1)?.[0] as string;
-    expect(url).toMatch(/^http:\/\/worker\.test\/api\/notifications\?/);
+    expect(url).toMatch(/^https:\/\/worker\.test\/api\/notifications\?/);
     const sp = new URL(url).searchParams;
     expect(sp.get('lineAccountId')).toBe('la-1');
     expect(sp.get('limit')).toBe('50');
@@ -223,12 +223,12 @@ describe('api object (integration via global fetch)', () => {
     const { api } = await import('./api');
     await api.health.accounts();
     expect(globalThis.fetch).toHaveBeenCalledWith(
-      'http://worker.test/api/line-accounts',
+      'https://worker.test/api/line-accounts',
       expect.objectContaining({ credentials: 'include' }),
     );
     await api.health.getMigration('mig-1');
     expect(globalThis.fetch).toHaveBeenCalledWith(
-      'http://worker.test/api/accounts/migrations/mig-1',
+      'https://worker.test/api/accounts/migrations/mig-1',
       expect.objectContaining({ credentials: 'include' }),
     );
   });
@@ -237,12 +237,12 @@ describe('api object (integration via global fetch)', () => {
     const { api } = await import('./api');
     await api.auth.session();
     expect(globalThis.fetch).toHaveBeenCalledWith(
-      'http://worker.test/api/auth/session',
+      'https://worker.test/api/auth/session',
       expect.objectContaining({ credentials: 'include' }),
     );
     await api.auth.logout();
     expect(globalThis.fetch).toHaveBeenCalledWith(
-      'http://worker.test/api/auth/logout',
+      'https://worker.test/api/auth/logout',
       expect.objectContaining({ method: 'POST' }),
     );
   });
@@ -251,27 +251,27 @@ describe('api object (integration via global fetch)', () => {
     const { api } = await import('./api');
     await api.friends.get('f1');
     expect(globalThis.fetch).toHaveBeenCalledWith(
-      'http://worker.test/api/friends/f1',
+      'https://worker.test/api/friends/f1',
       expect.anything(),
     );
     await api.friends.count();
     expect(globalThis.fetch).toHaveBeenCalledWith(
-      'http://worker.test/api/friends/count',
+      'https://worker.test/api/friends/count',
       expect.anything(),
     );
     await api.friends.count({ accountId: 'a1' });
     expect(globalThis.fetch).toHaveBeenCalledWith(
-      'http://worker.test/api/friends/count?lineAccountId=a1',
+      'https://worker.test/api/friends/count?lineAccountId=a1',
       expect.anything(),
     );
     await api.friends.addTag('f1', 't1');
     expect(globalThis.fetch).toHaveBeenCalledWith(
-      'http://worker.test/api/friends/f1/tags',
+      'https://worker.test/api/friends/f1/tags',
       expect.objectContaining({ method: 'POST', body: JSON.stringify({ tagId: 't1' }) }),
     );
     await api.friends.removeTag('f1', 't1');
     expect(globalThis.fetch).toHaveBeenCalledWith(
-      'http://worker.test/api/friends/f1/tags/t1',
+      'https://worker.test/api/friends/f1/tags/t1',
       expect.objectContaining({ method: 'DELETE' }),
     );
   });
@@ -280,24 +280,24 @@ describe('api object (integration via global fetch)', () => {
     const { api } = await import('./api');
     await api.scenarios.get('s1');
     expect(globalThis.fetch).toHaveBeenCalledWith(
-      'http://worker.test/api/scenarios/s1',
+      'https://worker.test/api/scenarios/s1',
       expect.anything(),
     );
     await api.scenarios.create({ name: 'n', lineAccountId: null } as Parameters<
       typeof api.scenarios.create
     >[0]);
     expect(globalThis.fetch).toHaveBeenCalledWith(
-      'http://worker.test/api/scenarios',
+      'https://worker.test/api/scenarios',
       expect.objectContaining({ method: 'POST' }),
     );
     await api.scenarios.update('s1', { name: 'x' });
     expect(globalThis.fetch).toHaveBeenCalledWith(
-      'http://worker.test/api/scenarios/s1',
+      'https://worker.test/api/scenarios/s1',
       expect.objectContaining({ method: 'PUT' }),
     );
     await api.scenarios.delete('s1');
     expect(globalThis.fetch).toHaveBeenCalledWith(
-      'http://worker.test/api/scenarios/s1',
+      'https://worker.test/api/scenarios/s1',
       expect.objectContaining({ method: 'DELETE' }),
     );
     await api.scenarios.addStep('s1', {
@@ -306,17 +306,17 @@ describe('api object (integration via global fetch)', () => {
       messageContent: 'hi',
     } as Parameters<typeof api.scenarios.addStep>[1]);
     expect(globalThis.fetch).toHaveBeenCalledWith(
-      'http://worker.test/api/scenarios/s1/steps',
+      'https://worker.test/api/scenarios/s1/steps',
       expect.objectContaining({ method: 'POST' }),
     );
     await api.scenarios.updateStep('s1', 'st1', { messageContent: 'u' });
     expect(globalThis.fetch).toHaveBeenCalledWith(
-      'http://worker.test/api/scenarios/s1/steps/st1',
+      'https://worker.test/api/scenarios/s1/steps/st1',
       expect.objectContaining({ method: 'PUT' }),
     );
     await api.scenarios.deleteStep('s1', 'st1');
     expect(globalThis.fetch).toHaveBeenCalledWith(
-      'http://worker.test/api/scenarios/s1/steps/st1',
+      'https://worker.test/api/scenarios/s1/steps/st1',
       expect.objectContaining({ method: 'DELETE' }),
     );
   });
@@ -325,7 +325,7 @@ describe('api object (integration via global fetch)', () => {
     const { api } = await import('./api');
     await api.broadcasts.get('b1');
     expect(globalThis.fetch).toHaveBeenCalledWith(
-      'http://worker.test/api/broadcasts/b1',
+      'https://worker.test/api/broadcasts/b1',
       expect.anything(),
     );
     await api.broadcasts.create({
@@ -335,23 +335,26 @@ describe('api object (integration via global fetch)', () => {
       targetType: 'all',
     });
     expect(globalThis.fetch).toHaveBeenCalledWith(
-      'http://worker.test/api/broadcasts',
+      'https://worker.test/api/broadcasts',
       expect.objectContaining({ method: 'POST' }),
     );
     await api.broadcasts.update('b1', { title: 'u' });
     expect(globalThis.fetch).toHaveBeenCalledWith(
-      'http://worker.test/api/broadcasts/b1',
+      'https://worker.test/api/broadcasts/b1',
       expect.objectContaining({ method: 'PUT' }),
     );
     await api.broadcasts.delete('b1');
     expect(globalThis.fetch).toHaveBeenCalledWith(
-      'http://worker.test/api/broadcasts/b1',
+      'https://worker.test/api/broadcasts/b1',
       expect.objectContaining({ method: 'DELETE' }),
     );
     await api.broadcasts.send('b1');
     expect(globalThis.fetch).toHaveBeenCalledWith(
-      'http://worker.test/api/broadcasts/b1/send',
-      expect.objectContaining({ method: 'POST' }),
+      'https://worker.test/api/broadcasts/b1/send',
+      expect.objectContaining({
+        method: 'POST',
+        body: JSON.stringify({ confirm: true }),
+      }),
     );
   });
 
@@ -359,32 +362,32 @@ describe('api object (integration via global fetch)', () => {
     const { api } = await import('./api');
     await api.users.get('u1');
     expect(globalThis.fetch).toHaveBeenCalledWith(
-      'http://worker.test/api/users/u1',
+      'https://worker.test/api/users/u1',
       expect.anything(),
     );
     await api.users.create({ email: 'a@b.c' });
     expect(globalThis.fetch).toHaveBeenCalledWith(
-      'http://worker.test/api/users',
+      'https://worker.test/api/users',
       expect.objectContaining({ method: 'POST', body: JSON.stringify({ email: 'a@b.c' }) }),
     );
     await api.users.update('u1', { displayName: 'd' });
     expect(globalThis.fetch).toHaveBeenCalledWith(
-      'http://worker.test/api/users/u1',
+      'https://worker.test/api/users/u1',
       expect.objectContaining({ method: 'PUT' }),
     );
     await api.users.delete('u1');
     expect(globalThis.fetch).toHaveBeenCalledWith(
-      'http://worker.test/api/users/u1',
+      'https://worker.test/api/users/u1',
       expect.objectContaining({ method: 'DELETE' }),
     );
     await api.users.link('u1', 'f1');
     expect(globalThis.fetch).toHaveBeenCalledWith(
-      'http://worker.test/api/users/u1/link',
+      'https://worker.test/api/users/u1/link',
       expect.objectContaining({ method: 'POST', body: JSON.stringify({ friendId: 'f1' }) }),
     );
     await api.users.accounts('u1');
     expect(globalThis.fetch).toHaveBeenCalledWith(
-      'http://worker.test/api/users/u1/accounts',
+      'https://worker.test/api/users/u1/accounts',
       expect.anything(),
     );
   });
@@ -393,7 +396,7 @@ describe('api object (integration via global fetch)', () => {
     const { api } = await import('./api');
     await api.lineAccounts.get('la1');
     expect(globalThis.fetch).toHaveBeenCalledWith(
-      'http://worker.test/api/line-accounts/la1',
+      'https://worker.test/api/line-accounts/la1',
       expect.anything(),
     );
     await api.lineAccounts.create({
@@ -403,17 +406,17 @@ describe('api object (integration via global fetch)', () => {
       channelSecret: 's',
     });
     expect(globalThis.fetch).toHaveBeenCalledWith(
-      'http://worker.test/api/line-accounts',
+      'https://worker.test/api/line-accounts',
       expect.objectContaining({ method: 'POST' }),
     );
     await api.lineAccounts.update('la1', { name: 'x' });
     expect(globalThis.fetch).toHaveBeenCalledWith(
-      'http://worker.test/api/line-accounts/la1',
+      'https://worker.test/api/line-accounts/la1',
       expect.objectContaining({ method: 'PUT' }),
     );
     await api.lineAccounts.delete('la1');
     expect(globalThis.fetch).toHaveBeenCalledWith(
-      'http://worker.test/api/line-accounts/la1',
+      'https://worker.test/api/line-accounts/la1',
       expect.objectContaining({ method: 'DELETE' }),
     );
   });
@@ -422,22 +425,22 @@ describe('api object (integration via global fetch)', () => {
     const { api } = await import('./api');
     await api.conversions.createPoint({ name: 'p', eventType: 'e' });
     expect(globalThis.fetch).toHaveBeenCalledWith(
-      'http://worker.test/api/conversions/points',
+      'https://worker.test/api/conversions/points',
       expect.objectContaining({ method: 'POST' }),
     );
     await api.conversions.deletePoint('cp1');
     expect(globalThis.fetch).toHaveBeenCalledWith(
-      'http://worker.test/api/conversions/points/cp1',
+      'https://worker.test/api/conversions/points/cp1',
       expect.objectContaining({ method: 'DELETE' }),
     );
     await api.conversions.track({ conversionPointId: 'c', friendId: 'f' });
     expect(globalThis.fetch).toHaveBeenCalledWith(
-      'http://worker.test/api/conversions/track',
+      'https://worker.test/api/conversions/track',
       expect.objectContaining({ method: 'POST' }),
     );
     await api.conversions.report({ startDate: 'a', endDate: 'b' });
     const reportUrl = vi.mocked(globalThis.fetch).mock.calls.at(-1)?.[0] as string;
-    expect(reportUrl).toMatch(/^http:\/\/worker\.test\/api\/conversions\/report\?/);
+    expect(reportUrl).toMatch(/^https:\/\/worker\.test\/api\/conversions\/report\?/);
     const rsp = new URL(reportUrl).searchParams;
     expect(rsp.get('startDate')).toBe('a');
     expect(rsp.get('endDate')).toBe('b');
@@ -447,27 +450,27 @@ describe('api object (integration via global fetch)', () => {
     const { api } = await import('./api');
     await api.affiliates.list();
     expect(globalThis.fetch).toHaveBeenCalledWith(
-      'http://worker.test/api/affiliates',
+      'https://worker.test/api/affiliates',
       expect.anything(),
     );
     await api.affiliates.get('a1');
     expect(globalThis.fetch).toHaveBeenCalledWith(
-      'http://worker.test/api/affiliates/a1',
+      'https://worker.test/api/affiliates/a1',
       expect.anything(),
     );
     await api.affiliates.create({ name: 'n', code: 'c' });
     expect(globalThis.fetch).toHaveBeenCalledWith(
-      'http://worker.test/api/affiliates',
+      'https://worker.test/api/affiliates',
       expect.objectContaining({ method: 'POST' }),
     );
     await api.affiliates.update('a1', { name: 'x' });
     expect(globalThis.fetch).toHaveBeenCalledWith(
-      'http://worker.test/api/affiliates/a1',
+      'https://worker.test/api/affiliates/a1',
       expect.objectContaining({ method: 'PUT' }),
     );
     await api.affiliates.delete('a1');
     expect(globalThis.fetch).toHaveBeenCalledWith(
-      'http://worker.test/api/affiliates/a1',
+      'https://worker.test/api/affiliates/a1',
       expect.objectContaining({ method: 'DELETE' }),
     );
     await api.affiliates.report('a1', { startDate: '1', endDate: '2' });
@@ -480,17 +483,17 @@ describe('api object (integration via global fetch)', () => {
     const { api } = await import('./api');
     await api.templates.list();
     expect(globalThis.fetch).toHaveBeenCalledWith(
-      'http://worker.test/api/templates',
+      'https://worker.test/api/templates',
       expect.anything(),
     );
     await api.templates.list('cat');
     expect(globalThis.fetch).toHaveBeenCalledWith(
-      'http://worker.test/api/templates?' + new URLSearchParams({ category: 'cat' }),
+      'https://worker.test/api/templates?' + new URLSearchParams({ category: 'cat' }),
       expect.anything(),
     );
     await api.templates.get('t1');
     expect(globalThis.fetch).toHaveBeenCalledWith(
-      'http://worker.test/api/templates/t1',
+      'https://worker.test/api/templates/t1',
       expect.anything(),
     );
     await api.templates.create({
@@ -500,17 +503,17 @@ describe('api object (integration via global fetch)', () => {
       messageContent: '{}',
     });
     expect(globalThis.fetch).toHaveBeenCalledWith(
-      'http://worker.test/api/templates',
+      'https://worker.test/api/templates',
       expect.objectContaining({ method: 'POST' }),
     );
     await api.templates.update('t1', { name: 'u' });
     expect(globalThis.fetch).toHaveBeenCalledWith(
-      'http://worker.test/api/templates/t1',
+      'https://worker.test/api/templates/t1',
       expect.objectContaining({ method: 'PUT' }),
     );
     await api.templates.delete('t1');
     expect(globalThis.fetch).toHaveBeenCalledWith(
-      'http://worker.test/api/templates/t1',
+      'https://worker.test/api/templates/t1',
       expect.objectContaining({ method: 'DELETE' }),
     );
   });
@@ -519,17 +522,17 @@ describe('api object (integration via global fetch)', () => {
     const { api } = await import('./api');
     await api.automations.list();
     expect(globalThis.fetch).toHaveBeenCalledWith(
-      'http://worker.test/api/automations',
+      'https://worker.test/api/automations',
       expect.anything(),
     );
     await api.automations.list({ accountId: 'x' });
     expect(globalThis.fetch).toHaveBeenCalledWith(
-      'http://worker.test/api/automations?lineAccountId=x',
+      'https://worker.test/api/automations?lineAccountId=x',
       expect.anything(),
     );
     await api.automations.get('a1');
     expect(globalThis.fetch).toHaveBeenCalledWith(
-      'http://worker.test/api/automations/a1',
+      'https://worker.test/api/automations/a1',
       expect.anything(),
     );
     await api.automations.create({
@@ -538,27 +541,27 @@ describe('api object (integration via global fetch)', () => {
       actions: [],
     } as Parameters<typeof api.automations.create>[0]);
     expect(globalThis.fetch).toHaveBeenCalledWith(
-      'http://worker.test/api/automations',
+      'https://worker.test/api/automations',
       expect.objectContaining({ method: 'POST' }),
     );
     await api.automations.update('a1', { name: 'u' });
     expect(globalThis.fetch).toHaveBeenCalledWith(
-      'http://worker.test/api/automations/a1',
+      'https://worker.test/api/automations/a1',
       expect.objectContaining({ method: 'PUT' }),
     );
     await api.automations.delete('a1');
     expect(globalThis.fetch).toHaveBeenCalledWith(
-      'http://worker.test/api/automations/a1',
+      'https://worker.test/api/automations/a1',
       expect.objectContaining({ method: 'DELETE' }),
     );
     await api.automations.logs('a1');
     expect(globalThis.fetch).toHaveBeenCalledWith(
-      'http://worker.test/api/automations/a1/logs',
+      'https://worker.test/api/automations/a1/logs',
       expect.anything(),
     );
     await api.automations.logs('a1', 10);
     expect(globalThis.fetch).toHaveBeenCalledWith(
-      'http://worker.test/api/automations/a1/logs?limit=10',
+      'https://worker.test/api/automations/a1/logs?limit=10',
       expect.anything(),
     );
   });
@@ -567,29 +570,29 @@ describe('api object (integration via global fetch)', () => {
     const { api } = await import('./api');
     await api.chats.list({ status: 'open', operatorId: 'o1', accountId: 'acc' });
     const chatListUrl = vi.mocked(globalThis.fetch).mock.calls.at(-1)?.[0] as string;
-    expect(chatListUrl).toMatch(/^http:\/\/worker\.test\/api\/chats\?/);
+    expect(chatListUrl).toMatch(/^https:\/\/worker\.test\/api\/chats\?/);
     const csp = new URL(chatListUrl).searchParams;
     expect(csp.get('status')).toBe('open');
     expect(csp.get('operatorId')).toBe('o1');
     expect(csp.get('lineAccountId')).toBe('acc');
     await api.chats.get('c1');
     expect(globalThis.fetch).toHaveBeenCalledWith(
-      'http://worker.test/api/chats/c1',
+      'https://worker.test/api/chats/c1',
       expect.anything(),
     );
     await api.chats.create({ friendId: 'f1' });
     expect(globalThis.fetch).toHaveBeenCalledWith(
-      'http://worker.test/api/chats',
+      'https://worker.test/api/chats',
       expect.objectContaining({ method: 'POST' }),
     );
     await api.chats.update('c1', { status: 'closed' });
     expect(globalThis.fetch).toHaveBeenCalledWith(
-      'http://worker.test/api/chats/c1',
+      'https://worker.test/api/chats/c1',
       expect.objectContaining({ method: 'PUT' }),
     );
     await api.chats.send('c1', { content: 'hi' });
     expect(globalThis.fetch).toHaveBeenCalledWith(
-      'http://worker.test/api/chats/c1/send',
+      'https://worker.test/api/chats/c1/send',
       expect.objectContaining({ method: 'POST' }),
     );
   });
@@ -598,32 +601,32 @@ describe('api object (integration via global fetch)', () => {
     const { api } = await import('./api');
     await api.reminders.list();
     expect(globalThis.fetch).toHaveBeenCalledWith(
-      'http://worker.test/api/reminders',
+      'https://worker.test/api/reminders',
       expect.anything(),
     );
     await api.reminders.list({ accountId: 'r' });
     expect(globalThis.fetch).toHaveBeenCalledWith(
-      'http://worker.test/api/reminders?lineAccountId=r',
+      'https://worker.test/api/reminders?lineAccountId=r',
       expect.anything(),
     );
     await api.reminders.get('r1');
     expect(globalThis.fetch).toHaveBeenCalledWith(
-      'http://worker.test/api/reminders/r1',
+      'https://worker.test/api/reminders/r1',
       expect.anything(),
     );
     await api.reminders.create({ name: 'n' });
     expect(globalThis.fetch).toHaveBeenCalledWith(
-      'http://worker.test/api/reminders',
+      'https://worker.test/api/reminders',
       expect.objectContaining({ method: 'POST' }),
     );
     await api.reminders.update('r1', { name: 'u' });
     expect(globalThis.fetch).toHaveBeenCalledWith(
-      'http://worker.test/api/reminders/r1',
+      'https://worker.test/api/reminders/r1',
       expect.objectContaining({ method: 'PUT' }),
     );
     await api.reminders.delete('r1');
     expect(globalThis.fetch).toHaveBeenCalledWith(
-      'http://worker.test/api/reminders/r1',
+      'https://worker.test/api/reminders/r1',
       expect.objectContaining({ method: 'DELETE' }),
     );
     await api.reminders.addStep('r1', {
@@ -632,12 +635,12 @@ describe('api object (integration via global fetch)', () => {
       messageContent: 'm',
     });
     expect(globalThis.fetch).toHaveBeenCalledWith(
-      'http://worker.test/api/reminders/r1/steps',
+      'https://worker.test/api/reminders/r1/steps',
       expect.objectContaining({ method: 'POST' }),
     );
     await api.reminders.deleteStep('r1', 's1');
     expect(globalThis.fetch).toHaveBeenCalledWith(
-      'http://worker.test/api/reminders/r1/steps/s1',
+      'https://worker.test/api/reminders/r1/steps/s1',
       expect.objectContaining({ method: 'DELETE' }),
     );
   });
@@ -646,32 +649,32 @@ describe('api object (integration via global fetch)', () => {
     const { api } = await import('./api');
     await api.scoring.rules();
     expect(globalThis.fetch).toHaveBeenCalledWith(
-      'http://worker.test/api/scoring-rules',
+      'https://worker.test/api/scoring-rules',
       expect.anything(),
     );
     await api.scoring.getRule('sr1');
     expect(globalThis.fetch).toHaveBeenCalledWith(
-      'http://worker.test/api/scoring-rules/sr1',
+      'https://worker.test/api/scoring-rules/sr1',
       expect.anything(),
     );
     await api.scoring.createRule({ name: 'n', eventType: 'e', scoreValue: 1 });
     expect(globalThis.fetch).toHaveBeenCalledWith(
-      'http://worker.test/api/scoring-rules',
+      'https://worker.test/api/scoring-rules',
       expect.objectContaining({ method: 'POST' }),
     );
     await api.scoring.updateRule('sr1', { scoreValue: 2 });
     expect(globalThis.fetch).toHaveBeenCalledWith(
-      'http://worker.test/api/scoring-rules/sr1',
+      'https://worker.test/api/scoring-rules/sr1',
       expect.objectContaining({ method: 'PUT' }),
     );
     await api.scoring.deleteRule('sr1');
     expect(globalThis.fetch).toHaveBeenCalledWith(
-      'http://worker.test/api/scoring-rules/sr1',
+      'https://worker.test/api/scoring-rules/sr1',
       expect.objectContaining({ method: 'DELETE' }),
     );
     await api.scoring.friendScore('f1');
     expect(globalThis.fetch).toHaveBeenCalledWith(
-      'http://worker.test/api/friends/f1/score',
+      'https://worker.test/api/friends/f1/score',
       expect.anything(),
     );
   });
@@ -680,42 +683,42 @@ describe('api object (integration via global fetch)', () => {
     const { api } = await import('./api');
     await api.webhooks.incoming.list();
     expect(globalThis.fetch).toHaveBeenCalledWith(
-      'http://worker.test/api/webhooks/incoming',
+      'https://worker.test/api/webhooks/incoming',
       expect.anything(),
     );
     await api.webhooks.incoming.create({ name: 'n' });
     expect(globalThis.fetch).toHaveBeenCalledWith(
-      'http://worker.test/api/webhooks/incoming',
+      'https://worker.test/api/webhooks/incoming',
       expect.objectContaining({ method: 'POST' }),
     );
     await api.webhooks.incoming.update('i1', { name: 'u' });
     expect(globalThis.fetch).toHaveBeenCalledWith(
-      'http://worker.test/api/webhooks/incoming/i1',
+      'https://worker.test/api/webhooks/incoming/i1',
       expect.objectContaining({ method: 'PUT' }),
     );
     await api.webhooks.incoming.delete('i1');
     expect(globalThis.fetch).toHaveBeenCalledWith(
-      'http://worker.test/api/webhooks/incoming/i1',
+      'https://worker.test/api/webhooks/incoming/i1',
       expect.objectContaining({ method: 'DELETE' }),
     );
     await api.webhooks.outgoing.list();
     expect(globalThis.fetch).toHaveBeenCalledWith(
-      'http://worker.test/api/webhooks/outgoing',
+      'https://worker.test/api/webhooks/outgoing',
       expect.anything(),
     );
     await api.webhooks.outgoing.create({ name: 'n', url: 'https://x', eventTypes: ['a'] });
     expect(globalThis.fetch).toHaveBeenCalledWith(
-      'http://worker.test/api/webhooks/outgoing',
+      'https://worker.test/api/webhooks/outgoing',
       expect.objectContaining({ method: 'POST' }),
     );
     await api.webhooks.outgoing.update('o1', { url: 'https://y' });
     expect(globalThis.fetch).toHaveBeenCalledWith(
-      'http://worker.test/api/webhooks/outgoing/o1',
+      'https://worker.test/api/webhooks/outgoing/o1',
       expect.objectContaining({ method: 'PUT' }),
     );
     await api.webhooks.outgoing.delete('o1');
     expect(globalThis.fetch).toHaveBeenCalledWith(
-      'http://worker.test/api/webhooks/outgoing/o1',
+      'https://worker.test/api/webhooks/outgoing/o1',
       expect.objectContaining({ method: 'DELETE' }),
     );
   });
@@ -724,7 +727,7 @@ describe('api object (integration via global fetch)', () => {
     const { api } = await import('./api');
     await api.notifications.rules.get('nr1');
     expect(globalThis.fetch).toHaveBeenCalledWith(
-      'http://worker.test/api/notifications/rules/nr1',
+      'https://worker.test/api/notifications/rules/nr1',
       expect.anything(),
     );
     await api.notifications.rules.create({
@@ -732,17 +735,17 @@ describe('api object (integration via global fetch)', () => {
       eventType: 'e',
     });
     expect(globalThis.fetch).toHaveBeenCalledWith(
-      'http://worker.test/api/notifications/rules',
+      'https://worker.test/api/notifications/rules',
       expect.objectContaining({ method: 'POST' }),
     );
     await api.notifications.rules.update('nr1', { isActive: false });
     expect(globalThis.fetch).toHaveBeenCalledWith(
-      'http://worker.test/api/notifications/rules/nr1',
+      'https://worker.test/api/notifications/rules/nr1',
       expect.objectContaining({ method: 'PUT' }),
     );
     await api.notifications.rules.delete('nr1');
     expect(globalThis.fetch).toHaveBeenCalledWith(
-      'http://worker.test/api/notifications/rules/nr1',
+      'https://worker.test/api/notifications/rules/nr1',
       expect.objectContaining({ method: 'DELETE' }),
     );
   });
@@ -750,7 +753,10 @@ describe('api object (integration via global fetch)', () => {
   it('tags.list hits GET /api/tags', async () => {
     const { api } = await import('./api');
     await api.tags.list();
-    expect(globalThis.fetch).toHaveBeenCalledWith('http://worker.test/api/tags', expect.anything());
+    expect(globalThis.fetch).toHaveBeenCalledWith(
+      'https://worker.test/api/tags',
+      expect.anything(),
+    );
   });
 });
 
@@ -777,32 +783,45 @@ describe('api default base URL', () => {
     const { api } = await import('./api');
     await api.tags.list();
     expect(vi.mocked(globalThis.fetch).mock.calls[0]?.[0]).toBe(
-      'https://YOUR_SUBDOMAIN.workers.dev/api/tags',
+      'https://your_subdomain.workers.dev/api/tags',
     );
   });
 });
 
 describe('fetchApiCore', () => {
+  it('throws ApiError when the API base URL is not allowed (e.g. remote http)', async () => {
+    const fetchMock = vi.fn();
+    await expect(
+      fetchApiCore('http://evil.com', fetchMock as typeof fetch, '/api/friends'),
+    ).rejects.toMatchObject({
+      name: 'ApiError',
+      status: 503,
+      message: expect.stringMatching(/Misconfigured API URL/i),
+    });
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
+
   it('requests baseUrl + path with credentials include and default Content-Type', async () => {
     const fetchMock = vi.fn().mockResolvedValue({
       ok: true,
       json: async () => ({ success: true }),
     });
 
-    await fetchApiCore('http://api.example', fetchMock as typeof fetch, '/api/friends', {
+    await fetchApiCore('https://api.example', fetchMock as typeof fetch, '/api/friends', {
       method: 'POST',
       body: '{}',
     });
 
     expect(fetchMock).toHaveBeenCalledTimes(1);
     expect(fetchMock).toHaveBeenCalledWith(
-      'http://api.example/api/friends',
+      'https://api.example/api/friends',
       expect.objectContaining({
         method: 'POST',
         body: '{}',
         credentials: 'include',
         headers: expect.objectContaining({
           'Content-Type': 'application/json',
+          'X-Line-Harness-Client': '1',
         }),
       }),
     );
@@ -814,7 +833,7 @@ describe('fetchApiCore', () => {
       json: async () => ({}),
     });
 
-    await fetchApiCore('http://x', fetchMock as typeof fetch, '/p', {
+    await fetchApiCore('https://x', fetchMock as typeof fetch, '/p', {
       headers: { 'X-Custom': '1' },
     });
 
@@ -822,6 +841,7 @@ describe('fetchApiCore', () => {
     expect(init.headers).toMatchObject({
       'Content-Type': 'application/json',
       'X-Custom': '1',
+      'X-Line-Harness-Client': '1',
     });
   });
 
@@ -832,7 +852,7 @@ describe('fetchApiCore', () => {
       json: async () => data,
     });
 
-    const result = await fetchApiCore<typeof data>('http://x', fetchMock as typeof fetch, '/p');
+    const result = await fetchApiCore<typeof data>('https://x', fetchMock as typeof fetch, '/p');
     expect(result).toEqual(data);
   });
 
@@ -843,7 +863,7 @@ describe('fetchApiCore', () => {
       json: async () => ({ success: false, error: 'Unauthorized' }),
     });
 
-    await expect(fetchApiCore('http://x', fetchMock as typeof fetch, '/p')).rejects.toMatchObject({
+    await expect(fetchApiCore('https://x', fetchMock as typeof fetch, '/p')).rejects.toMatchObject({
       name: 'ApiError',
       status: 401,
       body: { success: false, error: 'Unauthorized' },
@@ -860,7 +880,7 @@ describe('fetchApiCore', () => {
     });
 
     try {
-      await fetchApiCore('http://x', fetchMock as typeof fetch, '/p');
+      await fetchApiCore('https://x', fetchMock as typeof fetch, '/p');
       expect.fail('expected throw');
     } catch (e) {
       expect(e).toBeInstanceOf(ApiError);

@@ -31,7 +31,7 @@ function automationRow(overrides: Partial<Record<string, unknown>> = {}) {
     name: 'Test',
     description: null,
     event_type: 'friend_add',
-    conditions: '{}',
+    conditions: JSON.stringify({ match_always: true }),
     actions: JSON.stringify([{ type: 'add_tag', params: { tagId: 't1' } }]),
     line_account_id: 'acc-1',
     is_active: 1,
@@ -50,9 +50,15 @@ describe('fireEvent', () => {
 
     vi.stubGlobal(
       'fetch',
-      vi.fn().mockResolvedValue({
-        ok: true,
-        status: 200,
+      vi.fn().mockImplementation(async (input: RequestInfo) => {
+        const url = typeof input === 'string' ? input : input.url;
+        if (url.includes('cloudflare-dns.com/dns-query')) {
+          return new Response(
+            JSON.stringify({ Status: 0, Answer: [{ type: 1, data: '93.184.216.34' }] }),
+            { status: 200, headers: { 'Content-Type': 'application/dns-json' } },
+          );
+        }
+        return new Response('', { status: 200, statusText: 'OK' });
       }),
     );
     dbMocks.getActiveOutgoingWebhooksByEvent.mockResolvedValue([]);
@@ -113,8 +119,11 @@ describe('fireEvent', () => {
 
     const fetchMock = vi.mocked(globalThis.fetch);
     expect(fetchMock).toHaveBeenCalled();
-    const init = fetchMock.mock.calls[0][1] as RequestInit;
+    const outCall = fetchMock.mock.calls.find((c) => String(c[0]).includes('example.com/out'));
+    expect(outCall).toBeDefined();
+    const init = outCall![1] as RequestInit;
     expect(init.method).toBe('POST');
+    expect(init.redirect).toBe('manual');
     expect(init.headers).toMatchObject({ 'Content-Type': 'application/json' });
     expect((init.headers as Record<string, string>)['X-Webhook-Signature']).toMatch(
       /^[0-9a-f]{64}$/,
@@ -136,6 +145,26 @@ describe('fireEvent', () => {
         status: 'success',
       }),
     );
+  });
+
+  it('does not run automation when conditions are an empty object', async () => {
+    dbMocks.getActiveAutomationsByEvent.mockResolvedValue([automationRow({ conditions: '{}' })]);
+
+    const { fireEvent } = await import('../../src/services/event-bus.js');
+    await fireEvent(emptyDb, 'friend_add', { friendId: 'f1' }, 'line-token', 'acc-1');
+
+    expect(dbMocks.addTagToFriend).not.toHaveBeenCalled();
+  });
+
+  it('does not run automation when conditions use unknown keys', async () => {
+    dbMocks.getActiveAutomationsByEvent.mockResolvedValue([
+      automationRow({ conditions: JSON.stringify({ evil: true }) }),
+    ]);
+
+    const { fireEvent } = await import('../../src/services/event-bus.js');
+    await fireEvent(emptyDb, 'friend_add', { friendId: 'f1' }, 'line-token', 'acc-1');
+
+    expect(dbMocks.addTagToFriend).not.toHaveBeenCalled();
   });
 
   it('filters automations by line account and score_threshold', async () => {
@@ -178,6 +207,8 @@ describe('fireEvent', () => {
     const fetchMock = vi.mocked(globalThis.fetch);
     const hookCalls = fetchMock.mock.calls.filter((c) => (c[0] as string).includes('hook.test'));
     expect(hookCalls.length).toBeGreaterThanOrEqual(1);
+    const sendInit = hookCalls[0][1] as RequestInit;
+    expect(sendInit.redirect).toBe('manual');
   });
 
   it('does not fetch outgoing webhooks when the URL is not an allowed public https target', async () => {

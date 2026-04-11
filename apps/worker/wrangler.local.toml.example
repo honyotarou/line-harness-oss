@@ -1,7 +1,5 @@
-# 実際の D1 database_id を Git に載せたくないとき:
-#   cp wrangler.local.toml.example wrangler.local.toml
-#   # database_id を編集（wrangler.local.toml は .gitignore 済み）
-# pnpm dev / pnpm deploy は wrangler.local.toml を自動で使います。
+# Copy to wrangler.local.toml (gitignored) and set database_id + URLs.
+# Wrangler 3 does not merge this with wrangler.toml; repo scripts pass `-c wrangler.local.toml` when this file exists.
 
 name = "line-crm-worker"
 main = "src/index.ts"
@@ -9,10 +7,16 @@ compatibility_date = "2024-12-01"
 workers_dev = true
 
 [vars]
-# 実際の Cloudflare Worker URL と Vercel 管理画面 URL に差し替えてください。
 WORKER_URL = "https://YOUR_SUBDOMAIN.workers.dev"
 WEB_URL = "https://YOUR_PROJECT.vercel.app"
 LIFF_URL = "https://liff.line.me/YOUR_LIFF_ID"
+# ENABLE_PUBLIC_OPENAPI = "1"
+# ADMIN_SESSION_COOKIE_SAMESITE_NONE = "1"  # only if admin UI and API are cross-site (cookie + Secure)
+# MIN_CF_BOT_SCORE = "30"
+# REQUIRE_CF_BOT_SIGNAL = "1"
+# MULTI_LINE_ACCOUNT_QUERY_REQUIRES_LINE_ACCOUNT_ID = "1"
+# REQUIRE_ADMIN_SESSION_SECRET = "1"
+# BROADCAST_SEND_SECRET = "use wrangler secret in production"
 
 [[d1_databases]]
 binding = "DB"

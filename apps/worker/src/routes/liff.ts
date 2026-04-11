@@ -14,7 +14,8 @@ import {
 } from '@line-crm/db';
 import type { Env } from '../index.js';
 import { signLiffOAuthState, verifyLiffOAuthState } from '../services/liff-oauth-state.js';
-import { resolveSafeRedirectUrl } from '../services/liff-redirect.js';
+import { assertHttpsOutboundUrlResolvedSafe } from '../services/outbound-url-resolve.js';
+import { resolveSafeRedirectUrl, type LiffRedirectEnv } from '../services/liff-redirect.js';
 import { verifyLineLoginIdToken } from '../services/line-login-id-token.js';
 import {
   DEFAULT_PUBLIC_JSON_BODY_LIMIT_BYTES,
@@ -22,6 +23,7 @@ import {
   readJsonBodyWithLimit,
 } from '../services/request-body.js';
 import { tryParseJsonRecord } from '../services/safe-json.js';
+import { sanitizeLineProfilePictureUrlForHtml } from '../services/safe-line-picture-url.js';
 import { renderAuthQrPage } from '../ui/landing.js';
 
 const liffRoutes = new Hono<Env>();
@@ -108,7 +110,11 @@ liffRoutes.get('/auth/line', async (c) => {
 
   try {
     const ref = c.req.query('ref') || '';
-    const redirect = c.req.query('redirect') || '';
+    const redirectRaw = c.req.query('redirect') || '';
+    const redirect =
+      redirectRaw.trim() === ''
+        ? ''
+        : (resolveSafeRedirectUrl(redirectRaw, c.env as LiffRedirectEnv) ?? '');
     const gclid = c.req.query('gclid') || '';
     const fbclid = c.req.query('fbclid') || '';
     const utmSource = c.req.query('utm_source') || '';
@@ -460,10 +466,16 @@ liffRoutes.get('/auth/callback', async (c) => {
             const steps = await getScenarioSteps(db, scenario.id);
             const firstStep = steps[0];
             if (firstStep && firstStep.delay_minutes === 0) {
+              const authAllowChan = new Set<string>();
+              const ap = accountParam?.trim();
+              if (ap) authAllowChan.add(ap);
+              const defCid = c.env.LINE_CHANNEL_ID?.trim();
+              if (defCid) authAllowChan.add(defCid);
               const expandedContent = expandVariables(
                 firstStep.message_content,
                 friend as { id: string; display_name: string | null; user_id: string | null },
                 c.env.WORKER_URL,
+                { allowedAuthUrlChannelIds: authAllowChan },
               );
               await lineClient.pushMessage(lineUserId, [
                 buildMessage(firstStep.message_type, expandedContent),
@@ -480,7 +492,10 @@ liffRoutes.get('/auth/callback', async (c) => {
     if (redirect) {
       const safe = resolveSafeRedirectUrl(redirect, c.env);
       if (safe) {
-        return c.redirect(safe);
+        const dnsOk = await assertHttpsOutboundUrlResolvedSafe(safe, fetch);
+        if (dnsOk.ok) {
+          return c.redirect(safe);
+        }
       }
     }
 
@@ -842,12 +857,36 @@ liffRoutes.post('/api/links/wrap', async (c) => {
       return c.json({ success: false, error: 'url is required' }, 400);
     }
 
+    const safeRedirect = resolveSafeRedirectUrl(body.url, c.env as LiffRedirectEnv);
+    if (!safeRedirect) {
+      return c.json(
+        {
+          success: false,
+          error:
+            'url must be an https URL or same-site path allowed by WEB_URL / WORKER_URL / LIFF_URL / ALLOWED_ORIGINS',
+        },
+        400,
+      );
+    }
+
+    const dnsOk = await assertHttpsOutboundUrlResolvedSafe(safeRedirect, fetch);
+    if (!dnsOk.ok) {
+      return c.json(
+        {
+          success: false,
+          error:
+            'url must be an https URL or same-site path allowed by WEB_URL / WORKER_URL / LIFF_URL / ALLOWED_ORIGINS',
+        },
+        400,
+      );
+    }
+
     const liffUrl = c.env.LIFF_URL;
     if (!liffUrl) {
       return c.json({ success: false, error: 'LIFF_URL not configured' }, 500);
     }
 
-    const params = new URLSearchParams({ redirect: body.url });
+    const params = new URLSearchParams({ redirect: safeRedirect });
     if (body.ref) {
       params.set('ref', body.ref);
     }
@@ -940,6 +979,7 @@ function authLandingPage(liffUrl: string, oauthUrl: string): string {
 }
 
 function completionPage(displayName: string, pictureUrl: string | null, ref: string): string {
+  const safePictureUrl = sanitizeLineProfilePictureUrlForHtml(pictureUrl);
   return `<!DOCTYPE html>
 <html lang="ja">
 <head>
@@ -964,7 +1004,7 @@ function completionPage(displayName: string, pictureUrl: string | null, ref: str
     <div class="check">✓</div>
     <h2>登録完了！</h2>
     <div class="profile">
-      ${pictureUrl ? `<img src="${pictureUrl}" alt="">` : ''}
+      ${safePictureUrl ? `<img src="${escapeHtml(safePictureUrl)}" alt="">` : ''}
       <p class="name">${escapeHtml(displayName)} さん</p>
     </div>
     <p class="message">ありがとうございます！<br>これからお役立ち情報をお届けします。<br>このページは閉じて大丈夫です。</p>

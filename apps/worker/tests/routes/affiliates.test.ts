@@ -1,5 +1,5 @@
 import { Hono } from 'hono';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { resetRequestRateLimits } from '../../src/services/request-rate-limit.js';
 
 const dbMocks = vi.hoisted(() => ({
@@ -15,10 +15,31 @@ const dbMocks = vi.hoisted(() => ({
 
 vi.mock('@line-crm/db', () => dbMocks);
 
+function stubPublicDnsFetch() {
+  vi.stubGlobal(
+    'fetch',
+    vi.fn().mockImplementation(async (input: RequestInfo) => {
+      const url = typeof input === 'string' ? input : input.url;
+      if (url.includes('cloudflare-dns.com/dns-query')) {
+        return new Response(
+          JSON.stringify({ Status: 0, Answer: [{ type: 1, data: '93.184.216.34' }] }),
+          { status: 200, headers: { 'Content-Type': 'application/dns-json' } },
+        );
+      }
+      return new Response('', { status: 404 });
+    }),
+  );
+}
+
 describe('affiliate routes', () => {
   beforeEach(() => {
     resetRequestRateLimits();
     Object.values(dbMocks).forEach((mockFn) => mockFn.mockReset());
+    stubPublicDnsFetch();
+  });
+
+  afterEach(() => {
+    vi.unstubAllGlobals();
   });
 
   it('serializes affiliates in list responses', async () => {
@@ -196,6 +217,33 @@ describe('affiliate routes', () => {
     );
 
     expect(response.status).toBe(400);
+    expect(dbMocks.recordAffiliateClick).not.toHaveBeenCalled();
+  });
+
+  it('POST /api/affiliates/click returns 404 when affiliate is inactive', async () => {
+    dbMocks.getAffiliateByCode.mockResolvedValue({
+      id: 'affiliate-1',
+      name: 'Partner',
+      code: 'partner-1',
+      commission_rate: 15,
+      is_active: 0,
+      created_at: '2026-03-26T10:00:00+09:00',
+    });
+
+    const { affiliates } = await import('../../src/routes/affiliates.js');
+    const app = new Hono();
+    app.route('/', affiliates);
+
+    const response = await app.fetch(
+      new Request('http://localhost/api/affiliates/click', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ code: 'partner-1' }),
+      }),
+      { DB: {} as D1Database } as never,
+    );
+
+    expect(response.status).toBe(404);
     expect(dbMocks.recordAffiliateClick).not.toHaveBeenCalled();
   });
 

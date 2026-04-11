@@ -135,10 +135,22 @@ describe('攻撃者サイクル 151–200（セキュリティバッチ）', () 
       'go {{auth_url:2001234567}} end',
       { id: 'f1', display_name: 'N', user_id: 'u9' },
       'https://worker.example.com',
+      { allowedAuthUrlChannelIds: new Set(['2001234567']) },
     );
     expect(out).toContain('https://worker.example.com/auth/line?');
     expect(out).toContain('account=2001234567');
     expect(out).toContain('uid=u9');
+  });
+
+  it('cycle 160b: expandVariables strips auth_url when channel id is not in allowlist', async () => {
+    const { expandVariables } = await import('../../src/services/message-expand-variables.js');
+    const out = expandVariables(
+      'go {{auth_url:2001234567}} end',
+      { id: 'f1', display_name: 'N', user_id: 'u9' },
+      'https://worker.example.com',
+      { allowedAuthUrlChannelIds: new Set(['other-channel']) },
+    );
+    expect(out).toBe('go  end');
   });
 
   it('cycle 161: verifyLiffOAuthState rejects expired state (clock jump)', async () => {
@@ -188,9 +200,9 @@ describe('攻撃者サイクル 151–200（セキュリティバッチ）', () 
     expect(getRequestClientAddress(req)).toBe('198.51.100.1');
   });
 
-  it('cycle 165: getRequestClientAddress uses X-Real-IP when others absent', async () => {
+  it('cycle 165: getRequestClientAddress uses X-Real-IP on localhost when CF/XFF absent', async () => {
     const { getRequestClientAddress } = await import('../../src/services/request-rate-limit.js');
-    const req = new Request('http://x/', {
+    const req = new Request('http://localhost/rate', {
       headers: { 'X-Real-IP': '  192.0.2.1 ' },
     });
     expect(getRequestClientAddress(req)).toBe('192.0.2.1');

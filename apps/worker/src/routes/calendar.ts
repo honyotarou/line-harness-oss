@@ -15,6 +15,10 @@ import {
   getUserFriends,
 } from '@line-crm/db';
 import { GoogleCalendarClient } from '../services/google-calendar.js';
+import {
+  decryptGoogleCalendarConnectionRow,
+  encryptCalendarTokenAtRest,
+} from '../services/calendar-tokens.js';
 import type { Env } from '../index.js';
 import {
   DEFAULT_ADMIN_JSON_BODY_LIMIT_BYTES,
@@ -58,7 +62,17 @@ calendar.post('/api/integrations/google-calendar/connect', async (c) => {
       apiKey?: string;
     }>(c.req.raw, DEFAULT_ADMIN_JSON_BODY_LIMIT_BYTES);
     if (!body.calendarId) return c.json({ success: false, error: 'calendarId is required' }, 400);
-    const conn = await createCalendarConnection(c.env.DB, body);
+    const enc = c.env.CALENDAR_TOKEN_ENCRYPTION_SECRET;
+    const accessToken = await encryptCalendarTokenAtRest(body.accessToken, enc);
+    const refreshToken = await encryptCalendarTokenAtRest(body.refreshToken, enc);
+    const apiKey = await encryptCalendarTokenAtRest(body.apiKey, enc);
+    const conn = await createCalendarConnection(c.env.DB, {
+      calendarId: body.calendarId,
+      authType: body.authType,
+      accessToken: accessToken ?? undefined,
+      refreshToken: refreshToken ?? undefined,
+      apiKey: apiKey ?? undefined,
+    });
     return c.json(
       {
         success: true,
@@ -111,10 +125,14 @@ calendar.get('/api/integrations/google-calendar/slots', async (c) => {
       return c.json({ success: false, error: 'connectionId and date are required' }, 400);
     }
 
-    const conn = await getCalendarConnectionById(c.env.DB, connectionId);
-    if (!conn) {
+    const rawConn = await getCalendarConnectionById(c.env.DB, connectionId);
+    if (!rawConn) {
       return c.json({ success: false, error: 'Calendar connection not found' }, 404);
     }
+    const conn = await decryptGoogleCalendarConnectionRow(
+      rawConn,
+      c.env.CALENDAR_TOKEN_ENCRYPTION_SECRET,
+    );
 
     const dayStart = `${date}T${String(startHour).padStart(2, '0')}:00:00`;
     const dayEnd = `${date}T${String(endHour).padStart(2, '0')}:00:00`;
@@ -251,7 +269,10 @@ calendar.post('/api/integrations/google-calendar/book', async (c) => {
     });
 
     // Google Calendar にイベントを作成（access_token がある場合のみ、ベストエフォート）
-    const conn = await getCalendarConnectionById(c.env.DB, body.connectionId);
+    const rawConn = await getCalendarConnectionById(c.env.DB, body.connectionId);
+    const conn = rawConn
+      ? await decryptGoogleCalendarConnectionRow(rawConn, c.env.CALENDAR_TOKEN_ENCRYPTION_SECRET)
+      : null;
     if (conn?.access_token) {
       try {
         const gcal = new GoogleCalendarClient({
@@ -310,7 +331,13 @@ calendar.put('/api/integrations/google-calendar/bookings/:id/status', async (c) 
     if (status === 'cancelled') {
       const booking = await getCalendarBookingById(c.env.DB, id);
       if (booking?.event_id && booking.connection_id) {
-        const conn = await getCalendarConnectionById(c.env.DB, booking.connection_id);
+        const rawConn = await getCalendarConnectionById(c.env.DB, booking.connection_id);
+        const conn = rawConn
+          ? await decryptGoogleCalendarConnectionRow(
+              rawConn,
+              c.env.CALENDAR_TOKEN_ENCRYPTION_SECRET,
+            )
+          : null;
         if (conn?.access_token) {
           try {
             const gcal = new GoogleCalendarClient({

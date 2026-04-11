@@ -6,6 +6,7 @@ import { verifyLineIdToken } from '../../src/services/line-id-token.js';
 vi.mock('../../src/services/admin-session.js', () => ({
   isValidAdminAuthToken: vi.fn(),
   readAdminSessionCookie: vi.fn(),
+  resolveAdminSessionSecret: vi.fn((env: { API_KEY: string }) => env.API_KEY),
 }));
 
 vi.mock('../../src/services/line-id-token.js', () => ({
@@ -142,6 +143,52 @@ describe('GET /api/forms/:id', () => {
     });
     expect(json.data).not.toHaveProperty('onSubmitTagId');
     expect(json.data).not.toHaveProperty('submitCount');
+  });
+
+  it('returns 404 for LINE ID token when the form is inactive (IDOR / draft hardening)', async () => {
+    vi.mocked(verifyLineIdToken).mockResolvedValue({ sub: 'Uxxx' });
+    dbMocks.getFormById.mockResolvedValue({ ...formRow, is_active: 0 });
+
+    const { forms } = await import('../../src/routes/forms.js');
+    const app = new Hono();
+    app.route('/', forms);
+
+    const res = await app.fetch(
+      new Request('http://localhost/api/forms/form-1', {
+        headers: { Authorization: 'Bearer line-id-token-jwt' },
+      }),
+      {
+        DB: {} as D1Database,
+        API_KEY: 'k',
+        LINE_LOGIN_CHANNEL_ID: 'login-channel',
+      } as never,
+    );
+
+    expect(res.status).toBe(404);
+  });
+
+  it('still returns the full inactive form for admin', async () => {
+    vi.mocked(isValidAdminAuthToken).mockResolvedValue(true);
+    dbMocks.getFormById.mockResolvedValue({ ...formRow, is_active: 0 });
+
+    const { forms } = await import('../../src/routes/forms.js');
+    const app = new Hono();
+    app.route('/', forms);
+
+    const res = await app.fetch(
+      new Request('http://localhost/api/forms/form-1', {
+        headers: { Authorization: 'Bearer admin-session' },
+      }),
+      {
+        DB: {} as D1Database,
+        API_KEY: 'k',
+        LINE_LOGIN_CHANNEL_ID: 'login-channel',
+      } as never,
+    );
+
+    expect(res.status).toBe(200);
+    const json = (await res.json()) as { success: boolean; data: { isActive: boolean } };
+    expect(json.data.isActive).toBe(false);
   });
 
   it('returns the full form for a valid admin session token', async () => {

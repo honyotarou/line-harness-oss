@@ -6,11 +6,14 @@ function createApp() {
   const app = new Hono();
   app.use('*', authMiddleware);
   app.get('/private', (c) => c.json({ success: true }));
+  app.post('/private', (c) => c.json({ success: true }));
   app.get('/api/forms/:id', (c) => c.json({ success: true }));
   app.put('/api/forms/:id', (c) => c.json({ success: true }));
   app.delete('/api/forms/:id', (c) => c.json({ success: true }));
   app.post('/api/forms/:id/submit', (c) => c.json({ success: true }));
   app.post('/api/webhooks/incoming/:id/receive', (c) => c.json({ success: true }));
+  app.get('/api/analytics/ref-summary', (c) => c.json({ success: true }));
+  app.post('/api/links/wrap', (c) => c.json({ success: true }));
   return app;
 }
 
@@ -112,6 +115,70 @@ describe('authMiddleware', () => {
 
     expect(formResponse.status).toBe(200);
     expect(webhookResponse.status).toBe(200);
+  });
+
+  it('rejects cookie-only POST without X-Line-Harness-Client (CSRF)', async () => {
+    const { issueAdminSessionToken } = await import('../../src/services/admin-session.js');
+    const now = Math.floor(Date.now() / 1000);
+    const token = await issueAdminSessionToken('secret', {
+      issuedAt: now,
+      expiresInSeconds: 3600,
+    });
+    const app = createApp();
+
+    const response = await app.fetch(
+      new Request('http://localhost/private', {
+        method: 'POST',
+        headers: { Cookie: `lh_admin_session=${token}` },
+      }),
+      { API_KEY: 'secret' } as never,
+    );
+
+    expect(response.status).toBe(403);
+  });
+
+  it('allows cookie-only POST with X-Line-Harness-Client', async () => {
+    const { issueAdminSessionToken } = await import('../../src/services/admin-session.js');
+    const now = Math.floor(Date.now() / 1000);
+    const token = await issueAdminSessionToken('secret', {
+      issuedAt: now,
+      expiresInSeconds: 3600,
+    });
+    const app = createApp();
+
+    const response = await app.fetch(
+      new Request('http://localhost/private', {
+        method: 'POST',
+        headers: {
+          Cookie: `lh_admin_session=${token}`,
+          'X-Line-Harness-Client': '1',
+        },
+      }),
+      { API_KEY: 'secret' } as never,
+    );
+
+    expect(response.status).toBe(200);
+  });
+
+  it('requires auth for /api/analytics/* and /api/links/wrap (not public LIFF paths)', async () => {
+    const app = createApp();
+
+    const [summary, wrap] = await Promise.all([
+      app.fetch(new Request('http://localhost/api/analytics/ref-summary'), {
+        API_KEY: 'secret',
+      } as never),
+      app.fetch(
+        new Request('http://localhost/api/links/wrap', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ url: 'https://x.com' }),
+        }),
+        { API_KEY: 'secret' } as never,
+      ),
+    ]);
+
+    expect(summary.status).toBe(401);
+    expect(wrap.status).toBe(401);
   });
 
   it('skips auth only for GET form definition, not PUT or DELETE', async () => {

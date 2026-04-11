@@ -18,13 +18,17 @@ function cfAccessEnv(overrides: Partial<Env['Bindings']> = {}): Env['Bindings'] 
     LINE_LOGIN_CHANNEL_ID: 'x',
     LINE_LOGIN_CHANNEL_SECRET: 'x',
     WORKER_URL: 'https://example.workers.dev',
+    ADMIN_SESSION_SECRET: 'cf-access-test-session-secret',
     REQUIRE_CLOUDFLARE_ACCESS_JWT: '1',
     CLOUDFLARE_ACCESS_TEAM_DOMAIN: teamDomain,
     ...overrides,
   } as Env['Bindings'];
 }
 
-async function signCfAccessJwt(claims: { email?: string }): Promise<string> {
+async function signCfAccessJwt(
+  claims: Record<string, unknown>,
+  opts?: { audience?: string },
+): Promise<string> {
   const issuer = `https://${teamDomain}`;
   const { privateKey, publicKey } = await jose.generateKeyPair('RS256', { extractable: true });
   const pubJwk = await jose.exportJWK(publicKey);
@@ -35,7 +39,7 @@ async function signCfAccessJwt(claims: { email?: string }): Promise<string> {
   const jwt = await new jose.SignJWT(claims)
     .setProtectedHeader({ alg: 'RS256', kid: 'cf-access-login-test-kid' })
     .setIssuer(issuer)
-    .setAudience('test-aud')
+    .setAudience(opts?.audience ?? 'test-aud')
     .setExpirationTime('1h')
     .sign(privateKey);
 
@@ -68,6 +72,31 @@ describe('auth login with Cloudflare Access enforced', () => {
     resetCloudflareAccessJwksCacheForTests();
   });
 
+  it('returns 403 when JWT is valid but email claim is absent', async () => {
+    const jwt = await signCfAccessJwt({});
+
+    const app = new Hono<Env>();
+    app.use('*', cloudflareAccessMiddleware);
+    app.route('/', authRoutes);
+
+    const response = await app.fetch(
+      new Request('http://localhost/api/auth/login', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Cf-Access-Jwt-Assertion': jwt,
+        },
+        body: JSON.stringify({}),
+      }),
+      cfAccessEnv(),
+    );
+
+    expect(response.status).toBe(403);
+    const json = (await response.json()) as { success: boolean; error?: string };
+    expect(json.success).toBe(false);
+    expect(json.error).toMatch(/email/i);
+  });
+
   it('issues an admin session with empty JSON body when JWT is valid', async () => {
     const jwt = await signCfAccessJwt({ email: 'admin@example.com' });
 
@@ -98,6 +127,31 @@ describe('auth login with Cloudflare Access enforced', () => {
     expect(json.data?.email).toBe('admin@example.com');
   });
 
+  it('returns 403 when only preferred_username is present (email claim required)', async () => {
+    const jwt = await signCfAccessJwt({ preferred_username: 'OIDC@EXAMPLE.COM' });
+
+    const app = new Hono<Env>();
+    app.use('*', cloudflareAccessMiddleware);
+    app.route('/', authRoutes);
+
+    const response = await app.fetch(
+      new Request('http://localhost/api/auth/login', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Cf-Access-Jwt-Assertion': jwt,
+        },
+        body: JSON.stringify({}),
+      }),
+      cfAccessEnv(),
+    );
+
+    expect(response.status).toBe(403);
+    const json = (await response.json()) as { success: boolean; error?: string };
+    expect(json.success).toBe(false);
+    expect(json.error).toMatch(/email/i);
+  });
+
   it('rejects apiKey in body when Access is enforced', async () => {
     const jwt = await signCfAccessJwt({ email: 'admin@example.com' });
 
@@ -121,6 +175,53 @@ describe('auth login with Cloudflare Access enforced', () => {
     const json = (await response.json()) as { success: boolean; error?: string };
     expect(json.success).toBe(false);
     expect(json.error).toMatch(/apiKey must not be sent/i);
+  });
+
+  it('returns 403 when CLOUDFLARE_ACCESS_AUDIENCE does not match JWT aud', async () => {
+    const jwt = await signCfAccessJwt({ email: 'admin@example.com' }, { audience: 'other-app' });
+
+    const app = new Hono<Env>();
+    app.use('*', cloudflareAccessMiddleware);
+    app.route('/', authRoutes);
+
+    const response = await app.fetch(
+      new Request('http://localhost/api/auth/login', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Cf-Access-Jwt-Assertion': jwt,
+        },
+        body: JSON.stringify({}),
+      }),
+      cfAccessEnv({ CLOUDFLARE_ACCESS_AUDIENCE: 'line-harness-admin' }),
+    );
+
+    expect(response.status).toBe(403);
+  });
+
+  it('allows login when JWT aud matches CLOUDFLARE_ACCESS_AUDIENCE', async () => {
+    const jwt = await signCfAccessJwt(
+      { email: 'admin@example.com' },
+      { audience: 'line-harness-admin' },
+    );
+
+    const app = new Hono<Env>();
+    app.use('*', cloudflareAccessMiddleware);
+    app.route('/', authRoutes);
+
+    const response = await app.fetch(
+      new Request('http://localhost/api/auth/login', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Cf-Access-Jwt-Assertion': jwt,
+        },
+        body: JSON.stringify({}),
+      }),
+      cfAccessEnv({ CLOUDFLARE_ACCESS_AUDIENCE: 'line-harness-admin' }),
+    );
+
+    expect(response.status).toBe(200);
   });
 
   it('returns 401 without middleware payload when enforcement is on (misconfiguration)', async () => {

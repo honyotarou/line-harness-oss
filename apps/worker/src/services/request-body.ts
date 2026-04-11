@@ -3,6 +3,9 @@ const textEncoder = new TextEncoder();
 /** Default cap for authenticated admin JSON POST/PUT/PATCH bodies (DoS mitigation). */
 export const DEFAULT_ADMIN_JSON_BODY_LIMIT_BYTES = 256 * 1024;
 
+/** Raw body cap for Stripe webhooks before HMAC verification (DoS mitigation). */
+export const STRIPE_WEBHOOK_RAW_BODY_LIMIT_BYTES = 1024 * 1024;
+
 /** Cap for unauthenticated LIFF-facing JSON (LINE ID token payloads, small actions). */
 export const DEFAULT_PUBLIC_JSON_BODY_LIMIT_BYTES = 64 * 1024;
 

@@ -25,12 +25,17 @@ import type {
 } from '@line-crm/shared';
 
 import type { Broadcast } from '@line-crm/shared';
+import {
+  ADMIN_BROWSER_CLIENT_HEADER,
+  ADMIN_BROWSER_CLIENT_HEADER_VALUE,
+  validateClientApiBaseUrl,
+} from '@line-crm/shared';
 
 /** Broadcast type from API (now camelCase after worker serialization) */
 export type ApiBroadcast = Broadcast;
 
 /** When unset, use a placeholder; set `NEXT_PUBLIC_API_URL` in Vercel to your deployed `*.workers.dev` Worker. */
-const DEFAULT_API_URL = 'https://YOUR_SUBDOMAIN.workers.dev';
+const DEFAULT_API_URL = 'https://your_subdomain.workers.dev';
 
 /** `1` / `true` / `yes` / `on`: POST `/api/auth/login` with `{}`; Cloudflare Access must forward `Cf-Access-Jwt-Assertion` to the Worker. */
 export function useCloudflareAccessLoginMode(): boolean {
@@ -40,6 +45,9 @@ export function useCloudflareAccessLoginMode(): boolean {
 
 /** Cross-origin admin (e.g. Vercel → workers.dev): browsers may not store/send API cookie; Bearer carries the same session token. */
 const ADMIN_SESSION_STORAGE_KEY = 'lh_admin_session_token';
+
+/** Re-exported from `@line-crm/shared` — must match Worker CORS and CSRF middleware. */
+export { ADMIN_BROWSER_CLIENT_HEADER, ADMIN_BROWSER_CLIENT_HEADER_VALUE };
 
 /** Worker origin (same as API). Use for LIFF/auth links so demo URLs are not hardcoded in the UI. */
 export function getApiBaseUrl(): string {
@@ -102,6 +110,10 @@ export class ApiError extends Error {
   }
 }
 
+function apiBaseUrlValidationOptions(): { allowPlaceholderTemplate?: boolean } {
+  return { allowPlaceholderTemplate: process.env.NODE_ENV !== 'production' };
+}
+
 /** Testable HTTP helper: all browser `fetchApi` calls go through here. */
 export async function fetchApiCore<T>(
   baseUrl: string,
@@ -109,11 +121,18 @@ export async function fetchApiCore<T>(
   path: string,
   options?: RequestInit,
 ): Promise<T> {
+  const validated = validateClientApiBaseUrl(baseUrl, apiBaseUrlValidationOptions());
+  if (!validated.ok) {
+    throw new ApiError(`Misconfigured API URL: ${validated.reason}`, 503);
+  }
+  const origin = validated.normalizedOrigin;
+
   const headers: Record<string, string> = {
-    'Content-Type': 'application/json',
     ...(options?.headers as Record<string, string> | undefined),
+    'Content-Type': 'application/json',
+    [ADMIN_BROWSER_CLIENT_HEADER]: ADMIN_BROWSER_CLIENT_HEADER_VALUE,
   };
-  const res = await fetchImpl(`${baseUrl}${path}`, {
+  const res = await fetchImpl(`${origin}${path}`, {
     ...options,
     credentials: 'include',
     headers,
@@ -294,7 +313,10 @@ export const api = {
     delete: (id: string) =>
       fetchApi<ApiResponse<null>>(`/api/broadcasts/${id}`, { method: 'DELETE' }),
     send: (id: string) =>
-      fetchApi<ApiResponse<ApiBroadcast>>(`/api/broadcasts/${id}/send`, { method: 'POST' }),
+      fetchApi<ApiResponse<ApiBroadcast>>(`/api/broadcasts/${id}/send`, {
+        method: 'POST',
+        body: JSON.stringify({ confirm: true }),
+      }),
   },
 
   // ── Round 2 APIs ─────────────────────────────────────────────────────────
@@ -720,5 +742,21 @@ export const api = {
       }),
     getMigration: (migrationId: string) =>
       fetchApi<ApiResponse<AccountMigration>>(`/api/accounts/migrations/${migrationId}`),
+  },
+  adminPrincipalRoles: {
+    list: () =>
+      fetchApi<ApiResponse<Array<{ email: string; role: 'admin' | 'viewer'; updatedAt: string }>>>(
+        '/api/admin/principal-roles',
+      ),
+    upsert: (data: { email: string; role: 'admin' | 'viewer' }) =>
+      fetchApi<ApiResponse<null>>('/api/admin/principal-roles', {
+        method: 'PUT',
+        body: JSON.stringify(data),
+      }),
+    remove: (email: string) =>
+      fetchApi<ApiResponse<{ removed: boolean }>>(
+        `/api/admin/principal-roles/${encodeURIComponent(email)}`,
+        { method: 'DELETE' },
+      ),
   },
 };

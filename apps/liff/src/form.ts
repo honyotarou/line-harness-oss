@@ -11,6 +11,7 @@
  */
 
 import { getLiffApiBaseUrl } from './api-base.js';
+import { sanitizeLineProfilePictureUrlForHtml } from './safe-line-picture-url.js';
 import { formatLiffUserVisibleError, formatSubmitErrorMessage } from './submit-error-message.js';
 
 declare const liff: {
@@ -236,12 +237,18 @@ function render(): void {
 
   injectStyles();
   const app = getApp();
-  const profileHtml = profile?.pictureUrl
-    ? `<div class="form-profile">
-        <img src="${profile.pictureUrl}" alt="" />
+  const safePic = profile ? sanitizeLineProfilePictureUrlForHtml(profile.pictureUrl) : null;
+  const profileHtml =
+    profile && safePic
+      ? `<div class="form-profile">
+        <img src="${escapeHtml(safePic)}" alt="" />
         <span>${escapeHtml(profile.displayName)} さん</span>
       </div>`
-    : '';
+      : profile
+        ? `<div class="form-profile">
+        <span>${escapeHtml(profile.displayName)} さん</span>
+      </div>`
+        : '';
 
   const fieldsHtml = formDef.fields.map(renderField).join('');
 

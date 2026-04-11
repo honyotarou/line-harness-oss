@@ -5,7 +5,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 describe('admin session token (browser / sessionStorage)', () => {
   beforeEach(() => {
-    process.env.NEXT_PUBLIC_API_URL = 'http://worker.test';
+    process.env.NEXT_PUBLIC_API_URL = 'https://worker.test';
     sessionStorage.clear();
     vi.stubGlobal(
       'fetch',
@@ -33,6 +33,7 @@ describe('admin session token (browser / sessionStorage)', () => {
     const init = vi.mocked(globalThis.fetch).mock.calls[0]?.[1] as RequestInit;
     expect(init.headers).toMatchObject({
       Authorization: 'Bearer sess-tok',
+      'X-Line-Harness-Client': '1',
     });
   });
 
@@ -43,7 +44,10 @@ describe('admin session token (browser / sessionStorage)', () => {
     const { api } = await import('./api');
     await api.friends.list({ accountId: 'a1' });
     const init = vi.mocked(globalThis.fetch).mock.calls[0]?.[1] as RequestInit;
-    expect(init.headers).toEqual({ 'Content-Type': 'application/json' });
+    expect(init.headers).toMatchObject({
+      'Content-Type': 'application/json',
+      'X-Line-Harness-Client': '1',
+    });
   });
 
   it('setAdminSessionToken and clearAdminSessionToken swallow sessionStorage errors', async () => {

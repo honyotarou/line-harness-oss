@@ -20,6 +20,9 @@ export * from './automations';
 export * from './entry-routes';
 export * from './tracked-links';
 export * from './forms';
+export * from './admin-roles';
+export * from './admin-principal-line-accounts';
+export * from './admin-session-revocations';
 
 /**
  * Thin wrapper around D1Database.

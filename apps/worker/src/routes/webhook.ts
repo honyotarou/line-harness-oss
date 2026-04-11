@@ -17,8 +17,10 @@ import {
   completeFriendScenario,
   upsertChatOnMessage,
   getLineAccounts,
+  getLineAccountById,
   jstNow,
 } from '@line-crm/db';
+import { buildAuthUrlChannelAllowlist } from '../services/auth-url-allowlist.js';
 import { fireEvent } from '../services/event-bus.js';
 import { buildMessage, expandVariables } from '../services/step-delivery.js';
 import type { Env } from '../index.js';
@@ -30,11 +32,24 @@ import {
   buildAnxietyFollowupFlexMessage,
   parseAnxietyPostbackData,
 } from '../services/welcome-anxiety-flow.js';
+import { tryConsumeLineWebhookEvent } from '../services/line-webhook-dedup.js';
+import { enforceRateLimit } from '../services/request-rate-limit.js';
 
 const webhook = new Hono<Env>();
 const LINE_WEBHOOK_LIMIT_BYTES = 256 * 1024;
+const LINE_WEBHOOK_RATE_LIMIT = { limit: 300, windowMs: 60_000 };
 
 webhook.post('/webhook', async (c) => {
+  const limited = await enforceRateLimit(c, {
+    bucket: 'line-webhook',
+    db: c.env.DB,
+    limit: LINE_WEBHOOK_RATE_LIMIT.limit,
+    windowMs: LINE_WEBHOOK_RATE_LIMIT.windowMs,
+  });
+  if (limited) {
+    return limited;
+  }
+
   let rawBody: string;
   try {
     rawBody = await readTextBodyWithLimit(c.req.raw, LINE_WEBHOOK_LIMIT_BYTES);
@@ -123,6 +138,11 @@ async function handleEvent(
   workerUrl?: string,
   bindings?: Env['Bindings'],
 ): Promise<void> {
+  const shouldRun = await tryConsumeLineWebhookEvent(db, event);
+  if (!shouldRun) {
+    return;
+  }
+
   if (event.type === 'follow') {
     const userId = event.source.type === 'user' ? event.source.userId : undefined;
     if (!userId) return;
@@ -449,6 +469,19 @@ async function handleEvent(
       created_at: string;
     }>();
 
+    let fallbackChannel = bindings?.LINE_CHANNEL_ID?.trim() ?? '';
+    if (lineAccountId) {
+      const acc = await getLineAccountById(db, lineAccountId);
+      if (acc?.channel_id?.trim()) {
+        fallbackChannel = acc.channel_id.trim();
+      }
+    }
+    const authUrlAllowlist = await buildAuthUrlChannelAllowlist(
+      db,
+      { line_account_id: (friend as { line_account_id?: string | null }).line_account_id },
+      fallbackChannel,
+    );
+
     let matched = false;
     for (const rule of autoReplies.results) {
       const isMatch =
@@ -463,6 +496,7 @@ async function handleEvent(
             rule.response_content,
             friend as { id: string; display_name: string | null; user_id: string | null },
             workerUrl,
+            { allowedAuthUrlChannelIds: authUrlAllowlist },
           );
           const replyMsg = buildMessage(rule.response_type, expandedContent);
           await lineClient.replyMessage(event.replyToken, [replyMsg]);
@@ -474,7 +508,7 @@ async function handleEvent(
               `INSERT INTO messages_log (id, friend_id, direction, message_type, content, broadcast_id, scenario_step_id, created_at)
                VALUES (?, ?, 'outgoing', ?, ?, NULL, NULL, ?)`,
             )
-            .bind(outLogId, friend.id, rule.response_type, rule.response_content, jstNow())
+            .bind(outLogId, friend.id, rule.response_type, expandedContent, jstNow())
             .run();
         } catch (err) {
           console.error('Failed to send auto-reply', err);

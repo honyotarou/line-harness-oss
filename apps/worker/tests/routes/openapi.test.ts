@@ -2,6 +2,8 @@ import { Hono } from 'hono';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { resetRequestRateLimits } from '../../src/services/request-rate-limit.js';
 
+const enabledEnv = { DB: {} as D1Database, ENABLE_PUBLIC_OPENAPI: '1' } as const;
+
 describe('openapi routes', () => {
   beforeEach(() => {
     resetRequestRateLimits();
@@ -11,7 +13,7 @@ describe('openapi routes', () => {
     resetRequestRateLimits();
   });
 
-  it('serves the OpenAPI spec as JSON', async () => {
+  it('returns 404 for openapi.json when documentation is not explicitly enabled', async () => {
     const { openapi } = await import('../../src/routes/openapi.js');
     const app = new Hono();
     app.route('/', openapi);
@@ -19,6 +21,19 @@ describe('openapi routes', () => {
     const response = await app.fetch(new Request('http://localhost/openapi.json'), {
       DB: {} as D1Database,
     } as never);
+
+    expect(response.status).toBe(404);
+  });
+
+  it('serves the OpenAPI spec as JSON when ENABLE_PUBLIC_OPENAPI is set', async () => {
+    const { openapi } = await import('../../src/routes/openapi.js');
+    const app = new Hono();
+    app.route('/', openapi);
+
+    const response = await app.fetch(
+      new Request('http://localhost/openapi.json'),
+      enabledEnv as never,
+    );
 
     expect(response.status).toBe(200);
     const json = (await response.json()) as {
@@ -31,14 +46,12 @@ describe('openapi routes', () => {
     expect(json.components.securitySchemes.bearerAuth.scheme).toBe('bearer');
   });
 
-  it('serves Swagger UI HTML', async () => {
+  it('serves Swagger UI HTML when enabled', async () => {
     const { openapi } = await import('../../src/routes/openapi.js');
     const app = new Hono();
     app.route('/', openapi);
 
-    const response = await app.fetch(new Request('http://localhost/docs'), {
-      DB: {} as D1Database,
-    } as never);
+    const response = await app.fetch(new Request('http://localhost/docs'), enabledEnv as never);
 
     expect(response.status).toBe(200);
     const html = await response.text();
@@ -53,6 +66,7 @@ describe('openapi routes', () => {
 
     const response = await app.fetch(new Request('http://localhost/openapi.json'), {
       DB: {} as D1Database,
+      ENABLE_PUBLIC_OPENAPI: '1',
       DISABLE_PUBLIC_OPENAPI: '1',
     } as never);
 
@@ -67,11 +81,29 @@ describe('openapi routes', () => {
 
     const response = await app.fetch(new Request('http://localhost/docs'), {
       DB: {} as D1Database,
+      ENABLE_PUBLIC_OPENAPI: '1',
       DISABLE_PUBLIC_OPENAPI: 'true',
     } as never);
 
     expect(response.status).toBe(404);
   });
+
+  it.each(['yes', 'on', 'YES', ' On '])(
+    'returns 404 for openapi.json when DISABLE_PUBLIC_OPENAPI is %s (case/whitespace tolerant)',
+    async (flag) => {
+      const { openapi } = await import('../../src/routes/openapi.js');
+      const app = new Hono();
+      app.route('/', openapi);
+
+      const response = await app.fetch(new Request('http://localhost/openapi.json'), {
+        DB: {} as D1Database,
+        ENABLE_PUBLIC_OPENAPI: '1',
+        DISABLE_PUBLIC_OPENAPI: flag,
+      } as never);
+
+      expect(response.status).toBe(404);
+    },
+  );
 
   it('rate limits rapid OpenAPI spec downloads per client IP', async () => {
     const { openapi } = await import('../../src/routes/openapi.js');
@@ -84,7 +116,7 @@ describe('openapi routes', () => {
         new Request('http://localhost/openapi.json', {
           headers: { 'CF-Connecting-IP': '198.51.100.55' },
         }),
-        { DB: {} as D1Database } as never,
+        enabledEnv as never,
       );
       lastStatus = response.status;
     }

@@ -1,39 +1,5 @@
-import { buildAllowedOrigins } from './cors-policy.js';
+import type { AllowedOriginsEnv } from '@line-crm/shared';
+export { resolveSafeRedirectUrl } from '@line-crm/shared';
 
-export type LiffRedirectEnv = {
-  WEB_URL?: string;
-  WORKER_URL?: string;
-  LIFF_URL?: string;
-  ALLOWED_ORIGINS?: string;
-};
-
-/**
- * Returns a safe absolute URL to redirect to after OAuth, or null if disallowed (open redirect hardening).
- */
-export function resolveSafeRedirectUrl(redirect: string, env: LiffRedirectEnv): string | null {
-  const t = redirect.trim();
-  if (!t) return null;
-
-  const allowed = new Set(buildAllowedOrigins(env));
-  for (const o of ['https://line.me', 'https://access.line.me', 'https://liff.line.me']) {
-    allowed.add(o);
-  }
-
-  try {
-    if (t.startsWith('/') && !t.startsWith('//')) {
-      const base = env.WEB_URL || env.WORKER_URL;
-      if (!base) return null;
-      const normalizedBase = base.endsWith('/') ? base : `${base}/`;
-      const resolved = new URL(t, normalizedBase);
-      if (!allowed.has(resolved.origin)) return null;
-      return resolved.href;
-    }
-
-    const u = new URL(t);
-    if (u.protocol !== 'https:') return null;
-    if (!allowed.has(u.origin)) return null;
-    return u.href;
-  } catch {
-    return null;
-  }
-}
+/** Same shape as CORS env — used for OAuth / wrapped-link redirect allowlisting. */
+export type LiffRedirectEnv = AllowedOriginsEnv;

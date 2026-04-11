@@ -26,6 +26,9 @@ jobs:
       - name: Install
         run: pnpm install --frozen-lockfile
 
+      - name: Dependency audit (pnpm audit)
+        run: pnpm audit:ci
+
       - name: Biome format check
         run: pnpm format:check
 

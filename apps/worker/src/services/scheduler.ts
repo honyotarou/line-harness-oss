@@ -14,6 +14,8 @@ interface SchedulerParams {
   db: D1Database;
   defaultAccessToken: string;
   workerUrl?: string;
+  /** Default bot `channel_id` for auth URL expansion when a friend has no `line_account_id`. */
+  defaultLineChannelId?: string;
   dbAccounts: ActiveAccount[];
 }
 
@@ -104,7 +106,13 @@ async function runJobsForTarget(
 
   await Promise.all([
     runScheduledJob('step_deliveries', target.lineAccountId, () =>
-      deps.processStepDeliveries(params.db, lineClient, params.workerUrl, target.lineAccountId),
+      deps.processStepDeliveries(
+        params.db,
+        lineClient,
+        params.workerUrl,
+        target.lineAccountId,
+        params.defaultLineChannelId,
+      ),
     ),
     runScheduledJob('scheduled_broadcasts', target.lineAccountId, () =>
       deps.processScheduledBroadcasts(params.db, lineClient, target.lineAccountId),

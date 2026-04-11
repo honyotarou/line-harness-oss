@@ -685,3 +685,59 @@ CREATE TABLE IF NOT EXISTS delivery_dead_letters (
 CREATE INDEX IF NOT EXISTS idx_delivery_dead_letters_job_name ON delivery_dead_letters (job_name);
 CREATE INDEX IF NOT EXISTS idx_delivery_dead_letters_line_account_id ON delivery_dead_letters (line_account_id);
 CREATE INDEX IF NOT EXISTS idx_delivery_dead_letters_created_at ON delivery_dead_letters (created_at);
+
+-- ============================================================
+-- Admin RBAC (optional): maps Cloudflare Access email → role
+-- No row = full admin. Row role='viewer' = read-only API (GET only + auth login/logout).
+-- ============================================================
+CREATE TABLE IF NOT EXISTS admin_principal_roles (
+  email      TEXT PRIMARY KEY COLLATE NOCASE,
+  role       TEXT NOT NULL CHECK (role IN ('admin', 'viewer')),
+  updated_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%f', 'now', '+9 hours'))
+);
+
+CREATE INDEX IF NOT EXISTS idx_admin_principal_roles_role ON admin_principal_roles (role);
+
+-- Optional: Cloudflare Access email → allowed LINE accounts (empty for email = no restriction)
+CREATE TABLE IF NOT EXISTS admin_principal_line_accounts (
+  email            TEXT NOT NULL COLLATE NOCASE,
+  line_account_id  TEXT NOT NULL,
+  PRIMARY KEY (email, line_account_id),
+  FOREIGN KEY (line_account_id) REFERENCES line_accounts (id) ON DELETE CASCADE
+);
+
+CREATE INDEX IF NOT EXISTS idx_admin_principal_line_accounts_account
+  ON admin_principal_line_accounts (line_account_id);
+
+-- Admin HMAC session tokens: logout / explicit revoke (jti in session payload)
+CREATE TABLE IF NOT EXISTS admin_session_revocations (
+  jti         TEXT PRIMARY KEY NOT NULL,
+  revoked_at  TEXT NOT NULL
+);
+
+CREATE INDEX IF NOT EXISTS idx_admin_session_revocations_revoked_at
+  ON admin_session_revocations (revoked_at);
+
+-- ============================================================
+-- LINE webhook deduplication (webhookEventId replay / redelivery)
+-- ============================================================
+CREATE TABLE IF NOT EXISTS line_webhook_processed_events (
+  webhook_event_id TEXT PRIMARY KEY,
+  received_at_ms   INTEGER NOT NULL
+);
+
+CREATE INDEX IF NOT EXISTS idx_line_webhook_processed_events_received_at_ms
+  ON line_webhook_processed_events (received_at_ms);
+
+-- ============================================================
+-- Incoming webhook replay (same signed body)
+-- ============================================================
+CREATE TABLE IF NOT EXISTS incoming_webhook_processed_payloads (
+  webhook_id     TEXT NOT NULL,
+  payload_hash   TEXT NOT NULL,
+  received_at_ms INTEGER NOT NULL,
+  PRIMARY KEY (webhook_id, payload_hash)
+);
+
+CREATE INDEX IF NOT EXISTS idx_incoming_webhook_payload_dedup_received_at_ms
+  ON incoming_webhook_processed_payloads (received_at_ms);

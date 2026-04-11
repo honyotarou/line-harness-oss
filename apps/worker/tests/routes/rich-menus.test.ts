@@ -232,6 +232,31 @@ describe('rich menu routes', () => {
     );
   });
 
+  it('POST /api/rich-menus/:id/image returns 400 when bytes are not valid PNG/JPEG', async () => {
+    const { richMenus } = await import('../../src/routes/rich-menus.js');
+    const app = new Hono();
+    app.route('/', richMenus);
+
+    const bogus = Buffer.from('totally-not-an-image').toString('base64');
+    const response = await app.fetch(
+      new Request('http://localhost/api/rich-menus/rm-1/image', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          image: bogus,
+          contentType: 'image/png',
+        }),
+      }),
+      env(),
+    );
+
+    expect(response.status).toBe(400);
+    const json = (await response.json()) as { success: boolean; error: string };
+    expect(json.success).toBe(false);
+    expect(json.error).toMatch(/PNG|JPEG|format/i);
+    expect(lineSdkMocks.uploadRichMenuImage).not.toHaveBeenCalled();
+  });
+
   it('POST /api/rich-menus/:id/image returns 400 when JSON body has no image', async () => {
     const { richMenus } = await import('../../src/routes/rich-menus.js');
     const app = new Hono();

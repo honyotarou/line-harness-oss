@@ -18,6 +18,9 @@ import {
 
 const scoring = new Hono<Env>();
 
+/** Manual score adjustments (API) — keeps segment rules and automations meaningful. */
+const MAX_MANUAL_SCORE_DELTA = 5000;
+
 function serializeScoringRule(item: {
   id: string;
   name: string;
@@ -152,6 +155,19 @@ scoring.post('/api/friends/:id/score', async (c) => {
     );
     if (body.scoreChange === undefined)
       return c.json({ success: false, error: 'scoreChange is required' }, 400);
+    if (
+      typeof body.scoreChange !== 'number' ||
+      !Number.isFinite(body.scoreChange) ||
+      Math.abs(body.scoreChange) > MAX_MANUAL_SCORE_DELTA
+    ) {
+      return c.json(
+        {
+          success: false,
+          error: `scoreChange must be a finite number between -${MAX_MANUAL_SCORE_DELTA} and ${MAX_MANUAL_SCORE_DELTA}`,
+        },
+        400,
+      );
+    }
     await addScore(c.env.DB, { friendId, scoreChange: body.scoreChange, reason: body.reason });
     const newScore = await getFriendScore(c.env.DB, friendId);
     return c.json({ success: true, data: { friendId, currentScore: newScore } }, 201);

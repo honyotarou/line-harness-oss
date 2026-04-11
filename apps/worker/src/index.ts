@@ -1,8 +1,18 @@
 import { Hono } from 'hono';
 import { getLineAccounts } from '@line-crm/db';
+import { adminRbacMiddleware } from './middleware/admin-rbac.js';
 import { authMiddleware } from './middleware/auth.js';
 import { cloudflareAccessMiddleware } from './middleware/cloudflare-access.js';
-import { buildAllowedOrigins, isAllowedOrigin } from './services/cors-policy.js';
+import { cfBotGuardMiddleware } from './middleware/cf-bot-guard.js';
+import { hostHeaderMiddleware } from './middleware/host-header.js';
+import { apiWriteContentTypeMiddleware } from './middleware/api-write-content-type.js';
+import { securityHeadersMiddleware } from './middleware/security-headers.js';
+import {
+  ACCESS_CONTROL_ALLOW_HEADERS,
+  buildAllowedOrigins,
+  isAllowedOrigin,
+  shouldApplyCorsForOriginHeader,
+} from './services/cors-policy.js';
 import { enforceRateLimit } from './services/request-rate-limit.js';
 import { runScheduledJobs } from './services/scheduler.js';
 import { renderShortLinkLanding, type LandingEnv } from './ui/landing.js';
@@ -32,6 +42,7 @@ import { automations } from './routes/automations.js';
 import { richMenus } from './routes/rich-menus.js';
 import { trackedLinks } from './routes/tracked-links.js';
 import { forms } from './routes/forms.js';
+import { adminPrincipalRolesRoutes } from './routes/admin-principal-roles.js';
 
 export type Env = {
   Variables: {
@@ -43,6 +54,11 @@ export type Env = {
     LINE_CHANNEL_SECRET: string;
     LINE_CHANNEL_ACCESS_TOKEN: string;
     API_KEY: string;
+    /**
+     * Optional HMAC secret for admin session tokens (cookie / Bearer session).
+     * When unset, `API_KEY` is used (legacy). Set in production to limit blast radius if the session signer leaks.
+     */
+    ADMIN_SESSION_SECRET?: string;
     LIFF_URL: string;
     LINE_CHANNEL_ID: string;
     LINE_LOGIN_CHANNEL_ID: string;
@@ -71,8 +87,29 @@ export type Env = {
     WELCOME_ANXIETY_RICH_MENU_ONLY?: string;
     /** Optional `tel:` URI or dialable digits for LIFF when online booking cannot complete. */
     BOOKING_FALLBACK_TEL?: string;
-    /** `1` / `true` / `yes` / `on`: hide `/docs` and `/openapi.json` (reduce production reconnaissance). */
+    /**
+     * `1` / `true` / `yes` / `on`: expose `/docs` and `/openapi.json` (Swagger). Off by default.
+     * Set in `.dev.vars` / production when you want public API docs.
+     */
+    ENABLE_PUBLIC_OPENAPI?: string;
+    /** When set, forces OpenAPI off even if ENABLE_PUBLIC_OPENAPI is on. */
     DISABLE_PUBLIC_OPENAPI?: string;
+    /**
+     * `1` / `true`: use `SameSite=None` on admin session cookies for non-local hosts (cross-site only).
+     * Default is `Lax` (stronger CSRF posture when admin UI and API share a compatible setup).
+     */
+    ADMIN_SESSION_COOKIE_SAMESITE_NONE?: string;
+    /**
+     * Optional; Cloudflare Bot Management score threshold (1–99) for a few public POST endpoints
+     * (`/api/auth/login`, `/api/affiliates/click`). When `cf.botManagement.score` is present and below
+     * this value, respond 403. Absent score is allowed unless REQUIRE_CF_BOT_SIGNAL is on.
+     */
+    MIN_CF_BOT_SCORE?: string;
+    /**
+     * `1` / `true`: on bot-protected routes, require `cf.botManagement.score` (403 if missing).
+     * Use with Bot Management on the zone; local wrangler without `cf` will need this off.
+     */
+    REQUIRE_CF_BOT_SIGNAL?: string;
     /**
      * `1` / `true` / `yes` / `on`: require valid `Cf-Access-Jwt-Assertion` on protected routes
      * (Cloudflare Zero Trust / Access in front of this Worker). Set with CLOUDFLARE_ACCESS_TEAM_DOMAIN.
@@ -82,14 +119,66 @@ export type Env = {
     CLOUDFLARE_ACCESS_TEAM_DOMAIN?: string;
     /** Optional comma-separated allowlist for JWT `email` claim after signature verification. */
     CLOUDFLARE_ACCESS_ALLOWED_EMAILS?: string;
+    /**
+     * Optional Access JWT `aud` (application audience). When set, the token must list this audience
+     * (string or array) after signature verification — reduces cross-app JWT reuse on the same team domain.
+     */
+    CLOUDFLARE_ACCESS_AUDIENCE?: string;
+    /**
+     * Optional comma-separated hostnames for `Host` header allowlisting (DNS rebinding mitigation).
+     * When unset or empty, no check (typical for local dev). In production, set to your worker hostname(s).
+     */
+    ALLOWED_HOSTNAMES?: string;
+    /**
+     * `1` / `true`: allow `GET /api/auth/session` to treat `Authorization: Bearer <API_KEY>` as authenticated.
+     * Default is off so a stolen API key cannot pass session checks without a real session JWT.
+     */
+    ALLOW_LEGACY_API_KEY_BEARER_SESSION?: string;
+    /**
+     * `1` / `true`: refuse login/session issuance unless `ADMIN_SESSION_SECRET` is set (sessions must not
+     * share the same signing key as `API_KEY`).
+     */
+    REQUIRE_ADMIN_SESSION_SECRET?: string;
+    /**
+     * `1` / `true`: allow HMAC admin sessions to be signed / verified with `API_KEY` when
+     * `ADMIN_SESSION_SECRET` is unset, even if `WORKER_URL` is a non-local HTTPS deployment.
+     * Default is off for non-local HTTPS (dedicated secret required).
+     */
+    ALLOW_LEGACY_API_KEY_SESSION_SIGNER?: string;
+    /**
+     * `1` / `true`: when more than one active LINE account exists, require explicit `lineAccountId` on
+     * scoped list APIs (same validation as Zero Trust principals) to block cross-account enumeration with one API key.
+     */
+    MULTI_LINE_ACCOUNT_QUERY_REQUIRES_LINE_ACCOUNT_ID?: string;
+    /**
+     * When set, POST `/api/broadcasts/:id/send` and `/send-segment` require header `X-Broadcast-Send-Secret`
+     * with the same value (second factor against accidental or stolen-admin mass send).
+     */
+    BROADCAST_SEND_SECRET?: string;
+    /**
+     * Optional AES-GCM key material (any string; SHA-256 → 256-bit key) for encrypting Google Calendar
+     * `access_token`, `refresh_token`, and `api_key` in D1. When unset, tokens are stored as submitted (legacy).
+     */
+    CALENDAR_TOKEN_ENCRYPTION_SECRET?: string;
+    /**
+     * `1` / `true` / `yes` / `on`: when Cloudflare Access is enforced, require a row in `admin_principal_roles`
+     * for the JWT email (no row → 403). While the table is empty, only `/api/admin/principal-roles` is allowed
+     * so the first admin can bootstrap. Recommended for production Zero Trust deployments.
+     */
+    REQUIRE_ADMIN_PRINCIPAL_ALLOWLIST?: string;
   } & LandingEnv;
 };
 
 const app = new Hono<Env>();
 
+app.use('*', hostHeaderMiddleware);
+app.use('*', cfBotGuardMiddleware);
+app.use('*', securityHeadersMiddleware);
+app.use('*', apiWriteContentTypeMiddleware);
+
 app.use('*', async (c, next) => {
   const origin = c.req.header('Origin');
-  if (!origin) {
+  if (!shouldApplyCorsForOriginHeader(origin)) {
     return next();
   }
 
@@ -103,10 +192,7 @@ app.use('*', async (c, next) => {
 
   c.header('Access-Control-Allow-Origin', origin);
   c.header('Access-Control-Allow-Credentials', 'true');
-  c.header(
-    'Access-Control-Allow-Headers',
-    'Authorization, Content-Type, Cf-Access-Jwt-Assertion, CF-Access-Jwt-Assertion',
-  );
+  c.header('Access-Control-Allow-Headers', ACCESS_CONTROL_ALLOW_HEADERS);
   c.header('Access-Control-Allow-Methods', 'GET, HEAD, PUT, PATCH, POST, DELETE, OPTIONS');
   c.header('Access-Control-Max-Age', '86400');
   c.header('Vary', 'Origin');
@@ -123,6 +209,9 @@ app.use('*', cloudflareAccessMiddleware);
 
 // Auth middleware — skips /webhook and /docs automatically
 app.use('*', authMiddleware);
+
+// Optional read-only role when Cloudflare Access email is mapped in D1 (admin_principal_roles)
+app.use('*', adminRbacMiddleware);
 
 // Mount route groups — MVP & Round 2
 app.route('/', webhook);
@@ -152,6 +241,7 @@ app.route('/', automations);
 app.route('/', richMenus);
 app.route('/', trackedLinks);
 app.route('/', forms);
+app.route('/', adminPrincipalRolesRoutes);
 
 const SHORT_LINK_LANDING_RATE_LIMIT = { limit: 120, windowMs: 60_000 };
 
@@ -193,6 +283,7 @@ async function scheduled(
     db: env.DB,
     defaultAccessToken: env.LINE_CHANNEL_ACCESS_TOKEN,
     workerUrl: env.WORKER_URL,
+    defaultLineChannelId: env.LINE_CHANNEL_ID,
     dbAccounts,
   });
 }

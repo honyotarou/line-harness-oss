@@ -68,7 +68,11 @@ describe('broadcast send route', () => {
     app.route('/', broadcasts);
 
     const response = await app.fetch(
-      new Request('http://localhost/api/broadcasts/broadcast-1/send', { method: 'POST' }),
+      new Request('http://localhost/api/broadcasts/broadcast-1/send', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ confirm: true }),
+      }),
       {
         DB: {} as D1Database,
         LINE_CHANNEL_ACCESS_TOKEN: 'default-token',
@@ -116,7 +120,11 @@ describe('broadcast send route', () => {
     app.route('/', broadcasts);
 
     const response = await app.fetch(
-      new Request('http://localhost/api/broadcasts/broadcast-1/send', { method: 'POST' }),
+      new Request('http://localhost/api/broadcasts/broadcast-1/send', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ confirm: true }),
+      }),
       {
         DB: {} as D1Database,
         LINE_CHANNEL_ACCESS_TOKEN: 'default-token',

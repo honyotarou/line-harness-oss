@@ -99,7 +99,7 @@ describe('攻撃者サイクル 301–350（セキュリティバッチ）', () 
     expect(unsafeSendWebhookUrlInActions({ type: 'send_webhook' } as never)).toBeNull();
   });
 
-  it('cycle 311: getRequestClientAddress skips whitespace-only CF-Connecting-IP', async () => {
+  it('cycle 311: getRequestClientAddress ignores X-Forwarded-For when CF-Connecting-IP is blank (non-local)', async () => {
     const { getRequestClientAddress } = await import('../../src/services/request-rate-limit.js');
     const req = new Request('http://x/', {
       headers: {
@@ -107,7 +107,7 @@ describe('攻撃者サイクル 301–350（セキュリティバッチ）', () 
         'X-Forwarded-For': '198.51.100.9',
       },
     });
-    expect(getRequestClientAddress(req)).toBe('198.51.100.9');
+    expect(getRequestClientAddress(req)).toBe('anonymous');
   });
 
   it('cycle 312: verifySignedPayload accepts uppercase hex in provided signature', async () => {

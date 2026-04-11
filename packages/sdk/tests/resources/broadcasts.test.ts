@@ -140,7 +140,7 @@ describe('BroadcastsResource', () => {
     const http = mockHttp({ post: vi.fn().mockResolvedValue({ success: true, data: broadcast }) });
     const resource = new BroadcastsResource(http);
     const result = await resource.send('bc-1');
-    expect(http.post).toHaveBeenCalledWith('/api/broadcasts/bc-1/send');
+    expect(http.post).toHaveBeenCalledWith('/api/broadcasts/bc-1/send', { confirm: true });
     expect(result).toEqual(broadcast);
   });
 });

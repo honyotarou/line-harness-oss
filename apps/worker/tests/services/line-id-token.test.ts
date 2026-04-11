@@ -22,7 +22,7 @@ describe('line-id-token helpers', () => {
       .mockResolvedValueOnce({ ok: false })
       .mockResolvedValueOnce({
         ok: true,
-        json: async () => ({ sub: 'line-user-1', name: 'Alice' }),
+        json: async () => ({ sub: 'line-user-1', name: 'Alice', aud: 'channel-2' }),
       });
     vi.stubGlobal('fetch', fetchMock);
 
@@ -52,7 +52,7 @@ describe('line-id-token helpers', () => {
       )
       .mockResolvedValueOnce({
         ok: true,
-        json: async () => ({ sub: 'line-user-2' }),
+        json: async () => ({ sub: 'line-user-2', aud: 'channel-2' }),
       })
       .mockResolvedValueOnce({ ok: false });
 
@@ -69,5 +69,17 @@ describe('line-id-token helpers', () => {
         throw new Error('unreachable');
       },
     });
+  });
+
+  it('returns null when verify response aud does not match the channel id', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockResolvedValue({
+        ok: true,
+        json: async () => ({ sub: 'line-user-3', aud: 'wrong-channel' }),
+      }),
+    );
+
+    await expect(verifyLineIdToken('token', ['expected-channel'])).resolves.toBeNull();
   });
 });

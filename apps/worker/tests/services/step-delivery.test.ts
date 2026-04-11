@@ -6,6 +6,7 @@ const dbMocks = vi.hoisted(() => ({
   advanceFriendScenario: vi.fn().mockResolvedValue(undefined),
   completeFriendScenario: vi.fn().mockResolvedValue(undefined),
   getFriendById: vi.fn(),
+  getLineAccountById: vi.fn(),
   jstNow: vi.fn(() => '2026-03-25T10:00:00+09:00'),
 }));
 
@@ -41,6 +42,7 @@ describe('processStepDeliveries', () => {
     vi.useFakeTimers();
     vi.setSystemTime(new Date('2026-03-25T01:00:00.000Z'));
     Object.values(dbMocks).forEach((mockFn) => mockFn.mockReset());
+    dbMocks.getLineAccountById.mockResolvedValue({ id: 'account-1', channel_id: '2001234567' });
     dbMocks.advanceFriendScenario.mockResolvedValue(undefined);
     dbMocks.completeFriendScenario.mockResolvedValue(undefined);
     dbMocks.jstNow.mockReturnValue('2026-03-25T10:00:00+09:00');
@@ -90,7 +92,13 @@ describe('processStepDeliveries', () => {
     const db = createDb();
     const lineClient = { pushMessage: vi.fn().mockResolvedValue(undefined) };
 
-    await processStepDeliveries(db, lineClient as never, 'https://worker.example.com', 'account-1');
+    await processStepDeliveries(
+      db,
+      lineClient as never,
+      'https://worker.example.com',
+      'account-1',
+      '2000999999',
+    );
 
     expect(reliabilityMocks.beginDeliveryAttempt).toHaveBeenCalledWith(
       db,
@@ -142,7 +150,13 @@ describe('processStepDeliveries', () => {
     const db = createDb();
     const lineClient = { pushMessage: vi.fn().mockRejectedValue(new Error('LINE down')) };
 
-    await processStepDeliveries(db, lineClient as never, 'https://worker.example.com', 'account-1');
+    await processStepDeliveries(
+      db,
+      lineClient as never,
+      'https://worker.example.com',
+      'account-1',
+      '2000999999',
+    );
 
     expect(reliabilityMocks.markDeliveryAttemptFailed).toHaveBeenCalledWith(
       db,
@@ -195,7 +209,13 @@ describe('processStepDeliveries', () => {
     const db = createDb();
     const lineClient = { pushMessage: vi.fn().mockResolvedValue(undefined) };
 
-    await processStepDeliveries(db, lineClient as never, 'https://worker.example.com', 'account-1');
+    await processStepDeliveries(
+      db,
+      lineClient as never,
+      'https://worker.example.com',
+      'account-1',
+      '2000999999',
+    );
 
     expect(lineClient.pushMessage).toHaveBeenCalled();
     expect(reliabilityMocks.markDeliveryAttemptSucceeded).toHaveBeenCalled();
