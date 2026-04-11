@@ -32,6 +32,15 @@ const nextConfig: NextConfig = {
   distDir: process.env.NEXT_DIST_DIR || '.next',
   output: 'export',
   transpilePackages: ['@line-crm/shared'],
+  webpack(config) {
+    // Catalog uses ESM-style `./foo.js` + `../client.js` (encapsulation gate). Webpack would
+    // otherwise look for literal `.js` files; map to `.ts` sources like `tsc` + bundlers do.
+    config.resolve.extensionAlias = {
+      ...config.resolve.extensionAlias,
+      '.js': ['.ts', '.tsx', '.js'],
+    };
+    return config;
+  },
   async headers() {
     return [{ source: '/:path*', headers: [...ADMIN_SECURITY_HEADERS] }];
   },
