@@ -16,6 +16,12 @@ import type { Env } from '../index.js';
 import { signLiffOAuthState, verifyLiffOAuthState } from '../services/liff-oauth-state.js';
 import { resolveSafeRedirectUrl } from '../services/liff-redirect.js';
 import { verifyLineLoginIdToken } from '../services/line-login-id-token.js';
+import {
+  DEFAULT_PUBLIC_JSON_BODY_LIMIT_BYTES,
+  jsonBodyReadErrorResponse,
+  readJsonBodyWithLimit,
+} from '../services/request-body.js';
+import { tryParseJsonRecord } from '../services/safe-json.js';
 import { renderAuthQrPage } from '../ui/landing.js';
 
 const liffRoutes = new Hono<Env>();
@@ -406,7 +412,7 @@ liffRoutes.get('/auth/callback', async (c) => {
         .prepare('SELECT metadata FROM friends WHERE id = ?')
         .bind(friend.id)
         .first<{ metadata: string }>();
-      const merged = { ...JSON.parse(existingMeta?.metadata || '{}'), ...adMeta };
+      const merged = { ...(tryParseJsonRecord(existingMeta?.metadata || '{}') ?? {}), ...adMeta };
       await db
         .prepare('UPDATE friends SET metadata = ?, updated_at = ? WHERE id = ?')
         .bind(JSON.stringify(merged), jstNow(), friend.id)
@@ -511,7 +517,10 @@ liffRoutes.get('/auth/callback', async (c) => {
 // POST /api/liff/profile — requires LINE Login ID token; sub must match lineUserId (no unauthenticated PII)
 liffRoutes.post('/api/liff/profile', async (c) => {
   try {
-    const body = await c.req.json<LiffLineUserBody>();
+    const body = await readJsonBodyWithLimit<LiffLineUserBody>(
+      c.req.raw,
+      DEFAULT_PUBLIC_JSON_BODY_LIMIT_BYTES,
+    );
     const resolved = await resolveLiffFriendFromLineUserBody(
       c.env.DB,
       c.env.LINE_LOGIN_CHANNEL_ID,
@@ -532,6 +541,8 @@ liffRoutes.post('/api/liff/profile', async (c) => {
       },
     });
   } catch (err) {
+    const jr = jsonBodyReadErrorResponse(err);
+    if (jr) return c.json(jr.body, jr.status);
     console.error('POST /api/liff/profile error:', err);
     return c.json({ success: false, error: 'Internal server error' }, 500);
   }
@@ -540,7 +551,10 @@ liffRoutes.post('/api/liff/profile', async (c) => {
 // POST /api/liff/booking/phone-fallback — ID token + known friend; returns clinic tel for offline booking path
 liffRoutes.post('/api/liff/booking/phone-fallback', async (c) => {
   try {
-    const body = await c.req.json<LiffLineUserBody>();
+    const body = await readJsonBodyWithLimit<LiffLineUserBody>(
+      c.req.raw,
+      DEFAULT_PUBLIC_JSON_BODY_LIMIT_BYTES,
+    );
     if (!body.lineUserId || !body.idToken) {
       return c.json({ success: false, error: 'lineUserId and idToken are required' }, 400);
     }
@@ -569,6 +583,8 @@ liffRoutes.post('/api/liff/booking/phone-fallback', async (c) => {
       },
     });
   } catch (err) {
+    const jr = jsonBodyReadErrorResponse(err);
+    if (jr) return c.json(jr.body, jr.status);
     console.error('POST /api/liff/booking/phone-fallback error:', err);
     return c.json({ success: false, error: 'Internal server error' }, 500);
   }
@@ -577,12 +593,12 @@ liffRoutes.post('/api/liff/booking/phone-fallback', async (c) => {
 // POST /api/liff/link - link friend to user UUID (public, verified via LINE ID token)
 liffRoutes.post('/api/liff/link', async (c) => {
   try {
-    const body = await c.req.json<{
+    const body = await readJsonBodyWithLimit<{
       idToken: string;
       displayName?: string | null;
       ref?: string;
       existingUuid?: string;
-    }>();
+    }>(c.req.raw, DEFAULT_PUBLIC_JSON_BODY_LIMIT_BYTES);
 
     if (!body.idToken) {
       return c.json({ success: false, error: 'idToken is required' }, 400);
@@ -672,6 +688,8 @@ liffRoutes.post('/api/liff/link', async (c) => {
       data: { userId, alreadyLinked: false },
     });
   } catch (err) {
+    const jr = jsonBodyReadErrorResponse(err);
+    if (jr) return c.json(jr.body, jr.status);
     console.error('POST /api/liff/link error:', err);
     return c.json({ success: false, error: 'Internal server error' }, 500);
   }
@@ -816,7 +834,10 @@ liffRoutes.get('/api/analytics/ref/:refCode', async (c) => {
 // POST /api/links/wrap - wrap a URL with LIFF redirect proxy
 liffRoutes.post('/api/links/wrap', async (c) => {
   try {
-    const body = await c.req.json<{ url: string; ref?: string }>();
+    const body = await readJsonBodyWithLimit<{ url: string; ref?: string }>(
+      c.req.raw,
+      DEFAULT_PUBLIC_JSON_BODY_LIMIT_BYTES,
+    );
     if (!body.url) {
       return c.json({ success: false, error: 'url is required' }, 400);
     }
@@ -834,6 +855,8 @@ liffRoutes.post('/api/links/wrap', async (c) => {
     const wrappedUrl = `${liffUrl}?${params.toString()}`;
     return c.json({ success: true, data: { url: wrappedUrl } });
   } catch (err) {
+    const jr = jsonBodyReadErrorResponse(err);
+    if (jr) return c.json(jr.body, jr.status);
     console.error('POST /api/links/wrap error:', err);
     return c.json({ success: false, error: 'Internal server error' }, 500);
   }

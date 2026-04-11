@@ -12,8 +12,9 @@ import {
   getFriendById,
   jstNow,
 } from '@line-crm/db';
-import type { LineClient, Message } from '@line-crm/line-sdk';
+import type { LineClient } from '@line-crm/line-sdk';
 import { addJitter, sleep } from './stealth.js';
+import { buildMessageFromStoredContent } from './stored-line-message.js';
 import {
   beginDeliveryAttempt,
   markDeliveryAttemptFailed,
@@ -72,7 +73,9 @@ export async function processReminderDeliveries(
           continue;
         }
 
-        const message = buildMessage(step.message_type, step.message_content);
+        const message = buildMessageFromStoredContent(step.message_type, step.message_content, {
+          flexAltFallback: 'Reminder',
+        });
         try {
           await lineClient.pushMessage(friend.line_user_id, [message]);
 
@@ -101,34 +104,4 @@ export async function processReminderDeliveries(
       console.error(`リマインダ配信エラー (friend_reminder ${fr.id}):`, err);
     }
   }
-}
-
-function buildMessage(messageType: string, messageContent: string): Message {
-  if (messageType === 'text') {
-    return { type: 'text', text: messageContent };
-  }
-  if (messageType === 'image') {
-    try {
-      const parsed = JSON.parse(messageContent) as {
-        originalContentUrl: string;
-        previewImageUrl: string;
-      };
-      return {
-        type: 'image',
-        originalContentUrl: parsed.originalContentUrl,
-        previewImageUrl: parsed.previewImageUrl,
-      };
-    } catch {
-      return { type: 'text', text: messageContent };
-    }
-  }
-  if (messageType === 'flex') {
-    try {
-      const contents = JSON.parse(messageContent);
-      return { type: 'flex', altText: 'Reminder', contents };
-    } catch {
-      return { type: 'text', text: messageContent };
-    }
-  }
-  return { type: 'text', text: messageContent };
 }

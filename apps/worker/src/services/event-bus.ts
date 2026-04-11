@@ -21,6 +21,8 @@ import {
   jstNow,
 } from '@line-crm/db';
 import { LineClient } from '@line-crm/line-sdk';
+import { isSafeHttpsOutboundUrl } from './outbound-url.js';
+import { parseStringArrayJson, tryParseJsonLoose, tryParseJsonRecord } from './safe-json.js';
 
 interface EventPayload {
   friendId?: string;
@@ -55,6 +57,10 @@ async function fireOutgoingWebhooks(
     const webhooks = await getActiveOutgoingWebhooksByEvent(db, eventType);
     for (const wh of webhooks) {
       try {
+        if (!isSafeHttpsOutboundUrl(wh.url)) {
+          console.error(`送信Webhook ${wh.id} skipped: unsafe or disallowed URL`);
+          continue;
+        }
         const body = JSON.stringify({
           event: eventType,
           timestamp: jstNow(),
@@ -120,11 +126,52 @@ async function processAutomations(
     );
 
     for (const automation of automations) {
-      const conditions = JSON.parse(automation.conditions) as Record<string, unknown>;
-      const actions = JSON.parse(automation.actions) as Array<{
-        type: string;
-        params: Record<string, string>;
-      }>;
+      let conditionsParsed: unknown;
+      let actionsParsed: unknown;
+      try {
+        conditionsParsed = JSON.parse(automation.conditions);
+        actionsParsed = JSON.parse(automation.actions);
+      } catch {
+        await createAutomationLog(db, {
+          automationId: automation.id,
+          friendId: payload.friendId,
+          eventData: JSON.stringify(payload.eventData ?? {}),
+          actionsResult: JSON.stringify([
+            {
+              action: '_parse',
+              success: false,
+              error: 'Invalid automation conditions or actions JSON',
+            },
+          ]),
+          status: 'failed',
+        });
+        continue;
+      }
+
+      const conditionsOk =
+        conditionsParsed !== null &&
+        typeof conditionsParsed === 'object' &&
+        !Array.isArray(conditionsParsed);
+      const actionsOk = Array.isArray(actionsParsed);
+      if (!conditionsOk || !actionsOk) {
+        await createAutomationLog(db, {
+          automationId: automation.id,
+          friendId: payload.friendId,
+          eventData: JSON.stringify(payload.eventData ?? {}),
+          actionsResult: JSON.stringify([
+            {
+              action: '_parse',
+              success: false,
+              error: 'Automation conditions must be a JSON object and actions a JSON array',
+            },
+          ]),
+          status: 'failed',
+        });
+        continue;
+      }
+
+      const conditions = conditionsParsed as Record<string, unknown>;
+      const actions = actionsParsed as Array<{ type: string; params: Record<string, string> }>;
 
       // 条件チェック（簡易版: 条件が空なら常にマッチ）
       if (!matchConditions(conditions, payload)) continue;
@@ -213,7 +260,11 @@ async function executeAction(
       const lineClient = new LineClient(lineAccessToken);
       const msgType = action.params.messageType || 'text';
       if (msgType === 'flex') {
-        const contents = JSON.parse(action.params.content);
+        const contentsRaw = tryParseJsonLoose(action.params.content);
+        if (contentsRaw === null || typeof contentsRaw !== 'object' || Array.isArray(contentsRaw)) {
+          throw new Error('Invalid flex JSON in automation send_message');
+        }
+        const contents = contentsRaw;
         await lineClient.pushMessage(friend.line_user_id, [
           { type: 'flex', altText: action.params.altText || 'Message', contents },
         ]);
@@ -227,14 +278,18 @@ async function executeAction(
     }
 
     case 'send_webhook': {
-      const url = action.params.url;
-      if (url) {
-        await fetch(url, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ friendId, ...payload.eventData }),
-        });
+      const url = action.params.url?.trim() ?? '';
+      if (!url) {
+        throw new Error('send_webhook requires params.url');
       }
+      if (!isSafeHttpsOutboundUrl(url)) {
+        throw new Error('send_webhook URL is not allowed (use public https only)');
+      }
+      await fetch(url, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ friendId, ...payload.eventData }),
+      });
       break;
     }
 
@@ -268,8 +323,11 @@ async function executeAction(
         .prepare('SELECT metadata FROM friends WHERE id = ?')
         .bind(friendId)
         .first<{ metadata: string }>();
-      const current = JSON.parse(existing?.metadata || '{}') as Record<string, unknown>;
-      const patch = JSON.parse(action.params.data || '{}') as Record<string, unknown>;
+      const current = tryParseJsonRecord(existing?.metadata || '{}') ?? {};
+      const patch = tryParseJsonRecord(action.params.data || '{}');
+      if (patch === null) {
+        throw new Error('set_metadata params.data must be a JSON object');
+      }
       const merged = { ...current, ...patch };
       await db
         .prepare('UPDATE friends SET metadata = ?, updated_at = ? WHERE id = ?')
@@ -297,9 +355,11 @@ async function processNotifications(
     );
 
     for (const rule of rules) {
-      let channels: string[] = JSON.parse(rule.channels);
-      // Guard against double-encoded JSON strings (e.g. "\"[\\\"webhook\\\"]\"")
-      if (typeof channels === 'string') channels = JSON.parse(channels);
+      const channels = parseStringArrayJson(rule.channels);
+      if (!channels) {
+        console.error(`processNotifications: invalid channels JSON for rule ${rule.id}`);
+        continue;
+      }
 
       for (const channel of channels) {
         await createNotification(db, {

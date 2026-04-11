@@ -1,5 +1,5 @@
 import { bench, describe } from 'vitest';
-import { expandVariables } from '../../src/services/step-delivery.js';
+import { expandVariables } from '../../src/services/message-expand-variables.js';
 import { buildSegmentQuery } from '../../src/services/segment-query.js';
 import { buildAllowedOrigins, isAllowedOrigin } from '../../src/services/cors-policy.js';
 

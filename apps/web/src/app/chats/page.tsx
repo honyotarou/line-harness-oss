@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
+import { tryParseJsonRecord } from '@line-crm/shared';
 import { api, fetchApi } from '@/lib/api';
 import { useAccount } from '@/contexts/account-context';
 import Header from '@/components/layout/header';
@@ -158,28 +159,25 @@ function DirectMessagePanel({
   function renderContent(msg: MessageLog) {
     if (msg.messageType === 'text') return msg.content;
     if (msg.messageType === 'flex') {
-      try {
-        const parsed = JSON.parse(msg.content);
-        // Extract ALL text from flex (up to 200 chars)
-        const texts: string[] = [];
-        const collectText = (obj: Record<string, unknown>) => {
-          if (texts.join(' ').length > 200) return;
-          if (obj.type === 'text' && typeof obj.text === 'string') {
-            const t = (obj.text as string).trim();
-            if (t && !t.startsWith('{{')) texts.push(t);
-          }
-          for (const key of ['header', 'body', 'footer']) {
-            if (obj[key]) collectText(obj[key] as Record<string, unknown>);
-          }
-          if (Array.isArray(obj.contents)) {
-            for (const c of obj.contents) collectText(c as Record<string, unknown>);
-          }
-        };
-        collectText(parsed);
-        return texts.slice(0, 4).join('\n') || '[Flex Message]';
-      } catch {
-        return '[Flex Message]';
-      }
+      const parsed = tryParseJsonRecord(msg.content);
+      if (!parsed) return '[Flex Message]';
+      // Extract ALL text from flex (up to 200 chars)
+      const texts: string[] = [];
+      const collectText = (obj: Record<string, unknown>) => {
+        if (texts.join(' ').length > 200) return;
+        if (obj.type === 'text' && typeof obj.text === 'string') {
+          const t = (obj.text as string).trim();
+          if (t && !t.startsWith('{{')) texts.push(t);
+        }
+        for (const key of ['header', 'body', 'footer']) {
+          if (obj[key]) collectText(obj[key] as Record<string, unknown>);
+        }
+        if (Array.isArray(obj.contents)) {
+          for (const c of obj.contents) collectText(c as Record<string, unknown>);
+        }
+      };
+      collectText(parsed);
+      return texts.slice(0, 4).join('\n') || '[Flex Message]';
     }
     return `[${msg.messageType}]`;
   }
@@ -640,11 +638,8 @@ export default function ChatsPage() {
                     if (msg.messageType === 'flex') {
                       // Flexメッセージ — JSONをフォーマットして表示
                       let formatted = msg.content;
-                      try {
-                        formatted = JSON.stringify(JSON.parse(msg.content), null, 2);
-                      } catch {
-                        /* use raw */
-                      }
+                      const flexObj = tryParseJsonRecord(msg.content);
+                      if (flexObj) formatted = JSON.stringify(flexObj, null, 2);
                       bubbleContent = (
                         <div className="max-w-[300px]">
                           <div className="text-xs font-medium mb-1 opacity-70">📋 Flex Message</div>
@@ -657,18 +652,17 @@ export default function ChatsPage() {
                         </div>
                       );
                     } else if (msg.messageType === 'image') {
-                      try {
-                        const parsed = JSON.parse(msg.content);
-                        bubbleContent = (
-                          <img
-                            src={parsed.originalContentUrl || parsed.previewImageUrl}
-                            alt=""
-                            className="max-w-[200px] rounded"
-                          />
-                        );
-                      } catch {
-                        bubbleContent = <span>🖼️ [画像]</span>;
-                      }
+                      const parsed = tryParseJsonRecord(msg.content);
+                      const src =
+                        parsed &&
+                        ((typeof parsed.originalContentUrl === 'string' &&
+                          parsed.originalContentUrl) ||
+                          (typeof parsed.previewImageUrl === 'string' && parsed.previewImageUrl));
+                      bubbleContent = src ? (
+                        <img src={src} alt="" className="max-w-[200px] rounded" />
+                      ) : (
+                        <span>🖼️ [画像]</span>
+                      );
                     } else {
                       bubbleContent = <span>{msg.content}</span>;
                     }

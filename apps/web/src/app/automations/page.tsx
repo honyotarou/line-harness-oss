@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
+import { tryParseJsonLoose, tryParseJsonRecord } from '@line-crm/shared';
 import { api } from '@/lib/api';
 import { useAccount } from '@/contexts/account-context';
 import Header from '@/components/layout/header';
@@ -142,17 +143,14 @@ export default function AutomationsPage() {
       return;
     }
 
-    let parsedActions: AutomationAction[];
-    let parsedConditions: Record<string, unknown>;
-    try {
-      parsedActions = JSON.parse(form.actionsJson);
-    } catch {
+    const actionsRaw = tryParseJsonLoose(form.actionsJson);
+    if (!Array.isArray(actionsRaw)) {
       setFormError('アクションのJSON形式が正しくありません');
       return;
     }
-    try {
-      parsedConditions = JSON.parse(form.conditionsJson);
-    } catch {
+    const parsedActions = actionsRaw as AutomationAction[];
+    const parsedConditions = tryParseJsonRecord(form.conditionsJson);
+    if (parsedConditions === null) {
       setFormError('条件のJSON形式が正しくありません');
       return;
     }

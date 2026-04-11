@@ -9,6 +9,12 @@ import {
   getConversionReport,
 } from '@line-crm/db';
 import type { Env } from '../index.js';
+import {
+  DEFAULT_ADMIN_JSON_BODY_LIMIT_BYTES,
+  jsonBodyReadErrorResponse,
+  readJsonBodyWithLimit,
+} from '../services/request-body.js';
+import { clampListLimit, clampOffset } from '../services/query-limits.js';
 
 const conversions = new Hono<Env>();
 
@@ -37,11 +43,11 @@ conversions.get('/api/conversions/points', async (c) => {
 // POST /api/conversions/points - create
 conversions.post('/api/conversions/points', async (c) => {
   try {
-    const body = await c.req.json<{
+    const body = await readJsonBodyWithLimit<{
       name: string;
       eventType: string;
       value?: number | null;
-    }>();
+    }>(c.req.raw, DEFAULT_ADMIN_JSON_BODY_LIMIT_BYTES);
 
     if (!body.name || !body.eventType) {
       return c.json({ success: false, error: 'name and eventType are required' }, 400);
@@ -62,6 +68,8 @@ conversions.post('/api/conversions/points', async (c) => {
       201,
     );
   } catch (err) {
+    const jr = jsonBodyReadErrorResponse(err);
+    if (jr) return c.json(jr.body, jr.status);
     console.error('POST /api/conversions/points error:', err);
     return c.json({ success: false, error: 'Internal server error' }, 500);
   }
@@ -83,13 +91,13 @@ conversions.delete('/api/conversions/points/:id', async (c) => {
 // POST /api/conversions/track - record conversion
 conversions.post('/api/conversions/track', async (c) => {
   try {
-    const body = await c.req.json<{
+    const body = await readJsonBodyWithLimit<{
       conversionPointId: string;
       friendId: string;
       userId?: string | null;
       affiliateCode?: string | null;
       metadata?: Record<string, unknown> | null;
-    }>();
+    }>(c.req.raw, DEFAULT_ADMIN_JSON_BODY_LIMIT_BYTES);
 
     if (!body.conversionPointId || !body.friendId) {
       return c.json({ success: false, error: 'conversionPointId and friendId are required' }, 400);
@@ -119,6 +127,8 @@ conversions.post('/api/conversions/track', async (c) => {
       201,
     );
   } catch (err) {
+    const jr = jsonBodyReadErrorResponse(err);
+    if (jr) return c.json(jr.body, jr.status);
     console.error('POST /api/conversions/track error:', err);
     return c.json({ success: false, error: 'Internal server error' }, 500);
   }
@@ -133,8 +143,8 @@ conversions.get('/api/conversions/events', async (c) => {
       affiliateCode: c.req.query('affiliateCode'),
       startDate: c.req.query('startDate'),
       endDate: c.req.query('endDate'),
-      limit: Number(c.req.query('limit') ?? '100'),
-      offset: Number(c.req.query('offset') ?? '0'),
+      limit: clampListLimit(c.req.query('limit'), 100, 500),
+      offset: clampOffset(c.req.query('offset'), 500_000),
     });
 
     return c.json({

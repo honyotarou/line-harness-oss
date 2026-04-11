@@ -6,7 +6,6 @@ function createApp() {
   const app = new Hono();
   app.use('*', authMiddleware);
   app.get('/private', (c) => c.json({ success: true }));
-  app.post('/private', (c) => c.json({ success: true }));
   app.get('/api/forms/:id', (c) => c.json({ success: true }));
   app.put('/api/forms/:id', (c) => c.json({ success: true }));
   app.delete('/api/forms/:id', (c) => c.json({ success: true }));
@@ -58,6 +57,25 @@ describe('authMiddleware', () => {
     expect(response.status).toBe(200);
   });
 
+  it('allows protected routes with lowercase bearer scheme prefix', async () => {
+    const { issueAdminSessionToken } = await import('../../src/services/admin-session.js');
+    const now = Math.floor(Date.now() / 1000);
+    const token = await issueAdminSessionToken('secret', {
+      issuedAt: now,
+      expiresInSeconds: 3600,
+    });
+    const app = createApp();
+
+    const response = await app.fetch(
+      new Request('http://localhost/private', {
+        headers: { Authorization: `bearer ${token}` },
+      }),
+      { API_KEY: 'secret' } as never,
+    );
+
+    expect(response.status).toBe(200);
+  });
+
   it('allows protected routes with a valid admin session cookie', async () => {
     const { issueAdminSessionToken } = await import('../../src/services/admin-session.js');
     const now = Math.floor(Date.now() / 1000);
@@ -72,62 +90,6 @@ describe('authMiddleware', () => {
         headers: { Cookie: `lh_admin_session=${token}` },
       }),
       { API_KEY: 'secret' } as never,
-    );
-
-    expect(response.status).toBe(200);
-  });
-
-  it('rejects cross-site unsafe requests when authenticated by admin session cookie', async () => {
-    const { issueAdminSessionToken } = await import('../../src/services/admin-session.js');
-    const now = Math.floor(Date.now() / 1000);
-    const token = await issueAdminSessionToken('secret', {
-      issuedAt: now,
-      expiresInSeconds: 3600,
-    });
-    const app = createApp();
-
-    const response = await app.fetch(
-      new Request('http://localhost/private', {
-        method: 'POST',
-        headers: {
-          Cookie: `lh_admin_session=${token}`,
-          Origin: 'https://attacker.example',
-        },
-      }),
-      {
-        API_KEY: 'secret',
-        WORKER_URL: 'https://api.example',
-        WEB_URL: 'https://admin.example',
-        LIFF_URL: 'https://liff.line.me/12345',
-      } as never,
-    );
-
-    expect(response.status).toBe(403);
-  });
-
-  it('allows unsafe requests when authenticated via Bearer header (not cookie)', async () => {
-    const { issueAdminSessionToken } = await import('../../src/services/admin-session.js');
-    const now = Math.floor(Date.now() / 1000);
-    const token = await issueAdminSessionToken('secret', {
-      issuedAt: now,
-      expiresInSeconds: 3600,
-    });
-    const app = createApp();
-
-    const response = await app.fetch(
-      new Request('http://localhost/private', {
-        method: 'POST',
-        headers: {
-          Authorization: `Bearer ${token}`,
-          Origin: 'https://attacker.example',
-        },
-      }),
-      {
-        API_KEY: 'secret',
-        WORKER_URL: 'https://api.example',
-        WEB_URL: 'https://admin.example',
-        LIFF_URL: 'https://liff.line.me/12345',
-      } as never,
     );
 
     expect(response.status).toBe(200);

@@ -23,6 +23,7 @@ import { fireEvent } from '../services/event-bus.js';
 import { buildMessage, expandVariables } from '../services/step-delivery.js';
 import type { Env } from '../index.js';
 import { BodyTooLargeError, readTextBodyWithLimit } from '../services/request-body.js';
+import { tryParseJsonRecord } from '../services/safe-json.js';
 import {
   welcomeAnxietyFlowEnabled,
   buildWelcomeAnxietyFlexMessage,
@@ -289,7 +290,7 @@ async function handleEvent(
       .prepare('SELECT metadata FROM friends WHERE id = ?')
       .bind(friend.id)
       .first<{ metadata: string | null }>();
-    const meta = JSON.parse(metaRow?.metadata || '{}') as Record<string, unknown>;
+    const meta = tryParseJsonRecord(metaRow?.metadata || '{}') ?? {};
     meta.anxiety = anxietyKey;
     meta.anxiety_selected_at = jstNow();
     await db
@@ -352,7 +353,7 @@ async function handleEvent(
           .prepare('SELECT metadata FROM friends WHERE id = ?')
           .bind(friend.id)
           .first<{ metadata: string }>();
-        const meta = JSON.parse(existing?.metadata || '{}');
+        const meta = tryParseJsonRecord(existing?.metadata || '{}') ?? {};
         meta.preferred_hour = hour;
         await db
           .prepare('UPDATE friends SET metadata = ?, updated_at = ? WHERE id = ?')

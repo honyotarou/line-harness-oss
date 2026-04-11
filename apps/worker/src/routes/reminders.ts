@@ -13,6 +13,11 @@ import {
   cancelFriendReminder,
 } from '@line-crm/db';
 import type { Env } from '../index.js';
+import {
+  DEFAULT_ADMIN_JSON_BODY_LIMIT_BYTES,
+  jsonBodyReadErrorResponse,
+  readJsonBodyWithLimit,
+} from '../services/request-body.js';
 
 const reminders = new Hono<Env>();
 
@@ -86,11 +91,11 @@ reminders.get('/api/reminders/:id', async (c) => {
 
 reminders.post('/api/reminders', async (c) => {
   try {
-    const body = await c.req.json<{
+    const body = await readJsonBodyWithLimit<{
       name: string;
       description?: string;
       lineAccountId?: string | null;
-    }>();
+    }>(c.req.raw, DEFAULT_ADMIN_JSON_BODY_LIMIT_BYTES);
     if (!body.name) return c.json({ success: false, error: 'name is required' }, 400);
     const item = await createReminder(c.env.DB, body);
     // Save line_account_id if provided
@@ -112,6 +117,8 @@ reminders.post('/api/reminders', async (c) => {
       201,
     );
   } catch (err) {
+    const jr = jsonBodyReadErrorResponse(err);
+    if (jr) return c.json(jr.body, jr.status);
     console.error('POST /api/reminders error:', err);
     return c.json({ success: false, error: 'Internal server error' }, 500);
   }
@@ -120,7 +127,10 @@ reminders.post('/api/reminders', async (c) => {
 reminders.put('/api/reminders/:id', async (c) => {
   try {
     const id = c.req.param('id');
-    const body = await c.req.json();
+    const body = await readJsonBodyWithLimit<Record<string, unknown>>(
+      c.req.raw,
+      DEFAULT_ADMIN_JSON_BODY_LIMIT_BYTES,
+    );
     await updateReminder(c.env.DB, id, body);
     const updated = await getReminderById(c.env.DB, id);
     if (!updated) return c.json({ success: false, error: 'Not found' }, 404);
@@ -134,6 +144,8 @@ reminders.put('/api/reminders/:id', async (c) => {
       },
     });
   } catch (err) {
+    const jr = jsonBodyReadErrorResponse(err);
+    if (jr) return c.json(jr.body, jr.status);
     console.error('PUT /api/reminders/:id error:', err);
     return c.json({ success: false, error: 'Internal server error' }, 500);
   }
@@ -154,11 +166,11 @@ reminders.delete('/api/reminders/:id', async (c) => {
 reminders.post('/api/reminders/:id/steps', async (c) => {
   try {
     const reminderId = c.req.param('id');
-    const body = await c.req.json<{
+    const body = await readJsonBodyWithLimit<{
       offsetMinutes: number;
       messageType: string;
       messageContent: string;
-    }>();
+    }>(c.req.raw, DEFAULT_ADMIN_JSON_BODY_LIMIT_BYTES);
     if (body.offsetMinutes === undefined || !body.messageType || !body.messageContent) {
       return c.json(
         { success: false, error: 'offsetMinutes, messageType, messageContent are required' },
@@ -180,6 +192,8 @@ reminders.post('/api/reminders/:id/steps', async (c) => {
       201,
     );
   } catch (err) {
+    const jr = jsonBodyReadErrorResponse(err);
+    if (jr) return c.json(jr.body, jr.status);
     console.error('POST /api/reminders/:id/steps error:', err);
     return c.json({ success: false, error: 'Internal server error' }, 500);
   }
@@ -201,7 +215,10 @@ reminders.post('/api/reminders/:id/enroll/:friendId', async (c) => {
   try {
     const reminderId = c.req.param('id');
     const friendId = c.req.param('friendId');
-    const body = await c.req.json<{ targetDate: string }>();
+    const body = await readJsonBodyWithLimit<{ targetDate: string }>(
+      c.req.raw,
+      DEFAULT_ADMIN_JSON_BODY_LIMIT_BYTES,
+    );
     if (!body.targetDate) return c.json({ success: false, error: 'targetDate is required' }, 400);
     const enrollment = await enrollFriendInReminder(c.env.DB, {
       friendId,
@@ -222,6 +239,8 @@ reminders.post('/api/reminders/:id/enroll/:friendId', async (c) => {
       201,
     );
   } catch (err) {
+    const jr = jsonBodyReadErrorResponse(err);
+    if (jr) return c.json(jr.body, jr.status);
     console.error('POST /api/reminders/:id/enroll/:friendId error:', err);
     return c.json({ success: false, error: 'Internal server error' }, 500);
   }

@@ -8,6 +8,14 @@ import {
   getAutomationLogs,
 } from '@line-crm/db';
 import type { Env } from '../index.js';
+import { unsafeSendWebhookUrlInActions } from '../services/outbound-url.js';
+import {
+  DEFAULT_ADMIN_JSON_BODY_LIMIT_BYTES,
+  jsonBodyReadErrorResponse,
+  readJsonBodyWithLimit,
+} from '../services/request-body.js';
+import { tryParseJsonArray, tryParseJsonLoose, tryParseJsonRecord } from '../services/safe-json.js';
+import { clampListLimit } from '../services/query-limits.js';
 
 const automations = new Hono<Env>();
 
@@ -34,8 +42,8 @@ automations.get('/api/automations', async (c) => {
         name: a.name,
         description: a.description,
         eventType: a.event_type,
-        conditions: JSON.parse(a.conditions),
-        actions: JSON.parse(a.actions),
+        conditions: tryParseJsonRecord(a.conditions) ?? {},
+        actions: tryParseJsonArray(a.actions),
         isActive: Boolean(a.is_active),
         priority: a.priority,
         lineAccountId: a.line_account_id,
@@ -64,8 +72,8 @@ automations.get('/api/automations/:id', async (c) => {
         name: item.name,
         description: item.description,
         eventType: item.event_type,
-        conditions: JSON.parse(item.conditions),
-        actions: JSON.parse(item.actions),
+        conditions: tryParseJsonRecord(item.conditions) ?? {},
+        actions: tryParseJsonArray(item.actions),
         isActive: Boolean(item.is_active),
         priority: item.priority,
         lineAccountId: item.line_account_id,
@@ -74,8 +82,8 @@ automations.get('/api/automations/:id', async (c) => {
         logs: logs.map((l) => ({
           id: l.id,
           friendId: l.friend_id,
-          eventData: l.event_data ? JSON.parse(l.event_data) : null,
-          actionsResult: l.actions_result ? JSON.parse(l.actions_result) : null,
+          eventData: l.event_data ? tryParseJsonLoose(l.event_data) : null,
+          actionsResult: l.actions_result ? tryParseJsonLoose(l.actions_result) : null,
           status: l.status,
           createdAt: l.created_at,
         })),
@@ -89,7 +97,7 @@ automations.get('/api/automations/:id', async (c) => {
 
 automations.post('/api/automations', async (c) => {
   try {
-    const body = await c.req.json<{
+    const body = await readJsonBodyWithLimit<{
       name: string;
       description?: string;
       eventType: string;
@@ -97,9 +105,13 @@ automations.post('/api/automations', async (c) => {
       actions: unknown[];
       priority?: number;
       lineAccountId?: string | null;
-    }>();
+    }>(c.req.raw, DEFAULT_ADMIN_JSON_BODY_LIMIT_BYTES);
     if (!body.name || !body.eventType || !body.actions) {
       return c.json({ success: false, error: 'name, eventType, actions are required' }, 400);
+    }
+    const outboundErr = unsafeSendWebhookUrlInActions(body.actions);
+    if (outboundErr) {
+      return c.json({ success: false, error: outboundErr }, 400);
     }
     const item = await createAutomation(c.env.DB, body);
     // Save line_account_id if provided
@@ -115,7 +127,7 @@ automations.post('/api/automations', async (c) => {
           id: item.id,
           name: item.name,
           eventType: item.event_type,
-          actions: JSON.parse(item.actions),
+          actions: tryParseJsonArray(item.actions),
           isActive: Boolean(item.is_active),
           priority: item.priority,
           lineAccountId: body.lineAccountId ?? item.line_account_id ?? null,
@@ -125,6 +137,8 @@ automations.post('/api/automations', async (c) => {
       201,
     );
   } catch (err) {
+    const jr = jsonBodyReadErrorResponse(err);
+    if (jr) return c.json(jr.body, jr.status);
     console.error('POST /api/automations error:', err);
     return c.json({ success: false, error: 'Internal server error' }, 500);
   }
@@ -133,8 +147,17 @@ automations.post('/api/automations', async (c) => {
 automations.put('/api/automations/:id', async (c) => {
   try {
     const id = c.req.param('id');
-    const body = await c.req.json();
-    await updateAutomation(c.env.DB, id, body);
+    const body = await readJsonBodyWithLimit<Record<string, unknown>>(
+      c.req.raw,
+      DEFAULT_ADMIN_JSON_BODY_LIMIT_BYTES,
+    );
+    if (body.actions !== undefined) {
+      const outboundErr = unsafeSendWebhookUrlInActions(body.actions);
+      if (outboundErr) {
+        return c.json({ success: false, error: outboundErr }, 400);
+      }
+    }
+    await updateAutomation(c.env.DB, id, body as never);
     const updated = await getAutomationById(c.env.DB, id);
     if (!updated) return c.json({ success: false, error: 'Not found' }, 404);
     return c.json({
@@ -143,14 +166,16 @@ automations.put('/api/automations/:id', async (c) => {
         id: updated.id,
         name: updated.name,
         eventType: updated.event_type,
-        conditions: JSON.parse(updated.conditions),
-        actions: JSON.parse(updated.actions),
+        conditions: tryParseJsonRecord(updated.conditions) ?? {},
+        actions: tryParseJsonArray(updated.actions),
         isActive: Boolean(updated.is_active),
         priority: updated.priority,
         lineAccountId: updated.line_account_id,
       },
     });
   } catch (err) {
+    const jr = jsonBodyReadErrorResponse(err);
+    if (jr) return c.json(jr.body, jr.status);
     console.error('PUT /api/automations/:id error:', err);
     return c.json({ success: false, error: 'Internal server error' }, 500);
   }
@@ -171,7 +196,7 @@ automations.delete('/api/automations/:id', async (c) => {
 automations.get('/api/automations/:id/logs', async (c) => {
   try {
     const automationId = c.req.param('id');
-    const limit = Number(c.req.query('limit') ?? '100');
+    const limit = clampListLimit(c.req.query('limit'), 100, 500);
     const logs = await getAutomationLogs(c.env.DB, automationId, limit);
     return c.json({
       success: true,
@@ -179,8 +204,8 @@ automations.get('/api/automations/:id/logs', async (c) => {
         id: l.id,
         automationId: l.automation_id,
         friendId: l.friend_id,
-        eventData: l.event_data ? JSON.parse(l.event_data) : null,
-        actionsResult: l.actions_result ? JSON.parse(l.actions_result) : null,
+        eventData: l.event_data ? tryParseJsonLoose(l.event_data) : null,
+        actionsResult: l.actions_result ? tryParseJsonLoose(l.actions_result) : null,
         status: l.status,
         createdAt: l.created_at,
       })),

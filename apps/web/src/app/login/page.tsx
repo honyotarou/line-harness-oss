@@ -1,9 +1,18 @@
 'use client';
 import { useEffect, useState } from 'react';
-import { ApiError, api, setAdminSessionToken } from '@/lib/api';
+import { ApiError, api, setAdminSessionToken, useCloudflareAccessLoginMode } from '@/lib/api';
 import { Input } from '@/components/ui/field';
 
+function errorMessageFromApi(err: unknown): string | undefined {
+  if (err instanceof ApiError && err.body && typeof err.body === 'object' && err.body !== null) {
+    const e = (err.body as { error?: unknown }).error;
+    return typeof e === 'string' && e.trim() ? e : undefined;
+  }
+  return undefined;
+}
+
 export default function LoginPage() {
+  const accessLogin = useCloudflareAccessLoginMode();
   const [apiKey, setApiKey] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
@@ -19,18 +28,30 @@ export default function LoginPage() {
     setError('');
 
     try {
-      const res = await api.auth.login(apiKey);
+      const res = await api.auth.login(accessLogin ? undefined : apiKey);
       if (res.success && res.data?.sessionToken) {
         setAdminSessionToken(res.data.sessionToken);
         window.location.assign('/');
       } else if (res.success) {
         window.location.assign('/');
       } else {
-        setError('APIキーが正しくありません');
+        setError(accessLogin ? 'セッションの開始に失敗しました' : 'APIキーが正しくありません');
       }
     } catch (err) {
-      if (err instanceof ApiError && err.status === 401) {
-        setError('APIキーが正しくありません');
+      const fromBody = errorMessageFromApi(err);
+      // Worker returns `{ error: 'Unauthorized' }` for bad API key; keep a friendly JP message for admins.
+      const preferJp401 =
+        err instanceof ApiError && err.status === 401 && (!fromBody || fromBody === 'Unauthorized');
+      if (fromBody && !preferJp401) {
+        setError(fromBody);
+      } else if (err instanceof ApiError && err.status === 401) {
+        setError(
+          accessLogin
+            ? 'Cloudflare Access のログインが必要です（JWT が Worker に届いているか確認してください）'
+            : 'APIキーが正しくありません',
+        );
+      } else if (err instanceof ApiError && err.status === 400) {
+        setError(fromBody ?? 'リクエストが無効です');
       } else {
         setError('接続に失敗しました');
       }
@@ -62,23 +83,30 @@ export default function LoginPage() {
           </div>
         ) : (
           <form onSubmit={handleLogin}>
-            <div className="mb-4">
-              <label className="block text-sm font-medium text-gray-700 mb-1">API Key</label>
-              <Input
-                type="password"
-                value={apiKey}
-                onChange={(e) => setApiKey(e.target.value)}
-                placeholder="APIキーを入力"
-                className="px-4 py-3 focus:border-transparent"
-                autoFocus
-              />
-            </div>
+            {accessLogin ? (
+              <p className="text-sm text-gray-600 mb-4">
+                Cloudflare Access で認証したうえで、管理用セッションを発行します。先に Access
+                のログインを完了してください。
+              </p>
+            ) : (
+              <div className="mb-4">
+                <label className="block text-sm font-medium text-gray-700 mb-1">API Key</label>
+                <Input
+                  type="password"
+                  value={apiKey}
+                  onChange={(e) => setApiKey(e.target.value)}
+                  placeholder="APIキーを入力"
+                  className="px-4 py-3 focus:border-transparent"
+                  autoFocus
+                />
+              </div>
+            )}
 
             {error && <p className="text-sm text-[var(--color-error)] mb-4">{error}</p>}
 
             <button
               type="submit"
-              disabled={loading || !apiKey}
+              disabled={loading || (!accessLogin && !apiKey)}
               className="w-full py-3 text-white font-medium rounded-lg transition-opacity hover:opacity-90 disabled:opacity-50"
               style={{ backgroundColor: 'var(--color-primary)' }}
             >

@@ -7,6 +7,11 @@ import {
   deleteTemplate,
 } from '@line-crm/db';
 import type { Env } from '../index.js';
+import {
+  DEFAULT_ADMIN_JSON_BODY_LIMIT_BYTES,
+  jsonBodyReadErrorResponse,
+  readJsonBodyWithLimit,
+} from '../services/request-body.js';
 
 const templates = new Hono<Env>();
 
@@ -57,12 +62,12 @@ templates.get('/api/templates/:id', async (c) => {
 
 templates.post('/api/templates', async (c) => {
   try {
-    const body = await c.req.json<{
+    const body = await readJsonBodyWithLimit<{
       name: string;
       category?: string;
       messageType: string;
       messageContent: string;
-    }>();
+    }>(c.req.raw, DEFAULT_ADMIN_JSON_BODY_LIMIT_BYTES);
     if (!body.name || !body.messageType || !body.messageContent) {
       return c.json(
         { success: false, error: 'name, messageType, messageContent are required' },
@@ -72,6 +77,8 @@ templates.post('/api/templates', async (c) => {
     const item = await createTemplate(c.env.DB, body);
     return c.json({ success: true, data: serializeTemplate(item) }, 201);
   } catch (err) {
+    const jr = jsonBodyReadErrorResponse(err);
+    if (jr) return c.json(jr.body, jr.status);
     console.error('POST /api/templates error:', err);
     return c.json({ success: false, error: 'Internal server error' }, 500);
   }
@@ -80,12 +87,17 @@ templates.post('/api/templates', async (c) => {
 templates.put('/api/templates/:id', async (c) => {
   try {
     const id = c.req.param('id');
-    const body = await c.req.json();
+    const body = await readJsonBodyWithLimit<Record<string, unknown>>(
+      c.req.raw,
+      DEFAULT_ADMIN_JSON_BODY_LIMIT_BYTES,
+    );
     await updateTemplate(c.env.DB, id, body);
     const updated = await getTemplateById(c.env.DB, id);
     if (!updated) return c.json({ success: false, error: 'Not found' }, 404);
     return c.json({ success: true, data: serializeTemplate(updated) });
   } catch (err) {
+    const jr = jsonBodyReadErrorResponse(err);
+    if (jr) return c.json(jr.body, jr.status);
     console.error('PUT /api/templates/:id error:', err);
     return c.json({ success: false, error: 'Internal server error' }, 500);
   }

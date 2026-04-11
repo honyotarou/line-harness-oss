@@ -2,6 +2,8 @@ import { Hono } from 'hono';
 import { getStripeEvents, getStripeEventByStripeId, createStripeEvent, jstNow } from '@line-crm/db';
 import type { Env } from '../index.js';
 import { verifyStripeSignature } from '../services/stripe-signature.js';
+import { tryParseJsonRecord } from '../services/safe-json.js';
+import { clampListLimit } from '../services/query-limits.js';
 
 const stripe = new Hono<Env>();
 
@@ -26,7 +28,7 @@ stripe.get('/api/integrations/stripe/events', async (c) => {
   try {
     const friendId = c.req.query('friendId') ?? undefined;
     const eventType = c.req.query('eventType') ?? undefined;
-    const limit = Number(c.req.query('limit') ?? '100');
+    const limit = clampListLimit(c.req.query('limit'), 100, 500);
     const items = await getStripeEvents(c.env.DB, { friendId, eventType, limit });
     return c.json({
       success: true,
@@ -37,7 +39,7 @@ stripe.get('/api/integrations/stripe/events', async (c) => {
         friendId: e.friend_id,
         amount: e.amount,
         currency: e.currency,
-        metadata: e.metadata ? JSON.parse(e.metadata) : null,
+        metadata: tryParseJsonRecord(e.metadata),
         processedAt: e.processed_at,
       })),
     });
@@ -65,7 +67,12 @@ stripe.post('/api/integrations/stripe/webhook', async (c) => {
     if (!valid) {
       return c.json({ success: false, error: 'Stripe signature verification failed' }, 401);
     }
-    const body = JSON.parse(rawBody) as StripeWebhookBody;
+    let body: StripeWebhookBody;
+    try {
+      body = JSON.parse(rawBody) as StripeWebhookBody;
+    } catch {
+      return c.json({ success: false, error: 'Invalid JSON body' }, 400);
+    }
 
     // 冪等性チェック
     const existing = await getStripeEventByStripeId(c.env.DB, body.id);

@@ -50,6 +50,7 @@ describe('api object (integration via global fetch)', () => {
   });
 
   it('auth.login POSTs apiKey JSON body', async () => {
+    delete process.env.NEXT_PUBLIC_USE_CLOUDFLARE_ACCESS_LOGIN;
     const { api } = await import('./api');
     await api.auth.login('secret-key');
     expect(globalThis.fetch).toHaveBeenCalledWith(
@@ -59,6 +60,20 @@ describe('api object (integration via global fetch)', () => {
         body: JSON.stringify({ apiKey: 'secret-key' }),
       }),
     );
+  });
+
+  it('auth.login POSTs empty JSON when NEXT_PUBLIC_USE_CLOUDFLARE_ACCESS_LOGIN', async () => {
+    process.env.NEXT_PUBLIC_USE_CLOUDFLARE_ACCESS_LOGIN = '1';
+    const { api } = await import('./api');
+    await api.auth.login();
+    expect(globalThis.fetch).toHaveBeenCalledWith(
+      'http://worker.test/api/auth/login',
+      expect.objectContaining({
+        method: 'POST',
+        body: JSON.stringify({}),
+      }),
+    );
+    delete process.env.NEXT_PUBLIC_USE_CLOUDFLARE_ACCESS_LOGIN;
   });
 
   it('scenarios.list adds lineAccountId query when accountId set', async () => {

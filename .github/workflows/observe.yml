@@ -1,0 +1,97 @@
+name: Observe (scheduled)
+
+on:
+  workflow_dispatch:
+  schedule:
+    # Monthly, 1st day 02:30 UTC (adjust as needed)
+    - cron: '30 2 1 * *'
+
+concurrency:
+  group: observe-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  observe:
+    runs-on: ubuntu-latest
+
+    strategy:
+      # "Speed is optional; stability is mandatory"
+      max-parallel: 2
+      fail-fast: false
+      matrix:
+        slice:
+          - name: harness-ci
+            command: pnpm harness:ci
+          - name: e2e
+            command: pnpm test:e2e
+          - name: api-integration
+            command: pnpm test:api
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'pnpm'
+
+      - name: Install
+        run: pnpm install --frozen-lockfile
+
+      - name: Install Playwright Chromium (for e2e slice)
+        if: matrix.slice.name == 'e2e'
+        run: pnpm exec playwright install chromium --with-deps
+
+      - name: Install Hurl (for api-integration slice)
+        if: matrix.slice.name == 'api-integration'
+        run: |
+          set -euo pipefail
+          HURL_VER=6.1.1
+          curl -fsSL -o /tmp/hurl.deb "https://github.com/Orange-OpenSource/hurl/releases/download/${HURL_VER}/hurl_${HURL_VER}_amd64.deb"
+          sudo apt-get install -y /tmp/hurl.deb
+
+      - name: Run (with retry)
+        env:
+          # LIFF production build (vite guard requires VITE_API_URL) needs this even in CI.
+          VITE_API_URL: https://ci.liff.api.placeholder.invalid
+        run: |
+          set -euo pipefail
+          echo "slice=${{ matrix.slice.name }}"
+          echo "cmd=${{ matrix.slice.command }}"
+
+          # Retry once to absorb transient failures (network, flaky infra).
+          attempt=1
+          until [ "$attempt" -gt 2 ]; do
+            echo "Attempt ${attempt}/2"
+            if ${{ matrix.slice.command }}; then
+              exit 0
+            fi
+            attempt=$((attempt+1))
+            sleep 5
+          done
+          exit 1
+
+      - name: Upload artifacts (coverage, reports)
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: observe-${{ matrix.slice.name }}-${{ github.run_id }}
+          if-no-files-found: ignore
+          path: |
+            apps/**/coverage/**
+            playwright-report/**
+            test-results/**
+
+      - name: Summary
+        if: always()
+        run: |
+          {
+            echo "## Observe run"
+            echo ""
+            echo "- slice: \`${{ matrix.slice.name }}\`"
+            echo "- command: \`${{ matrix.slice.command }}\`"
+            echo "- run: \`${{ github.run_id }}\`"
+          } >> "$GITHUB_STEP_SUMMARY"
+

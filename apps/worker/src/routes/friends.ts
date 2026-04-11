@@ -16,8 +16,17 @@ import { fireEvent } from '../services/event-bus.js';
 import { buildMessage } from '../services/step-delivery.js';
 import type { Env } from '../index.js';
 import { resolveLineAccessTokenForFriend } from '../services/line-account-routing.js';
+import { tryParseJsonRecord } from '../services/safe-json.js';
+import {
+  DEFAULT_ADMIN_JSON_BODY_LIMIT_BYTES,
+  jsonBodyReadErrorResponse,
+  readJsonBodyWithLimit,
+} from '../services/request-body.js';
+import { mergeFriendMetadataPatch } from '../services/friend-metadata-merge.js';
+import { clampListLimit, clampOffset } from '../services/query-limits.js';
 
 const friends = new Hono<Env>();
+const FRIEND_METADATA_PATCH_LIMIT_BYTES = 64 * 1024;
 
 /** Convert a D1 snake_case Friend row to the shared camelCase shape */
 function serializeFriend(row: DbFriend) {
@@ -29,7 +38,7 @@ function serializeFriend(row: DbFriend) {
     statusMessage: row.status_message,
     isFollowing: Boolean(row.is_following),
     lineAccountId: row.line_account_id,
-    metadata: JSON.parse(row.metadata || '{}'),
+    metadata: tryParseJsonRecord(row.metadata || '{}') ?? {},
     refCode: (row as unknown as Record<string, unknown>).ref_code as string | null,
     userId: row.user_id,
     createdAt: row.created_at,
@@ -50,8 +59,8 @@ function serializeTag(row: DbTag) {
 // GET /api/friends - list with pagination
 friends.get('/api/friends', async (c) => {
   try {
-    const limit = Number(c.req.query('limit') ?? '50');
-    const offset = Number(c.req.query('offset') ?? '0');
+    const limit = clampListLimit(c.req.query('limit'), 50, 200);
+    const offset = clampOffset(c.req.query('offset'), 500_000);
     const tagId = c.req.query('tagId');
     const lineAccountId = c.req.query('lineAccountId');
 
@@ -191,7 +200,10 @@ friends.get('/api/friends/:id', async (c) => {
 friends.post('/api/friends/:id/tags', async (c) => {
   try {
     const friendId = c.req.param('id');
-    const body = await c.req.json<{ tagId: string }>();
+    const body = await readJsonBodyWithLimit<{ tagId: string }>(
+      c.req.raw,
+      DEFAULT_ADMIN_JSON_BODY_LIMIT_BYTES,
+    );
 
     if (!body.tagId) {
       return c.json({ success: false, error: 'tagId is required' }, 400);
@@ -226,6 +238,8 @@ friends.post('/api/friends/:id/tags', async (c) => {
 
     return c.json({ success: true, data: null }, 201);
   } catch (err) {
+    const jr = jsonBodyReadErrorResponse(err);
+    if (jr) return c.json(jr.body, jr.status);
     console.error('POST /api/friends/:id/tags error:', err);
     return c.json({ success: false, error: 'Internal server error' }, 500);
   }
@@ -260,9 +274,31 @@ friends.put('/api/friends/:id/metadata', async (c) => {
       return c.json({ success: false, error: 'Friend not found' }, 404);
     }
 
-    const body = await c.req.json<Record<string, unknown>>();
-    const existing = JSON.parse(friend.metadata || '{}');
-    const merged = { ...existing, ...body };
+    let body: Record<string, unknown>;
+    try {
+      body = await readJsonBodyWithLimit<Record<string, unknown>>(
+        c.req.raw,
+        FRIEND_METADATA_PATCH_LIMIT_BYTES,
+      );
+    } catch (err) {
+      const jr = jsonBodyReadErrorResponse(err);
+      if (jr) return c.json(jr.body, jr.status);
+      throw err;
+    }
+    let existing: Record<string, unknown>;
+    try {
+      existing = JSON.parse(friend.metadata || '{}') as Record<string, unknown>;
+    } catch {
+      return c.json(
+        { success: false, error: 'Stored friend metadata is invalid JSON; fix in DB before merge' },
+        422,
+      );
+    }
+    const mergedResult = mergeFriendMetadataPatch(existing, body);
+    if (!mergedResult.ok) {
+      return c.json({ success: false, error: mergedResult.error }, mergedResult.status);
+    }
+    const merged = mergedResult.merged;
     const now = jstNow();
 
     await db
@@ -290,11 +326,13 @@ friends.put('/api/friends/:id/metadata', async (c) => {
 friends.get('/api/friends/:id/messages', async (c) => {
   try {
     const friendId = c.req.param('id');
+    const msgLimit = clampListLimit(c.req.query('limit'), 200, 500);
+    const msgOffset = clampOffset(c.req.query('offset'), 500_000);
     const result = await c.env.DB.prepare(
       `SELECT id, direction, message_type as messageType, content, created_at as createdAt
-         FROM messages_log WHERE friend_id = ? ORDER BY created_at ASC LIMIT 200`,
+         FROM messages_log WHERE friend_id = ? ORDER BY created_at ASC LIMIT ? OFFSET ?`,
     )
-      .bind(friendId)
+      .bind(friendId, msgLimit, msgOffset)
       .all<{
         id: string;
         direction: string;
@@ -313,10 +351,10 @@ friends.get('/api/friends/:id/messages', async (c) => {
 friends.post('/api/friends/:id/messages', async (c) => {
   try {
     const friendId = c.req.param('id');
-    const body = await c.req.json<{
+    const body = await readJsonBodyWithLimit<{
       messageType?: string;
       content: string;
-    }>();
+    }>(c.req.raw, DEFAULT_ADMIN_JSON_BODY_LIMIT_BYTES);
 
     if (!body.content) {
       return c.json({ success: false, error: 'content is required' }, 400);
@@ -352,6 +390,8 @@ friends.post('/api/friends/:id/messages', async (c) => {
 
     return c.json({ success: true, data: { messageId: logId } });
   } catch (err) {
+    const jr = jsonBodyReadErrorResponse(err);
+    if (jr) return c.json(jr.body, jr.status);
     console.error('POST /api/friends/:id/messages error:', err);
     return c.json({ success: false, error: 'Internal server error' }, 500);
   }

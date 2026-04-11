@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import type { NotificationRule, Notification } from '@line-crm/shared';
+import { tryParseJsonLoose, tryParseJsonRecord } from '@line-crm/shared';
 import { api } from '@/lib/api';
 import { useAccount } from '@/contexts/account-context';
 import Header from '@/components/layout/header';
@@ -41,6 +42,27 @@ function formatDatetime(iso: string): string {
     hour: '2-digit',
     minute: '2-digit',
   });
+}
+
+function parseRuleChannels(raw: unknown): string[] {
+  if (Array.isArray(raw)) {
+    return raw.filter((x): x is string => typeof x === 'string');
+  }
+  if (typeof raw === 'string') {
+    const v = tryParseJsonLoose(raw);
+    if (Array.isArray(v)) return v.filter((x): x is string => typeof x === 'string');
+  }
+  return [];
+}
+
+function parseRuleConditions(raw: unknown): Record<string, unknown> {
+  if (raw && typeof raw === 'object' && !Array.isArray(raw)) {
+    return raw as Record<string, unknown>;
+  }
+  if (typeof raw === 'string') {
+    return tryParseJsonRecord(raw) ?? {};
+  }
+  return {};
 }
 
 const ccPrompts = [
@@ -89,8 +111,8 @@ export default function NotificationsPage() {
         setRules(
           (res.data as unknown as NotificationRule[]).map((r: NotificationRule) => ({
             ...r,
-            channels: typeof r.channels === 'string' ? JSON.parse(r.channels) : r.channels,
-            conditions: typeof r.conditions === 'string' ? JSON.parse(r.conditions) : r.conditions,
+            channels: parseRuleChannels(r.channels as unknown),
+            conditions: parseRuleConditions(r.conditions as unknown),
           })),
         );
       } else setError(res.error);
@@ -139,10 +161,8 @@ export default function NotificationsPage() {
       return;
     }
 
-    let conditions: Record<string, unknown> = {};
-    try {
-      conditions = JSON.parse(form.conditions);
-    } catch {
+    const conditions = tryParseJsonRecord(form.conditions);
+    if (conditions === null) {
       setFormError('条件のJSONが不正です');
       return;
     }

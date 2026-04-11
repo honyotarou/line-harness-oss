@@ -10,6 +10,11 @@ import {
   addScore,
 } from '@line-crm/db';
 import type { Env } from '../index.js';
+import {
+  DEFAULT_ADMIN_JSON_BODY_LIMIT_BYTES,
+  jsonBodyReadErrorResponse,
+  readJsonBodyWithLimit,
+} from '../services/request-body.js';
 
 const scoring = new Hono<Env>();
 
@@ -61,13 +66,19 @@ scoring.get('/api/scoring-rules/:id', async (c) => {
 
 scoring.post('/api/scoring-rules', async (c) => {
   try {
-    const body = await c.req.json<{ name: string; eventType: string; scoreValue: number }>();
+    const body = await readJsonBodyWithLimit<{
+      name: string;
+      eventType: string;
+      scoreValue: number;
+    }>(c.req.raw, DEFAULT_ADMIN_JSON_BODY_LIMIT_BYTES);
     if (!body.name || !body.eventType || body.scoreValue === undefined) {
       return c.json({ success: false, error: 'name, eventType, scoreValue are required' }, 400);
     }
     const item = await createScoringRule(c.env.DB, body);
     return c.json({ success: true, data: serializeScoringRule(item) }, 201);
   } catch (err) {
+    const jr = jsonBodyReadErrorResponse(err);
+    if (jr) return c.json(jr.body, jr.status);
     console.error('POST /api/scoring-rules error:', err);
     return c.json({ success: false, error: 'Internal server error' }, 500);
   }
@@ -76,12 +87,17 @@ scoring.post('/api/scoring-rules', async (c) => {
 scoring.put('/api/scoring-rules/:id', async (c) => {
   try {
     const id = c.req.param('id');
-    const body = await c.req.json();
+    const body = await readJsonBodyWithLimit<Record<string, unknown>>(
+      c.req.raw,
+      DEFAULT_ADMIN_JSON_BODY_LIMIT_BYTES,
+    );
     await updateScoringRule(c.env.DB, id, body);
     const updated = await getScoringRuleById(c.env.DB, id);
     if (!updated) return c.json({ success: false, error: 'Not found' }, 404);
     return c.json({ success: true, data: serializeScoringRule(updated) });
   } catch (err) {
+    const jr = jsonBodyReadErrorResponse(err);
+    if (jr) return c.json(jr.body, jr.status);
     console.error('PUT /api/scoring-rules/:id error:', err);
     return c.json({ success: false, error: 'Internal server error' }, 500);
   }
@@ -130,13 +146,18 @@ scoring.get('/api/friends/:id/score', async (c) => {
 scoring.post('/api/friends/:id/score', async (c) => {
   try {
     const friendId = c.req.param('id');
-    const body = await c.req.json<{ scoreChange: number; reason?: string }>();
+    const body = await readJsonBodyWithLimit<{ scoreChange: number; reason?: string }>(
+      c.req.raw,
+      DEFAULT_ADMIN_JSON_BODY_LIMIT_BYTES,
+    );
     if (body.scoreChange === undefined)
       return c.json({ success: false, error: 'scoreChange is required' }, 400);
     await addScore(c.env.DB, { friendId, scoreChange: body.scoreChange, reason: body.reason });
     const newScore = await getFriendScore(c.env.DB, friendId);
     return c.json({ success: true, data: { friendId, currentScore: newScore } }, 201);
   } catch (err) {
+    const jr = jsonBodyReadErrorResponse(err);
+    if (jr) return c.json(jr.body, jr.status);
     console.error('POST /api/friends/:id/score error:', err);
     return c.json({ success: false, error: 'Internal server error' }, 500);
   }

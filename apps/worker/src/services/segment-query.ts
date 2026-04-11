@@ -14,6 +14,15 @@ export interface SegmentCondition {
   rules: SegmentRule[];
 }
 
+/** Single JSON path segment only (mitigate json_extract path injection). */
+const SAFE_METADATA_KEY = /^[a-zA-Z0-9_]{1,64}$/;
+
+function assertSafeMetadataKey(key: string): void {
+  if (!SAFE_METADATA_KEY.test(key)) {
+    throw new Error('metadata key must be 1–64 chars: letters, digits, underscore only');
+  }
+}
+
 export function buildSegmentQuery(condition: SegmentCondition): {
   sql: string;
   bindings: unknown[];
@@ -55,6 +64,7 @@ export function buildSegmentQuery(condition: SegmentCondition): {
           throw new Error('metadata_equals rule requires { key: string; value: string }');
         }
         const mv = rule.value as { key: string; value: string };
+        assertSafeMetadataKey(mv.key);
         clauses.push(`json_extract(f.metadata, ?) = ?`);
         bindings.push(`$.${mv.key}`, mv.value);
         break;
@@ -70,6 +80,7 @@ export function buildSegmentQuery(condition: SegmentCondition): {
           throw new Error('metadata_not_equals rule requires { key: string; value: string }');
         }
         const mv = rule.value as { key: string; value: string };
+        assertSafeMetadataKey(mv.key);
         clauses.push(`(json_extract(f.metadata, ?) IS NULL OR json_extract(f.metadata, ?) != ?)`);
         bindings.push(`$.${mv.key}`, `$.${mv.key}`, mv.value);
         break;

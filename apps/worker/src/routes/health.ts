@@ -8,6 +8,11 @@ import {
   updateAccountMigration,
 } from '@line-crm/db';
 import type { Env } from '../index.js';
+import {
+  DEFAULT_ADMIN_JSON_BODY_LIMIT_BYTES,
+  jsonBodyReadErrorResponse,
+  readJsonBodyWithLimit,
+} from '../services/request-body.js';
 
 const health = new Hono<Env>();
 
@@ -68,7 +73,10 @@ health.get('/api/accounts/migrations', async (c) => {
 health.post('/api/accounts/:id/migrate', async (c) => {
   try {
     const fromAccountId = c.req.param('id');
-    const body = await c.req.json<{ toAccountId: string }>();
+    const body = await readJsonBodyWithLimit<{ toAccountId: string }>(
+      c.req.raw,
+      DEFAULT_ADMIN_JSON_BODY_LIMIT_BYTES,
+    );
     if (!body.toAccountId) return c.json({ success: false, error: 'toAccountId is required' }, 400);
 
     const db = c.env.DB;
@@ -108,6 +116,8 @@ health.post('/api/accounts/:id/migrate', async (c) => {
       201,
     );
   } catch (err) {
+    const jr = jsonBodyReadErrorResponse(err);
+    if (jr) return c.json(jr.body, jr.status);
     console.error('POST /api/accounts/:id/migrate error:', err);
     return c.json({ success: false, error: 'Internal server error' }, 500);
   }

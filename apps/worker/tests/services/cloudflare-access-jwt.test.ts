@@ -1,0 +1,154 @@
+import { describe, expect, it, vi, afterEach } from 'vitest';
+import * as jose from 'jose';
+
+describe('verifyCloudflareAccessJwt', () => {
+  afterEach(async () => {
+    vi.unstubAllGlobals();
+    const { resetCloudflareAccessJwksCacheForTests } = await import(
+      '../../src/services/cloudflare-access-jwt.js'
+    );
+    resetCloudflareAccessJwksCacheForTests();
+  });
+
+  it('rejects when jwt is empty', async () => {
+    const { verifyCloudflareAccessJwt } = await import(
+      '../../src/services/cloudflare-access-jwt.js'
+    );
+    const r = await verifyCloudflareAccessJwt({
+      jwt: '',
+      teamDomain: 'team.cloudflareaccess.com',
+      fetchFn: vi.fn(),
+    });
+    expect(r.ok).toBe(false);
+    if (!r.ok) expect(r.reason).toMatch(/missing/i);
+  });
+
+  it('rejects when certs fetch fails', async () => {
+    const teamDomain = 'team.cloudflareaccess.com';
+    const issuer = `https://${teamDomain}`;
+    const { privateKey } = await jose.generateKeyPair('RS256', { extractable: true });
+
+    const jwt = await new jose.SignJWT({})
+      .setProtectedHeader({ alg: 'RS256', kid: 'kid-fetch-fail' })
+      .setIssuer(issuer)
+      .setExpirationTime('1h')
+      .sign(privateKey);
+
+    const { verifyCloudflareAccessJwt } = await import(
+      '../../src/services/cloudflare-access-jwt.js'
+    );
+    const fetchFn = vi.fn().mockResolvedValue(new Response('nope', { status: 500 }));
+    const r = await verifyCloudflareAccessJwt({
+      jwt,
+      teamDomain,
+      fetchFn,
+    });
+    expect(r.ok).toBe(false);
+    if (!r.ok) expect(r.reason).toMatch(/cert/i);
+  });
+
+  it('accepts a valid RS256 JWT signed by a key published in mocked JWKS', async () => {
+    const teamDomain = 'testteam.cloudflareaccess.com';
+    const issuer = `https://${teamDomain}`;
+
+    const { privateKey, publicKey } = await jose.generateKeyPair('RS256', { extractable: true });
+    const pubJwk = await jose.exportJWK(publicKey);
+    pubJwk.kid = 'cf-access-test-kid';
+    pubJwk.alg = 'RS256';
+    pubJwk.use = 'sig';
+
+    const jwt = await new jose.SignJWT({ email: 'admin@example.com' })
+      .setProtectedHeader({ alg: 'RS256', kid: 'cf-access-test-kid' })
+      .setIssuer(issuer)
+      .setAudience('test-aud')
+      .setExpirationTime('1h')
+      .sign(privateKey);
+
+    const fetchFn = vi.fn().mockImplementation((url: string) => {
+      expect(url).toBe(`https://${teamDomain}/cdn-cgi/access/certs`);
+      return new Response(JSON.stringify({ keys: [pubJwk] }), {
+        status: 200,
+        headers: { 'Content-Type': 'application/json' },
+      });
+    });
+
+    const { verifyCloudflareAccessJwt } = await import(
+      '../../src/services/cloudflare-access-jwt.js'
+    );
+    const r = await verifyCloudflareAccessJwt({
+      jwt,
+      teamDomain,
+      fetchFn,
+    });
+
+    expect(r.ok).toBe(true);
+    if (r.ok) {
+      expect(r.payload.email).toBe('admin@example.com');
+    }
+    expect(fetchFn).toHaveBeenCalledTimes(1);
+  });
+
+  it('rejects when email is not in CLOUDFLARE_ACCESS_ALLOWED_EMAILS', async () => {
+    const teamDomain = 'testteam.cloudflareaccess.com';
+    const issuer = `https://${teamDomain}`;
+
+    const { privateKey, publicKey } = await jose.generateKeyPair('RS256', { extractable: true });
+    const pubJwk = await jose.exportJWK(publicKey);
+    pubJwk.kid = 'kid-email';
+    pubJwk.alg = 'RS256';
+    pubJwk.use = 'sig';
+
+    const jwt = await new jose.SignJWT({ email: 'evil@example.com' })
+      .setProtectedHeader({ alg: 'RS256', kid: 'kid-email' })
+      .setIssuer(issuer)
+      .setExpirationTime('1h')
+      .sign(privateKey);
+
+    const fetchFn = vi
+      .fn()
+      .mockResolvedValue(new Response(JSON.stringify({ keys: [pubJwk] }), { status: 200 }));
+
+    const { verifyCloudflareAccessJwt } = await import(
+      '../../src/services/cloudflare-access-jwt.js'
+    );
+    const r = await verifyCloudflareAccessJwt({
+      jwt,
+      teamDomain,
+      allowedEmails: 'good@example.com',
+      fetchFn,
+    });
+    expect(r.ok).toBe(false);
+    if (!r.ok) expect(r.reason).toMatch(/email/i);
+  });
+
+  it('rejects expired jwt', async () => {
+    const teamDomain = 'testteam.cloudflareaccess.com';
+    const issuer = `https://${teamDomain}`;
+
+    const { privateKey, publicKey } = await jose.generateKeyPair('RS256', { extractable: true });
+    const pubJwk = await jose.exportJWK(publicKey);
+    pubJwk.kid = 'kid-exp';
+    pubJwk.alg = 'RS256';
+    pubJwk.use = 'sig';
+
+    const jwt = await new jose.SignJWT({})
+      .setProtectedHeader({ alg: 'RS256', kid: 'kid-exp' })
+      .setIssuer(issuer)
+      .setExpirationTime(new Date(Date.now() - 60_000))
+      .sign(privateKey);
+
+    const fetchFn = vi
+      .fn()
+      .mockResolvedValue(new Response(JSON.stringify({ keys: [pubJwk] }), { status: 200 }));
+
+    const { verifyCloudflareAccessJwt } = await import(
+      '../../src/services/cloudflare-access-jwt.js'
+    );
+    const r = await verifyCloudflareAccessJwt({
+      jwt,
+      teamDomain,
+      fetchFn,
+    });
+    expect(r.ok).toBe(false);
+  });
+});

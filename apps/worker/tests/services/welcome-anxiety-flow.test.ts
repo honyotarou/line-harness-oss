@@ -9,8 +9,8 @@ import {
 
 describe('welcome anxiety flow', () => {
   it('parseAnxietyPostbackData accepts anxiety=key and url-encoded', () => {
-    expect(parseAnxietyPostbackData(`${ANXIETY_POSTBACK_PREFIX}paper`)).toBe('paper');
-    expect(parseAnxietyPostbackData('anxiety%3Dwork')).toBe('work');
+    expect(parseAnxietyPostbackData(`${ANXIETY_POSTBACK_PREFIX}accident`)).toBe('accident');
+    expect(parseAnxietyPostbackData('anxiety%3Dortho')).toBe('ortho');
     expect(parseAnxietyPostbackData(' other=1 ')).toBeNull();
     expect(parseAnxietyPostbackData('anxiety=unknown')).toBeNull();
   });
@@ -23,7 +23,7 @@ describe('welcome anxiety flow', () => {
     expect(welcomeAnxietyFlowEnabled({} as never)).toBe(false);
   });
 
-  it('buildWelcomeAnxietyFlexMessage includes four postback actions', () => {
+  it('buildWelcomeAnxietyFlexMessage includes category postback actions', () => {
     const msg = buildWelcomeAnxietyFlexMessage({
       LIFF_URL: 'https://liff.line.me/123-abc',
       WORKER_URL: 'https://worker.example',
@@ -31,35 +31,51 @@ describe('welcome anxiety flow', () => {
     expect(msg.type).toBe('flex');
     if (msg.type !== 'flex') return;
     const json = JSON.stringify(msg.contents);
-    expect(json).toContain(`${ANXIETY_POSTBACK_PREFIX}paper`);
-    expect(json).toContain(`${ANXIETY_POSTBACK_PREFIX}cost`);
+    expect(json).toContain(`${ANXIETY_POSTBACK_PREFIX}accident`);
+    expect(json).toContain(`${ANXIETY_POSTBACK_PREFIX}ortho`);
+    expect(json).toContain(`${ANXIETY_POSTBACK_PREFIX}iv`);
     expect(json).toContain('"type":"postback"');
   });
 
   it('buildAnxietyFollowupFlexMessage uses LIFF_BOOKING_URL when set', () => {
-    const msg = buildAnxietyFollowupFlexMessage('paper', {
+    const msg = buildAnxietyFollowupFlexMessage('ortho', {
       LIFF_URL: 'https://liff.line.me/default',
       LIFF_BOOKING_URL: 'https://liff.line.me/booking-only',
       WORKER_URL: 'https://worker.example',
+      BOOKING_FALLBACK_TEL: 'tel:0312345678',
     } as never);
     expect(msg.type).toBe('flex');
     if (msg.type !== 'flex') return;
     const json = JSON.stringify(msg.contents);
     expect(json).toContain('https://liff.line.me/booking-only');
-    expect(json).toContain('リッチメニュー');
-    expect(json).toContain('予約ページへ（メニューと同じ）');
+    expect(json).toContain('予約');
+    expect(json).toContain('tel:0312345678');
   });
 
   it('buildAnxietyFollowupFlexMessage omits LIFF button when WELCOME_ANXIETY_RICH_MENU_ONLY', () => {
-    const msg = buildAnxietyFollowupFlexMessage('paper', {
+    const msg = buildAnxietyFollowupFlexMessage('ortho', {
       LIFF_URL: 'https://liff.line.me/default',
       WELCOME_ANXIETY_RICH_MENU_ONLY: '1',
       WORKER_URL: 'https://worker.example',
+      BOOKING_FALLBACK_TEL: 'tel:0312345678',
     } as never);
     expect(msg.type).toBe('flex');
     if (msg.type !== 'flex') return;
     const json = JSON.stringify(msg.contents);
     expect(json).not.toContain('liff.line.me');
     expect(json).toContain('リッチメニュー「予約」');
+  });
+
+  it('buildAnxietyFollowupFlexMessage for accident is phone-first', () => {
+    const msg = buildAnxietyFollowupFlexMessage('accident', {
+      LIFF_URL: 'https://liff.line.me/default',
+      WORKER_URL: 'https://worker.example',
+      BOOKING_FALLBACK_TEL: 'tel:0312345678',
+    } as never);
+    expect(msg.type).toBe('flex');
+    if (msg.type !== 'flex') return;
+    const json = JSON.stringify(msg.contents);
+    expect(json).toContain('tel:0312345678');
+    expect(json).not.toContain('予約ページへ（メニューと同じ）');
   });
 });

@@ -180,6 +180,224 @@ describe('fireEvent', () => {
     expect(hookCalls.length).toBeGreaterThanOrEqual(1);
   });
 
+  it('does not fetch outgoing webhooks when the URL is not an allowed public https target', async () => {
+    dbMocks.getActiveOutgoingWebhooksByEvent.mockResolvedValue([
+      {
+        id: 'w-local',
+        name: 'Local',
+        url: 'https://127.0.0.1/out',
+        event_types: '[]',
+        secret: null,
+        is_active: 1,
+        created_at: '',
+        updated_at: '',
+      },
+    ]);
+
+    const { fireEvent } = await import('../../src/services/event-bus.js');
+    await fireEvent(emptyDb, 'friend_add', { friendId: 'f1' }, 'line-token', 'acc-1');
+
+    const fetchMock = vi.mocked(globalThis.fetch);
+    const toLocal = fetchMock.mock.calls.filter((c) => String(c[0]).includes('127.0.0.1'));
+    expect(toLocal.length).toBe(0);
+  });
+
+  it('logs automation failure when conditions are valid JSON but not an object', async () => {
+    dbMocks.getActiveAutomationsByEvent.mockResolvedValue([
+      automationRow({
+        conditions: '[]',
+        actions: '[{"type":"add_tag","params":{"tagId":"t1"}}]',
+      }),
+    ]);
+
+    const { fireEvent } = await import('../../src/services/event-bus.js');
+    await fireEvent(emptyDb, 'friend_add', { friendId: 'f1' }, 'line-token', 'acc-1');
+
+    expect(dbMocks.addTagToFriend).not.toHaveBeenCalled();
+    expect(dbMocks.createAutomationLog).toHaveBeenCalledWith(
+      emptyDb,
+      expect.objectContaining({
+        status: 'failed',
+        actionsResult: expect.stringContaining('must be a JSON object'),
+      }),
+    );
+  });
+
+  it('applies set_metadata when friend metadata in DB is corrupt JSON', async () => {
+    const runMock = vi.fn().mockResolvedValue({});
+    const dbMeta = {
+      prepare: vi.fn().mockImplementation((sql: string) => ({
+        bind: vi.fn().mockReturnValue({
+          first: vi.fn().mockImplementation(async () => {
+            if (sql.includes('SELECT metadata FROM friends')) {
+              return { metadata: '{bad' };
+            }
+            if (sql.includes('SELECT line_user_id FROM friends')) {
+              return null;
+            }
+            return null;
+          }),
+          run: runMock,
+        }),
+      })),
+    } as unknown as D1Database;
+
+    dbMocks.getActiveAutomationsByEvent.mockResolvedValue([
+      automationRow({
+        actions: JSON.stringify([
+          { type: 'set_metadata', params: { data: JSON.stringify({ recovered: true }) } },
+        ]),
+      }),
+    ]);
+
+    const { fireEvent } = await import('../../src/services/event-bus.js');
+    await fireEvent(dbMeta, 'friend_add', { friendId: 'f1' }, 'line-token', 'acc-1');
+
+    expect(dbMocks.createAutomationLog).toHaveBeenCalledWith(
+      dbMeta,
+      expect.objectContaining({ status: 'success' }),
+    );
+    expect(runMock).toHaveBeenCalled();
+  });
+
+  it('logs automation failure when flex send_message content is a JSON array', async () => {
+    dbMocks.getActiveAutomationsByEvent.mockResolvedValue([
+      automationRow({
+        actions: JSON.stringify([
+          {
+            type: 'send_message',
+            params: { messageType: 'flex', content: '[]', altText: 'x' },
+          },
+        ]),
+      }),
+    ]);
+
+    const { fireEvent } = await import('../../src/services/event-bus.js');
+    await fireEvent(emptyDb, 'friend_add', { friendId: 'f1' }, 'line-token', 'acc-1');
+
+    expect(dbMocks.createAutomationLog).toHaveBeenCalledWith(
+      emptyDb,
+      expect.objectContaining({ status: 'failed' }),
+    );
+  });
+
+  it('logs automation failure when conditions/actions JSON from DB is invalid', async () => {
+    dbMocks.getActiveAutomationsByEvent.mockResolvedValue([
+      automationRow({
+        conditions: '{not-json',
+        actions: '[{"type":"add_tag","params":{"tagId":"t1"}}]',
+      }),
+    ]);
+
+    const { fireEvent } = await import('../../src/services/event-bus.js');
+    await fireEvent(emptyDb, 'friend_add', { friendId: 'f1' }, 'line-token', 'acc-1');
+
+    expect(dbMocks.addTagToFriend).not.toHaveBeenCalled();
+    expect(dbMocks.createAutomationLog).toHaveBeenCalledWith(
+      emptyDb,
+      expect.objectContaining({
+        automationId: 'auto-1',
+        status: 'failed',
+        actionsResult: expect.stringContaining('_parse'),
+      }),
+    );
+  });
+
+  it('logs automation failure when set_metadata patch is a JSON array not an object', async () => {
+    const runMock = vi.fn().mockResolvedValue({});
+    const dbMeta = {
+      prepare: vi.fn().mockImplementation((sql: string) => ({
+        bind: vi.fn().mockReturnValue({
+          first: vi.fn().mockImplementation(async () => {
+            if (sql.includes('SELECT metadata FROM friends')) {
+              return { metadata: '{}' };
+            }
+            return null;
+          }),
+          run: runMock,
+        }),
+      })),
+    } as unknown as D1Database;
+
+    dbMocks.getActiveAutomationsByEvent.mockResolvedValue([
+      automationRow({
+        actions: JSON.stringify([{ type: 'set_metadata', params: { data: '[]' } }]),
+      }),
+    ]);
+
+    const { fireEvent } = await import('../../src/services/event-bus.js');
+    await fireEvent(dbMeta, 'friend_add', { friendId: 'f1' }, 'line-token', 'acc-1');
+
+    expect(dbMocks.createAutomationLog).toHaveBeenCalledWith(
+      dbMeta,
+      expect.objectContaining({ status: 'failed' }),
+    );
+  });
+
+  it('logs automation failure when set_metadata patch JSON is invalid', async () => {
+    dbMocks.getActiveAutomationsByEvent.mockResolvedValue([
+      automationRow({
+        actions: JSON.stringify([{ type: 'set_metadata', params: { data: '{bad' } }]),
+      }),
+    ]);
+
+    const { fireEvent } = await import('../../src/services/event-bus.js');
+    await fireEvent(emptyDb, 'friend_add', { friendId: 'f1' }, 'line-token', 'acc-1');
+
+    expect(dbMocks.createAutomationLog).toHaveBeenCalledWith(
+      emptyDb,
+      expect.objectContaining({
+        status: 'failed',
+      }),
+    );
+  });
+
+  /**
+   * Cycle 5 — Attacker view: poison automation flex JSON → uncaught exception / unstable worker.
+   */
+  it('logs automation failure when flex message content is invalid JSON', async () => {
+    dbMocks.getActiveAutomationsByEvent.mockResolvedValue([
+      automationRow({
+        actions: JSON.stringify([
+          {
+            type: 'send_message',
+            params: { messageType: 'flex', content: '{not-json', altText: 'x' },
+          },
+        ]),
+      }),
+    ]);
+
+    const { fireEvent } = await import('../../src/services/event-bus.js');
+    await fireEvent(emptyDb, 'friend_add', { friendId: 'f1' }, 'line-token', 'acc-1');
+
+    expect(dbMocks.createAutomationLog).toHaveBeenCalledWith(
+      emptyDb,
+      expect.objectContaining({
+        status: 'failed',
+      }),
+    );
+  });
+
+  it('logs automation failure when send_webhook URL is blocked', async () => {
+    dbMocks.getActiveAutomationsByEvent.mockResolvedValue([
+      automationRow({
+        actions: JSON.stringify([
+          { type: 'send_webhook', params: { url: 'https://192.168.0.1/internal' } },
+        ]),
+      }),
+    ]);
+
+    const { fireEvent } = await import('../../src/services/event-bus.js');
+    await fireEvent(emptyDb, 'friend_add', { friendId: 'f1' }, 'line-token', 'acc-1');
+
+    expect(dbMocks.createAutomationLog).toHaveBeenCalledWith(
+      emptyDb,
+      expect.objectContaining({
+        status: 'failed',
+      }),
+    );
+  });
+
   it('creates notifications for matching rules', async () => {
     dbMocks.getActiveNotificationRulesByEvent.mockResolvedValue([
       {
@@ -206,5 +424,26 @@ describe('fireEvent', () => {
         lineAccountId: 'acc-1',
       }),
     );
+  });
+
+  it('skips notification rules when channels JSON in DB is invalid', async () => {
+    dbMocks.getActiveNotificationRulesByEvent.mockResolvedValue([
+      {
+        id: 'rule-bad',
+        name: 'Bad channels',
+        event_type: 'friend_add',
+        conditions: '{}',
+        channels: '{{{',
+        line_account_id: 'acc-1',
+        is_active: 1,
+        created_at: '',
+        updated_at: '',
+      },
+    ]);
+
+    const { fireEvent } = await import('../../src/services/event-bus.js');
+    await fireEvent(emptyDb, 'friend_add', { friendId: 'f1' }, 'line-token', 'acc-1');
+
+    expect(dbMocks.createNotification).not.toHaveBeenCalled();
   });
 });

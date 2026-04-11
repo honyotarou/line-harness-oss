@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import type { Tag } from '@line-crm/shared';
+import { tryParseJsonLoose, tryParseJsonObjectForPreview } from '@line-crm/shared';
 import { api, type ApiBroadcast } from '@/lib/api';
 import { useAccount } from '@/contexts/account-context';
 import { Input, Select, Textarea } from '@/components/ui/field';
@@ -52,10 +53,9 @@ export default function BroadcastForm({ tags, onSuccess, onCancel }: BroadcastFo
       return;
     }
     if (form.messageType === 'flex') {
-      try {
-        JSON.parse(form.messageContent);
-      } catch {
-        setError('FlexメッセージのJSONが無効です');
+      const flex = tryParseJsonLoose(form.messageContent);
+      if (flex === null || typeof flex !== 'object' || Array.isArray(flex)) {
+        setError('FlexメッセージはJSONオブジェクトである必要があります');
         return;
       }
     }
@@ -143,12 +143,13 @@ export default function BroadcastForm({ tags, onSuccess, onCancel }: BroadcastFo
           {/* Image helper: URL inputs that auto-generate the required LINE image JSON */}
           {form.messageType === 'image' &&
             (() => {
-              let parsed: { originalContentUrl?: string; previewImageUrl?: string } = {};
-              try {
-                parsed = JSON.parse(form.messageContent);
-              } catch {
-                /* not yet valid */
-              }
+              const parsed =
+                tryParseJsonObjectForPreview(form.messageContent) ??
+                ({} as Record<string, unknown>);
+              const imgFields = parsed as {
+                originalContentUrl?: string;
+                previewImageUrl?: string;
+              };
               return (
                 <div className="space-y-2 mb-2">
                   <div>
@@ -159,10 +160,17 @@ export default function BroadcastForm({ tags, onSuccess, onCancel }: BroadcastFo
                       type="url"
                       className=""
                       placeholder="https://example.com/image.png"
-                      value={parsed.originalContentUrl ?? ''}
+                      value={
+                        typeof imgFields.originalContentUrl === 'string'
+                          ? imgFields.originalContentUrl
+                          : ''
+                      }
                       onChange={(e) => {
                         const orig = e.target.value;
-                        const prev = parsed.previewImageUrl ?? orig;
+                        const prev =
+                          typeof imgFields.previewImageUrl === 'string'
+                            ? imgFields.previewImageUrl
+                            : orig;
                         setForm({
                           ...form,
                           messageContent: JSON.stringify({
@@ -181,13 +189,21 @@ export default function BroadcastForm({ tags, onSuccess, onCancel }: BroadcastFo
                       type="url"
                       className=""
                       placeholder="https://example.com/preview.png (空欄で元画像と同じ)"
-                      value={parsed.previewImageUrl ?? ''}
+                      value={
+                        typeof imgFields.previewImageUrl === 'string'
+                          ? imgFields.previewImageUrl
+                          : ''
+                      }
                       onChange={(e) => {
                         const prev = e.target.value;
+                        const orig =
+                          typeof imgFields.originalContentUrl === 'string'
+                            ? imgFields.originalContentUrl
+                            : '';
                         setForm({
                           ...form,
                           messageContent: JSON.stringify({
-                            originalContentUrl: parsed.originalContentUrl ?? '',
+                            originalContentUrl: orig,
                             previewImageUrl: prev,
                           }),
                         });

@@ -12,9 +12,9 @@ import type { Message } from '@line-crm/line-sdk';
 /** Postback payload for category pick (LINE sends `data` as plain text, often `anxiety=paper`). */
 export const ANXIETY_POSTBACK_PREFIX = 'anxiety=';
 
-export type AnxietyKey = 'paper' | 'pain' | 'work' | 'cost';
+export type AnxietyKey = 'accident' | 'ortho' | 'iv';
 
-const ANXIETY_KEYS = new Set<AnxietyKey>(['paper', 'pain', 'work', 'cost']);
+const ANXIETY_KEYS = new Set<AnxietyKey>(['accident', 'ortho', 'iv']);
 
 export type WelcomeAnxietyBindings = Pick<
   Env['Bindings'],
@@ -28,6 +28,7 @@ export type WelcomeAnxietyBindings = Pick<
   | 'WELCOME_ANXIETY_LINK_PREP'
   | 'WELCOME_ANXIETY_LINK_FAQ'
   | 'WELCOME_ANXIETY_RICH_MENU_ONLY'
+  | 'BOOKING_FALLBACK_TEL'
 >;
 
 /** truthy: `1`, `true`, `yes`, `on` (case-insensitive). */
@@ -66,39 +67,32 @@ const CATEGORY_COPY: Record<
   AnxietyKey,
   { label: string; displayText: string; title: string; body: string }
 > = {
-  paper: {
-    label: '書類・保険・賠償が不安',
-    displayText: '書類・保険について',
-    title: '書類・保険まわり',
-    body: '事故後の手続きは種類が多く、何から始めるか迷いがちです。まず「何を揃えるか」を整理し、診察のなかで個別に確認できるようにします。迷ったらこのトークでも質問ください（医療判断・個別の賠償額の断定はできません）。',
+  accident: {
+    label: '交通事故',
+    displayText: '交通事故',
+    title: '交通事故のご相談',
+    body: '交通事故は手続きや状況確認が必要なため、お電話で状況を伺います。無理に予約へ進めず、まずはお困りごとを整理しましょう。',
   },
-  pain: {
-    label: '痛み・傷・治療が不安',
-    displayText: '治療について',
-    title: '痛み・傷・治療のこと',
-    body: '状態の評価や治療方針は診察でのみ行えます。ここでは一般的な考え方だけを短くお伝えします。気になる点は予約のうえ、医師・スタッフに直接ご相談ください。',
+  ortho: {
+    label: '整形外科',
+    displayText: '整形外科',
+    title: '整形外科のご予約',
+    body: 'まずはメニューとご希望日時を選ぶだけで予約できます。心配事がある場合は、このトークで相談するかお電話ください。',
   },
-  work: {
-    label: '仕事・生活・通院が不安',
-    displayText: '仕事・通院について',
-    title: '仕事・生活・通院',
-    body: '通院の目安やお休みの取り方は個人差があります。予約時に希望を伺い、無理のないスケジュールを一緒に考えます（確約ではありません）。',
-  },
-  cost: {
-    label: '費用・お支払いが不安',
-    displayText: '費用について',
-    title: '費用・お支払い',
-    body: '費用は施術・検査内容で変わります。大まかな考え方は下の「よくある不安（FAQ）」でもご覧いただけます。詳細は診察・カウンセリングでご説明します。',
+  iv: {
+    label: '自費点滴',
+    displayText: '自費点滴',
+    title: '自費点滴のご予約',
+    body: 'メニューと空きを確認して予約できます。心配事がある場合は、このトークで相談するかお電話ください。',
   },
 };
 
 /** Welcome bubble: pick concern → postback. Optional small hero (e.g. licensed photo). */
 export function buildWelcomeAnxietyFlexMessage(env: WelcomeAnxietyBindings): Message {
   const heroUrl = env.WELCOME_ANXIETY_HERO_URL?.trim();
-  const intro =
-    '事故のあと、次に何をすればいいか分かりづらくて当然です。いちばん気になっているところから、一緒に整えていきましょう。';
+  const intro = 'あなたのお悩みはどれですか？';
 
-  const categoryButtons = (['paper', 'pain', 'work', 'cost'] as const).map((key) =>
+  const categoryButtons = (['accident', 'ortho', 'iv'] as const).map((key) =>
     flexButton(
       {
         type: 'postback',
@@ -113,7 +107,7 @@ export function buildWelcomeAnxietyFlexMessage(env: WelcomeAnxietyBindings): Mes
   const bodyContents = [
     flexText('いらっしゃいませ', { size: 'sm', color: '#64748b' }),
     flexText(intro, { size: 'sm', color: '#334155', wrap: true, margin: 'md' }),
-    flexText('下のいずれか1つを選んでください（あとからいつでも予約できます）。', {
+    flexText('下のいずれか1つを選んでください。', {
       size: 'xs',
       color: '#64748b',
       wrap: true,
@@ -155,16 +149,26 @@ export function buildAnxietyFollowupFlexMessage(
   const copy = CATEGORY_COPY[key];
   const bookingUri = bookingLiffUri(env);
   const richMenuOnly = welcomeAnxietyRichMenuOnly(env);
+  const telUri = (env.BOOKING_FALLBACK_TEL ?? '').trim();
   const flow = env.WELCOME_ANXIETY_LINK_FLOW?.trim();
   const prep = env.WELCOME_ANXIETY_LINK_PREP?.trim();
   const faq = env.WELCOME_ANXIETY_LINK_FAQ?.trim();
 
   const footerButtons = [];
-  if (!richMenuOnly) {
+  if (!richMenuOnly && key !== 'accident') {
     footerButtons.push(
       flexButton(
         { type: 'uri', label: '予約ページへ（メニューと同じ）', uri: bookingUri },
         { style: 'secondary', height: 'sm' },
+      ),
+    );
+  }
+
+  if (telUri) {
+    footerButtons.push(
+      flexButton(
+        { type: 'uri', label: '心配事があるので電話する', uri: telUri },
+        { style: 'link', height: 'sm' },
       ),
     );
   }
@@ -190,9 +194,12 @@ export function buildAnxietyFollowupFlexMessage(
     );
   }
 
-  const bookingHint = richMenuOnly
-    ? 'ご予約は、トーク画面下のリッチメニュー「予約」からお願いします。'
-    : 'ご予約は、まずトーク画面下のリッチメニュー「予約」がわかりやすいです。下のボタンでも同じ予約ページを開けます。';
+  const bookingHint =
+    key === 'accident'
+      ? '交通事故のご相談はお電話が確実です。必要な情報を一緒に整理します。'
+      : richMenuOnly
+        ? 'ご予約は、トーク画面下のリッチメニュー「予約」からお願いします。'
+        : 'ご予約は、まずトーク画面下のリッチメニュー「予約」がわかりやすいです。下のボタンでも同じ予約ページを開けます。';
 
   const bubble = flexBubble({
     body: flexBox(

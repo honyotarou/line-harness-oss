@@ -16,6 +16,13 @@ import {
 } from '@line-crm/db';
 import { GoogleCalendarClient } from '../services/google-calendar.js';
 import type { Env } from '../index.js';
+import {
+  DEFAULT_ADMIN_JSON_BODY_LIMIT_BYTES,
+  jsonBodyReadErrorResponse,
+  readJsonBodyWithLimit,
+} from '../services/request-body.js';
+import { tryParseJsonRecord } from '../services/safe-json.js';
+import { clampIntInRange } from '../services/query-limits.js';
 
 const calendar = new Hono<Env>();
 
@@ -43,13 +50,13 @@ calendar.get('/api/integrations/google-calendar', async (c) => {
 
 calendar.post('/api/integrations/google-calendar/connect', async (c) => {
   try {
-    const body = await c.req.json<{
+    const body = await readJsonBodyWithLimit<{
       calendarId: string;
       authType: string;
       accessToken?: string;
       refreshToken?: string;
       apiKey?: string;
-    }>();
+    }>(c.req.raw, DEFAULT_ADMIN_JSON_BODY_LIMIT_BYTES);
     if (!body.calendarId) return c.json({ success: false, error: 'calendarId is required' }, 400);
     const conn = await createCalendarConnection(c.env.DB, body);
     return c.json(
@@ -66,6 +73,8 @@ calendar.post('/api/integrations/google-calendar/connect', async (c) => {
       201,
     );
   } catch (err) {
+    const jr = jsonBodyReadErrorResponse(err);
+    if (jr) return c.json(jr.body, jr.status);
     console.error('POST /api/integrations/google-calendar/connect error:', err);
     return c.json({ success: false, error: 'Internal server error' }, 500);
   }
@@ -87,9 +96,16 @@ calendar.get('/api/integrations/google-calendar/slots', async (c) => {
   try {
     const connectionId = c.req.query('connectionId');
     const date = c.req.query('date'); // YYYY-MM-DD
-    const slotMinutes = Number(c.req.query('slotMinutes') ?? '60');
-    const startHour = Number(c.req.query('startHour') ?? '9');
-    const endHour = Number(c.req.query('endHour') ?? '18');
+    const slotMinutes = clampIntInRange(c.req.query('slotMinutes'), 60, 15, 180);
+    const startHour = clampIntInRange(c.req.query('startHour'), 9, 0, 23);
+    let endHour = clampIntInRange(c.req.query('endHour'), 18, 0, 24);
+    if (endHour <= startHour) {
+      endHour = Math.min(startHour + 1, 24);
+    }
+    const stepHours = slotMinutes / 60;
+    if (!Number.isFinite(stepHours) || stepHours <= 0) {
+      return c.json({ success: false, error: 'Invalid slotMinutes' }, 400);
+    }
 
     if (!connectionId || !date) {
       return c.json({ success: false, error: 'connectionId and date are required' }, 400);
@@ -186,7 +202,7 @@ calendar.get('/api/integrations/google-calendar/bookings', async (c) => {
         startAt: b.start_at,
         endAt: b.end_at,
         status: b.status,
-        metadata: b.metadata ? JSON.parse(b.metadata) : null,
+        metadata: b.metadata ? tryParseJsonRecord(b.metadata) : null,
         createdAt: b.created_at,
       })),
     });
@@ -198,7 +214,7 @@ calendar.get('/api/integrations/google-calendar/bookings', async (c) => {
 
 calendar.post('/api/integrations/google-calendar/book', async (c) => {
   try {
-    const body = await c.req.json<{
+    const body = await readJsonBodyWithLimit<{
       connectionId: string;
       friendId?: string;
       title: string;
@@ -206,7 +222,7 @@ calendar.post('/api/integrations/google-calendar/book', async (c) => {
       endAt: string;
       description?: string;
       metadata?: Record<string, unknown>;
-    }>();
+    }>(c.req.raw, DEFAULT_ADMIN_JSON_BODY_LIMIT_BYTES);
     if (!body.connectionId || !body.title || !body.startAt || !body.endAt) {
       return c.json(
         { success: false, error: 'connectionId, title, startAt, endAt are required' },
@@ -275,6 +291,8 @@ calendar.post('/api/integrations/google-calendar/book', async (c) => {
       201,
     );
   } catch (err) {
+    const jr = jsonBodyReadErrorResponse(err);
+    if (jr) return c.json(jr.body, jr.status);
     console.error('POST /api/integrations/google-calendar/book error:', err);
     return c.json({ success: false, error: 'Internal server error' }, 500);
   }
@@ -283,7 +301,10 @@ calendar.post('/api/integrations/google-calendar/book', async (c) => {
 calendar.put('/api/integrations/google-calendar/bookings/:id/status', async (c) => {
   try {
     const id = c.req.param('id');
-    const { status } = await c.req.json<{ status: string }>();
+    const { status } = await readJsonBodyWithLimit<{ status: string }>(
+      c.req.raw,
+      DEFAULT_ADMIN_JSON_BODY_LIMIT_BYTES,
+    );
 
     // キャンセル時は Google Calendar のイベントも削除する（ベストエフォート）
     if (status === 'cancelled') {
@@ -307,6 +328,8 @@ calendar.put('/api/integrations/google-calendar/bookings/:id/status', async (c) 
     await updateCalendarBookingStatus(c.env.DB, id, status);
     return c.json({ success: true, data: null });
   } catch (err) {
+    const jr = jsonBodyReadErrorResponse(err);
+    if (jr) return c.json(jr.body, jr.status);
     console.error('PUT /api/integrations/google-calendar/bookings/:id/status error:', err);
     return c.json({ success: false, error: 'Internal server error' }, 500);
   }

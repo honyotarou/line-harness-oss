@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import type { ScenarioStep, MessageType } from '@line-crm/shared';
+import { tryParseJsonLoose, tryParseJsonObjectForPreview } from '@line-crm/shared';
 
 interface StepEditorProps {
   step?: ScenarioStep;
@@ -49,10 +50,9 @@ export default function StepEditor({ step, stepOrder, onSave, onCancel }: StepEd
       return;
     }
     if (messageType === 'flex') {
-      try {
-        JSON.parse(messageContent);
-      } catch {
-        setError('FlexメッセージのJSONが無効です');
+      const flex = tryParseJsonLoose(messageContent);
+      if (flex === null || typeof flex !== 'object' || Array.isArray(flex)) {
+        setError('FlexメッセージはJSONオブジェクトである必要があります');
         return;
       }
     }
@@ -155,12 +155,12 @@ export default function StepEditor({ step, stepOrder, onSave, onCancel }: StepEd
         {/* Image helper: URL inputs that auto-generate the required LINE image JSON */}
         {messageType === 'image' &&
           (() => {
-            let parsed: { originalContentUrl?: string; previewImageUrl?: string } = {};
-            try {
-              parsed = JSON.parse(messageContent);
-            } catch {
-              /* not yet valid */
-            }
+            const parsed =
+              tryParseJsonObjectForPreview(messageContent) ?? ({} as Record<string, unknown>);
+            const imgFields = parsed as {
+              originalContentUrl?: string;
+              previewImageUrl?: string;
+            };
             return (
               <div className="space-y-2 mb-2">
                 <div>
@@ -171,10 +171,17 @@ export default function StepEditor({ step, stepOrder, onSave, onCancel }: StepEd
                     type="url"
                     className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[var(--color-focus-ring)]"
                     placeholder="https://example.com/image.png"
-                    value={parsed.originalContentUrl ?? ''}
+                    value={
+                      typeof imgFields.originalContentUrl === 'string'
+                        ? imgFields.originalContentUrl
+                        : ''
+                    }
                     onChange={(e) => {
                       const orig = e.target.value;
-                      const prev = parsed.previewImageUrl ?? orig;
+                      const prev =
+                        typeof imgFields.previewImageUrl === 'string'
+                          ? imgFields.previewImageUrl
+                          : orig;
                       setMessageContent(
                         JSON.stringify({ originalContentUrl: orig, previewImageUrl: prev }),
                       );
@@ -189,12 +196,18 @@ export default function StepEditor({ step, stepOrder, onSave, onCancel }: StepEd
                     type="url"
                     className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[var(--color-focus-ring)]"
                     placeholder="https://example.com/preview.png (空欄で元画像と同じ)"
-                    value={parsed.previewImageUrl ?? ''}
+                    value={
+                      typeof imgFields.previewImageUrl === 'string' ? imgFields.previewImageUrl : ''
+                    }
                     onChange={(e) => {
                       const prev = e.target.value;
+                      const orig =
+                        typeof imgFields.originalContentUrl === 'string'
+                          ? imgFields.originalContentUrl
+                          : '';
                       setMessageContent(
                         JSON.stringify({
-                          originalContentUrl: parsed.originalContentUrl ?? '',
+                          originalContentUrl: orig,
                           previewImageUrl: prev,
                         }),
                       );

@@ -1,7 +1,12 @@
 import { Hono } from 'hono';
-import { describe, expect, it } from 'vitest';
+import { beforeEach, describe, expect, it } from 'vitest';
 
 describe('auth routes', () => {
+  beforeEach(async () => {
+    const { resetRequestRateLimits } = await import('../../src/services/request-rate-limit.js');
+    resetRequestRateLimits();
+  });
+
   it('exchanges the root API key for a signed admin session token', async () => {
     const { authRoutes } = await import('../../src/routes/auth.js');
     const app = new Hono();
@@ -63,6 +68,33 @@ describe('auth routes', () => {
       success: true,
       data: { authenticated: true },
     });
+  });
+
+  it('accepts case-insensitive Bearer on the session endpoint', async () => {
+    const { authRoutes } = await import('../../src/routes/auth.js');
+    const app = new Hono();
+    app.route('/', authRoutes);
+
+    const loginResponse = await app.fetch(
+      new Request('http://localhost/api/auth/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ apiKey: 'root-api-key' }),
+      }),
+      { API_KEY: 'root-api-key' } as never,
+    );
+    const body = (await loginResponse.json()) as { data?: { sessionToken?: string } };
+    const sessionToken = body.data?.sessionToken;
+    expect(sessionToken).toBeTruthy();
+
+    const sessionResponse = await app.fetch(
+      new Request('http://localhost/api/auth/session', {
+        headers: { Authorization: `bearer ${sessionToken}` },
+      }),
+      { API_KEY: 'root-api-key' } as never,
+    );
+
+    expect(sessionResponse.status).toBe(200);
   });
 
   it('validates signed admin sessions via the session endpoint using cookies', async () => {

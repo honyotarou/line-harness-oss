@@ -12,9 +12,16 @@ import {
   deleteOutgoingWebhook,
 } from '@line-crm/db';
 import type { Env } from '../index.js';
+import { isSafeHttpsOutboundUrl } from '../services/outbound-url.js';
 import { verifySignedPayload } from '../services/signed-payload.js';
-import { BodyTooLargeError, readTextBodyWithLimit } from '../services/request-body.js';
+import {
+  DEFAULT_ADMIN_JSON_BODY_LIMIT_BYTES,
+  jsonBodyReadErrorResponse,
+  readJsonBodyWithLimit,
+  readTextBodyWithLimit,
+} from '../services/request-body.js';
 import { enforceRateLimit } from '../services/request-rate-limit.js';
+import { parseStringArrayJson } from '../services/safe-json.js';
 
 const webhooks = new Hono<Env>();
 const INCOMING_WEBHOOK_LIMIT_BYTES = 64 * 1024;
@@ -45,8 +52,21 @@ webhooks.get('/api/webhooks/incoming', async (c) => {
 
 webhooks.post('/api/webhooks/incoming', async (c) => {
   try {
-    const body = await c.req.json<{ name: string; sourceType?: string; secret?: string }>();
+    const body = await readJsonBodyWithLimit<{
+      name: string;
+      sourceType?: string;
+      secret?: string;
+    }>(c.req.raw, DEFAULT_ADMIN_JSON_BODY_LIMIT_BYTES);
     if (!body.name) return c.json({ success: false, error: 'name is required' }, 400);
+    if (!body.secret?.trim()) {
+      return c.json(
+        {
+          success: false,
+          error: 'secret is required (incoming webhooks must verify HMAC signatures)',
+        },
+        400,
+      );
+    }
     const item = await createIncomingWebhook(c.env.DB, body);
     return c.json(
       {
@@ -62,6 +82,8 @@ webhooks.post('/api/webhooks/incoming', async (c) => {
       201,
     );
   } catch (err) {
+    const jr = jsonBodyReadErrorResponse(err);
+    if (jr) return c.json(jr.body, jr.status);
     console.error('POST /api/webhooks/incoming error:', err);
     return c.json({ success: false, error: 'Internal server error' }, 500);
   }
@@ -70,8 +92,23 @@ webhooks.post('/api/webhooks/incoming', async (c) => {
 webhooks.put('/api/webhooks/incoming/:id', async (c) => {
   try {
     const id = c.req.param('id');
-    const body = await c.req.json();
-    await updateIncomingWebhook(c.env.DB, id, body);
+    const body = await readJsonBodyWithLimit<Record<string, unknown>>(
+      c.req.raw,
+      DEFAULT_ADMIN_JSON_BODY_LIMIT_BYTES,
+    );
+    if (body.secret !== undefined && body.secret !== null) {
+      if (String(body.secret).trim() === '') {
+        return c.json(
+          {
+            success: false,
+            error:
+              'secret cannot be empty; set a non-empty signing secret or omit the field to leave it unchanged',
+          },
+          400,
+        );
+      }
+    }
+    await updateIncomingWebhook(c.env.DB, id, body as never);
     const updated = await getIncomingWebhookById(c.env.DB, id);
     if (!updated) return c.json({ success: false, error: 'Not found' }, 404);
     return c.json({
@@ -84,6 +121,8 @@ webhooks.put('/api/webhooks/incoming/:id', async (c) => {
       },
     });
   } catch (err) {
+    const jr = jsonBodyReadErrorResponse(err);
+    if (jr) return c.json(jr.body, jr.status);
     console.error('PUT /api/webhooks/incoming/:id error:', err);
     return c.json({ success: false, error: 'Internal server error' }, 500);
   }
@@ -110,7 +149,7 @@ webhooks.get('/api/webhooks/outgoing', async (c) => {
         id: w.id,
         name: w.name,
         url: w.url,
-        eventTypes: JSON.parse(w.event_types),
+        eventTypes: parseStringArrayJson(w.event_types) ?? [],
         secret: w.secret,
         isActive: Boolean(w.is_active),
         createdAt: w.created_at,
@@ -125,14 +164,24 @@ webhooks.get('/api/webhooks/outgoing', async (c) => {
 
 webhooks.post('/api/webhooks/outgoing', async (c) => {
   try {
-    const body = await c.req.json<{
+    const body = await readJsonBodyWithLimit<{
       name: string;
       url: string;
       eventTypes: string[];
       secret?: string;
-    }>();
+    }>(c.req.raw, DEFAULT_ADMIN_JSON_BODY_LIMIT_BYTES);
     if (!body.name || !body.url)
       return c.json({ success: false, error: 'name and url are required' }, 400);
+    if (!isSafeHttpsOutboundUrl(body.url)) {
+      return c.json(
+        {
+          success: false,
+          error:
+            'url must be a public https URL (private IPs, localhost, and metadata endpoints are not allowed)',
+        },
+        400,
+      );
+    }
     const item = await createOutgoingWebhook(c.env.DB, {
       ...body,
       eventTypes: body.eventTypes ?? [],
@@ -144,7 +193,7 @@ webhooks.post('/api/webhooks/outgoing', async (c) => {
           id: item.id,
           name: item.name,
           url: item.url,
-          eventTypes: JSON.parse(item.event_types),
+          eventTypes: parseStringArrayJson(item.event_types) ?? [],
           isActive: Boolean(item.is_active),
           createdAt: item.created_at,
         },
@@ -152,6 +201,8 @@ webhooks.post('/api/webhooks/outgoing', async (c) => {
       201,
     );
   } catch (err) {
+    const jr = jsonBodyReadErrorResponse(err);
+    if (jr) return c.json(jr.body, jr.status);
     console.error('POST /api/webhooks/outgoing error:', err);
     return c.json({ success: false, error: 'Internal server error' }, 500);
   }
@@ -160,7 +211,22 @@ webhooks.post('/api/webhooks/outgoing', async (c) => {
 webhooks.put('/api/webhooks/outgoing/:id', async (c) => {
   try {
     const id = c.req.param('id');
-    const body = await c.req.json();
+    const body = await readJsonBodyWithLimit<Record<string, unknown>>(
+      c.req.raw,
+      DEFAULT_ADMIN_JSON_BODY_LIMIT_BYTES,
+    );
+    if (body.url !== undefined && body.url !== null && String(body.url).trim() !== '') {
+      if (!isSafeHttpsOutboundUrl(String(body.url))) {
+        return c.json(
+          {
+            success: false,
+            error:
+              'url must be a public https URL (private IPs, localhost, and metadata endpoints are not allowed)',
+          },
+          400,
+        );
+      }
+    }
     await updateOutgoingWebhook(c.env.DB, id, body);
     const updated = await getOutgoingWebhookById(c.env.DB, id);
     if (!updated) return c.json({ success: false, error: 'Not found' }, 404);
@@ -170,11 +236,13 @@ webhooks.put('/api/webhooks/outgoing/:id', async (c) => {
         id: updated.id,
         name: updated.name,
         url: updated.url,
-        eventTypes: JSON.parse(updated.event_types),
+        eventTypes: parseStringArrayJson(updated.event_types) ?? [],
         isActive: Boolean(updated.is_active),
       },
     });
   } catch (err) {
+    const jr = jsonBodyReadErrorResponse(err);
+    if (jr) return c.json(jr.body, jr.status);
     console.error('PUT /api/webhooks/outgoing/:id error:', err);
     return c.json({ success: false, error: 'Internal server error' }, 500);
   }
@@ -209,16 +277,33 @@ webhooks.post('/api/webhooks/incoming/:id/receive', async (c) => {
     if (!wh || !wh.is_active)
       return c.json({ success: false, error: 'Webhook not found or inactive' }, 404);
 
-    const rawBody = await readTextBodyWithLimit(c.req.raw, INCOMING_WEBHOOK_LIMIT_BYTES);
-    if (wh.secret) {
-      const signature = c.req.header('X-Webhook-Signature') ?? '';
-      const valid = await verifySignedPayload(wh.secret, rawBody, signature);
-      if (!valid) {
-        return c.json({ success: false, error: 'Invalid webhook signature' }, 401);
-      }
+    if (!wh.secret?.trim()) {
+      return c.json(
+        {
+          success: false,
+          error:
+            'Incoming webhook has no signing secret; set a secret in the admin UI before accepting traffic',
+        },
+        503,
+      );
     }
 
-    const body = rawBody ? JSON.parse(rawBody) : {};
+    const rawBody = await readTextBodyWithLimit(c.req.raw, INCOMING_WEBHOOK_LIMIT_BYTES);
+    const signature = c.req.header('X-Webhook-Signature') ?? '';
+    const valid = await verifySignedPayload(wh.secret, rawBody, signature);
+    if (!valid) {
+      return c.json({ success: false, error: 'Invalid webhook signature' }, 401);
+    }
+
+    let body: unknown;
+    try {
+      body = rawBody.trim() === '' ? {} : JSON.parse(rawBody);
+    } catch {
+      return c.json({ success: false, error: 'Invalid JSON body' }, 400);
+    }
+    if (body === null || typeof body !== 'object') {
+      return c.json({ success: false, error: 'Webhook JSON body must be an object or array' }, 400);
+    }
 
     // イベントバスに発火: source_type をイベントタイプとして使用
     const { fireEvent } = await import('../services/event-bus.js');
@@ -229,9 +314,8 @@ webhooks.post('/api/webhooks/incoming/:id/receive', async (c) => {
 
     return c.json({ success: true, data: { received: true, source: wh.source_type } });
   } catch (err) {
-    if (err instanceof BodyTooLargeError) {
-      return c.json({ success: false, error: 'Request body too large' }, 413);
-    }
+    const jr = jsonBodyReadErrorResponse(err);
+    if (jr) return c.json(jr.body, jr.status);
     if (err instanceof SyntaxError) {
       return c.json({ success: false, error: 'Invalid JSON body' }, 400);
     }
