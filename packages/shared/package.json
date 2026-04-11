@@ -15,6 +15,21 @@
       "types": "./dist/safe-api-base-url.d.ts",
       "import": "./dist/safe-api-base-url.js",
       "default": "./dist/safe-api-base-url.js"
+    },
+    "./allowed-origins": {
+      "types": "./dist/allowed-origins.d.ts",
+      "import": "./dist/allowed-origins.js",
+      "default": "./dist/allowed-origins.js"
+    },
+    "./safe-liff-redirect": {
+      "types": "./dist/safe-liff-redirect.d.ts",
+      "import": "./dist/safe-liff-redirect.js",
+      "default": "./dist/safe-liff-redirect.js"
+    },
+    "./admin-browser-client": {
+      "types": "./dist/admin-browser-client.d.ts",
+      "import": "./dist/admin-browser-client.js",
+      "default": "./dist/admin-browser-client.js"
     }
   },
   "files": ["dist", "src"],

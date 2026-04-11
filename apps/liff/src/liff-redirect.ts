@@ -1,4 +1,7 @@
-import { resolveSafeRedirectUrl, type AllowedOriginsEnv } from '@line-crm/shared';
+import {
+  resolveSafeRedirectUrl,
+  type AllowedOriginsEnv,
+} from '@line-crm/shared/safe-liff-redirect';
 
 /** Vite env → same shape as Worker `LiffRedirectEnv` for redirect allowlisting. */
 export function getLiffRedirectEnvFromVite(): AllowedOriginsEnv {

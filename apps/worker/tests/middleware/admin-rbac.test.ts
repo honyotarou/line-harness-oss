@@ -89,6 +89,23 @@ describe('adminRbacMiddleware', () => {
     expect(res.status).toBe(200);
   });
 
+  it('skips RBAC for signed incoming webhook receive (HMAC gate is on the route, not admin session)', async () => {
+    const app = new Hono<Env>();
+    app.use('*', async (c, next) => {
+      c.set('cfAccessJwtPayload', { email: 'v@example.com' });
+      await next();
+    });
+    app.use('*', adminRbacMiddleware);
+    app.post('/api/webhooks/incoming/ext-1/receive', (c) => c.json({ ok: true }));
+
+    const res = await app.fetch(
+      new Request('http://localhost/api/webhooks/incoming/ext-1/receive', { method: 'POST' }),
+      { ...cfAccessEnv({ DB: dbReturningRole('viewer') }) } as never,
+    );
+
+    expect(res.status).toBe(200);
+  });
+
   it('does nothing when Cloudflare Access is not enforced', async () => {
     const app = new Hono<Env>();
     app.use('*', async (c, next) => {

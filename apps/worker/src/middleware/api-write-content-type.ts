@@ -1,5 +1,6 @@
 import type { Context, Next } from 'hono';
 import type { Env } from '../index.js';
+import { canonicalRequestPathname } from '../services/auth-paths.js';
 import { allowsApiWriteContentType } from '../services/api-write-content-type.js';
 
 const MUTATING = new Set(['POST', 'PUT', 'PATCH']);
@@ -17,7 +18,7 @@ export async function apiWriteContentTypeMiddleware(
     return next();
   }
 
-  const pathname = new URL(c.req.url).pathname;
+  const pathname = canonicalRequestPathname(new URL(c.req.url).pathname);
   if (!pathname.startsWith('/api')) {
     return next();
   }

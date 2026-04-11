@@ -22,6 +22,8 @@ pnpm build:libs
 
 `build:libs` は `@line-crm/shared` と `@line-crm/line-sdk` の `dist` を生成。Wrangler バンドル前に必要。
 
+**LIFF（Vite）**: `apps/liff` の `pnpm build` は内部で **`pnpm --filter @line-crm/shared run build`** を先に実行する。手元で `vite build` だけ叩くと `@line-crm/shared` の `dist` が無く失敗しうる。CI も `build:libs` 順序に従う。
+
 ## 2 — D1 + スキーマ
 
 ```bash

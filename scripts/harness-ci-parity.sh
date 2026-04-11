@@ -8,6 +8,9 @@ cd "$ROOT"
 echo "== harness:ci (biome format) =="
 pnpm exec biome format .
 
+echo "== harness:ci (encapsulation) =="
+node scripts/check-encapsulation.mjs
+
 echo "== harness:ci (liff typecheck) =="
 pnpm --filter liff typecheck
 

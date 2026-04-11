@@ -66,7 +66,7 @@ pnpm test:coverage
 
 1. **`docs/adr/`** — 設計判断が変わったら短い ADR（Supersede 可）
 2. **D1** — `packages/db/migrations/` と `schema.sql` の両方、Worker 側の `wrangler` バインド
-3. **セキュリティ境界** — 公開ルート・`authMiddleware`・LIFF の `idToken` / signed `state` 等（既存パターンに合わせる）
+3. **セキュリティ境界** — 公開ルート・`authMiddleware`・LIFF の `idToken` / signed `state`（実装は `application/liff-identity.ts` / `liff-oauth-*.ts` / `services/liff-oauth-state.ts` 等。既存パターンに合わせる）。攻撃者視点の繰り返しレビューは [steps-pentest-tdd-loop.md](steps-pentest-tdd-loop.md)（**pentest** 枝）
 4. **`AGENTS.md`** のコマンドと矛盾しないか
 
 本番相当の確認はルート **`AGENTS.md`「本番リリース前チェック」** を参照。
@@ -100,8 +100,9 @@ CI の unit ジョブに揃えるなら `pnpm harness:ci` も実行する。
 
 | 変更の種類 | 最低限のゲート |
 |------------|----------------|
-| Worker ルートのみ | `pnpm harness` + 該当 `routes/*.test.ts` |
+| Worker ルート / `application/` のみ | `pnpm harness` + 該当 `apps/worker/tests/**/*.test.ts`（ルートは `routes/`、ロジックは `application/` を両方意識） |
 | Worker + 新 HTTP 契約 | + `pnpm test:api`（Hurl 更新） |
-| Web UI | + `pnpm test:e2e`（関連 spec） |
+| Web 管理画面（`api` クライアント含む） | `pnpm --filter web test`（`src/lib/api/**/*.test.ts`）。画面変更なら + `pnpm test:e2e` |
+| Web UI（画面・ナビ） | + `pnpm test:e2e`（関連 spec） |
 | `packages/db` スキーマ | マイグレーション + worker テスト + ローカル D1 確認 |
 | SDK 公開 API | `pnpm --filter @line-harness/sdk test` + 利用側のテスト |

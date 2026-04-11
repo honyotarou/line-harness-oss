@@ -1,7 +1,7 @@
 import type { Context, Next } from 'hono';
 import { resolveAdminPrincipalAccess } from '@line-crm/db';
 import type { Env } from '../index.js';
-import { isAuthExemptPath } from '../services/auth-paths.js';
+import { canonicalRequestPathname, isAuthExemptPath } from '../services/auth-paths.js';
 import {
   CLOUDFLARE_ACCESS_EMAIL_REQUIRED_ERROR,
   getCloudflareAccessEmailFromContext,
@@ -38,7 +38,7 @@ function isViewerAllowedAdminMutation(pathname: string, method: string): boolean
  */
 export async function adminRbacMiddleware(c: Context<Env>, next: Next): Promise<Response | void> {
   const url = new URL(c.req.url);
-  const pathname = url.pathname;
+  const pathname = canonicalRequestPathname(url.pathname);
   const method = c.req.method;
 
   if (isAuthExemptPath(pathname, method)) {

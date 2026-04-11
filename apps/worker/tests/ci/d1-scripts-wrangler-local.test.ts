@@ -12,6 +12,7 @@ describe('root D1 helper scripts use wrangler.local.toml when present', () => {
     'd1-apply-012.sh',
     'd1-apply-013.sh',
     'd1-apply-015.sh',
+    'd1-apply-016.sh',
     'd1-pre-010-check.sh',
   ])('%s passes -c wrangler.local.toml', (name) => {
     const raw = readFileSync(join(repoRoot, 'scripts', name), 'utf8');

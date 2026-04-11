@@ -18,7 +18,7 @@
   - 上記の差分を追記し、反映先ファイルまで列挙する
 - **LIFF（必須）**: `apps/liff/src/`（問診フォーム/導線）
 - 予約不能/障害時に **必ず電話 CTA**（tel:）を出す（「やり直し」だけは禁止）
-- **Worker（必須）**: `apps/worker/src/routes/liff.ts` / `apps/worker/src/index.ts`
+- **Worker（必須）**: `apps/worker/src/application/liff-json-handlers.ts`（`liffBookingPhoneFallbackPost`・`BOOKING_PHONE_FALLBACK_MESSAGE`）+ `apps/worker/src/routes/liff.ts`（配線）+ `apps/worker/src/index.ts`（`BOOKING_FALLBACK_TEL` 等 env）
   - 予約不能時の電話フォールバック（`BOOKING_FALLBACK_TEL` / `tel:` 正規化）を必ず担保
 - **Worker（必須）**: `apps/worker/src/services/*delivery*.ts`
   - **夜間プッシュ禁止**のガード（リマインダ/配信/ステップ配信のどこで止めるか）

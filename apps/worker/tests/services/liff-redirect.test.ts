@@ -29,6 +29,15 @@ describe('resolveSafeRedirectUrl', () => {
     ).toBeNull();
   });
 
+  it('blocks https URL that uses userinfo to hide a foreign host (origin is attacker host)', () => {
+    expect(
+      resolveSafeRedirectUrl('https://client.example@evil.example/phish', {
+        WEB_URL: 'https://client.example',
+        WORKER_URL: 'https://worker.example.com',
+      }),
+    ).toBeNull();
+  });
+
   it('allows line.me', () => {
     expect(
       resolveSafeRedirectUrl('https://line.me/R/ti/p/@x', {

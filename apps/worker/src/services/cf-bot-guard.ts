@@ -1,3 +1,5 @@
+import { canonicalRequestPathname } from './auth-paths.js';
+
 /**
  * Optional Cloudflare Bot Management integration: block very low scores on a few
  * abuse-prone public POST endpoints (credential stuffing, affiliate click fraud).
@@ -48,7 +50,8 @@ export function isCfBotScoreProtectedRoute(pathname: string, method: string): bo
   if (method !== 'POST') {
     return false;
   }
-  return pathname === '/api/auth/login' || pathname === '/api/affiliates/click';
+  const path = canonicalRequestPathname(pathname);
+  return path === '/api/auth/login' || path === '/api/affiliates/click';
 }
 
 export type CfBotBlockDecision =

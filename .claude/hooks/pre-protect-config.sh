@@ -24,6 +24,7 @@ case "$file" in
   */scripts/harness-check.sh | scripts/harness-check.sh) blocked ;;
   */scripts/harness-ci-parity.sh | scripts/harness-ci-parity.sh) blocked ;;
   */scripts/harness-full.sh | scripts/harness-full.sh) blocked ;;
+  */scripts/check-encapsulation.mjs | scripts/check-encapsulation.mjs) blocked ;;
   */scripts/api-integration.sh | scripts/api-integration.sh) blocked ;;
   */.claude/settings.json | .claude/settings.json) blocked ;;
   */.claude/hooks/pre-protect-config.sh | .claude/hooks/pre-protect-config.sh) blocked ;;

@@ -16,6 +16,7 @@
     "format": "biome format --write .",
     "format:check": "biome format .",
     "audit:ci": "pnpm audit --audit-level=high",
+    "check:encapsulation": "node scripts/check-encapsulation.mjs",
     "harness": "bash scripts/harness-check.sh",
     "harness:ci": "bash scripts/harness-ci-parity.sh",
     "harness:full": "bash scripts/harness-full.sh",

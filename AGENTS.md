@@ -4,14 +4,17 @@
 
 ## 必読（オンデマンド）
 
-- **LINE 統合スキル（デザイン・壁打ち・TDD・ハーネス・デプロイ）**: [`.cursor/skills/line/SKILL.md`](.cursor/skills/line/SKILL.md)（**`/line`** — デザイン・要件は **親 0（ビジュアル・任意リッチ）** と **親 1（8 Round＋ブランド）** の2段；リッチ枝は [`steps-rich-menu-wallball.md`](.cursor/skills/line/steps-rich-menu-wallball.md)、ほか `steps-*.md`）
+- **スラッシュコマンド（チャットで `/`）**: プロジェクト直下 [`.cursor/commands/`](.cursor/commands/) — 例 **`/line`**（統合メニュー）、**`/pentest-tdd-loop`**（ペネトレ→TDD 自走ループ；**フェーズ1＋フェーズ2**の固定順で全チェックリスト相当を踏み、その後変種ラウンド。**最大 100 ラウンド**または P1 が 2 連続ゼロまで確認なしで回せる）。中身はエージェントへの指示プロンプト。
+- **LINE 統合スキル（デザイン・壁打ち・TDD・ハーネス・デプロイ）**: [`.cursor/skills/line/SKILL.md`](.cursor/skills/line/SKILL.md)（**`/line`** コマンドまたは **Agent Skills** の `line` — デザイン・要件は **親 0（ビジュアル・任意リッチ）** と **親 1（8 Round＋ブランド）** の2段；リッチ枝は [`steps-rich-menu-wallball.md`](.cursor/skills/line/steps-rich-menu-wallball.md)、ほか `steps-*.md`）
+- **ペネトレ枝（Skills でも検出可）**: [`.cursor/skills/pentest-tdd-loop/SKILL.md`](.cursor/skills/pentest-tdd-loop/SKILL.md)（正本の手順は [`.cursor/skills/line/steps-pentest-tdd-loop.md`](.cursor/skills/line/steps-pentest-tdd-loop.md)）
 - **意思決定の履歴**: [`docs/adr/`](docs/adr/)（テスト層: [`0001`](docs/adr/0001-testing-and-harness-layers.md)、ハーネス方針: [`0002`](docs/adr/0002-harness-engineering.md)）
 
 ## よく使うコマンド（ルート）
 
 | 目的 | コマンド |
 |------|-----------|
-| クイック検証（Biome + 型 + ユニット） | `pnpm harness` |
+| クイック検証（Biome + **カプセル化ゲート** + 型 + ユニット） | `pnpm harness` |
+| レイヤー／薄いルートだけ（単体） | `pnpm check:encapsulation` |
 | コード整形（Biome） | `pnpm format`（`pnpm format:check` で検証のみ） |
 | CI `unit` ジョブ相当（LIFF 型・`build:libs`・`next build`・カバレッジ + SDK） | `pnpm harness:ci` |
 | 広い完了ゲート（harness + E2E + API 統合） | `pnpm harness:full` |

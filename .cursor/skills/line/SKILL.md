@@ -7,7 +7,8 @@ description: >-
   Use when the user says /line, /tdd, Pinterest, ムードボード, デザイン, 壁打ち, ヒアリング,
   整形外科, リハビリ, 問診, 初診, 再診, 保険, 来院, 診察, 予約導線,
   リッチメニュー, rich menu, LINE メニュー設計, areas bounds,
-  LINE Harness OSS, line-harness-oss, LINE CRM, Cloudflare Worker, LIFF, harness, deploy, TDD.
+  LINE Harness OSS, line-harness-oss, LINE CRM, Cloudflare Worker, LIFF, application layer, harness, deploy, TDD,
+  penetration test, pentest, ペネトレ, セキュリティレビュー, 攻撃者視点, SSRF, open redirect, webhook security.
 ---
 
 # LINE Harness OSS ワークフロー（`/line`）
@@ -27,6 +28,7 @@ LINE Harness OSS:
       ・ブランド: steps-brand-1-5.md（LP/LIFF/管理/LINE UI の揃え方）
       ・旧番号「1.5」は本ステップと同義
   orthopedics  整形外科（壁打ち→反映）  整形外科差分を壁打ちし、必ず repo に反映して完了（詳細: steps-orthopedics-wallball.md）
+  pentest      攻撃者視点レビュー→TDDで潰す→再ペネトレの自走ループ（詳細: steps-pentest-tdd-loop.md；`/pentest-tdd-loop`。**自走**＝フェーズ1: Webhook→管理 API→wrap→Incoming の4、続けフェーズ2: LIFF OAuth 詳細→LIFF JSON→トラッキング→Stripe→CORS→LIFF フロントの6を順に必須、その後変種ラウンド。確認せず最大 100 ラウンドまたは P1 2 連続ゼロまで）
 
   【ハーネス（親0・1の直後に読む・実行する）】
   2  開発ハーネス        決定論ゲート・E2E層・Hooks・コマンド表（詳細: steps-harness.md）
@@ -59,6 +61,7 @@ LINE Harness OSS:
 | [steps-rich-menu-wallball.md](steps-rich-menu-wallball.md) | **親 0** のリッチメニュー枝（サブ 0〜7・任意。旧 **1.6**） |
 | [steps-brand-1-5.md](steps-brand-1-5.md) | **親 1** のブランド一貫性（旧 **1.5**） |
 | [steps-orthopedics-wallball.md](steps-orthopedics-wallball.md) | 整形外科向け「壁打ち→反映」枝（**会話だけで終わらせず** docs/UI/LIFF/worker/DB/テストまで反映） |
+| [steps-pentest-tdd-loop.md](steps-pentest-tdd-loop.md) | **pentest** — 攻撃者視点レビューと攻撃ベクター列挙 → Red/Green → `pnpm harness` を繰り返す |
 | [steps-harness.md](steps-harness.md) | Step **2**（開発ハーネス） |
 | [steps-0-3-red-green-refactor.md](steps-0-3-red-green-refactor.md) | Step **3〜6**（観点 → Red → Green → Refactor） |
 | [steps-4-8-gates.md](steps-4-8-gates.md) | Step **7〜11** + `check` |
@@ -66,18 +69,36 @@ LINE Harness OSS:
 
 **ポインタ**: ルート **`AGENTS.md`**、`docs/wiki/Getting-Started.md`、`docs/adr/`。
 
-## アーキテクチャ（テストの置き場所）
+## アーキテクチャ（レイヤーとテストの置き場所）
 
 ```
-apps/worker/tests/           ← Worker（Vitest）
-apps/web/src/**/*.test.ts    ← Web（Vitest）
-packages/sdk/tests/          ← SDK（Vitest）
-tests/e2e/                   ← Playwright（Worker API はモック）
-tests/hurl/*.hurl            ← 実 Worker（pnpm test:api）
-apps/liff/src/               ← LIFF（typecheck）
-docs/design/                 ← 親 0 の design-tokens.json 等（任意で追加）
-packages/db/                 ← スキーマ
+apps/worker/src/application/   ← ユースケース層（Hono 非依存のロジック）
+  calendar-integration.ts        Google Calendar 連携
+  liff-identity.ts               LIFF: ID トークン検証・友だち解決
+  liff-oauth-start.ts            GET /auth/line の分岐
+  liff-oauth-callback.ts         GET /auth/callback（トークン交換〜紐付け）
+  liff-pages.ts                  LIFF 用 HTML（error / completion 等）
+  liff-json-handlers.ts          POST /api/liff/*・analytics・links/wrap
+  line-webhook-handlers.ts       LINE Webhook イベント処理
+  openapi-spec.ts                OpenAPI ドキュメント本文＋公開フラグ
+apps/worker/src/routes/          ← HTTP アダプタ（薄いルート。上記を呼ぶ）
+apps/worker/tests/               ← Worker（Vitest）
+apps/web/src/lib/api/client.ts   ← 管理画面: fetch・セッション・ApiError
+apps/web/src/lib/api/catalog/    ← api.auth / api.friends … をドメイン別に分割
+apps/web/src/**/*.test.ts        ← Web（Vitest）
+packages/sdk/tests/              ← SDK（Vitest）
+tests/e2e/                       ← Playwright（Worker API はモック）
+tests/hurl/*.hurl                ← 実 Worker（pnpm test:api）
+apps/liff/src/config/liff-api-origin.ts  ← LIFF: API origin 解決
+apps/liff/src/api-base.ts        ← LIFF: fetch の表層（shared の safe URL を利用）
+apps/liff/src/                   ← LIFF（typecheck / build）
+docs/design/                     ← 親 0 の design-tokens.json 等（任意で追加）
+packages/db/                     ← スキーマ
+packages/shared/                 ← 型・検証。本番 import はサブパス推奨
+  （例: safe-api-base-url, admin-browser-client, safe-liff-redirect）
 ```
+
+**実装の型（Worker）**: 振る舞いの変更は **`application/*.ts`** に寄せ、**`routes/*.ts`** はリクエスト抽出・`c.json` / `c.redirect` / レート制限など配線に留める（既存の `calendar` / `liff` / `webhook` / `openapi` がこの形）。
 
 ## 必須ルール（全ステップ共通）
 
@@ -93,9 +114,11 @@ packages/db/                 ← スキーマ
   - 既存 OSS の「どのファイルに何を反映するか」を **差分チェックリスト**まで落とす（“反映先が曖昧”な状態で Step 2 以降へ進まない）
 - **差分チェックリスト（親 0/1 の必須アウトプット）**: 各項目に「反映先ファイル」を必ず紐付ける
   - **CORS / Origin** → `apps/worker/src/index.ts` + `apps/worker/wrangler.toml` / `.github/workflows/deploy-worker.yml`
-  - **友だち追加 `/auth/line`** → `apps/web/src/app/page.tsx` + `apps/worker/src/routes/liff.ts`
-  - **LIFF の環境変数** → `apps/liff/*` + Vercel Env（`VITE_*`）
-  - **予約の電話フォールバック** → `apps/worker/src/routes/liff.ts` + `apps/worker/src/index.ts`（env）+ `apps/worker/tests/...`
+  - **友だち追加 `/auth/line`・OAuth コールバック・LIFF JSON API** → `apps/web/src/app/page.tsx` + `apps/worker/src/routes/liff.ts`（配線）+ 実装本体は `apps/worker/src/application/liff-*.ts` / `liff-json-handlers.ts`（新規ロジックはこちら優先）
+  - **LIFF の環境変数** → `apps/liff/*`（`VITE_*`）+ Vercel Env。API 基底 URL は `liff-api-origin.ts` / `api-base.ts` を確認
+  - **予約の電話フォールバック** → `apps/worker/src/application/liff-json-handlers.ts`（`liffBookingPhoneFallbackPost`）+ `apps/worker/src/routes/liff.ts` + `apps/worker/src/index.ts`（`BOOKING_FALLBACK_TEL` 等 env）+ `apps/worker/tests/routes/liff.test.ts` 等
+  - **LINE Webhook（follow / メッセージ等）** → `apps/worker/src/routes/webhook.ts` + `apps/worker/src/application/line-webhook-handlers.ts`
+  - **管理画面の Worker 呼び出し** → `apps/web/src/lib/api/client.ts` + `apps/web/src/lib/api/catalog/*.ts`（ドメイン別）
 
 ### セキュリティ・秘密情報
 
@@ -111,12 +134,12 @@ packages/db/                 ← スキーマ
 ### このリポジトリ固有
 
 - **Playwright** は UI + **モック API**。実 Worker は **Vitest + `pnpm test:api`**。
-- **`liff` / `webhook` / `forms` / 認可** は Vitest を厚く。
+- **`liff`（`routes/liff.ts` + `application/liff-*.ts`）/ `webhook`（`application/line-webhook-handlers.ts`）/ `forms` / 認可** は Vitest を厚く。
 - 外部 LINE `fetch` はスタブし、契約をテストに固定。
 
 ### 完了の定義
 
-- コード変更後は **`pnpm harness`**（広い変更は **`harness:full`** や **check**）。
+- コード変更後は **`pnpm harness`**（広い変更は **`harness:full`** や **check**）。`harness` には **カプセル化ゲート**（`pnpm check:encapsulation` と同等）が含まれる。
 - **Step 12** 完了報告にはデプロイ手順の「動作確認」の証拠を含める。
 
 ### AI を使った定期観測（CI/スケジュール運用のコツ）

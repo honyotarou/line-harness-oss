@@ -193,7 +193,7 @@ flowchart TD
 ### 設計サマリ OK 後（必須＋任意）
 
 - **リポに残す（必須）**: ユーザーが OK した設計サマリを、チャットと**同一内容**で **`docs/design/hearing-summary.md`** に書く（上記「設計サマリの出力フォーマット」の見出し構造でよい）。**壁打ちが「反映されない」主因は、ここを飛ばしてチャットだけで終わること**。
-- **テンプレ反映の指示（必須）**: `hearing-summary.md` の各節に「反映先ファイル」を紐付け、以降の実装・テストの差分が機械的に切れる状態にする（例: CORS → `apps/worker/src/index.ts` + `wrangler.toml` / `/auth/line` → `apps/web/src/app/page.tsx` + `apps/worker/src/routes/liff.ts`）。
+- **テンプレ反映の指示（必須）**: `hearing-summary.md` の各節に「反映先ファイル」を紐付け、以降の実装・テストの差分が機械的に切れる状態にする（例: CORS → `apps/worker/src/index.ts` + `wrangler.toml` / 友だち追加・OAuth・LIFF API → `apps/web/src/app/page.tsx` + `apps/worker/src/routes/liff.ts`（配線）+ **`apps/worker/src/application/liff-*.ts` / `liff-json-handlers.ts`（本体）**）。
 - **ワイヤー**（任意）: Markdown の表／箇条書きで画面一覧、または単一 HTML の**低忠実度モック**（トークンは CSS 変数で参照）。
 - **次のステップ**: まず [steps-harness.md](steps-harness.md) の **Step 2** でゲートとコマンドを把握する。続けて [steps-0-3-red-green-refactor.md](steps-0-3-red-green-refactor.md) の **Step 3（観点）** に進み、受け入れ条件をテスト名まで落とす。
 

@@ -9,7 +9,7 @@
 1. **スコープ**: 触るパッケージ（`worker` / `web` / `sdk` / `db`）
 2. **Given / When / Then**（または表形式の受け入れ条件）
 3. **テストの置き場所**:
-   - 新規ファイルか既存ファイルか（例: `apps/worker/tests/routes/foo.test.ts`）
+   - 新規ファイルか既存ファイルか（例: `apps/worker/tests/routes/foo.test.ts` / `apps/worker/tests/services/foo.test.ts`）
 4. **モック方針**: `vi.mock('@line-crm/db')` の有無、`fetch` スタブの要否
 5. **型・公開 API**: 変える関数・ルート・型の名前
 
@@ -30,12 +30,15 @@
 
 **Worker のコツ**:
 
+- **ロジックの追加・変更**は `apps/worker/src/application/*.ts` に置き、**`routes/*.ts` は配線**に留める（既存の LIFF / Webhook / Calendar / OpenAPI がこのパターン）。
+- テスト: ルートは `Hono` の `app.fetch(Request, env, executionCtx)`（`apps/worker/tests/routes/*.test.ts` を複製）。`application/` の分岐だけなら `tests/services/` 等で切り出してよい。
 - `vi.hoisted(() => ({ ... }))` で `vi.mock` 用のモックを先に定義する（既存ルートテストに合わせる）。
 - グローバル `fetch` を触る場合は `afterEach` / `beforeEach` で `vi.unstubAllGlobals()`。
 
 **Web のコツ**:
 
 - `apps/web` は Vitest；対象モジュールの import をテストから行い、**DOM に依存しないロジック**を優先して TDD する。
+- 管理画面の Worker 呼び出しを増やすときは **`src/lib/api/catalog/`** にドメイン別メソッドを足し、**`src/lib/api/index.ts`（再 export）**と既存ページの `@/lib/api` import を壊さないようにする。
 
 **禁止**: このステップで「とりあえず実装を入れて緑にする」こと（それは Step 5）。
 

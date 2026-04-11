@@ -12,6 +12,11 @@ export function hostnameFromHostHeader(host: string | undefined | null): string 
   if (!trimmed) {
     return null;
   }
+  // Reject control characters: WHATWG URL strips CR/LF inside the authority, which can turn
+  // `exam\nple.com` into `example.com` and obscures the real Host header in logs / upstreams.
+  if (/[\u0000-\u001f\u007f]/.test(trimmed)) {
+    return null;
+  }
   try {
     const { hostname } = new URL(`http://${trimmed}`);
     if (!hostname) {

@@ -25,6 +25,11 @@ const migration015Path = resolve(
   '../../packages/db/migrations/015_admin_session_revocations.sql',
 );
 
+const migration016Path = resolve(
+  process.cwd(),
+  '../../packages/db/migrations/016_friend_scenarios_unique.sql',
+);
+
 describe('schema.sql', () => {
   it('migration 011 matches admin_principal_roles DDL', () => {
     const m011 = readFileSync(migration011Path, 'utf8');
@@ -73,6 +78,13 @@ describe('schema.sql', () => {
     expect(stepsBlock?.[1]).toContain('condition_type');
     expect(stepsBlock?.[1]).toContain('condition_value');
     expect(stepsBlock?.[1]).toContain('next_step_on_false');
+  });
+
+  it('dedupes friend_scenarios per (friend_id, scenario_id) in schema and migration 016', () => {
+    expect(schema).toContain('idx_friend_scenarios_friend_scenario');
+    const m016 = readFileSync(migration016Path, 'utf8');
+    expect(m016).toContain('idx_friend_scenarios_friend_scenario');
+    expect(m016).toContain('GROUP BY friend_id, scenario_id');
   });
 
   it('defines multi-account oauth columns on line_accounts', () => {

@@ -78,6 +78,48 @@ describe('tracked link routes', () => {
     expect(dbMocks.enrollFriendInScenario).not.toHaveBeenCalled();
   });
 
+  it('rejects f= token bound to a different linkId (no tag/scenario; anonymous click only)', async () => {
+    dbMocks.getTrackedLinkById.mockResolvedValue({
+      id: 'link-2',
+      name: 'Other',
+      original_url: 'https://example.com/other',
+      tag_id: 'tag-1',
+      scenario_id: 'scenario-1',
+      is_active: 1,
+      click_count: 0,
+      created_at: '2026-03-26T10:00:00+09:00',
+      updated_at: '2026-03-26T10:00:00+09:00',
+    });
+    dbMocks.recordLinkClick.mockResolvedValue({
+      id: 'click-1',
+      tracked_link_id: 'link-2',
+      friend_id: null,
+      clicked_at: '2026-03-26T10:00:00+09:00',
+    });
+
+    const token = await issueTrackedLinkFriendToken(API_KEY, {
+      linkId: 'link-1',
+      friendId: 'friend-1',
+      expiresInSeconds: 3600,
+    });
+    const f = encodeURIComponent(token);
+
+    const { trackedLinks } = await import('../../src/routes/tracked-links.js');
+    const app = new Hono();
+    app.route('/', trackedLinks);
+
+    const response = await app.fetch(new Request(`http://localhost/t/link-2?f=${f}`), {
+      DB: {} as D1Database,
+      API_KEY,
+    } as never);
+
+    expect(response.status).toBe(302);
+    expect(response.headers.get('Location')).toBe('https://example.com/other');
+    expect(dbMocks.recordLinkClick).toHaveBeenCalledWith(expect.anything(), 'link-2', null);
+    expect(dbMocks.addTagToFriend).not.toHaveBeenCalled();
+    expect(dbMocks.enrollFriendInScenario).not.toHaveBeenCalled();
+  });
+
   it('ignores raw friend UUID in f= (no tag/scenario side effects; records anonymous click)', async () => {
     dbMocks.getTrackedLinkById.mockResolvedValue({
       id: 'link-1',
