@@ -4,6 +4,8 @@ import { isAdminSessionJtiRevoked } from '@line-crm/db';
 import { isNonLocalHttpsWorkerUrl } from './production-cloud-policy.js';
 
 const DEFAULT_SESSION_TTL_SECONDS = 60 * 60 * 12;
+/** Upper bound on `exp - iat` at verification (signer compromise / forged long-lived tokens). Small slack for clock skew. */
+export const MAX_ADMIN_SESSION_VERIFIED_SPAN_SECONDS = DEFAULT_SESSION_TTL_SECONDS + 300;
 export const ADMIN_SESSION_COOKIE_NAME = 'lh_admin_session';
 
 function isTruthyEnvFlag(raw: string | undefined): boolean {
@@ -198,6 +200,14 @@ export async function verifyAdminSessionToken(
       return null;
     }
     if (payload.exp <= now) {
+      return null;
+    }
+    const spanSec = payload.exp - payload.iat;
+    if (
+      !Number.isFinite(spanSec) ||
+      spanSec < 1 ||
+      spanSec > MAX_ADMIN_SESSION_VERIFIED_SPAN_SECONDS
+    ) {
       return null;
     }
     let jti: string | undefined;

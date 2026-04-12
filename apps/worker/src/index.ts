@@ -190,6 +190,11 @@ export type Env = {
      */
     REQUIRE_AUTOMATION_SEND_WEBHOOK_ALLOWED_HOSTS?: string;
     /**
+     * `1` / `true`: allow automation `send_webhook` when the event was triggered from an incoming partner webhook.
+     * Default is off — disabling blocks incoming → outbound → incoming automation loops (DoS).
+     */
+    ALLOW_AUTOMATION_SEND_WEBHOOK_FROM_INCOMING_WEBHOOK?: string;
+    /**
      * Secret for rotating `channel_access_token` / `channel_secret` via PUT `/api/line-accounts/:id`
      * (send matching `X-Line-Account-Secrets-Write`).
      */

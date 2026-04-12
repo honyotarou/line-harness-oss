@@ -421,6 +421,9 @@ webhooks.post('/api/webhooks/incoming/:id/receive', async (c) => {
         eventData: { webhookId: wh.id, source: wh.source_type, payload: body },
       },
       c.env,
+      undefined,
+      undefined,
+      { incomingWebhookTriggered: true },
     );
 
     return c.json({ success: true, data: { received: true, source: wh.source_type } });

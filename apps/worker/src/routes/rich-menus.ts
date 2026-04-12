@@ -9,7 +9,10 @@ import {
 } from '../services/line-account-routing.js';
 import {
   DEFAULT_ADMIN_JSON_BODY_LIMIT_BYTES,
+  RICH_MENU_IMAGE_BINARY_MAX_BYTES,
   RICH_MENU_IMAGE_JSON_BODY_LIMIT_BYTES,
+  assertArrayBufferWithinLimit,
+  assertRequestContentLengthWithinLimit,
   jsonBodyReadErrorResponse,
   readJsonBodyWithLimit,
 } from '../services/request-body.js';
@@ -272,8 +275,9 @@ richMenus.post('/api/rich-menus/:id/image', async (c) => {
       imageData = bytes.buffer;
       if (body.contentType === 'image/jpeg') imageContentType = 'image/jpeg';
     } else if (contentType.includes('image/')) {
-      // Accept raw binary upload
+      assertRequestContentLengthWithinLimit(c.req.raw, RICH_MENU_IMAGE_BINARY_MAX_BYTES);
       imageData = await c.req.arrayBuffer();
+      assertArrayBufferWithinLimit(imageData, RICH_MENU_IMAGE_BINARY_MAX_BYTES);
       imageContentType =
         contentType.includes('jpeg') || contentType.includes('jpg') ? 'image/jpeg' : 'image/png';
     } else {

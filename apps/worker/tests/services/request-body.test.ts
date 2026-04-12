@@ -70,4 +70,30 @@ describe('request body helpers', () => {
     );
     expect(RICH_MENU_IMAGE_JSON_BODY_LIMIT_BYTES).toBe(2 * 1024 * 1024);
   });
+
+  it('assertRequestContentLengthWithinLimit throws when Content-Length exceeds cap', async () => {
+    const {
+      BodyTooLargeError,
+      assertRequestContentLengthWithinLimit,
+      RICH_MENU_IMAGE_BINARY_MAX_BYTES,
+    } = await import('../../src/services/request-body.js');
+
+    const request = new Request('http://localhost/x', {
+      method: 'POST',
+      headers: { 'Content-Length': String(RICH_MENU_IMAGE_BINARY_MAX_BYTES + 1) },
+    });
+
+    expect(() =>
+      assertRequestContentLengthWithinLimit(request, RICH_MENU_IMAGE_BINARY_MAX_BYTES),
+    ).toThrow(BodyTooLargeError);
+  });
+
+  it('assertArrayBufferWithinLimit throws when buffer exceeds cap', async () => {
+    const { BodyTooLargeError, assertArrayBufferWithinLimit } = await import(
+      '../../src/services/request-body.js'
+    );
+
+    const buf = new ArrayBuffer(10);
+    expect(() => assertArrayBufferWithinLimit(buf, 9)).toThrow(BodyTooLargeError);
+  });
 });

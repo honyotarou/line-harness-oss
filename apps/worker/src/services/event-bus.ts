@@ -84,6 +84,10 @@ export type FireEventOptions = {
    * When true, `send_webhook` actions fail unless `automationSendWebhookAllowedHosts` parses to a non-empty allowlist.
    */
   requireAutomationSendWebhookHostAllowlist?: boolean;
+  /**
+   * When true, automation `send_webhook` is not executed (mitigates partner incoming webhook → outbound → incoming loops).
+   */
+  suppressAutomationSendWebhook?: boolean;
 };
 
 /**
@@ -102,6 +106,7 @@ export async function fireEvent(
   );
   const requireAutomationSendWebhookHostAllowlist =
     options?.requireAutomationSendWebhookHostAllowlist === true;
+  const suppressAutomationSendWebhook = options?.suppressAutomationSendWebhook === true;
   await Promise.allSettled([
     fireOutgoingWebhooks(db, eventType, payload, lineAccountId),
     processScoring(db, eventType, payload),
@@ -113,6 +118,7 @@ export async function fireEvent(
       lineAccountId,
       sendWebhookHostRules,
       requireAutomationSendWebhookHostAllowlist,
+      suppressAutomationSendWebhook,
     ),
     processNotifications(db, eventType, payload, lineAccountId),
   ]);
@@ -213,6 +219,7 @@ async function processAutomations(
   lineAccountId?: string | null,
   sendWebhookHostRules: string[] = [],
   requireAutomationSendWebhookHostAllowlist = false,
+  suppressAutomationSendWebhook = false,
 ): Promise<void> {
   try {
     const allAutomations = await getActiveAutomationsByEvent(db, eventType);
@@ -282,6 +289,7 @@ async function processAutomations(
             lineAccessToken,
             sendWebhookHostRules,
             requireAutomationSendWebhookHostAllowlist,
+            suppressAutomationSendWebhook,
           );
           results.push({ action: action.type, success: true });
         } catch (err) {
@@ -314,6 +322,7 @@ async function executeAction(
   lineAccessToken?: string,
   sendWebhookHostRules: string[] = [],
   requireAutomationSendWebhookHostAllowlist = false,
+  suppressAutomationSendWebhook = false,
 ): Promise<void> {
   const friendId = payload.friendId;
   if (!friendId && action.type !== 'send_webhook') {
@@ -361,6 +370,11 @@ async function executeAction(
     }
 
     case 'send_webhook': {
+      if (suppressAutomationSendWebhook) {
+        throw new Error(
+          'send_webhook is disabled for events triggered from incoming webhooks (set ALLOW_AUTOMATION_SEND_WEBHOOK_FROM_INCOMING_WEBHOOK=1 to override — not recommended)',
+        );
+      }
       const url = action.params.url?.trim() ?? '';
       if (!url) {
         throw new Error('send_webhook requires params.url');

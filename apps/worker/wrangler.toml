@@ -56,6 +56,7 @@ LIFF_URL = "https://liff.line.me/YOUR_LIFF_ID"
 # Optional: comma-separated host allowlist for automation action send_webhook only (exact host or `.suffix`).
 # AUTOMATION_SEND_WEBHOOK_ALLOWED_HOSTS = "hooks.slack.com,.mycompany.com"
 # REQUIRE_AUTOMATION_SEND_WEBHOOK_ALLOWED_HOSTS = "1"   refuse send_webhook unless allowlist is non-empty
+# ALLOW_AUTOMATION_SEND_WEBHOOK_FROM_INCOMING_WEBHOOK = "1"   unsafe default off: lets partner incoming webhooks chain to send_webhook
 #
 # Legacy only: allow Bearer raw API_KEY on GET /api/auth/session (default: off)
 # ALLOW_LEGACY_API_KEY_BEARER_SESSION = "1"

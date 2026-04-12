@@ -21,6 +21,26 @@ function createStatefulDb(initial: Row[], viewerEmail: string | null) {
   const rows = [...initial];
   return {
     prepare(sql: string) {
+      if (sql.includes('SELECT COUNT(*)') && sql.includes('admin_principal_roles')) {
+        return {
+          first: async () => ({ c: rows.length }),
+        };
+      }
+      if (sql.includes('WHERE NOT EXISTS') && sql.includes('admin_principal_roles')) {
+        return {
+          bind(email: string, role: string) {
+            return {
+              run: async () => {
+                if (rows.length > 0) {
+                  return { success: true, meta: { changes: 0 } };
+                }
+                rows.push({ email, role, updatedAt: 't1' });
+                return { success: true, meta: { changes: 1 } };
+              },
+            };
+          },
+        };
+      }
       if (sql.includes('SELECT role FROM admin_principal_roles')) {
         return {
           bind(email: string) {
@@ -47,7 +67,7 @@ function createStatefulDb(initial: Row[], viewerEmail: string | null) {
           }),
         };
       }
-      if (sql.includes('INSERT INTO admin_principal_roles')) {
+      if (sql.includes('INSERT INTO admin_principal_roles') && sql.includes('ON CONFLICT')) {
         return {
           bind(email: string, role: string) {
             return {
@@ -240,5 +260,76 @@ describe('admin principal roles routes', () => {
     );
 
     expect(res.status).toBe(400);
+  });
+
+  it('PUT uses atomic bootstrap when REQUIRE_ADMIN_PRINCIPAL_ALLOWLIST and table empty', async () => {
+    const db = createStatefulDb([], null);
+    const { app, bindings } = createAccessApp(
+      db,
+      cfAccessBindings({ REQUIRE_ADMIN_PRINCIPAL_ALLOWLIST: '1' }),
+      'admin@example.com',
+    );
+
+    const res = await app.fetch(
+      new Request('http://localhost/api/admin/principal-roles', {
+        method: 'PUT',
+        headers: { ...(await sessionHeaders()), 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: 'first@x.com', role: 'owner' }),
+      }),
+      { ...bindings } as never,
+    );
+
+    expect(res.status).toBe(200);
+  });
+
+  it('PUT returns 409 when bootstrap INSERT loses race (table still empty but no row inserted)', async () => {
+    const raceDb = {
+      prepare(sql: string) {
+        if (sql.includes('SELECT COUNT(*)') && sql.includes('admin_principal_roles')) {
+          return {
+            first: async () => ({ c: 0 }),
+          };
+        }
+        if (sql.includes('SELECT role FROM admin_principal_roles')) {
+          return {
+            bind() {
+              return { first: async () => null };
+            },
+          };
+        }
+        if (sql.includes('WHERE NOT EXISTS') && sql.includes('admin_principal_roles')) {
+          return {
+            bind() {
+              return { run: async () => ({ success: true, meta: { changes: 0 } }) };
+            },
+          };
+        }
+        if (sql.includes('admin_session_revocations')) {
+          return {
+            bind() {
+              return { first: async () => null };
+            },
+          };
+        }
+        throw new Error(`unexpected SQL: ${sql.slice(0, 60)}`);
+      },
+    } as unknown as D1Database;
+
+    const { app, bindings } = createAccessApp(
+      raceDb,
+      cfAccessBindings({ REQUIRE_ADMIN_PRINCIPAL_ALLOWLIST: '1' }),
+      'admin@example.com',
+    );
+
+    const res = await app.fetch(
+      new Request('http://localhost/api/admin/principal-roles', {
+        method: 'PUT',
+        headers: { ...(await sessionHeaders()), 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: 'late@x.com', role: 'owner' }),
+      }),
+      { ...bindings } as never,
+    );
+
+    expect(res.status).toBe(409);
   });
 });
