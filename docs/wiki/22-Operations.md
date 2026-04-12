@@ -244,6 +244,11 @@ curl -v -H "Authorization: Bearer YOUR_KEY" \
   https://line-crm-worker.line-crm-api.workers.dev/api/friends/count
 ```
 
+**Worker 固有**
+
+- **`POST /api/auth/login` または `GET /api/auth/session` が 503**（本文に *D1 database binding required for auth rate limiting*）→ Worker に **D1 がバインドされていない**。本番・ステージングの `wrangler.toml` / ダッシュボード設定を確認。
+- **公開の受信 Webhook** `POST /api/webhooks/incoming/:id/receive` が **401**（`Unauthorized`）→ 署名・ID・有効フラグ・シークレット設定のいずれか。**シークレット未設定専用の 503 は返さない**（列挙耐性）。受信 Webhook の状態は `GET /api/webhooks/incoming`（Bearer）で確認する（[15-Webhooks-and-Notifications.md](./15-Webhooks-and-Notifications.md)）。
+
 #### 5. D1 ストレージ上限
 
 ```bash

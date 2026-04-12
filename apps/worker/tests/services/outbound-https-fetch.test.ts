@@ -45,5 +45,11 @@ describe('fetchHttpsUrlAfterDnsAssertion', () => {
       return u.startsWith('https://example.com/');
     });
     expect(postCalls).toHaveLength(1);
+
+    const dnsCalls = fetchFn.mock.calls.filter((c) => {
+      const u = typeof c[0] === 'string' ? c[0] : (c[0] as Request).url;
+      return u.includes('cloudflare-dns.com/dns-query');
+    });
+    expect(dnsCalls.length).toBeGreaterThanOrEqual(4);
   });
 });

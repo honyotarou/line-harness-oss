@@ -1,3 +1,4 @@
+import { Hono } from 'hono';
 import { describe, expect, it } from 'vitest';
 
 function createRateLimitDb() {
@@ -156,5 +157,25 @@ describe('request rate limit helpers', () => {
         now: 3_000,
       }),
     ).resolves.toMatchObject({ allowed: false, remaining: 0 });
+  });
+
+  it('returns 503 for auth-login when D1 binding is missing (no in-memory brute-force window)', async () => {
+    const { enforceRateLimit } = await import('../../src/services/request-rate-limit.js');
+    const app = new Hono();
+    app.get('/t', async (c) => {
+      const blocked = await enforceRateLimit(c, {
+        bucket: 'auth-login',
+        limit: 5,
+        windowMs: 60_000,
+      });
+      return blocked ?? c.text('ok');
+    });
+
+    const res = await app.fetch(new Request('http://localhost/t'));
+    expect(res.status).toBe(503);
+    await expect(res.json()).resolves.toMatchObject({
+      success: false,
+      error: expect.stringMatching(/D1 database binding required/i),
+    });
   });
 });

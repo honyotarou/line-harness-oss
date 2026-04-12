@@ -1,3 +1,5 @@
+import { qrPayloadToSvgDataUrl } from '../services/qr-svg-data-url.js';
+
 export type LandingEnv = {
   LANDING_VARIANT?: string;
   LANDING_TITLE?: string;
@@ -57,7 +59,7 @@ h1{font-size:28px;font-weight:800;margin-bottom:8px}
 <div class="card">
 <h1>LINE Harness</h1>
 <p class="sub">L社 / U社 の無料代替 OSS</p>
-<a href="${target}" class="btn">LINE で体験する</a>
+<a href="${escapeHtml(target)}" class="btn">LINE で体験する</a>
 <p class="note">友だち追加するだけで<br>ステップ配信・フォーム・自動返信を体験できます</p>
 </div>
 </body>
@@ -93,7 +95,7 @@ h1{font-size:30px;font-weight:900;margin-bottom:10px;letter-spacing:.01em}
 <div class="card">
 <h1>${title}</h1>
 <p class="sub">${subtitle}</p>
-<a href="${target}" class="btn">${buttonText}</a>
+<a href="${escapeHtml(target)}" class="btn">${buttonText}</a>
 <p class="note">${noteHtml}</p>
 </div>
 </body>
@@ -127,9 +129,7 @@ export function renderAuthQrPage(env: LandingEnv, scanTarget: string): string {
     <h1>LINE Harness を体験</h1>
     <p class="sub">スマートフォンで QR コードを読み取ってください</p>
     <div class="qr">
-      <img src="https://api.qrserver.com/v1/create-qr-code/?size=240x240&data=${encodeURIComponent(
-        scanTarget,
-      )}" alt="QR Code">
+      <img src="${qrPayloadToSvgDataUrl(scanTarget)}" width="240" height="240" alt="QR Code">
     </div>
     <p class="hint">LINE アプリのカメラまたは<br>スマートフォンのカメラで読み取れます</p>
     <div class="badge">LINE Harness OSS</div>
@@ -171,9 +171,7 @@ export function renderAuthQrPage(env: LandingEnv, scanTarget: string): string {
     <h1>${qrTitle}</h1>
     <p class="sub">${qrSubtitle}</p>
     <div class="qr">
-      <img src="https://api.qrserver.com/v1/create-qr-code/?size=240x240&data=${encodeURIComponent(
-        scanTarget,
-      )}" alt="QR Code">
+      <img src="${qrPayloadToSvgDataUrl(scanTarget)}" width="240" height="240" alt="QR Code">
     </div>
     <p class="hint">${qrHintHtml}</p>
     <div class="badge">${badge}</div>

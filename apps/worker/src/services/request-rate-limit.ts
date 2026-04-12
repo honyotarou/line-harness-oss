@@ -180,10 +180,25 @@ export async function checkRateLimitWithStorage(
   return checkRateLimit(options);
 }
 
+/** Brute-force sensitive paths must not rely on per-isolate memory (see pentest / rate-limit note). */
+const RATE_LIMIT_BUCKETS_REQUIRING_D1 = new Set(['auth-login', 'auth-session']);
+
 export async function enforceRateLimit(
   c: Context,
   options: Omit<RateLimitStorageOptions, 'key' | 'now'>,
 ): Promise<Response | null> {
+  if (RATE_LIMIT_BUCKETS_REQUIRING_D1.has(options.bucket)) {
+    if (!options.db || typeof options.db.prepare !== 'function') {
+      return c.json(
+        {
+          success: false,
+          error: 'Server misconfigured: D1 database binding required for auth rate limiting',
+        },
+        503,
+      );
+    }
+  }
+
   const decision = await checkRateLimitWithStorage({
     ...options,
     key: getRequestClientAddress(c.req.raw),

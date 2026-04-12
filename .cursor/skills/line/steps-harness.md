@@ -54,10 +54,13 @@
 
 0. **カプセル化（レイヤー・変更耐性）**: `pnpm check:encapsulation`（`pnpm harness` の **2 番目**のステップと同一スクリプト）  
    - **Worker `application/*.ts`**: `hono` を import しない。`routes/` を import しない（ユースケースは HTTP フリー）。  
+   - **Worker `services/*.ts` / `middleware/*.ts`**: 相対 import で `routes/` または `application/` セグメントを含めない（層の DAG・循環防止）。  
    - **Worker `routes/*.ts`**: ソースに `api.line.me` / `access.line.me` を含めない（LINE 呼び出しは `application/` または `services/`）。各ファイルの行数は **`scripts/check-encapsulation.mjs` 内 `ROUTE_LINE_CAPS`** の上限以下。**新規ルートファイルを追加したら必ず `ROUTE_LINE_CAPS` にベース名（例: `foo.ts`）を足す**（無いとゲートが即失敗）。  
+   - **Web `apps/web/src`（`lib/api/` 配下を除く）**: `lib/api/catalog` への直接 import 禁止（表向きは `@/lib/api` または `client`）。  
    - **Web `apps/web/src/lib/api/client.ts`**: `catalog` を import しない。  
    - **Web `api/catalog/*.ts`（`index.ts` を除く）**: `@line-crm/shared` と `../client.js` 以外を import しない。  
    - **Web `api/catalog/index.ts`**: `./foo.js` 形式の兄弟モジュールのみ import。  
+   - **LIFF `apps/liff/src/*.ts`（テスト・`env.d.ts` を除く）**: `fetch('http…')` / `fetch("http…")` / `` fetch(`http…`) `` のような **リテラル絶対 URL 禁止**（Worker オリジンは `api-base.js` / `getLiffApiBaseUrl()` 経由）。  
    - **二重実行**: `apps/worker/tests/ci/encapsulation-gate.test.ts` が同じ `check-encapsulation.mjs` を `execFileSync` で走らせる（CI の unit でも層が崩れないことを担保）。  
    - 上限は **リファクタで下げる**のが理想。超過時は **`application/` へ抽出してから**必要なら上限を PR で調整。
 
@@ -77,7 +80,7 @@
 | 落ちた段 | 典型原因 | 次の一手（セキュリティ不変は削らない） |
 |----------|----------|----------------------------------------|
 | **Biome** | 整形差分 | `pnpm format` で揃える |
-| **`check:encapsulation`** | import / 行数 | ルートを薄く **`application/` / `services/` へ抽出**；新規 `routes/*.ts` は **`ROUTE_LINE_CAPS`** に追加；**上限引き上げは最後の手段** |
+| **`check:encapsulation`** | import / 行数 / 層 DAG / LIFF fetch | ルートを薄く **`application/` / `services/` へ抽出**；`services`・`middleware` が `routes`/`application` を引かないか確認；Web は **`catalog` 直 import** をやめる；LIFF は **`API_BASE` 経由の fetch**；新規 `routes/*.ts` は **`ROUTE_LINE_CAPS`** に追加；**上限引き上げは最後の手段** |
 | **型（Worker / LIFF）** | TS エラー | 型・import を直す（ゲート緩和ではない） |
 | **LIFF build** | 設定・依存 | `apps/liff` と `@line-crm/shared` の build 順・env を確認 |
 | **`pnpm test`** | 失敗テスト・env 前提 | **本番専用 env 必須**のテストになっていないか疑う。デフォルトは従来互換、厳格モードは **別ケース**で固定 |

@@ -7,9 +7,43 @@ import type { Env } from '../../src/index.js';
 
 const teamDomain = 'testteam.cloudflareaccess.com';
 
+/** Minimal D1 for `auth-login` / `auth-session` rate limits (requires real `prepare`). */
+function d1ForCfAccessRateLimit(): D1Database {
+  const rows = new Map<string, number>();
+
+  return {
+    prepare(sql: string) {
+      const norm = sql.replace(/\s+/g, ' ').trim().toLowerCase();
+      return {
+        bind(...bindings: unknown[]) {
+          const rateKey = `${String(bindings[0])}:${String(bindings[1])}:${String(bindings[2])}`;
+          return {
+            async run() {
+              if (norm.includes('insert into request_rate_limits')) {
+                rows.set(rateKey, (rows.get(rateKey) ?? 0) + 1);
+              }
+              if (norm.includes('delete from request_rate_limits')) {
+                return { success: true, meta: {} };
+              }
+              return { success: true, meta: {} };
+            },
+            async first<T>() {
+              if (norm.includes('select count from request_rate_limits')) {
+                const c = rows.get(rateKey) ?? 0;
+                return { count: c } as T | null;
+              }
+              return null;
+            },
+          };
+        },
+      };
+    },
+  } as unknown as D1Database;
+}
+
 function cfAccessEnv(overrides: Partial<Env['Bindings']> = {}): Env['Bindings'] {
   return {
-    DB: {} as D1Database,
+    DB: d1ForCfAccessRateLimit(),
     LINE_CHANNEL_SECRET: 'x',
     LINE_CHANNEL_ACCESS_TOKEN: 'x',
     API_KEY: 'root-api-key',

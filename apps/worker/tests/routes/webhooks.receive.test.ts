@@ -112,6 +112,95 @@ describe('incoming webhook receive route', () => {
     );
 
     expect(response.status).toBe(401);
+    await expect(response.json()).resolves.toEqual({ success: false, error: 'Unauthorized' });
+    expect(eventBusMocks.fireEvent).not.toHaveBeenCalled();
+  });
+
+  it('returns the same 401 response for unknown webhook and invalid signature (no ID oracle)', async () => {
+    const { webhooks } = await import('../../src/routes/webhooks.js');
+    const app = new Hono();
+    app.route('/', webhooks);
+    const db = createReceiveTestDb();
+    const body = JSON.stringify({ ok: true });
+
+    dbMocks.getIncomingWebhookById.mockResolvedValueOnce(null);
+    const missing = await app.fetch(
+      new Request('http://localhost/api/webhooks/incoming/unknown-id/receive', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-Webhook-Signature': 'deadbeef',
+        },
+        body,
+      }),
+      { DB: db } as never,
+    );
+    expect(missing.status).toBe(401);
+
+    dbMocks.getIncomingWebhookById.mockResolvedValue({
+      id: 'incoming-1',
+      source_type: 'custom',
+      secret: 'top-secret',
+      is_active: 1,
+    });
+    const badSig = await app.fetch(
+      new Request('http://localhost/api/webhooks/incoming/incoming-1/receive', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-Webhook-Signature': 'deadbeef',
+        },
+        body,
+      }),
+      { DB: createReceiveTestDb() } as never,
+    );
+    expect(badSig.status).toBe(401);
+
+    expect(await missing.json()).toEqual(await badSig.json());
+    expect(eventBusMocks.fireEvent).not.toHaveBeenCalled();
+  });
+
+  it('returns the same opaque 401 for inactive webhooks as for unknown ids (docs: not 404)', async () => {
+    const { webhooks } = await import('../../src/routes/webhooks.js');
+    const app = new Hono();
+    app.route('/', webhooks);
+    const db = createReceiveTestDb();
+    const body = JSON.stringify({ ok: true });
+
+    dbMocks.getIncomingWebhookById.mockResolvedValueOnce(null);
+    const unknown = await app.fetch(
+      new Request('http://localhost/api/webhooks/incoming/nope/receive', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-Webhook-Signature': 'ab',
+        },
+        body,
+      }),
+      { DB: db } as never,
+    );
+
+    dbMocks.getIncomingWebhookById.mockResolvedValue({
+      id: 'incoming-1',
+      source_type: 'custom',
+      secret: 'configured',
+      is_active: 0,
+    });
+    const inactive = await app.fetch(
+      new Request('http://localhost/api/webhooks/incoming/incoming-1/receive', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-Webhook-Signature': 'cd',
+        },
+        body,
+      }),
+      { DB: createReceiveTestDb() } as never,
+    );
+
+    expect(unknown.status).toBe(401);
+    expect(inactive.status).toBe(401);
+    expect(await unknown.json()).toEqual(await inactive.json());
     expect(eventBusMocks.fireEvent).not.toHaveBeenCalled();
   });
 
@@ -199,7 +288,8 @@ describe('incoming webhook receive route', () => {
       { DB: {} as D1Database } as never,
     );
 
-    expect(response.status).toBe(503);
+    expect(response.status).toBe(401);
+    await expect(response.json()).resolves.toEqual({ success: false, error: 'Unauthorized' });
     expect(eventBusMocks.fireEvent).not.toHaveBeenCalled();
   });
 

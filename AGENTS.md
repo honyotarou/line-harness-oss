@@ -58,9 +58,12 @@ pnpm exec lefthook install
 
 **Worker シークレット（LIFF まわり）**
 
+- **本番で `API_KEY` への HMAC フォールバックを切る（推奨）**: `REQUIRE_ADMIN_SESSION_SECRET=1` と専用 `ADMIN_SESSION_SECRET`（管理セッション署名）、`REQUIRE_LIFF_STATE_SECRET=1` と `LIFF_STATE_SECRET`（OAuth `state`）、`REQUIRE_TRACKING_LINK_SECRET=1` と `TRACKING_LINK_SECRET`（`?f=` トラッキング）。いずれかが未設定のときは該当機能が 503 になる（`admin-session`・`liff-identity`・`tracking-friend-token` 系テスト参照）。
 - `LIFF_STATE_SECRET` を推奨。`API_KEY` で OAuth `state` を署名するのは **`ALLOW_LIFF_OAUTH_API_KEY_FALLBACK=1` を付けたローカル開発のみ**。本番は `LIFF_STATE_SECRET` または `REQUIRE_LIFF_STATE_SECRET=1`。
 - `LINE_ACCOUNT_SECRETS_KEY`（32 バイトを base64）を設定すると `line_accounts` のトークン類が D1 上で AES-GCM 密封（`lh1:`）される。
 - `WEB_URL` / `WORKER_URL` / `ALLOWED_ORIGINS` / `LIFF_URL` が、実際のクライアント・リダイレクト先と一致していること。
+- **管理ログインのレート制限**は D1 上の `request_rate_limits` に永続化する。`POST /api/auth/login` と `GET /api/auth/session` で **503**（`D1 database binding required for auth rate limiting`）が返る場合は **Worker に D1 バインディングが付いていない**（誤デプロイ・ローカル設定ミス）を疑う。
+- **受信 Webhook** `POST /api/webhooks/incoming/:id/receive` は、ID 列挙対策で **不明・非アクティブ・シークレット未設定・署名不正**などを **同じ 401** で返すことがある。**シークレット未設定の監視を 503 前提にしない**こと。設定状態は管理 API / UI で確認する（`docs/wiki/15-Webhooks-and-Notifications.md`）。
 - デプロイ後、**古い未署名 OAuth `state` の QR・ブックマーク**は無効になる。顧客には新フローで再発行が必要な場合がある。
 
 **LIFF の手動スモーク（ステージング推奨）**

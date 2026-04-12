@@ -18,6 +18,12 @@ export async function fetchHttpsUrlAfterDnsAssertion(
   if (!check.ok) {
     return check;
   }
+  // Second assertion immediately before fetch: narrows DNS rebinding / resolver-divergence window
+  // (DoH pre-check vs. runtime fetch still differ in theory; this is defense-in-depth on Workers).
+  const check2 = await assertHttpsOutboundUrlResolvedSafe(urlString, fetchFn);
+  if (!check2.ok) {
+    return check2;
+  }
 
   const response = await fetchFn(urlString, {
     ...init,

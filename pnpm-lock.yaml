@@ -107,6 +107,9 @@ importers:
       '@line-crm/shared':
         specifier: workspace:*
         version: link:../../packages/shared
+      '@paulmillr/qr':
+        specifier: ^0.3.0
+        version: 0.3.0
       hono:
         specifier: ^4.6.0
         version: 4.12.8
@@ -1475,6 +1478,10 @@ packages:
     engines: {node: '>= 10'}
     cpu: [x64]
     os: [win32]
+
+  '@paulmillr/qr@0.3.0':
+    resolution: {integrity: sha512-3s/cagXuoXTA2gWSfSfJNanNgm2ifmqgoX8WLOs5//3qrIJ3WWHFjqFqCxvYGf46Afwv6PctT9eAOXLDGwp96Q==}
+    deprecated: 'The package is now available as "qr": npm install qr'
 
   '@pkgjs/parseargs@0.11.0':
     resolution: {integrity: sha512-+1VkjdD0QBLPodGrJUeqarH8VAIvQODIbwh9XpP5Syisf7YoQgsJKPNFoqqLQlu+VQ/tVSshMR6loPMn8U+dPg==}
@@ -4050,6 +4057,8 @@ snapshots:
 
   '@next/swc-win32-x64-msvc@15.5.15':
     optional: true
+
+  '@paulmillr/qr@0.3.0': {}
 
   '@pkgjs/parseargs@0.11.0':
     optional: true

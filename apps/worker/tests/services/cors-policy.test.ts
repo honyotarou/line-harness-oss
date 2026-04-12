@@ -92,4 +92,27 @@ describe('cors policy helpers', () => {
     expect(isAllowedOrigin('https://admin.example.com', set)).toBe(true);
     expect(isAllowedOrigin('https://evil.example.com', set)).toBe(false);
   });
+
+  it('treats official LINE hosts as shared origins, not trusted admin origins', async () => {
+    const { isSharedLineHostedOrigin } = await import('../../src/services/cors-policy.js');
+
+    expect(isSharedLineHostedOrigin('https://liff.line.me/app')).toBe(true);
+    expect(isSharedLineHostedOrigin('https://access.line.me')).toBe(true);
+    expect(isSharedLineHostedOrigin('https://admin.example.com')).toBe(false);
+  });
+
+  it('allows shared LINE origin CORS only on explicit public LIFF/browser paths', async () => {
+    const { isAllowedSharedLineCorsPath } = await import('../../src/services/cors-policy.js');
+
+    expect(isAllowedSharedLineCorsPath('/api/liff/profile', 'POST')).toBe(true);
+    expect(isAllowedSharedLineCorsPath('/api/forms/form-1', 'GET')).toBe(true);
+    expect(isAllowedSharedLineCorsPath('/api/forms/form-1/submit', 'POST')).toBe(true);
+    expect(isAllowedSharedLineCorsPath('/api/affiliates/click', 'POST')).toBe(true);
+
+    expect(isAllowedSharedLineCorsPath('/api/auth/session', 'GET')).toBe(false);
+    expect(isAllowedSharedLineCorsPath('/api/tags', 'GET')).toBe(false);
+    expect(isAllowedSharedLineCorsPath('/api/webhooks/incoming/incoming-1/receive', 'POST')).toBe(
+      false,
+    );
+  });
 });

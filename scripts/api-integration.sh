@@ -34,7 +34,8 @@ echo "== api-integration: build workspace libs (wrangler resolves @line-crm/*/di
 pnpm build:libs
 
 echo "== api-integration: wrangler dev --local :$PORT =="
-pnpm --filter worker exec bash scripts/wrangler.sh dev --local --port "$PORT" &
+# OpenAPI must respond for readiness probe below; do not rely on a stale .dev.vars missing ENABLE_PUBLIC_OPENAPI.
+pnpm --filter worker exec bash scripts/wrangler.sh dev --local --port "$PORT" --var ENABLE_PUBLIC_OPENAPI:1 &
 WRANGLE_PID=$!
 
 cleanup() {

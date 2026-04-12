@@ -1,8 +1,21 @@
 #!/usr/bin/env node
 /**
  * Encapsulation / changeability gates (no extra npm deps).
- * - Worker: application/ stays HTTP-free; thin routes stay thin; no LINE OAuth hosts in routes/.
- * - Web: api/catalog fragments only depend on client + @line-crm/shared; client does not import catalog.
+ *
+ * Goal: approximate *necessary* layer rules (what must hold for the intended shape) plus a few
+ * *sufficiency* proxies (things that commonly break encapsulation if unchecked). This script is
+ * still not a full proof of architecture — behavior, security, and domain correctness stay in
+ * tests — but passing it should mean:
+ *
+ * Worker
+ * - application/*.ts: no routes/, no hono (use-cases stay HTTP-free).
+ * - services/*.ts + middleware/*.ts: no routes/, no application/ (no upward/inward cycles).
+ * - routes/*.ts: no literal LINE API/OAuth hosts; per-file line budget (thin adapters).
+ * Web
+ * - Outside lib/api: no imports of lib/api/catalog (facade is @/lib/api or client only).
+ * - client.ts does not import catalog; catalog fragments only client + @line-crm/shared.
+ * LIFF
+ * - No fetch() to a literal http(s) URL; Worker origin flows through api-base / config.
  */
 import fs from 'node:fs';
 import path from 'node:path';
@@ -53,6 +66,18 @@ function importsInSource(src) {
   return mods;
 }
 
+/**
+ * Relative import path contains a real `routes` or `application` directory segment
+ * (e.g. `../routes/x`). Avoids false positives like `foo-routes`.
+ * @param {string} mod
+ * @param {string} segment
+ */
+function relativeImportHasPathSegment(mod, segment) {
+  if (!mod.startsWith('.')) return false;
+  const parts = mod.replace(/\\/g, '/').split('/');
+  return parts.some((p) => p === segment);
+}
+
 // ── Worker: application/*.ts ───────────────────────────────────────────────
 const appDir = path.join(ROOT, 'apps/worker/src/application');
 for (const f of listFilesRecursive(appDir, (p) => p.endsWith('.ts'))) {
@@ -67,6 +92,28 @@ for (const f of listFilesRecursive(appDir, (p) => p.endsWith('.ts'))) {
   }
   if (/from\s+['"]hono/.test(src)) {
     errors.push(`${rel}: application must not import hono (keep adapters in routes/).`);
+  }
+}
+
+// ── Worker: services/*.ts + middleware/*.ts — no routes/ or application/ (layer DAG) ────────
+for (const { dir, label } of [
+  { dir: path.join(ROOT, 'apps/worker/src/services'), label: 'services' },
+  { dir: path.join(ROOT, 'apps/worker/src/middleware'), label: 'middleware' },
+]) {
+  if (!fs.existsSync(dir)) continue;
+  for (const f of listFilesRecursive(dir, (p) => p.endsWith('.ts'))) {
+    const rel = path.relative(ROOT, f);
+    const src = readUtf8(f);
+    for (const mod of importsInSource(src)) {
+      if (relativeImportHasPathSegment(mod, 'routes')) {
+        errors.push(`${rel}: ${label} must not import routes/ (HTTP adapters stay in routes/).`);
+      }
+      if (relativeImportHasPathSegment(mod, 'application')) {
+        errors.push(
+          `${rel}: ${label} must not import application/ (use-cases sit above services/middleware).`,
+        );
+      }
+    }
   }
 }
 
@@ -133,6 +180,27 @@ for (const f of routeFiles) {
   }
 }
 
+// ── Web: outside lib/api — no direct catalog imports (facade = @/lib/api or client) ────────
+const webSrcDir = path.join(ROOT, 'apps/web/src');
+const webApiLibPrefix = path.join(ROOT, 'apps/web/src/lib/api');
+if (fs.existsSync(webSrcDir)) {
+  for (const f of listFilesRecursive(webSrcDir, (p) => p.endsWith('.ts') || p.endsWith('.tsx'))) {
+    if (f === webApiLibPrefix || f.startsWith(`${webApiLibPrefix}${path.sep}`)) continue;
+    const rel = path.relative(ROOT, f);
+    for (const mod of importsInSource(readUtf8(f))) {
+      if (
+        mod.includes('lib/api/catalog') ||
+        mod === '@/lib/api/catalog' ||
+        mod.startsWith('@/lib/api/catalog/')
+      ) {
+        errors.push(
+          `${rel}: import "${mod}" — use @/lib/api or client.js instead of catalog/ outside lib/api.`,
+        );
+      }
+    }
+  }
+}
+
 // ── Web: client.ts must not depend on catalog ──────────────────────────────
 const clientTs = path.join(ROOT, 'apps/web/src/lib/api/client.ts');
 if (fs.existsSync(clientTs)) {
@@ -168,6 +236,24 @@ if (fs.existsSync(catIndex)) {
     if (!mod.startsWith('./') || !mod.endsWith('.js')) {
       errors.push(
         `apps/web/src/lib/api/catalog/index.ts: import "${mod}" — only relative ./\*.js siblings allowed.`,
+      );
+    }
+  }
+}
+
+// ── LIFF: no literal absolute URL in fetch() (Worker origin via api-base) ────────────────
+const liffSrcDir = path.join(ROOT, 'apps/liff/src');
+if (fs.existsSync(liffSrcDir)) {
+  for (const f of listFilesRecursive(
+    liffSrcDir,
+    (p) => p.endsWith('.ts') && !p.endsWith('.test.ts'),
+  )) {
+    if (path.basename(f) === 'env.d.ts') continue;
+    const rel = path.relative(ROOT, f);
+    const src = readUtf8(f);
+    if (/fetch\s*\(\s*['"`]https?:\/\//.test(src)) {
+      errors.push(
+        `${rel}: LIFF must not fetch() a literal http(s) URL; use API_BASE from api-base.js.`,
       );
     }
   }

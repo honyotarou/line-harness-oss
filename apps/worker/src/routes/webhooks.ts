@@ -352,6 +352,9 @@ webhooks.delete('/api/webhooks/outgoing/:id', async (c) => {
 
 // ========== 受信Webhookエンドポイント (外部システムからの受信) ==========
 
+/** Opaque 401 for missing/inactive webhooks and bad signatures (avoid ID enumeration). */
+const INCOMING_WEBHOOK_UNAUTHORIZED = { success: false, error: 'Unauthorized' } as const;
+
 webhooks.post('/api/webhooks/incoming/:id/receive', async (c) => {
   try {
     const limitedGlobal = await enforceRateLimit(c, {
@@ -376,25 +379,19 @@ webhooks.post('/api/webhooks/incoming/:id/receive', async (c) => {
 
     const id = c.req.param('id');
     const wh = await getIncomingWebhookById(c.env.DB, id);
-    if (!wh || !wh.is_active)
-      return c.json({ success: false, error: 'Webhook not found or inactive' }, 404);
+    if (!wh || !wh.is_active) {
+      return c.json(INCOMING_WEBHOOK_UNAUTHORIZED, 401);
+    }
 
     if (!wh.secret?.trim()) {
-      return c.json(
-        {
-          success: false,
-          error:
-            'Incoming webhook has no signing secret; set a secret in the admin UI before accepting traffic',
-        },
-        503,
-      );
+      return c.json(INCOMING_WEBHOOK_UNAUTHORIZED, 401);
     }
 
     const rawBody = await readTextBodyWithLimit(c.req.raw, INCOMING_WEBHOOK_LIMIT_BYTES);
     const signature = c.req.header('X-Webhook-Signature') ?? '';
     const valid = await verifySignedPayload(wh.secret, rawBody, signature);
     if (!valid) {
-      return c.json({ success: false, error: 'Invalid webhook signature' }, 401);
+      return c.json(INCOMING_WEBHOOK_UNAUTHORIZED, 401);
     }
 
     let body: unknown;

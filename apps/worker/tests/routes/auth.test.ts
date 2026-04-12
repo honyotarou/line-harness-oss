@@ -32,6 +32,9 @@ function createAuthIntegrationDb(): D1Database {
                 revokedJtis.add(String(args[0] ?? ''));
                 return { success: true, meta: {} };
               }
+              if (norm.includes('request_rate_limits') && norm.includes('delete')) {
+                return { success: true, meta: {} };
+              }
               if (norm.includes('request_rate_limits')) {
                 if (norm.includes('insert')) {
                   const k = rateKey(args);
@@ -71,6 +74,7 @@ describe('auth routes', () => {
       {
         API_KEY: 'root-api-key',
         WORKER_URL: 'https://deployed.workers.dev',
+        DB: createAuthIntegrationDb(),
       } as never,
     );
 
@@ -95,6 +99,7 @@ describe('auth routes', () => {
         API_KEY: 'root-api-key',
         WORKER_URL: 'https://deployed.workers.dev',
         ALLOW_LEGACY_API_KEY_SESSION_SIGNER: '1',
+        DB: createAuthIntegrationDb(),
       } as never,
     );
 
@@ -115,6 +120,7 @@ describe('auth routes', () => {
       {
         API_KEY: 'root-api-key',
         REQUIRE_ADMIN_SESSION_SECRET: '1',
+        DB: createAuthIntegrationDb(),
       } as never,
     );
 
@@ -135,7 +141,7 @@ describe('auth routes', () => {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ apiKey: 'root-api-key' }),
       }),
-      { API_KEY: 'root-api-key' } as never,
+      { API_KEY: 'root-api-key', DB: createAuthIntegrationDb() } as never,
     );
 
     expect(response.status).toBe(200);
@@ -161,7 +167,7 @@ describe('auth routes', () => {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ apiKey: 'root-api-key' }),
       }),
-      { API_KEY: 'root-api-key' } as never,
+      { API_KEY: 'root-api-key', DB: createAuthIntegrationDb() } as never,
     );
     const body = (await loginResponse.json()) as {
       data?: { sessionToken?: string };
@@ -173,7 +179,7 @@ describe('auth routes', () => {
       new Request('http://localhost/api/auth/session', {
         headers: { Authorization: `Bearer ${sessionToken}` },
       }),
-      { API_KEY: 'root-api-key' } as never,
+      { API_KEY: 'root-api-key', DB: createAuthIntegrationDb() } as never,
     );
 
     expect(sessionResponse.status).toBe(200);
@@ -198,7 +204,7 @@ describe('auth routes', () => {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ apiKey: 'root-api-key' }),
       }),
-      { API_KEY: 'root-api-key' } as never,
+      { API_KEY: 'root-api-key', DB: createAuthIntegrationDb() } as never,
     );
     const body = (await loginResponse.json()) as { data?: { sessionToken?: string } };
     const sessionToken = body.data?.sessionToken;
@@ -208,7 +214,7 @@ describe('auth routes', () => {
       new Request('http://localhost/api/auth/session', {
         headers: { Authorization: `bearer ${sessionToken}` },
       }),
-      { API_KEY: 'root-api-key' } as never,
+      { API_KEY: 'root-api-key', DB: createAuthIntegrationDb() } as never,
     );
 
     expect(sessionResponse.status).toBe(200);
@@ -225,7 +231,7 @@ describe('auth routes', () => {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ apiKey: 'root-api-key' }),
       }),
-      { API_KEY: 'root-api-key' } as never,
+      { API_KEY: 'root-api-key', DB: createAuthIntegrationDb() } as never,
     );
     const sessionCookie = loginResponse.headers.get('Set-Cookie');
     expect(sessionCookie).toContain('lh_admin_session=');
@@ -234,7 +240,7 @@ describe('auth routes', () => {
       new Request('http://localhost/api/auth/session', {
         headers: { Cookie: sessionCookie ?? '' },
       }),
-      { API_KEY: 'root-api-key' } as never,
+      { API_KEY: 'root-api-key', DB: createAuthIntegrationDb() } as never,
     );
 
     expect(sessionResponse.status).toBe(200);
@@ -259,10 +265,11 @@ describe('auth routes', () => {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ apiKey: 'wrong-key' }),
       }),
-      { API_KEY: 'root-api-key' } as never,
+      { API_KEY: 'root-api-key', DB: createAuthIntegrationDb() } as never,
     );
     const sessionResponse = await app.fetch(new Request('http://localhost/api/auth/session'), {
       API_KEY: 'root-api-key',
+      DB: createAuthIntegrationDb(),
     } as never);
 
     expect(loginResponse.status).toBe(401);
@@ -278,7 +285,7 @@ describe('auth routes', () => {
       new Request('http://localhost/api/auth/session', {
         headers: { Authorization: 'Bearer root-api-key' },
       }),
-      { API_KEY: 'root-api-key' } as never,
+      { API_KEY: 'root-api-key', DB: createAuthIntegrationDb() } as never,
     );
 
     expect(response.status).toBe(401);
@@ -299,6 +306,7 @@ describe('auth routes', () => {
       {
         API_KEY: 'root-api-key',
         ADMIN_SESSION_SECRET: 'only-for-sessions',
+        DB: createAuthIntegrationDb(),
       } as never,
     );
     expect(loginResponse.status).toBe(200);
@@ -324,6 +332,7 @@ describe('auth routes', () => {
       {
         API_KEY: 'root-api-key',
         ADMIN_SESSION_SECRET: 'only-for-sessions',
+        DB: createAuthIntegrationDb(),
       } as never,
     );
     expect(sessionResponse.status).toBe(200);
@@ -338,7 +347,11 @@ describe('auth routes', () => {
       new Request('http://localhost/api/auth/session', {
         headers: { Authorization: 'Bearer root-api-key' },
       }),
-      { API_KEY: 'root-api-key', ALLOW_LEGACY_API_KEY_BEARER_SESSION: '1' } as never,
+      {
+        API_KEY: 'root-api-key',
+        ALLOW_LEGACY_API_KEY_BEARER_SESSION: '1',
+        DB: createAuthIntegrationDb(),
+      } as never,
     );
 
     expect(response.status).toBe(200);
@@ -358,7 +371,7 @@ describe('auth routes', () => {
         method: 'POST',
         headers: { 'X-Line-Harness-Client': '1' },
       }),
-      { API_KEY: 'root-api-key' } as never,
+      { API_KEY: 'root-api-key', DB: createAuthIntegrationDb() } as never,
     );
 
     expect(response.status).toBe(200);
@@ -377,7 +390,7 @@ describe('auth routes', () => {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ apiKey: 'root-api-key' }),
       }),
-      { API_KEY: 'root-api-key' } as never,
+      { API_KEY: 'root-api-key', DB: createAuthIntegrationDb() } as never,
     );
     const cookie = loginResponse.headers.get('Set-Cookie') ?? '';
 
@@ -386,7 +399,7 @@ describe('auth routes', () => {
         method: 'POST',
         headers: { Cookie: cookie },
       }),
-      { API_KEY: 'root-api-key' } as never,
+      { API_KEY: 'root-api-key', DB: createAuthIntegrationDb() } as never,
     );
 
     expect(response.status).toBe(403);
@@ -403,7 +416,7 @@ describe('auth routes', () => {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ apiKey: 'root-api-key' }),
       }),
-      { API_KEY: 'root-api-key' } as never,
+      { API_KEY: 'root-api-key', DB: createAuthIntegrationDb() } as never,
     );
     const cookie = loginResponse.headers.get('Set-Cookie') ?? '';
 
@@ -412,7 +425,7 @@ describe('auth routes', () => {
         method: 'POST',
         headers: { Cookie: cookie, 'X-Line-Harness-Client': '1' },
       }),
-      { API_KEY: 'root-api-key' } as never,
+      { API_KEY: 'root-api-key', DB: createAuthIntegrationDb() } as never,
     );
 
     expect(response.status).toBe(200);
@@ -478,7 +491,7 @@ describe('auth routes', () => {
         },
         body: payload,
       }),
-      { API_KEY: 'root-api-key' } as never,
+      { API_KEY: 'root-api-key', DB: createAuthIntegrationDb() } as never,
     );
 
     expect(response.status).toBe(413);
@@ -488,6 +501,7 @@ describe('auth routes', () => {
     const { authRoutes } = await import('../../src/routes/auth.js');
     const app = new Hono();
     app.route('/', authRoutes);
+    const rateDb = createAuthIntegrationDb();
 
     const loginResponse = await app.fetch(
       new Request('http://localhost/api/auth/login', {
@@ -495,7 +509,7 @@ describe('auth routes', () => {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ apiKey: 'root-api-key' }),
       }),
-      { API_KEY: 'root-api-key' } as never,
+      { API_KEY: 'root-api-key', DB: rateDb } as never,
     );
     const body = (await loginResponse.json()) as { data?: { sessionToken?: string } };
     const sessionToken = body.data?.sessionToken;
@@ -510,7 +524,7 @@ describe('auth routes', () => {
             'CF-Connecting-IP': '198.51.100.77',
           },
         }),
-        { API_KEY: 'root-api-key' } as never,
+        { API_KEY: 'root-api-key', DB: rateDb } as never,
       );
       lastStatus = res.status;
     }
@@ -522,6 +536,7 @@ describe('auth routes', () => {
     const { authRoutes } = await import('../../src/routes/auth.js');
     const app = new Hono();
     app.route('/', authRoutes);
+    const rateDb = createAuthIntegrationDb();
 
     let response: Response | undefined;
     for (let attempt = 0; attempt < 6; attempt += 1) {
@@ -534,7 +549,7 @@ describe('auth routes', () => {
           },
           body: JSON.stringify({ apiKey: 'wrong-key' }),
         }),
-        { API_KEY: 'root-api-key' } as never,
+        { API_KEY: 'root-api-key', DB: rateDb } as never,
       );
     }
 

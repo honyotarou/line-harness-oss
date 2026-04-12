@@ -11,7 +11,9 @@ import { securityHeadersMiddleware } from './middleware/security-headers.js';
 import {
   ACCESS_CONTROL_ALLOW_HEADERS,
   buildAllowedOrigins,
+  isAllowedSharedLineCorsPath,
   isAllowedOrigin,
+  isSharedLineHostedOrigin,
   shouldApplyCorsForOriginHeader,
 } from './services/cors-policy.js';
 import { enforceRateLimit } from './services/request-rate-limit.js';
@@ -236,8 +238,18 @@ app.use('*', async (c, next) => {
     return next();
   }
 
+  const sharedLineOrigin = isSharedLineHostedOrigin(origin);
+  if (sharedLineOrigin && !isAllowedSharedLineCorsPath(new URL(c.req.url).pathname, c.req.method)) {
+    if (c.req.method === 'OPTIONS') {
+      return c.json({ success: false, error: 'CORS origin denied' }, 403);
+    }
+    return next();
+  }
+
   c.header('Access-Control-Allow-Origin', origin);
-  c.header('Access-Control-Allow-Credentials', 'true');
+  if (!sharedLineOrigin) {
+    c.header('Access-Control-Allow-Credentials', 'true');
+  }
   c.header('Access-Control-Allow-Headers', ACCESS_CONTROL_ALLOW_HEADERS);
   c.header('Access-Control-Allow-Methods', 'GET, HEAD, PUT, PATCH, POST, DELETE, OPTIONS');
   c.header('Access-Control-Max-Age', '86400');

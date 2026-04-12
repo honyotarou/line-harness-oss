@@ -378,7 +378,8 @@ describe('liff auth routes', () => {
     expect(response.status).toBe(200);
     const html = await response.text();
     expect(html).toContain('QR');
-    expect(html).toContain(encodeURIComponent('https://liff.line.me/2009554425-4IMBmLQ9'));
+    expect(html).toContain('data:image/svg+xml');
+    expect(html).not.toContain('api.qrserver.com');
   });
 
   it('returns error HTML when LIFF_URL is missing and account query is omitted', async () => {
