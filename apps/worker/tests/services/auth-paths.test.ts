@@ -36,6 +36,11 @@ describe('isAuthExemptPath', () => {
     expect(isAuthExemptPath('/api/auth/login', 'POST')).toBe(true);
   });
 
+  it('treats GET /favicon.ico as exempt (browser noise on Access-protected API hosts)', () => {
+    expect(isAuthExemptPath('/favicon.ico', 'GET')).toBe(true);
+    expect(isAuthExemptPath('/favicon.ico', 'POST')).toBe(false);
+  });
+
   it('does not treat encoded-slash traversal as /api/liff/ prefix (admin paths stay protected)', () => {
     expect(isAuthExemptPath('/api/liff%2f../links/wrap', 'POST')).toBe(false);
     expect(isAuthExemptPath('/api/liff%2F../analytics/ref-summary', 'GET')).toBe(false);
@@ -54,5 +59,9 @@ describe('isCloudflareAccessExemptPath', () => {
   it('does not exempt /api/auth/* while still exempting webhook', () => {
     expect(isCloudflareAccessExemptPath('/api/auth/login', 'POST')).toBe(false);
     expect(isCloudflareAccessExemptPath('/webhook', 'POST')).toBe(true);
+  });
+
+  it('exempts GET /favicon.ico from Cloudflare Access (matches auth exempt)', () => {
+    expect(isCloudflareAccessExemptPath('/favicon.ico', 'GET')).toBe(true);
   });
 });
