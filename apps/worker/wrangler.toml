@@ -16,11 +16,12 @@ WORKER_URL = "https://YOUR_SUBDOMAIN.workers.dev"
 WEB_URL = "https://YOUR_PROJECT.vercel.app"
 # Required for /auth/line (friend-add flow). Keep as placeholder in repo defaults.
 LIFF_URL = "https://liff.line.me/YOUR_LIFF_ID"
+# Defaults keep Access off for forks; CI replaces when GitHub Secrets are set (see deploy-worker.yml).
+REQUIRE_CLOUDFLARE_ACCESS_JWT = "0"
+CLOUDFLARE_ACCESS_TEAM_DOMAIN = ""
 # ALLOWED_ORIGINS = "https://admin.example.com,https://preview.example.com"
 #
-# Cloudflare Zero Trust / Access (optional): require Cf-Access-Jwt-Assertion on protected routes
-# REQUIRE_CLOUDFLARE_ACCESS_JWT = "1"
-# CLOUDFLARE_ACCESS_TEAM_DOMAIN = "yourteam.cloudflareaccess.com"
+# Cloudflare Zero Trust / Access (optional extras; set in dashboard or extend CI sed)
 # CLOUDFLARE_ACCESS_ALLOWED_EMAILS = "you@company.com,coworker@company.com"
 # CLOUDFLARE_ACCESS_AUDIENCE = "<Access application audience UUID or tag from JWT aud claim>"
 #

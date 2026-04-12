@@ -7,7 +7,8 @@ name: Deploy Worker
 # Production surface (set via `wrangler secret put` / dashboard / vars — not committed):
 # - API_KEY, ADMIN_SESSION_SECRET, LINE_*, STRIPE_WEBHOOK_SECRET, etc. — never in git.
 # - DISABLE_PUBLIC_OPENAPI=1 unless you intentionally expose /openapi.json.
-# - ALLOWED_HOSTNAMES for your API hostname(s); REQUIRE_CLOUDFLARE_ACCESS_JWT on workers.dev or Zero Trust.
+# - ALLOWED_HOSTNAMES for your API hostname(s).
+# - REQUIRE_CLOUDFLARE_ACCESS_JWT + CLOUDFLARE_ACCESS_TEAM_DOMAIN: set as GitHub Secrets; CI injects into wrangler.toml before deploy (dashboard-only edits are overwritten every deploy).
 # - Optional WAF/Bot: enable Cloudflare Bot Management on the zone, then MIN_CF_BOT_SCORE (e.g. 30) on the Worker.
 # - Multi LINE accounts on one Worker: MULTI_LINE_ACCOUNT_QUERY_REQUIRES_LINE_ACCOUNT_ID=1
 # - REQUIRE_ADMIN_SESSION_SECRET=1 + ADMIN_SESSION_SECRET (wrangler secret) so sessions are not signed with API_KEY
@@ -68,6 +69,19 @@ jobs:
           fi
           if [ -n "$INJECT_LIFF_URL" ]; then
             sed -i.bak "s|https://liff.line.me/YOUR_LIFF_ID|$INJECT_LIFF_URL|g" wrangler.toml && rm -f wrangler.toml.bak
+          fi
+
+      # Without this, each deploy uploads wrangler.toml [vars] and clears dashboard-only Access toggles.
+      - name: Inject Cloudflare Access vars (optional; GitHub Secrets)
+        working-directory: apps/worker
+        env:
+          INJECT_CF_ACCESS_JWT: ${{ secrets.REQUIRE_CLOUDFLARE_ACCESS_JWT }}
+          INJECT_CF_ACCESS_DOMAIN: ${{ secrets.CLOUDFLARE_ACCESS_TEAM_DOMAIN }}
+        run: |
+          if [ -n "$INJECT_CF_ACCESS_JWT" ] && [ -n "$INJECT_CF_ACCESS_DOMAIN" ]; then
+            sed -i.bak "s|^REQUIRE_CLOUDFLARE_ACCESS_JWT = .*|REQUIRE_CLOUDFLARE_ACCESS_JWT = \"${INJECT_CF_ACCESS_JWT}\"|" wrangler.toml
+            sed -i.bak "s|^CLOUDFLARE_ACCESS_TEAM_DOMAIN = .*|CLOUDFLARE_ACCESS_TEAM_DOMAIN = \"${INJECT_CF_ACCESS_DOMAIN}\"|" wrangler.toml
+            rm -f wrangler.toml.bak
           fi
 
       - uses: cloudflare/wrangler-action@v3
