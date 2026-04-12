@@ -66,6 +66,13 @@ pnpm exec lefthook install
 - **受信 Webhook** `POST /api/webhooks/incoming/:id/receive` は、ID 列挙対策で **不明・非アクティブ・シークレット未設定・署名不正**などを **同じ 401** で返すことがある。**シークレット未設定の監視を 503 前提にしない**こと。設定状態は管理 API / UI で確認する（`docs/wiki/15-Webhooks-and-Notifications.md`）。
 - デプロイ後、**古い未署名 OAuth `state` の QR・ブックマーク**は無効になる。顧客には新フローで再発行が必要な場合がある。
 
+**Cloudflare Access（Zero Trust）+ 別オリジンの管理画面（例: Vercel → Worker API）**
+
+- ブラウザの **CORS プリフライトは `OPTIONS` で、仕様上 Cookie を送らない**。Access で API ホストを保護していると **プリフライトが 403** になり、管理画面からは「CORS 失敗／接続失敗」に見える。Worker の `WEB_URL` やオリジン許可だけでは直らない（**エッジで止まっている**）ことがある。
+- **切り分け:** `curl -i -X OPTIONS 'https://<api-host>/api/auth/login' -H 'Origin: https://<web-host>' -H 'Access-Control-Request-Method: POST'` で **`Content-Type: text/html`** の 403 なら、Worker の JSON ではなく **Access 等の手前**の応答を疑う。
+- **対処:** Cloudflare One の該当 **Access アプリ**で **Advanced settings → Cross-Origin Resource Sharing (CORS) settings** を開き、公式のいずれかに合わせる — **Bypass options requests to origin**（オリジン側で CORS を既に強制している場合のみ）または **Access がプリフライトに応答**（オリジンが返す CORS ヘッダと整合させる）。手順の正本: [Cloudflare Access — CORS](https://developers.cloudflare.com/cloudflare-one/access-controls/applications/http-apps/authorization-cookie/cors/)。
+- **補足:** 公式どおり、**シークレット／プライベートウィンドウ**では `CF_Authorization` の扱いで切り分けが狂いやすい。本番確認は通常プロファイル推奨。
+
 **LIFF の手動スモーク（ステージング推奨）**
 
 - 先に `STAGING_WORKER_URL=https://… pnpm smoke:staging` で **openapi / docs** の HTTP を確認（自動）。
