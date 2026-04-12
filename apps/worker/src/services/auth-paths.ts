@@ -23,6 +23,7 @@ export function isAuthExemptPath(pathname: string, method: string): boolean {
   const publicFormSubmitPost = method === 'POST' && /^\/api\/forms\/[^/]+\/submit$/.test(path);
 
   return (
+    (method === 'GET' && path === '/favicon.ico') ||
     path === '/webhook' ||
     path === '/docs' ||
     path === '/openapi.json' ||
