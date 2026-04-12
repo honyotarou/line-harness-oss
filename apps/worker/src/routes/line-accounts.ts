@@ -16,10 +16,14 @@ import {
   readJsonBodyWithLimit,
 } from '../services/request-body.js';
 import {
+  lineAccountWriteForbiddenForScope,
   resolveLineAccountScopeForRequest,
   resourceLineAccountVisibleInScope,
   validateScopedLineAccountQueryParam,
 } from '../services/admin-line-account-scope.js';
+import { lineAccountDbOptions } from '../services/line-account-at-rest-key.js';
+import { denyUnlessOwnerOrImplicitAdminForLineCredentials } from '../services/line-account-credential-owner-guard.js';
+import { denyUnlessLineAccountSecretsWriteAllowed } from '../services/line-account-secrets-write-guard.js';
 
 const lineAccounts = new Hono<Env>();
 const PROFILE_LOOKUP_CONCURRENCY = 3;
@@ -74,7 +78,7 @@ lineAccounts.get('/api/line-accounts', async (c) => {
       return c.json({ success: false, error: q.error }, q.status);
     }
 
-    let items = await getLineAccounts(db);
+    let items = await getLineAccounts(db, lineAccountDbOptions(c.env));
     if (scope.mode === 'restricted' && lineAccountId) {
       items = items.filter((row) => row.id === lineAccountId);
     } else if (scope.mode === 'all' && lineAccountId) {
@@ -113,7 +117,11 @@ lineAccounts.get('/api/line-accounts', async (c) => {
 lineAccounts.get('/api/line-accounts/:id', async (c) => {
   try {
     const scope = await resolveLineAccountScopeForRequest(c.env.DB, c);
-    const account = await getLineAccountById(c.env.DB, c.req.param('id'));
+    const account = await getLineAccountById(
+      c.env.DB,
+      c.req.param('id'),
+      lineAccountDbOptions(c.env),
+    );
     if (!account) {
       return c.json({ success: false, error: 'LINE account not found' }, 404);
     }
@@ -131,14 +139,9 @@ lineAccounts.get('/api/line-accounts/:id', async (c) => {
 lineAccounts.post('/api/line-accounts', async (c) => {
   try {
     const scope = await resolveLineAccountScopeForRequest(c.env.DB, c);
-    if (scope.mode !== 'all') {
-      return c.json(
-        {
-          success: false,
-          error: 'Forbidden: creating LINE accounts requires an unrestricted admin principal',
-        },
-        403,
-      );
+    const createDenied = lineAccountWriteForbiddenForScope(scope);
+    if (createDenied.forbidden) {
+      return c.json({ success: false, error: createDenied.error }, 403);
     }
 
     const body = await readJsonBodyWithLimit<{
@@ -158,7 +161,17 @@ lineAccounts.post('/api/line-accounts', async (c) => {
       );
     }
 
-    const account = await createLineAccount(c.env.DB, body);
+    const bodyRecordPost = body as Record<string, unknown>;
+    const ownerDeniedPost = await denyUnlessOwnerOrImplicitAdminForLineCredentials(
+      c,
+      'post',
+      bodyRecordPost,
+    );
+    if (ownerDeniedPost) {
+      return ownerDeniedPost;
+    }
+
+    const account = await createLineAccount(c.env.DB, body, lineAccountDbOptions(c.env));
     return c.json({ success: true, data: serializeLineAccount(account) }, 201);
   } catch (err) {
     console.error('POST /api/line-accounts error:', err);
@@ -171,12 +184,17 @@ lineAccounts.put('/api/line-accounts/:id', async (c) => {
   try {
     const id = c.req.param('id');
     const scopePut = await resolveLineAccountScopeForRequest(c.env.DB, c);
-    const existingPut = await getLineAccountById(c.env.DB, id);
+    const existingPut = await getLineAccountById(c.env.DB, id, lineAccountDbOptions(c.env));
     if (!existingPut) {
       return c.json({ success: false, error: 'LINE account not found' }, 404);
     }
     if (!resourceLineAccountVisibleInScope(scopePut, existingPut.id)) {
       return c.json({ success: false, error: 'LINE account not found' }, 404);
+    }
+
+    const putDenied = lineAccountWriteForbiddenForScope(scopePut);
+    if (putDenied.forbidden) {
+      return c.json({ success: false, error: putDenied.error }, 403);
     }
 
     const body = await readJsonBodyWithLimit<{
@@ -186,12 +204,32 @@ lineAccounts.put('/api/line-accounts/:id', async (c) => {
       isActive?: boolean;
     }>(c.req.raw, DEFAULT_ADMIN_JSON_BODY_LIMIT_BYTES);
 
-    const updated = await updateLineAccount(c.env.DB, id, {
-      name: body.name,
-      channel_access_token: body.channelAccessToken,
-      channel_secret: body.channelSecret,
-      is_active: body.isActive !== undefined ? (body.isActive ? 1 : 0) : undefined,
-    });
+    const bodyRecord = body as Record<string, unknown>;
+    const ownerDeniedPut = await denyUnlessOwnerOrImplicitAdminForLineCredentials(
+      c,
+      'put',
+      bodyRecord,
+    );
+    if (ownerDeniedPut) {
+      return ownerDeniedPut;
+    }
+
+    const secretsDenied = denyUnlessLineAccountSecretsWriteAllowed(c, bodyRecord);
+    if (secretsDenied) {
+      return secretsDenied;
+    }
+
+    const updated = await updateLineAccount(
+      c.env.DB,
+      id,
+      {
+        name: body.name,
+        channel_access_token: body.channelAccessToken,
+        channel_secret: body.channelSecret,
+        is_active: body.isActive !== undefined ? (body.isActive ? 1 : 0) : undefined,
+      },
+      lineAccountDbOptions(c.env),
+    );
 
     if (!updated) {
       return c.json({ success: false, error: 'LINE account not found' }, 404);
@@ -210,12 +248,16 @@ lineAccounts.delete('/api/line-accounts/:id', async (c) => {
   try {
     const idDel = c.req.param('id');
     const scopeDel = await resolveLineAccountScopeForRequest(c.env.DB, c);
-    const existingDel = await getLineAccountById(c.env.DB, idDel);
+    const existingDel = await getLineAccountById(c.env.DB, idDel, lineAccountDbOptions(c.env));
     if (!existingDel) {
       return c.json({ success: false, error: 'LINE account not found' }, 404);
     }
     if (!resourceLineAccountVisibleInScope(scopeDel, existingDel.id)) {
       return c.json({ success: false, error: 'LINE account not found' }, 404);
+    }
+    const delDenied = lineAccountWriteForbiddenForScope(scopeDel);
+    if (delDenied.forbidden) {
+      return c.json({ success: false, error: delDenied.error }, 403);
     }
     await deleteLineAccount(c.env.DB, idDel);
     return c.json({ success: true, data: null });

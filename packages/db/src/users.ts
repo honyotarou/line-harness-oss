@@ -20,9 +20,22 @@ export interface CreateUserInput {
   displayName?: string | null;
 }
 
+/**
+ * Canonical `users.email` form: trim + lowercase ASCII.
+ * Prevents V-7: two rows differing only by case bypassing SQLite's case-sensitive UNIQUE index,
+ * then OAuth `getUserByEmailCaseInsensitive` linking the wrong friend to the victim user.
+ */
+export function normalizeUserEmailForStorage(email: string | null | undefined): string | null {
+  if (email == null) return null;
+  const t = email.trim();
+  if (!t) return null;
+  return t.toLowerCase();
+}
+
 export async function createUser(db: D1Database, input: CreateUserInput): Promise<User> {
   const id = crypto.randomUUID();
   const now = jstNow();
+  const normEmail = normalizeUserEmailForStorage(input.email);
 
   try {
     await db
@@ -32,7 +45,7 @@ export async function createUser(db: D1Database, input: CreateUserInput): Promis
       )
       .bind(
         id,
-        input.email ?? null,
+        normEmail,
         input.phone ?? null,
         input.externalId ?? null,
         input.displayName ?? null,
@@ -43,8 +56,8 @@ export async function createUser(db: D1Database, input: CreateUserInput): Promis
   } catch (e: unknown) {
     const msg = e instanceof Error ? e.message : String(e);
     if (!msg.includes('UNIQUE') && !msg.includes('unique')) throw e;
-    if (input.email) {
-      const existing = await getUserByEmail(db, input.email);
+    if (normEmail) {
+      const existing = await getUserByEmail(db, normEmail);
       if (existing) return existing;
     }
     if (input.phone) {
@@ -71,24 +84,26 @@ export async function getUsers(db: D1Database): Promise<User[]> {
 }
 
 export async function getUserByEmail(db: D1Database, email: string): Promise<User | null> {
-  return db.prepare(`SELECT * FROM users WHERE email = ?`).bind(email).first<User>();
-}
-
-/** Case-insensitive email match (trimmed) so LINE Login email casing cannot bypass exact `getUserByEmail`. */
-export async function getUserByEmailCaseInsensitive(
-  db: D1Database,
-  email: string,
-): Promise<User | null> {
-  const t = email.trim();
-  if (!t) return null;
+  const norm = normalizeUserEmailForStorage(email);
+  if (!norm) return null;
+  // `email = ?` hits canonical rows; `LOWER(TRIM(email)) = ?` matches legacy pre-migration 021.
   return db
     .prepare(
       `SELECT * FROM users
        WHERE email IS NOT NULL AND TRIM(email) != ''
-         AND LOWER(TRIM(email)) = LOWER(?)`,
+         AND (email = ? OR LOWER(TRIM(email)) = ?)
+       LIMIT 1`,
     )
-    .bind(t)
+    .bind(norm, norm)
     .first<User>();
+}
+
+/** LINE Login OAuth: same matching as {@link getUserByEmail} (normalized key; legacy casing OK until migration 021). */
+export async function getUserByEmailCaseInsensitive(
+  db: D1Database,
+  email: string,
+): Promise<User | null> {
+  return getUserByEmail(db, email);
 }
 
 export async function getUserByPhone(db: D1Database, phone: string): Promise<User | null> {
@@ -116,7 +131,7 @@ export async function updateUser(
 
   if (updates.email !== undefined) {
     fields.push('email = ?');
-    values.push(updates.email);
+    values.push(updates.email === null ? null : normalizeUserEmailForStorage(updates.email));
   }
   if (updates.phone !== undefined) {
     fields.push('phone = ?');

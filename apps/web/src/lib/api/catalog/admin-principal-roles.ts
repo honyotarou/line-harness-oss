@@ -3,10 +3,10 @@ import { fetchApi } from '../client.js';
 
 export const adminPrincipalRoles = {
   list: () =>
-    fetchApi<ApiResponse<Array<{ email: string; role: 'admin' | 'viewer'; updatedAt: string }>>>(
-      '/api/admin/principal-roles',
-    ),
-  upsert: (data: { email: string; role: 'admin' | 'viewer' }) =>
+    fetchApi<
+      ApiResponse<Array<{ email: string; role: 'owner' | 'admin' | 'viewer'; updatedAt: string }>>
+    >('/api/admin/principal-roles'),
+  upsert: (data: { email: string; role: 'owner' | 'admin' | 'viewer' }) =>
     fetchApi<ApiResponse<null>>('/api/admin/principal-roles', {
       method: 'PUT',
       body: JSON.stringify(data),

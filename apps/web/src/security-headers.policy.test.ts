@@ -37,6 +37,7 @@ describe('security headers for static admin (Vercel)', () => {
     expect(prod).toContain("worker-src 'none'");
     expect(prod).toContain("media-src 'self'");
     expect(prod).toContain("script-src 'self' 'unsafe-inline'");
+    expect(prod).toContain("script-src-attr 'none'");
   });
 
   it('narrows connect-src when NEXT_PUBLIC_API_URL is a valid non-placeholder https origin', () => {

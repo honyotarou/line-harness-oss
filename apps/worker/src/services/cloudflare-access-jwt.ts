@@ -36,6 +36,8 @@ export type VerifyCloudflareAccessJwtInput = {
 };
 
 const JWKS_CACHE_TTL_MS = 5 * 60 * 1000;
+/** Reject absurd JWKS payloads (cache-poisoning / DoS hardening). */
+const JWKS_MAX_KEYS = 48;
 let jwksCache: { domain: string; keys: Array<Record<string, unknown>>; fetchedAt: number } | null =
   null;
 
@@ -126,13 +128,31 @@ export async function verifyCloudflareAccessJwt(
   } else {
     let certsRes: Response;
     try {
-      certsRes = await fetchImpl(certsUrl);
+      // Never follow redirects: a malicious or misconfigured endpoint could otherwise
+      // serve attacker-controlled JWKS that we would cache under the trusted team domain.
+      certsRes = await fetchImpl(certsUrl, { redirect: 'error' });
     } catch {
       return { ok: false, reason: 'Failed to fetch Cloudflare Access certs' };
     }
 
     if (!certsRes.ok) {
       return { ok: false, reason: 'Cloudflare Access certs request failed' };
+    }
+
+    const resolvedUrl = certsRes.url || certsUrl;
+    let resolvedHost: string;
+    try {
+      resolvedHost = new URL(resolvedUrl).hostname.toLowerCase();
+    } catch {
+      return { ok: false, reason: 'Invalid Cloudflare Access certs URL' };
+    }
+    if (resolvedHost !== domainNorm.toLowerCase()) {
+      return { ok: false, reason: 'Cloudflare Access certs hostname mismatch' };
+    }
+
+    const ct = certsRes.headers.get('content-type')?.toLowerCase() ?? '';
+    if (!ct.includes('application/json')) {
+      return { ok: false, reason: 'Cloudflare Access certs must be JSON' };
     }
 
     let certsJson: CfCertsResponse;
@@ -143,6 +163,9 @@ export async function verifyCloudflareAccessJwt(
     }
 
     keys = Array.isArray(certsJson.keys) ? certsJson.keys : [];
+    if (keys.length > JWKS_MAX_KEYS) {
+      return { ok: false, reason: 'Cloudflare Access JWKS too large' };
+    }
     jwksCache = { domain: domainNorm, keys, fetchedAt: now };
   }
   const jwk = keys.find((k) => k && typeof k === 'object' && k.kid === header.kid) as

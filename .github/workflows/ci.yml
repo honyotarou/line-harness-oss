@@ -32,6 +32,10 @@ jobs:
       - name: Biome format check
         run: pnpm format:check
 
+      # Same script as pnpm harness step 2 + worker encapsulation-gate.test.ts (fail fast, clear log)
+      - name: Encapsulation (layers / thin routes)
+        run: pnpm check:encapsulation
+
       - name: Build workspace libs (shared dist for LIFF Vite + Next transpilePackages)
         run: pnpm build:libs
 

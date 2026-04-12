@@ -22,6 +22,7 @@ import {
 } from '../services/admin-session.js';
 import { parseBearerAuthorization } from '../services/bearer-authorization.js';
 import { collectLineLoginChannelIds, verifyLineIdToken } from '../services/line-id-token.js';
+import { lineAccountDbOptions } from '../services/line-account-at-rest-key.js';
 import { resolveLineAccessTokenForFriend } from '../services/line-account-routing.js';
 import {
   BodyTooLargeError,
@@ -84,7 +85,7 @@ async function resolveFormDefinitionReader(c: Context<Env>): Promise<'admin' | '
     return 'admin';
   const channelIds = collectLineLoginChannelIds(
     c.env.LINE_LOGIN_CHANNEL_ID,
-    await getLineAccounts(c.env.DB),
+    await getLineAccounts(c.env.DB, lineAccountDbOptions(c.env)),
   );
   if (await verifyLineIdToken(token, channelIds)) return 'line';
   return null;
@@ -295,7 +296,7 @@ forms.post('/api/forms/:id/submit', async (c) => {
 
     const channelIds = collectLineLoginChannelIds(
       c.env.LINE_LOGIN_CHANNEL_ID,
-      await getLineAccounts(c.env.DB),
+      await getLineAccounts(c.env.DB, lineAccountDbOptions(c.env)),
     );
     const verified = await verifyLineIdToken(body.idToken, channelIds);
     if (!verified) {
@@ -366,6 +367,7 @@ forms.post('/api/forms/:id/submit', async (c) => {
           db,
           c.env.LINE_CHANNEL_ACCESS_TOKEN,
           friendId,
+          lineAccountDbOptions(c.env),
         );
         const lineClient = new LineClient(accessToken);
 

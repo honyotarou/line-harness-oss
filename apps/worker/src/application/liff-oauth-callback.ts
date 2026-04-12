@@ -15,12 +15,13 @@ import {
   upsertFriend,
 } from '@line-crm/db';
 import type { Env } from '../index.js';
+import { lineAccountDbOptions } from '../services/line-account-at-rest-key.js';
 import { assertHttpsOutboundUrlResolvedSafe } from '../services/outbound-url-resolve.js';
 import { resolveSafeRedirectUrl, type LiffRedirectEnv } from '../services/liff-redirect.js';
 import { verifyLiffOAuthState } from '../services/liff-oauth-state.js';
 import { buildMessage, expandVariables } from '../services/step-delivery.js';
 import { tryParseJsonRecord } from '../services/safe-json.js';
-import { emailsMatchForRecovery, liffStateSecret } from './liff-identity.js';
+import { emailsMatchForRecovery, resolveLiffOAuthStateSecret } from './liff-identity.js';
 import { completionPage, errorPage } from './liff-pages.js';
 
 export type LiffOAuthCallbackInput = {
@@ -41,12 +42,21 @@ export async function runLiffOAuthCallback(
   input: LiffOAuthCallbackInput,
 ): Promise<LiffOAuthCallbackResult> {
   const { db, bindings, origin, code, stateParam, oauthError, fetchImpl } = input;
+  const laOpts = lineAccountDbOptions(bindings);
 
   if (oauthError || !code) {
     return { kind: 'html', html: errorPage(oauthError || 'Authorization failed') };
   }
 
-  const parsedState = await verifyLiffOAuthState(stateParam, liffStateSecret(bindings));
+  const stateSecret = resolveLiffOAuthStateSecret(bindings);
+  if (!stateSecret) {
+    return {
+      kind: 'html',
+      html: errorPage('OAuth state signing is not configured on this server'),
+    };
+  }
+
+  const parsedState = await verifyLiffOAuthState(stateParam, stateSecret);
   if (!parsedState) {
     return { kind: 'html', html: errorPage('Invalid or expired login state') };
   }
@@ -72,7 +82,7 @@ export async function runLiffOAuthCallback(
     let loginChannelId = bindings.LINE_LOGIN_CHANNEL_ID;
     let loginChannelSecret = bindings.LINE_LOGIN_CHANNEL_SECRET;
     if (accountParam) {
-      const account = await getLineAccountByChannelId(db, accountParam);
+      const account = await getLineAccountByChannelId(db, accountParam, laOpts);
       if (account?.login_channel_id && account?.login_channel_secret) {
         loginChannelId = account.login_channel_id;
         loginChannelSecret = account.login_channel_secret;
@@ -223,12 +233,12 @@ export async function runLiffOAuthCallback(
 
     try {
       const matchedAccountId = accountParam
-        ? ((await getLineAccountByChannelId(db, accountParam))?.id ?? null)
+        ? ((await getLineAccountByChannelId(db, accountParam, laOpts))?.id ?? null)
         : null;
 
       let accessToken = bindings.LINE_CHANNEL_ACCESS_TOKEN;
       if (accountParam) {
-        const acct = await getLineAccountByChannelId(db, accountParam);
+        const acct = await getLineAccountByChannelId(db, accountParam, laOpts);
         if (acct) accessToken = acct.channel_access_token;
       }
       const lineClient = new LineClient(accessToken);
@@ -283,7 +293,7 @@ export async function runLiffOAuthCallback(
     }
 
     if (accountParam) {
-      const account = await getLineAccountByChannelId(db, accountParam);
+      const account = await getLineAccountByChannelId(db, accountParam, laOpts);
       if (account) {
         try {
           const botInfo = await fetchImpl('https://api.line.me/v2/bot/info', {

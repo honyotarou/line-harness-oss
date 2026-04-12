@@ -30,6 +30,31 @@ const migration016Path = resolve(
   '../../packages/db/migrations/016_friend_scenarios_unique.sql',
 );
 
+const migration017Path = resolve(
+  process.cwd(),
+  '../../packages/db/migrations/017_drop_legacy_admin_users.sql',
+);
+
+const migration018Path = resolve(
+  process.cwd(),
+  '../../packages/db/migrations/018_outgoing_webhooks_line_account.sql',
+);
+
+const migration019Path = resolve(
+  process.cwd(),
+  '../../packages/db/migrations/019_admin_principal_owner_role.sql',
+);
+
+const migration020Path = resolve(
+  process.cwd(),
+  '../../packages/db/migrations/020_chats_line_account_fk.sql',
+);
+
+const migration021Path = resolve(
+  process.cwd(),
+  '../../packages/db/migrations/021_users_email_lowercase.sql',
+);
+
 describe('schema.sql', () => {
   it('migration 011 matches admin_principal_roles DDL', () => {
     const m011 = readFileSync(migration011Path, 'utf8');
@@ -87,6 +112,12 @@ describe('schema.sql', () => {
     expect(m016).toContain('GROUP BY friend_id, scenario_id');
   });
 
+  it('omits legacy admin_users from consolidated schema; migration 017 drops it for existing DBs', () => {
+    expect(schema).not.toMatch(/CREATE TABLE IF NOT EXISTS admin_users/);
+    const m017 = readFileSync(migration017Path, 'utf8');
+    expect(m017).toContain('DROP TABLE IF EXISTS admin_users');
+  });
+
   it('defines multi-account oauth columns on line_accounts', () => {
     const accountsBlock = schema.match(
       /CREATE TABLE IF NOT EXISTS line_accounts \(([\s\S]*?)\n\);/,
@@ -94,6 +125,41 @@ describe('schema.sql', () => {
     expect(accountsBlock?.[1]).toContain('login_channel_id');
     expect(accountsBlock?.[1]).toContain('login_channel_secret');
     expect(accountsBlock?.[1]).toContain('liff_id');
+  });
+
+  it('migration 019 adds owner to admin_principal_roles role CHECK', () => {
+    const m019 = readFileSync(migration019Path, 'utf8');
+    expect(m019).toContain("CHECK (role IN ('owner', 'admin', 'viewer'))");
+  });
+
+  it('migration 020 rebuilds chats with line_account_id FK to line_accounts', () => {
+    const m020 = readFileSync(migration020Path, 'utf8');
+    expect(m020).toContain('REFERENCES line_accounts (id)');
+    expect(m020).toContain('UPDATE chats');
+  });
+
+  it('migration 021 lowercases users.email for V-7 UNIQUE alignment', () => {
+    const m021 = readFileSync(migration021Path, 'utf8');
+    expect(m021).toContain('UPDATE users');
+    expect(m021).toContain('LOWER(TRIM(email))');
+  });
+
+  it('schema lists owner in admin_principal_roles CHECK and chats.line_account_id FK', () => {
+    const rolesBlock = schema.match(
+      /CREATE TABLE IF NOT EXISTS admin_principal_roles \(([\s\S]*?)\n\);/,
+    );
+    expect(rolesBlock?.[1]).toMatch(/'owner'.*'admin'.*'viewer'/);
+    const chatsBlock = schema.match(/CREATE TABLE IF NOT EXISTS chats \(([\s\S]*?)\n\);/);
+    expect(chatsBlock?.[1]).toContain('line_account_id TEXT REFERENCES line_accounts (id)');
+  });
+
+  it('adds line_account_id to outgoing_webhooks in schema and migration 018', () => {
+    const outBlock = schema.match(/CREATE TABLE IF NOT EXISTS outgoing_webhooks \(([\s\S]*?)\n\);/);
+    expect(outBlock?.[1]).toContain('line_account_id');
+    expect(schema).toContain('idx_outgoing_webhooks_line_account_id');
+    const m018 = readFileSync(migration018Path, 'utf8');
+    expect(m018).toContain('line_account_id');
+    expect(m018).toContain('idx_outgoing_webhooks_line_account_id');
   });
 
   it('defines notification and delivery columns required for operability', () => {

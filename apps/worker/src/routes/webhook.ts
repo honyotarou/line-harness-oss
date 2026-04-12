@@ -3,6 +3,7 @@ import { verifySignature, LineClient } from '@line-crm/line-sdk';
 import type { WebhookRequestBody } from '@line-crm/line-sdk';
 import { getLineAccounts } from '@line-crm/db';
 import type { Env } from '../index.js';
+import { lineAccountDbOptions } from '../services/line-account-at-rest-key.js';
 import { BodyTooLargeError, readTextBodyWithLimit } from '../services/request-body.js';
 import { handleLineWebhookEvent } from '../application/line-webhook-handlers.js';
 import { enforceRateLimit } from '../services/request-rate-limit.js';
@@ -51,7 +52,7 @@ webhook.post('/webhook', async (c) => {
   let matchedAccountId: string | null = null;
 
   if ((body as { destination?: string }).destination) {
-    const accounts = await getLineAccounts(db);
+    const accounts = await getLineAccounts(db, lineAccountDbOptions(c.env));
     for (const account of accounts) {
       if (!account.is_active) continue;
       const isValid = await verifySignature(account.channel_secret, rawBody, signature);

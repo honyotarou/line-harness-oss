@@ -202,6 +202,38 @@ describe('tracked link routes', () => {
     );
   });
 
+  it('V-6 / P7: personalized-url returns 503 when REQUIRE_TRACKING_LINK_SECRET=1 but TRACKING_LINK_SECRET unset', async () => {
+    dbMocks.getTrackedLinkById.mockResolvedValue({
+      id: 'link-1',
+      name: 'Promo',
+      original_url: 'https://example.com/offer',
+      tag_id: null,
+      scenario_id: null,
+      is_active: 1,
+      click_count: 0,
+      created_at: '2026-03-26T10:00:00+09:00',
+      updated_at: '2026-03-26T10:00:00+09:00',
+    });
+
+    const { trackedLinks } = await import('../../src/routes/tracked-links.js');
+    const app = new Hono();
+    app.route('/', trackedLinks);
+
+    const res = await app.fetch(
+      new Request('http://localhost/api/tracked-links/link-1/personalized-url?friendId=f1'),
+      {
+        DB: {} as D1Database,
+        API_KEY,
+        REQUIRE_TRACKING_LINK_SECRET: '1',
+      } as never,
+    );
+
+    expect(res.status).toBe(503);
+    const json = (await res.json()) as { success: boolean; error?: string };
+    expect(json.success).toBe(false);
+    expect(json.error).toMatch(/TRACKING_LINK_SECRET/i);
+  });
+
   it('GET /api/tracked-links/:id/personalized-url returns signed tracking URL', async () => {
     dbMocks.getTrackedLinkById.mockResolvedValue({
       id: 'link-1',

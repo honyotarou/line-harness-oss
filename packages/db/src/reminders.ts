@@ -45,15 +45,16 @@ export async function getReminderById(db: D1Database, id: string): Promise<Remin
 
 export async function createReminder(
   db: D1Database,
-  input: { name: string; description?: string },
+  input: { name: string; description?: string; lineAccountId?: string | null },
 ): Promise<ReminderRow> {
   const id = crypto.randomUUID();
   const now = jstNow();
+  const lineAccountId = input.lineAccountId?.trim() || null;
   await db
     .prepare(
-      `INSERT INTO reminders (id, name, description, created_at, updated_at) VALUES (?, ?, ?, ?, ?)`,
+      `INSERT INTO reminders (id, name, description, line_account_id, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?)`,
     )
-    .bind(id, input.name, input.description ?? null, now, now)
+    .bind(id, input.name, input.description ?? null, lineAccountId, now, now)
     .run();
   return (await getReminderById(db, id))!;
 }
@@ -61,7 +62,12 @@ export async function createReminder(
 export async function updateReminder(
   db: D1Database,
   id: string,
-  updates: Partial<{ name: string; description: string; isActive: boolean }>,
+  updates: Partial<{
+    name: string;
+    description: string;
+    isActive: boolean;
+    lineAccountId: string | null;
+  }>,
 ): Promise<void> {
   const sets: string[] = [];
   const values: unknown[] = [];
@@ -72,6 +78,11 @@ export async function updateReminder(
   if (updates.description !== undefined) {
     sets.push('description = ?');
     values.push(updates.description);
+  }
+  if (updates.lineAccountId !== undefined) {
+    sets.push('line_account_id = ?');
+    const v = updates.lineAccountId;
+    values.push(typeof v === 'string' && v.trim() ? v.trim() : null);
   }
   if (updates.isActive !== undefined) {
     sets.push('is_active = ?');

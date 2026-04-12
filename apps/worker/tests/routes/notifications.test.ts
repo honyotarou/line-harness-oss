@@ -8,6 +8,8 @@ const dbMocks = vi.hoisted(() => ({
   updateNotificationRule: vi.fn().mockResolvedValue(undefined),
   deleteNotificationRule: vi.fn().mockResolvedValue(undefined),
   getNotifications: vi.fn(),
+  listPrincipalLineAccountIdsForEmail: vi.fn(),
+  getLineAccounts: vi.fn(),
 }));
 
 vi.mock('@line-crm/db', () => dbMocks);
@@ -122,11 +124,19 @@ function createDbCorruptNotificationJson() {
   } as unknown as D1Database;
 }
 
+const cfEnv = {
+  DB: {} as D1Database,
+  REQUIRE_CLOUDFLARE_ACCESS_JWT: '1',
+  CLOUDFLARE_ACCESS_TEAM_DOMAIN: 'team.cloudflareaccess.com',
+} as const;
+
 describe('notifications routes', () => {
   beforeEach(() => {
     Object.values(dbMocks).forEach((mockFn) => mockFn.mockReset());
     dbMocks.updateNotificationRule.mockResolvedValue(undefined);
     dbMocks.deleteNotificationRule.mockResolvedValue(undefined);
+    dbMocks.listPrincipalLineAccountIdsForEmail.mockResolvedValue([]);
+    dbMocks.getLineAccounts.mockResolvedValue([]);
   });
 
   it('creates notification rules scoped to a LINE account', async () => {
@@ -207,6 +217,36 @@ describe('notifications routes', () => {
         },
       ],
     });
+  });
+
+  it('V-5 / P6: returns 404 for GET /api/notifications/rules/:id when rule line account is outside scope', async () => {
+    dbMocks.listPrincipalLineAccountIdsForEmail.mockResolvedValue(['allowed-account']);
+    dbMocks.getNotificationRuleById.mockResolvedValue({
+      id: 'rule-out',
+      name: 'Other',
+      event_type: 'friend_add',
+      conditions: '{}',
+      channels: '["dashboard"]',
+      line_account_id: 'other-account',
+      is_active: 1,
+      created_at: '2026-03-25T10:00:00+09:00',
+      updated_at: '2026-03-25T10:00:00+09:00',
+    });
+
+    const { notifications } = await import('../../src/routes/notifications.js');
+    const app = new Hono();
+    app.use('*', async (c, next) => {
+      c.set('cfAccessJwtPayload', { email: 'scoped@example.com' });
+      await next();
+    });
+    app.route('/', notifications);
+
+    const response = await app.fetch(
+      new Request('http://localhost/api/notifications/rules/rule-out'),
+      { ...cfEnv, DB: createDb() } as never,
+    );
+
+    expect(response.status).toBe(404);
   });
 
   it('filters notifications by line account and status', async () => {

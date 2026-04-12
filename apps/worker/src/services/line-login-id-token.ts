@@ -1,3 +1,4 @@
+import type { LineAccountDbOptions } from '@line-crm/db';
 import { getLineAccounts } from '@line-crm/db';
 
 /**
@@ -7,9 +8,10 @@ export async function verifyLineLoginIdToken(
   db: D1Database,
   defaultLoginChannelId: string,
   rawIdToken: string,
+  lineAccountOpts?: LineAccountDbOptions,
 ): Promise<{ sub: string; email?: string; name?: string } | null> {
   const loginChannelIds = [defaultLoginChannelId];
-  const dbAccounts = await getLineAccounts(db);
+  const dbAccounts = await getLineAccounts(db, lineAccountOpts);
   for (const acct of dbAccounts) {
     if (acct.login_channel_id && !loginChannelIds.includes(acct.login_channel_id)) {
       loginChannelIds.push(acct.login_channel_id);

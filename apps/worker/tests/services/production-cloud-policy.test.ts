@@ -93,6 +93,7 @@ describe('production-cloud-policy', () => {
     });
     expect(w.some((x) => x.includes('REQUIRE_ADMIN_SESSION_SECRET'))).toBe(true);
     expect(w.some((x) => x.includes('BROADCAST_SEND_SECRET'))).toBe(true);
+    expect(w.some((x) => x.includes('LINE_ACCOUNT_SECRETS_WRITE_SECRET'))).toBe(true);
     expect(w.some((x) => x.includes('MULTI_LINE_ACCOUNT_QUERY_REQUIRES_LINE_ACCOUNT_ID'))).toBe(
       true,
     );

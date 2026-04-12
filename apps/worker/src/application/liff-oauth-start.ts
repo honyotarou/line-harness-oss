@@ -1,8 +1,9 @@
 import { getLineAccountByChannelId } from '@line-crm/db';
 import type { Env } from '../index.js';
+import { lineAccountDbOptions } from '../services/line-account-at-rest-key.js';
 import { signLiffOAuthState } from '../services/liff-oauth-state.js';
 import { resolveSafeRedirectUrl, type LiffRedirectEnv } from '../services/liff-redirect.js';
-import { liffStateSecret } from './liff-identity.js';
+import { isRequireLiffStateSecretEnabled, resolveLiffOAuthStateSecret } from './liff-identity.js';
 
 export type AuthLineStartInput = {
   db: D1Database;
@@ -48,12 +49,17 @@ export async function runAuthLineStart(input: AuthLineStartInput): Promise<AuthL
     uidParam,
   } = input;
 
-  const stateSecret = liffStateSecret(bindings);
+  const stateSecret = resolveLiffOAuthStateSecret(bindings);
   if (!stateSecret) {
+    const requireDedicated = isRequireLiffStateSecretEnabled(bindings);
     return {
       kind: 'log_error',
-      message: 'GET /auth/line: missing API_KEY / LIFF_STATE_SECRET (required to sign OAuth state)',
-      userHtmlMessage: 'サーバー設定エラー: API_KEY または LIFF_STATE_SECRET が未設定です。',
+      message: requireDedicated
+        ? 'GET /auth/line: REQUIRE_LIFF_STATE_SECRET is on but LIFF_STATE_SECRET is missing'
+        : 'GET /auth/line: set LIFF_STATE_SECRET or ALLOW_LIFF_OAUTH_API_KEY_FALLBACK=1 (with API_KEY) for OAuth state',
+      userHtmlMessage: requireDedicated
+        ? 'サーバー設定エラー: LIFF_STATE_SECRET を設定してください（REQUIRE_LIFF_STATE_SECRET が有効です）。'
+        : 'サーバー設定エラー: LIFF_STATE_SECRET を設定するか、開発用に ALLOW_LIFF_OAUTH_API_KEY_FALLBACK=1 と API_KEY を設定してください。',
     };
   }
 
@@ -66,7 +72,11 @@ export async function runAuthLineStart(input: AuthLineStartInput): Promise<AuthL
     let channelId = bindings.LINE_LOGIN_CHANNEL_ID;
     let liffUrl = (bindings.LIFF_URL ?? '').trim();
     if (accountParam) {
-      const account = await getLineAccountByChannelId(db, accountParam);
+      const account = await getLineAccountByChannelId(
+        db,
+        accountParam,
+        lineAccountDbOptions(bindings),
+      );
       if (account?.login_channel_id) {
         channelId = account.login_channel_id;
       }

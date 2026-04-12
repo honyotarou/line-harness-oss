@@ -15,6 +15,12 @@ import {
 } from '../services/request-body.js';
 import { parseStringArrayJson, tryParseJsonRecord } from '../services/safe-json.js';
 import { clampListLimit } from '../services/query-limits.js';
+import {
+  resolveLineAccountScopeForRequest,
+  resourceLineAccountVisibleInScope,
+  validateScopedLineAccountBody,
+  validateScopedLineAccountQueryParam,
+} from '../services/admin-line-account-scope.js';
 
 const notifications = new Hono<Env>();
 
@@ -22,7 +28,12 @@ const notifications = new Hono<Env>();
 
 notifications.get('/api/notifications/rules', async (c) => {
   try {
+    const scope = await resolveLineAccountScopeForRequest(c.env.DB, c);
     const lineAccountId = c.req.query('lineAccountId');
+    const qRules = validateScopedLineAccountQueryParam(scope, lineAccountId);
+    if (!qRules.ok) {
+      return c.json({ success: false, error: qRules.error }, qRules.status);
+    }
     let items;
     if (lineAccountId) {
       const result = await c.env.DB.prepare(
@@ -56,8 +67,12 @@ notifications.get('/api/notifications/rules', async (c) => {
 
 notifications.get('/api/notifications/rules/:id', async (c) => {
   try {
+    const scopeRule = await resolveLineAccountScopeForRequest(c.env.DB, c);
     const item = await getNotificationRuleById(c.env.DB, c.req.param('id'));
     if (!item) return c.json({ success: false, error: 'Not found' }, 404);
+    if (!resourceLineAccountVisibleInScope(scopeRule, item.line_account_id)) {
+      return c.json({ success: false, error: 'Not found' }, 404);
+    }
     return c.json({
       success: true,
       data: {
@@ -79,6 +94,7 @@ notifications.get('/api/notifications/rules/:id', async (c) => {
 
 notifications.post('/api/notifications/rules', async (c) => {
   try {
+    const scopePost = await resolveLineAccountScopeForRequest(c.env.DB, c);
     const body = await readJsonBodyWithLimit<{
       name: string;
       eventType: string;
@@ -88,7 +104,19 @@ notifications.post('/api/notifications/rules', async (c) => {
     }>(c.req.raw, DEFAULT_ADMIN_JSON_BODY_LIMIT_BYTES);
     if (!body.name || !body.eventType)
       return c.json({ success: false, error: 'name and eventType are required' }, 400);
-    const item = await createNotificationRule(c.env.DB, body);
+
+    const scoped = validateScopedLineAccountBody(scopePost, body.lineAccountId ?? null);
+    if (!scoped.ok) {
+      return c.json({ success: false, error: scoped.error }, scoped.status);
+    }
+    if (scopePost.mode === 'restricted' && !scoped.lineAccountId) {
+      return c.json({ success: false, error: 'lineAccountId is required for this principal' }, 400);
+    }
+
+    const item = await createNotificationRule(c.env.DB, {
+      ...body,
+      lineAccountId: scoped.lineAccountId,
+    });
     return c.json(
       {
         success: true,
@@ -114,10 +142,30 @@ notifications.post('/api/notifications/rules', async (c) => {
 notifications.put('/api/notifications/rules/:id', async (c) => {
   try {
     const id = c.req.param('id');
+    const scopePut = await resolveLineAccountScopeForRequest(c.env.DB, c);
+    const existingRule = await getNotificationRuleById(c.env.DB, id);
+    if (!existingRule) {
+      return c.json({ success: false, error: 'Not found' }, 404);
+    }
+    if (!resourceLineAccountVisibleInScope(scopePut, existingRule.line_account_id)) {
+      return c.json({ success: false, error: 'Not found' }, 404);
+    }
+
     const body = await readJsonBodyWithLimit<Record<string, unknown>>(
       c.req.raw,
       DEFAULT_ADMIN_JSON_BODY_LIMIT_BYTES,
     );
+    if (body.lineAccountId !== undefined || body.line_account_id !== undefined) {
+      const rawLa = body.lineAccountId ?? body.line_account_id;
+      const scopedLa = validateScopedLineAccountBody(
+        scopePut,
+        rawLa === null ? null : typeof rawLa === 'string' ? rawLa : null,
+      );
+      if (!scopedLa.ok) {
+        return c.json({ success: false, error: scopedLa.error }, scopedLa.status);
+      }
+      body.lineAccountId = scopedLa.lineAccountId;
+    }
     await updateNotificationRule(c.env.DB, id, body as never);
     const updated = await getNotificationRuleById(c.env.DB, id);
     if (!updated) return c.json({ success: false, error: 'Not found' }, 404);
@@ -142,6 +190,14 @@ notifications.put('/api/notifications/rules/:id', async (c) => {
 
 notifications.delete('/api/notifications/rules/:id', async (c) => {
   try {
+    const scopeDel = await resolveLineAccountScopeForRequest(c.env.DB, c);
+    const existingDel = await getNotificationRuleById(c.env.DB, c.req.param('id'));
+    if (!existingDel) {
+      return c.json({ success: false, error: 'Not found' }, 404);
+    }
+    if (!resourceLineAccountVisibleInScope(scopeDel, existingDel.line_account_id)) {
+      return c.json({ success: false, error: 'Not found' }, 404);
+    }
     await deleteNotificationRule(c.env.DB, c.req.param('id'));
     return c.json({ success: true, data: null });
   } catch (err) {
@@ -154,9 +210,14 @@ notifications.delete('/api/notifications/rules/:id', async (c) => {
 
 notifications.get('/api/notifications', async (c) => {
   try {
+    const scopeList = await resolveLineAccountScopeForRequest(c.env.DB, c);
     const status = c.req.query('status') ?? undefined;
     const limit = clampListLimit(c.req.query('limit'), 100, 500);
     const lineAccountId = c.req.query('lineAccountId') ?? undefined;
+    const qN = validateScopedLineAccountQueryParam(scopeList, lineAccountId);
+    if (!qN.ok) {
+      return c.json({ success: false, error: qN.error }, qN.status);
+    }
     let items;
     if (lineAccountId) {
       const conditions: string[] = ['line_account_id = ?'];

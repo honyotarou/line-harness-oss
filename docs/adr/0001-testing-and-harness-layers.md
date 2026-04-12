@@ -24,6 +24,6 @@ The repo ships a Cloudflare Worker (API + LIFF), a Next.js admin app, and shared
 - `apps/worker/.dev.vars` is gitignored; local and CI use `.dev.vars.example` as the non-secret template.
 - Stripe webhooks require `STRIPE_WEBHOOK_SECRET`; unsigned JSON ingestion was removed for security (see `stripe` route tests).
 - Public form endpoints are **method-scoped** in `authMiddleware`: only `GET /api/forms/:id` and `POST /api/forms/:id/submit` bypass admin auth; mutating methods require a session.
-- LINE Login OAuth `state` is **HMAC-signed** (`LIFF_STATE_SECRET` or `API_KEY`); post-login redirects are **allowlist-only** (`WEB_URL`, `WORKER_URL`, `ALLOWED_ORIGINS`, `LIFF_URL`, and official `line.me` hosts). `POST /api/liff/profile` requires a verified ID token whose `sub` matches `lineUserId`.
+- LINE Login OAuth `state` is **HMAC-signed** with `LIFF_STATE_SECRET`, or with `API_KEY` only when **`ALLOW_LIFF_OAUTH_API_KEY_FALLBACK`** is enabled (local dev); post-login redirects are **allowlist-only** (`WEB_URL`, `WORKER_URL`, `ALLOWED_ORIGINS`, `LIFF_URL`, and official `line.me` hosts). `POST /api/liff/profile` requires a verified ID token whose `sub` matches `lineUserId`.
 - **Biome** (`biome.json`) は formatter のみ；`pnpm harness` と CI で `biome format .` を実行。設定・ワークフロー・ハーネス正本のエージェント編集は Claude **PreToolUse** でブロック（[ADR 0002](0002-harness-engineering.md)）。
 - D1 `users` uses **partial unique indexes** on non-null `email`, `phone`, and `external_id` (migration `010_users_unique_contact.sql`).

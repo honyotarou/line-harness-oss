@@ -30,6 +30,8 @@
 | Worker 開発 | `pnpm dev:worker` |
 | Web 開発 | `pnpm dev:web` |
 
+**PR の CI**（`.github/workflows/ci.yml` の `unit` ジョブ）は **Biome の直後**に **`pnpm check:encapsulation`** を走らせる（TDD と同じレイヤー規約をビルド前に強制）。Worker の Vitest にも `encapsulation-gate` がある。
+
 初回クローン後、Git フックに Lefthook を入れる（任意だが推奨）:
 
 ```bash
@@ -56,7 +58,8 @@ pnpm exec lefthook install
 
 **Worker シークレット（LIFF まわり）**
 
-- `LIFF_STATE_SECRET`（未設定時は `API_KEY` で署名）を本番で分けたい場合は明示的に設定する。
+- `LIFF_STATE_SECRET` を推奨。`API_KEY` で OAuth `state` を署名するのは **`ALLOW_LIFF_OAUTH_API_KEY_FALLBACK=1` を付けたローカル開発のみ**。本番は `LIFF_STATE_SECRET` または `REQUIRE_LIFF_STATE_SECRET=1`。
+- `LINE_ACCOUNT_SECRETS_KEY`（32 バイトを base64）を設定すると `line_accounts` のトークン類が D1 上で AES-GCM 密封（`lh1:`）される。
 - `WEB_URL` / `WORKER_URL` / `ALLOWED_ORIGINS` / `LIFF_URL` が、実際のクライアント・リダイレクト先と一致していること。
 - デプロイ後、**古い未署名 OAuth `state` の QR・ブックマーク**は無効になる。顧客には新フローで再発行が必要な場合がある。
 

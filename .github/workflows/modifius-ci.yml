@@ -1,0 +1,203 @@
+# Modifius-style debt insight: deterministic gates + optional per-file Anthropic analyze (matrix).
+# Merge gate stays on ci.yml + pnpm harness. Ref: https://developersblog.dmm.com/entry/2026/04/01/110000
+#
+# Enable AI analyze:
+#   Repository variable: MODIFIUS_ANALYZE_ENABLED = true   (for schedule)
+#   Repository secret:   MODIFIUS_ANTHROPIC_API_KEY
+# Manual run: workflow_dispatch with "Run Anthropic analyze" checked (secret still required).
+#
+# Model override: optional repository variable MODIFIUS_MODEL (default claude-3-5-haiku-20241022).
+
+name: Modifius-style debt insight
+
+on:
+  workflow_dispatch:
+    inputs:
+      run_analyze:
+        description: Run Anthropic per-file analyze (requires MODIFIUS_ANTHROPIC_API_KEY)
+        type: boolean
+        default: false
+  schedule:
+    # Monthly, 15th 00:15 UTC (distinct from Observe on the 1st)
+    - cron: "15 0 15 * *"
+
+concurrency:
+  group: modifius-ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  deterministic-and-prep:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: "pnpm"
+
+      - name: Install
+        run: pnpm install --frozen-lockfile
+
+      - name: Deterministic gates (with retry)
+        run: |
+          set -euo pipefail
+          attempt=1
+          until [ "$attempt" -gt 2 ]; do
+            echo "Attempt ${attempt}/2"
+            if pnpm format:check && pnpm check:encapsulation; then
+              exit 0
+            fi
+            attempt=$((attempt+1))
+            sleep 5
+          done
+          exit 1
+
+      - name: Prep — file manifest from .github/modifius-config.yml
+        run: ruby scripts/modifius-file-manifest.rb
+
+      - name: Upload manifest (for diffing / analyze matrix)
+        uses: actions/upload-artifact@v4
+        with:
+          name: modifius-file-manifest-${{ github.run_id }}
+          path: modifius-file-manifest.txt
+
+      - name: Summary
+        if: always()
+        run: |
+          {
+            echo "## Modifius-style debt insight"
+            echo ""
+            echo "- workflow: \`modifius-ci.yml\`"
+            echo "- run: \`${{ github.run_id }}\`"
+            echo "- deterministic: \`pnpm format:check\` + \`pnpm check:encapsulation\`"
+            echo "- prep: \`modifius-file-manifest.txt\` artifact"
+            echo ""
+            echo "**Optional AI analyze**: set repo variable \`MODIFIUS_ANALYZE_ENABLED=true\` and secret \`MODIFIUS_ANTHROPIC_API_KEY\`, or dispatch with **Run Anthropic analyze**."
+            echo "PR merge gate: \`ci.yml\` + \`pnpm harness\` (unchanged)."
+          } >> "$GITHUB_STEP_SUMMARY"
+          if [ -f modifius-file-manifest.txt ]; then
+            echo "" >> "$GITHUB_STEP_SUMMARY"
+            echo "### First lines of manifest" >> "$GITHUB_STEP_SUMMARY"
+            echo "" >> "$GITHUB_STEP_SUMMARY"
+            echo '```' >> "$GITHUB_STEP_SUMMARY"
+            head -n 20 modifius-file-manifest.txt >> "$GITHUB_STEP_SUMMARY" || true
+            echo '```' >> "$GITHUB_STEP_SUMMARY"
+          fi
+
+  prep-matrix:
+    needs: deterministic-and-prep
+    if: always() && needs.deterministic-and-prep.result == 'success'
+    runs-on: ubuntu-latest
+    outputs:
+      matrix: ${{ steps.out.outputs.matrix }}
+      analyze_count: ${{ steps.out.outputs.analyze_count }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Regenerate manifest (same runner as analyze)
+        run: ruby scripts/modifius-file-manifest.rb
+
+      - id: out
+        env:
+          # schedule では `inputs` が無いため `github.event.inputs` を使う（dispatch の boolean は true または文字列 "true" のどちらもあり得る）
+          MODIFIUS_RUN_ANALYZE: ${{ vars.MODIFIUS_ANALYZE_ENABLED == 'true' || (github.event_name == 'workflow_dispatch' && (github.event.inputs.run_analyze == true || github.event.inputs.run_analyze == 'true')) }}
+        run: ruby scripts/modifius-matrix-output.rb
+
+  modifius-analyze:
+    needs: prep-matrix
+    if: needs.prep-matrix.outputs.analyze_count != '0'
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      max-parallel: 5
+      matrix: ${{ fromJSON(needs.prep-matrix.outputs.matrix) }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: Analyze one file (retry once)
+        env:
+          MODIFIUS_FILE: ${{ matrix.file }}
+          ANTHROPIC_API_KEY: ${{ secrets.MODIFIUS_ANTHROPIC_API_KEY }}
+          MODIFIUS_MODEL: ${{ vars.MODIFIUS_MODEL }}
+        run: |
+          set -euo pipefail
+          attempt=1
+          until [ "$attempt" -gt 2 ]; do
+            echo "Attempt ${attempt}/2 for ${MODIFIUS_FILE}"
+            if node scripts/modifius-analyze-one.mjs; then
+              exit 0
+            fi
+            attempt=$((attempt+1))
+            sleep 8
+          done
+          exit 1
+
+      - name: Upload shard
+        if: success()
+        uses: actions/upload-artifact@v4
+        with:
+          name: modifius-analyze-${{ strategy.job-index }}
+          path: modifius-out/
+          if-no-files-found: warn
+
+  modifius-aggregate:
+    needs: [deterministic-and-prep, prep-matrix, modifius-analyze]
+    if: always() && needs.deterministic-and-prep.result == 'success' && needs.prep-matrix.result == 'success'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Download analyze shards
+        uses: actions/download-artifact@v4
+        continue-on-error: true
+        with:
+          pattern: modifius-analyze-*
+          merge-multiple: true
+          path: modifius-analyze-download
+
+      - name: Merge Markdown report
+        run: |
+          set -euo pipefail
+          mkdir -p merged
+          : > modifius-report.md
+          if compgen -G "modifius-analyze-download/**/*.md" > /dev/null 2>&1; then
+            find modifius-analyze-download -name "*.md" -print | sort | while read -r f; do
+              cat "$f" >> modifius-report.md
+              printf '\n\n---\n\n' >> modifius-report.md
+            done
+          elif compgen -G "modifius-analyze-download/*.md" > /dev/null 2>&1; then
+            find modifius-analyze-download -maxdepth 1 -name "*.md" -print | sort | while read -r f; do
+              cat "$f" >> modifius-report.md
+              printf '\n\n---\n\n' >> modifius-report.md
+            done
+          fi
+          if [ ! -s modifius-report.md ]; then
+            echo "## Modifius aggregate" > modifius-report.md
+            echo "" >> modifius-report.md
+            echo "No AI analyze shards (analyze disabled, empty matrix, failed jobs, or missing \`MODIFIUS_ANTHROPIC_API_KEY\`)." >> modifius-report.md
+          fi
+
+      - name: Upload combined report
+        uses: actions/upload-artifact@v4
+        with:
+          name: modifius-report-${{ github.run_id }}
+          path: modifius-report.md
+
+      - name: Summary (excerpt)
+        run: |
+          {
+            echo "## Modifius aggregate"
+            echo ""
+            echo "Full report: artifact \`modifius-report-${{ github.run_id }}\`."
+            echo ""
+            echo "### Excerpt"
+            echo ""
+            echo '```'
+            head -n 60 modifius-report.md || true
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"

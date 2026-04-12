@@ -43,7 +43,7 @@ function isValidPrincipalEmail(raw: string): boolean {
 }
 
 function parseRole(raw: unknown): AdminPrincipalRole | null {
-  if (raw === 'admin' || raw === 'viewer') {
+  if (raw === 'owner' || raw === 'admin' || raw === 'viewer') {
     return raw;
   }
   return null;
@@ -68,7 +68,7 @@ routes.put('/api/admin/principal-roles', async (c) => {
       return c.json({ success: false, error: 'Invalid email' }, 400);
     }
     if (!role) {
-      return c.json({ success: false, error: 'role must be admin or viewer' }, 400);
+      return c.json({ success: false, error: 'role must be owner, admin, or viewer' }, 400);
     }
     await upsertAdminPrincipalRole(c.env.DB, email, role);
     return c.json({ success: true, data: null });

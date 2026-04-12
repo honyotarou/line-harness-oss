@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import {
+  lineAccountWriteForbiddenForScope,
   resourceLineAccountVisibleInScope,
   validateScopedLineAccountBody,
   validateScopedLineAccountQueryParam,
@@ -59,5 +60,11 @@ describe('admin-line-account-scope', () => {
       ok: true,
       lineAccountId: 'acc-x',
     });
+  });
+
+  it('lineAccountWriteForbiddenForScope blocks mutations unless scope is all', () => {
+    const restricted = { mode: 'restricted' as const, ids: new Set(['a1']) };
+    expect(lineAccountWriteForbiddenForScope(restricted)).toMatchObject({ forbidden: true });
+    expect(lineAccountWriteForbiddenForScope({ mode: 'all' })).toEqual({ forbidden: false });
   });
 });

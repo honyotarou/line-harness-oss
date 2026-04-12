@@ -30,6 +30,11 @@
       "types": "./dist/admin-browser-client.d.ts",
       "import": "./dist/admin-browser-client.js",
       "default": "./dist/admin-browser-client.js"
+    },
+    "./line-account-at-rest": {
+      "types": "./dist/line-account-at-rest.d.ts",
+      "import": "./dist/line-account-at-rest.js",
+      "default": "./src/line-account-at-rest.ts"
     }
   },
   "files": ["dist", "src"],

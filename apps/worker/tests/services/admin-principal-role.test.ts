@@ -1,5 +1,9 @@
 import { describe, expect, it, vi } from 'vitest';
-import { getAdminPrincipalRole, resolveAdminPrincipalAccess } from '@line-crm/db';
+import {
+  getAdminPrincipalRole,
+  getExplicitAdminPrincipalRole,
+  resolveAdminPrincipalAccess,
+} from '@line-crm/db';
 
 describe('resolveAdminPrincipalAccess', () => {
   it('matches legacy getAdminPrincipalRole when strictAllowlist is false', async () => {
@@ -75,6 +79,20 @@ describe('getAdminPrincipalRole', () => {
     expect(await getAdminPrincipalRole(db, 'any@example.com')).toBe('admin');
   });
 
+  it('returns owner when row says owner', async () => {
+    const db = {
+      prepare() {
+        return {
+          bind() {
+            return { first: vi.fn().mockResolvedValue({ role: 'owner' }) };
+          },
+        };
+      },
+    } as unknown as D1Database;
+
+    expect(await getAdminPrincipalRole(db, 'o@example.com')).toBe('owner');
+  });
+
   it('returns viewer when row says viewer', async () => {
     const db = {
       prepare() {
@@ -87,6 +105,34 @@ describe('getAdminPrincipalRole', () => {
     } as unknown as D1Database;
 
     expect(await getAdminPrincipalRole(db, 'V@Example.COM')).toBe('viewer');
+  });
+
+  it('returns null from getExplicitAdminPrincipalRole when no row', async () => {
+    const db = {
+      prepare() {
+        return {
+          bind() {
+            return { first: vi.fn().mockResolvedValue(null) };
+          },
+        };
+      },
+    } as unknown as D1Database;
+
+    expect(await getExplicitAdminPrincipalRole(db, 'ghost@example.com')).toBeNull();
+  });
+
+  it('returns admin from getExplicitAdminPrincipalRole when row says admin', async () => {
+    const db = {
+      prepare() {
+        return {
+          bind() {
+            return { first: vi.fn().mockResolvedValue({ role: 'admin' }) };
+          },
+        };
+      },
+    } as unknown as D1Database;
+
+    expect(await getExplicitAdminPrincipalRole(db, 'a@example.com')).toBe('admin');
   });
 
   it('treats unknown role string as admin', async () => {

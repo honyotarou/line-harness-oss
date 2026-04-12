@@ -16,6 +16,7 @@ import { processBroadcastSend } from '../services/broadcast.js';
 import { processSegmentSend } from '../services/segment-send.js';
 import type { SegmentCondition } from '../services/segment-query.js';
 import type { Env } from '../index.js';
+import { lineAccountDbOptions } from '../services/line-account-at-rest-key.js';
 import { resolveLineAccessTokenForLineAccountId } from '../services/line-account-routing.js';
 import {
   DEFAULT_ADMIN_JSON_BODY_LIMIT_BYTES,
@@ -293,6 +294,7 @@ broadcasts.post('/api/broadcasts/:id/send', async (c) => {
       c.env.DB,
       c.env.LINE_CHANNEL_ACCESS_TOKEN,
       existing.line_account_id,
+      lineAccountDbOptions(c.env),
     );
     const lineClient = new LineClient(accessToken);
     await processBroadcastSend(c.env.DB, lineClient, id);
@@ -367,6 +369,7 @@ broadcasts.post('/api/broadcasts/:id/send-segment', async (c) => {
       c.env.DB,
       c.env.LINE_CHANNEL_ACCESS_TOKEN,
       existing.line_account_id,
+      lineAccountDbOptions(c.env),
     );
     const lineClient = new LineClient(accessToken);
     await processSegmentSend(c.env.DB, lineClient, id, body.conditions);

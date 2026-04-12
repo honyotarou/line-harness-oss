@@ -9,9 +9,11 @@ import {
   getChatById,
   createChat,
   updateChat,
+  getFriendById,
   jstNow,
 } from '@line-crm/db';
 import type { Env } from '../index.js';
+import { lineAccountDbOptions } from '../services/line-account-at-rest-key.js';
 import { resolveLineAccessTokenForFriend } from '../services/line-account-routing.js';
 import {
   DEFAULT_ADMIN_JSON_BODY_LIMIT_BYTES,
@@ -19,6 +21,12 @@ import {
   readJsonBodyWithLimit,
 } from '../services/request-body.js';
 import { clampListLimit, clampOffset } from '../services/query-limits.js';
+import {
+  resolveLineAccountScopeForRequest,
+  resourceLineAccountVisibleInScope,
+  validateScopedLineAccountBody,
+  validateScopedLineAccountQueryParam,
+} from '../services/admin-line-account-scope.js';
 
 const chats = new Hono<Env>();
 
@@ -108,9 +116,14 @@ chats.delete('/api/operators/:id', async (c) => {
 
 chats.get('/api/chats', async (c) => {
   try {
+    const scope = await resolveLineAccountScopeForRequest(c.env.DB, c);
     const status = c.req.query('status') ?? undefined;
     const operatorId = c.req.query('operatorId') ?? undefined;
     const lineAccountId = c.req.query('lineAccountId') ?? undefined;
+    const qList = validateScopedLineAccountQueryParam(scope, lineAccountId);
+    if (!qList.ok) {
+      return c.json({ success: false, error: qList.error }, qList.status);
+    }
 
     // JOIN friends to get display_name and picture_url
     let sql = `SELECT c.*, f.display_name, f.picture_url, f.line_user_id
@@ -167,8 +180,15 @@ chats.get('/api/chats', async (c) => {
 
 chats.get('/api/chats/:id', async (c) => {
   try {
+    const scopeChat = await resolveLineAccountScopeForRequest(c.env.DB, c);
     const item = await getChatById(c.env.DB, c.req.param('id'));
     if (!item) return c.json({ success: false, error: 'Chat not found' }, 404);
+
+    const friendRow = await getFriendById(c.env.DB, item.friend_id);
+    const effectiveLineAccountId = friendRow?.line_account_id ?? item.line_account_id ?? null;
+    if (!resourceLineAccountVisibleInScope(scopeChat, effectiveLineAccountId)) {
+      return c.json({ success: false, error: 'Chat not found' }, 404);
+    }
 
     // 友だち情報を取得
     const friend = await c.env.DB.prepare(
@@ -215,17 +235,49 @@ chats.get('/api/chats/:id', async (c) => {
 
 chats.post('/api/chats', async (c) => {
   try {
+    const scopePost = await resolveLineAccountScopeForRequest(c.env.DB, c);
     const body = await readJsonBodyWithLimit<{
       friendId: string;
       operatorId?: string;
       lineAccountId?: string | null;
     }>(c.req.raw, DEFAULT_ADMIN_JSON_BODY_LIMIT_BYTES);
     if (!body.friendId) return c.json({ success: false, error: 'friendId is required' }, 400);
+
+    const scoped = validateScopedLineAccountBody(scopePost, body.lineAccountId ?? null);
+    if (!scoped.ok) {
+      return c.json({ success: false, error: scoped.error }, scoped.status);
+    }
+    if (scopePost.mode === 'restricted' && !scoped.lineAccountId) {
+      return c.json({ success: false, error: 'lineAccountId is required for this principal' }, 400);
+    }
+
+    const friendForChat = await getFriendById(c.env.DB, body.friendId);
+    if (!friendForChat) {
+      return c.json({ success: false, error: 'Friend not found' }, 404);
+    }
+    if (!resourceLineAccountVisibleInScope(scopePost, friendForChat.line_account_id)) {
+      return c.json({ success: false, error: 'Friend not found' }, 404);
+    }
+    if (scopePost.mode === 'restricted' && friendForChat.line_account_id !== scoped.lineAccountId) {
+      return c.json({ success: false, error: 'Friend not found' }, 404);
+    }
+    if (
+      body.lineAccountId &&
+      friendForChat.line_account_id &&
+      body.lineAccountId !== friendForChat.line_account_id
+    ) {
+      return c.json(
+        { success: false, error: 'lineAccountId does not match the friend LINE account' },
+        400,
+      );
+    }
+
     const item = await createChat(c.env.DB, body);
-    // Save line_account_id if provided
-    if (body.lineAccountId) {
+    const lineAccToStore =
+      scoped.lineAccountId ?? body.lineAccountId ?? friendForChat.line_account_id ?? null;
+    if (lineAccToStore) {
       await c.env.DB.prepare(`UPDATE chats SET line_account_id = ? WHERE id = ?`)
-        .bind(body.lineAccountId, item.id)
+        .bind(lineAccToStore, item.id)
         .run();
     }
     return c.json(
@@ -238,7 +290,7 @@ chats.post('/api/chats', async (c) => {
           status: item.status,
           notes: item.notes,
           lastMessageAt: item.last_message_at,
-          lineAccountId: body.lineAccountId ?? item.line_account_id ?? null,
+          lineAccountId: lineAccToStore ?? item.line_account_id ?? null,
           createdAt: item.created_at,
           updatedAt: item.updated_at,
         },
@@ -257,6 +309,17 @@ chats.post('/api/chats', async (c) => {
 chats.put('/api/chats/:id', async (c) => {
   try {
     const id = c.req.param('id');
+    const scopePutChat = await resolveLineAccountScopeForRequest(c.env.DB, c);
+    const existingChat = await getChatById(c.env.DB, id);
+    if (!existingChat) {
+      return c.json({ success: false, error: 'Not found' }, 404);
+    }
+    const friendPut = await getFriendById(c.env.DB, existingChat.friend_id);
+    const effPut = friendPut?.line_account_id ?? existingChat.line_account_id ?? null;
+    if (!resourceLineAccountVisibleInScope(scopePutChat, effPut)) {
+      return c.json({ success: false, error: 'Not found' }, 404);
+    }
+
     const body = await readJsonBodyWithLimit<{
       operatorId?: string | null;
       status?: string;
@@ -291,8 +354,14 @@ chats.put('/api/chats/:id', async (c) => {
 chats.post('/api/chats/:id/send', async (c) => {
   try {
     const chatId = c.req.param('id');
+    const scopeSendChat = await resolveLineAccountScopeForRequest(c.env.DB, c);
     const chat = await getChatById(c.env.DB, chatId);
     if (!chat) return c.json({ success: false, error: 'Chat not found' }, 404);
+    const friendSend = await getFriendById(c.env.DB, chat.friend_id);
+    const effSend = friendSend?.line_account_id ?? chat.line_account_id ?? null;
+    if (!resourceLineAccountVisibleInScope(scopeSendChat, effSend)) {
+      return c.json({ success: false, error: 'Chat not found' }, 404);
+    }
 
     const body = await readJsonBodyWithLimit<{ messageType?: string; content: string }>(
       c.req.raw,
@@ -311,6 +380,7 @@ chats.post('/api/chats/:id/send', async (c) => {
       c.env.DB,
       c.env.LINE_CHANNEL_ACCESS_TOKEN,
       friend.id,
+      lineAccountDbOptions(c.env),
     );
     const lineClient = new LineClient(accessToken);
     const messageType = body.messageType ?? 'text';

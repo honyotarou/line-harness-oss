@@ -63,6 +63,7 @@ describe('GET webhook lists mask signing secrets', () => {
         url: 'https://example.com/hook',
         event_types: '[]',
         secret: 'outgoing-signing-key-xyz9',
+        line_account_id: null,
         is_active: 1,
         created_at: '2026-01-01T00:00:00+09:00',
         updated_at: '2026-01-01T00:00:00+09:00',

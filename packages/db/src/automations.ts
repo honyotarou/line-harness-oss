@@ -47,13 +47,15 @@ export async function createAutomation(
     conditions?: Record<string, unknown>;
     actions: unknown[];
     priority?: number;
+    lineAccountId?: string | null;
   },
 ): Promise<AutomationRow> {
   const id = crypto.randomUUID();
   const now = jstNow();
+  const lineAccountId = input.lineAccountId?.trim() || null;
   await db
     .prepare(
-      `INSERT INTO automations (id, name, description, event_type, conditions, actions, priority, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      `INSERT INTO automations (id, name, description, event_type, conditions, actions, line_account_id, priority, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
     )
     .bind(
       id,
@@ -62,6 +64,7 @@ export async function createAutomation(
       input.eventType,
       JSON.stringify(input.conditions ?? {}),
       JSON.stringify(input.actions),
+      lineAccountId,
       input.priority ?? 0,
       now,
       now,
@@ -79,6 +82,7 @@ export async function updateAutomation(
     eventType: string;
     conditions: Record<string, unknown>;
     actions: unknown[];
+    lineAccountId: string | null;
     isActive: boolean;
     priority: number;
   }>,
@@ -104,6 +108,11 @@ export async function updateAutomation(
   if (updates.actions !== undefined) {
     sets.push('actions = ?');
     values.push(JSON.stringify(updates.actions));
+  }
+  if (updates.lineAccountId !== undefined) {
+    sets.push('line_account_id = ?');
+    const v = updates.lineAccountId;
+    values.push(typeof v === 'string' && v.trim() ? v.trim() : null);
   }
   if (updates.isActive !== undefined) {
     sets.push('is_active = ?');

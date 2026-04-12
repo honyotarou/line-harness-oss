@@ -19,6 +19,7 @@ export type ProductionCloudPolicyEnv = {
   ADMIN_SESSION_SECRET?: string;
   ALLOW_LEGACY_API_KEY_SESSION_SIGNER?: string;
   BROADCAST_SEND_SECRET?: string;
+  LINE_ACCOUNT_SECRETS_WRITE_SECRET?: string;
   MULTI_LINE_ACCOUNT_QUERY_REQUIRES_LINE_ACCOUNT_ID?: string;
 };
 
@@ -98,6 +99,11 @@ export function getProductionCloudSurfaceWarnings(env: ProductionCloudPolicyEnv)
     if (!env.BROADCAST_SEND_SECRET?.trim()) {
       warnings.push(
         'BROADCAST_SEND_SECRET is unset; set a secret and require X-Broadcast-Send-Secret on /api/broadcasts/:id/send to add a second factor for mass sends.',
+      );
+    }
+    if (!env.LINE_ACCOUNT_SECRETS_WRITE_SECRET?.trim()) {
+      warnings.push(
+        'LINE_ACCOUNT_SECRETS_WRITE_SECRET is unset; set it and require X-Line-Account-Secrets-Write to rotate Messaging API tokens via PUT /api/line-accounts/:id.',
       );
     }
     if (!isTruthyEnvFlag(env.MULTI_LINE_ACCOUNT_QUERY_REQUIRES_LINE_ACCOUNT_ID)) {

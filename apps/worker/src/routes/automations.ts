@@ -17,6 +17,12 @@ import {
 import { tryParseJsonArray, tryParseJsonLoose, tryParseJsonRecord } from '../services/safe-json.js';
 import { validateAutomationActions } from '../services/automation-actions.js';
 import { clampListLimit } from '../services/query-limits.js';
+import {
+  resolveLineAccountScopeForRequest,
+  resourceLineAccountVisibleInScope,
+  validateScopedLineAccountBody,
+  validateScopedLineAccountQueryParam,
+} from '../services/admin-line-account-scope.js';
 
 const automations = new Hono<Env>();
 
@@ -24,7 +30,13 @@ const automations = new Hono<Env>();
 
 automations.get('/api/automations', async (c) => {
   try {
+    const scope = await resolveLineAccountScopeForRequest(c.env.DB, c);
     const lineAccountId = c.req.query('lineAccountId');
+    const q = validateScopedLineAccountQueryParam(scope, lineAccountId);
+    if (!q.ok) {
+      return c.json({ success: false, error: q.error }, q.status);
+    }
+
     let items;
     if (lineAccountId) {
       const result = await c.env.DB.prepare(
@@ -60,8 +72,12 @@ automations.get('/api/automations', async (c) => {
 
 automations.get('/api/automations/:id', async (c) => {
   try {
+    const scope = await resolveLineAccountScopeForRequest(c.env.DB, c);
     const item = await getAutomationById(c.env.DB, c.req.param('id'));
     if (!item) return c.json({ success: false, error: 'Automation not found' }, 404);
+    if (!resourceLineAccountVisibleInScope(scope, item.line_account_id)) {
+      return c.json({ success: false, error: 'Automation not found' }, 404);
+    }
 
     // ログも取得
     const logs = await getAutomationLogs(c.env.DB, item.id, 50);
@@ -98,6 +114,7 @@ automations.get('/api/automations/:id', async (c) => {
 
 automations.post('/api/automations', async (c) => {
   try {
+    const scope = await resolveLineAccountScopeForRequest(c.env.DB, c);
     const body = await readJsonBodyWithLimit<{
       name: string;
       description?: string;
@@ -110,6 +127,15 @@ automations.post('/api/automations', async (c) => {
     if (!body.name || !body.eventType || !body.actions) {
       return c.json({ success: false, error: 'name, eventType, actions are required' }, 400);
     }
+
+    const scoped = validateScopedLineAccountBody(scope, body.lineAccountId ?? null);
+    if (!scoped.ok) {
+      return c.json({ success: false, error: scoped.error }, scoped.status);
+    }
+    if (scope.mode === 'restricted' && !scoped.lineAccountId) {
+      return c.json({ success: false, error: 'lineAccountId is required for this principal' }, 400);
+    }
+
     const actionsValid = validateAutomationActions(body.actions);
     if (!actionsValid.ok) {
       return c.json({ success: false, error: actionsValid.error }, 400);
@@ -118,13 +144,15 @@ automations.post('/api/automations', async (c) => {
     if (!outboundOk.ok) {
       return c.json({ success: false, error: outboundOk.reason }, 400);
     }
-    const item = await createAutomation(c.env.DB, body);
-    // Save line_account_id if provided
-    if (body.lineAccountId) {
-      await c.env.DB.prepare(`UPDATE automations SET line_account_id = ? WHERE id = ?`)
-        .bind(body.lineAccountId, item.id)
-        .run();
-    }
+    const item = await createAutomation(c.env.DB, {
+      name: body.name,
+      description: body.description,
+      eventType: body.eventType,
+      conditions: body.conditions,
+      actions: body.actions,
+      priority: body.priority,
+      lineAccountId: scoped.lineAccountId,
+    });
     return c.json(
       {
         success: true,
@@ -135,7 +163,7 @@ automations.post('/api/automations', async (c) => {
           actions: tryParseJsonArray(item.actions),
           isActive: Boolean(item.is_active),
           priority: item.priority,
-          lineAccountId: body.lineAccountId ?? item.line_account_id ?? null,
+          lineAccountId: item.line_account_id ?? null,
           createdAt: item.created_at,
         },
       },
@@ -152,6 +180,15 @@ automations.post('/api/automations', async (c) => {
 automations.put('/api/automations/:id', async (c) => {
   try {
     const id = c.req.param('id');
+    const scopePut = await resolveLineAccountScopeForRequest(c.env.DB, c);
+    const existingAuto = await getAutomationById(c.env.DB, id);
+    if (!existingAuto) {
+      return c.json({ success: false, error: 'Not found' }, 404);
+    }
+    if (!resourceLineAccountVisibleInScope(scopePut, existingAuto.line_account_id)) {
+      return c.json({ success: false, error: 'Not found' }, 404);
+    }
+
     const body = await readJsonBodyWithLimit<Record<string, unknown>>(
       c.req.raw,
       DEFAULT_ADMIN_JSON_BODY_LIMIT_BYTES,
@@ -166,6 +203,19 @@ automations.put('/api/automations/:id', async (c) => {
         return c.json({ success: false, error: outboundOk.reason }, 400);
       }
     }
+
+    if (body.lineAccountId !== undefined || body.line_account_id !== undefined) {
+      const rawLa = body.lineAccountId ?? body.line_account_id;
+      const scopedLa = validateScopedLineAccountBody(
+        scopePut,
+        rawLa === null ? null : typeof rawLa === 'string' ? rawLa : null,
+      );
+      if (!scopedLa.ok) {
+        return c.json({ success: false, error: scopedLa.error }, scopedLa.status);
+      }
+      body.lineAccountId = scopedLa.lineAccountId;
+    }
+
     await updateAutomation(c.env.DB, id, body as never);
     const updated = await getAutomationById(c.env.DB, id);
     if (!updated) return c.json({ success: false, error: 'Not found' }, 404);
@@ -192,6 +242,14 @@ automations.put('/api/automations/:id', async (c) => {
 
 automations.delete('/api/automations/:id', async (c) => {
   try {
+    const scopeDel = await resolveLineAccountScopeForRequest(c.env.DB, c);
+    const existingDel = await getAutomationById(c.env.DB, c.req.param('id'));
+    if (!existingDel) {
+      return c.json({ success: false, error: 'Not found' }, 404);
+    }
+    if (!resourceLineAccountVisibleInScope(scopeDel, existingDel.line_account_id)) {
+      return c.json({ success: false, error: 'Not found' }, 404);
+    }
     await deleteAutomation(c.env.DB, c.req.param('id'));
     return c.json({ success: true, data: null });
   } catch (err) {
@@ -205,6 +263,14 @@ automations.delete('/api/automations/:id', async (c) => {
 automations.get('/api/automations/:id/logs', async (c) => {
   try {
     const automationId = c.req.param('id');
+    const scopeLogs = await resolveLineAccountScopeForRequest(c.env.DB, c);
+    const parent = await getAutomationById(c.env.DB, automationId);
+    if (!parent) {
+      return c.json({ success: false, error: 'Automation not found' }, 404);
+    }
+    if (!resourceLineAccountVisibleInScope(scopeLogs, parent.line_account_id)) {
+      return c.json({ success: false, error: 'Automation not found' }, 404);
+    }
     const limit = clampListLimit(c.req.query('limit'), 100, 500);
     const logs = await getAutomationLogs(c.env.DB, automationId, limit);
     return c.json({

@@ -1,3 +1,4 @@
+import type { LineAccountDbOptions } from '@line-crm/db';
 import { getLineAccountById } from '@line-crm/db';
 
 /**
@@ -8,9 +9,10 @@ export async function buildAuthUrlChannelAllowlist(
   db: D1Database,
   friend: { line_account_id?: string | null },
   fallbackChannelId: string,
+  lineAccountOpts?: LineAccountDbOptions,
 ): Promise<Set<string>> {
   if (friend.line_account_id) {
-    const acc = await getLineAccountById(db, friend.line_account_id);
+    const acc = await getLineAccountById(db, friend.line_account_id, lineAccountOpts);
     const cid = acc?.channel_id?.trim();
     if (cid) {
       return new Set([cid]);
