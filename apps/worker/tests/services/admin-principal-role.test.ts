@@ -2,6 +2,7 @@ import { describe, expect, it, vi } from 'vitest';
 import {
   getAdminPrincipalRole,
   getExplicitAdminPrincipalRole,
+  insertBootstrapAdminPrincipalRoleIfEmpty,
   resolveAdminPrincipalAccess,
 } from '@line-crm/db';
 
@@ -147,5 +148,47 @@ describe('getAdminPrincipalRole', () => {
     } as unknown as D1Database;
 
     expect(await getAdminPrincipalRole(db, 'x@example.com')).toBe('admin');
+  });
+});
+
+describe('insertBootstrapAdminPrincipalRoleIfEmpty', () => {
+  it('inserts when table is empty and returns inserted: true', async () => {
+    let changes = 0;
+    const db = {
+      prepare(sql: string) {
+        expect(sql).toContain('WHERE NOT EXISTS');
+        return {
+          bind() {
+            return {
+              run: async () => {
+                changes = 1;
+                return { success: true, meta: { changes: 1 } };
+              },
+            };
+          },
+        };
+      },
+    } as unknown as D1Database;
+
+    const r = await insertBootstrapAdminPrincipalRoleIfEmpty(db, 'a@example.com', 'owner');
+    expect(r.inserted).toBe(true);
+    expect(changes).toBe(1);
+  });
+
+  it('returns inserted: false when D1 reports zero changes', async () => {
+    const db = {
+      prepare() {
+        return {
+          bind() {
+            return {
+              run: async () => ({ success: true, meta: { changes: 0 } }),
+            };
+          },
+        };
+      },
+    } as unknown as D1Database;
+
+    const r = await insertBootstrapAdminPrincipalRoleIfEmpty(db, 'b@example.com', 'owner');
+    expect(r.inserted).toBe(false);
   });
 });

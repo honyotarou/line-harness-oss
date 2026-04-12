@@ -134,6 +134,31 @@ export async function listAdminPrincipalRoles(db: D1Database): Promise<AdminPrin
   }));
 }
 
+/**
+ * When `admin_principal_roles` is empty, inserts one row atomically; only the first concurrent caller wins.
+ * Use with `REQUIRE_ADMIN_PRINCIPAL_ALLOWLIST` bootstrap to avoid a race where two principals both seed the table.
+ */
+export async function insertBootstrapAdminPrincipalRoleIfEmpty(
+  db: D1Database,
+  email: string,
+  role: AdminPrincipalRole,
+): Promise<{ inserted: boolean }> {
+  const normalized = normalizePrincipalEmail(email);
+  if (!normalized) {
+    throw new Error('email is required');
+  }
+  const res = await db
+    .prepare(
+      `INSERT INTO admin_principal_roles (email, role, updated_at)
+       SELECT ?, ?, strftime('%Y-%m-%dT%H:%M:%f', 'now', '+9 hours')
+       WHERE NOT EXISTS (SELECT 1 FROM admin_principal_roles LIMIT 1)`,
+    )
+    .bind(normalized, role)
+    .run();
+  const inserted = (res.meta?.changes ?? 0) > 0;
+  return { inserted };
+}
+
 export async function upsertAdminPrincipalRole(
   db: D1Database,
   email: string,

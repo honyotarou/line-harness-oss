@@ -12,6 +12,9 @@ export const DEFAULT_PUBLIC_JSON_BODY_LIMIT_BYTES = 64 * 1024;
 /** JSON cap for rich-menu image upload when body is base64 in JSON (binary upload uses arrayBuffer separately). */
 export const RICH_MENU_IMAGE_JSON_BODY_LIMIT_BYTES = 2 * 1024 * 1024;
 
+/** Same cap for `Content-Type: image/*` uploads (binary path must match JSON path). */
+export const RICH_MENU_IMAGE_BINARY_MAX_BYTES = RICH_MENU_IMAGE_JSON_BODY_LIMIT_BYTES;
+
 export class BodyTooLargeError extends Error {
   constructor(public readonly limitBytes: number) {
     super(`Request body exceeds ${limitBytes} bytes`);
@@ -37,6 +40,20 @@ function getContentLength(request: Request): number | null {
     return null;
   }
   return contentLength;
+}
+
+/** Reject early when `Content-Length` exceeds cap (binary uploads). */
+export function assertRequestContentLengthWithinLimit(request: Request, limitBytes: number): void {
+  const cl = getContentLength(request);
+  if (cl !== null && cl > limitBytes) {
+    throw new BodyTooLargeError(limitBytes);
+  }
+}
+
+export function assertArrayBufferWithinLimit(buf: ArrayBuffer, limitBytes: number): void {
+  if (buf.byteLength > limitBytes) {
+    throw new BodyTooLargeError(limitBytes);
+  }
 }
 
 export async function readTextBodyWithLimit(request: Request, limitBytes: number): Promise<string> {

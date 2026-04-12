@@ -1,10 +1,18 @@
 import type { Env } from '../index.js';
 import { fireEvent, type EventPayload } from './event-bus.js';
+import { shouldSuppressAutomationSendWebhook } from './fire-event-automation-policy.js';
 
 type AutomationWebhookBindings = Pick<
   Env['Bindings'],
-  'AUTOMATION_SEND_WEBHOOK_ALLOWED_HOSTS' | 'REQUIRE_AUTOMATION_SEND_WEBHOOK_ALLOWED_HOSTS'
+  | 'AUTOMATION_SEND_WEBHOOK_ALLOWED_HOSTS'
+  | 'REQUIRE_AUTOMATION_SEND_WEBHOOK_ALLOWED_HOSTS'
+  | 'ALLOW_AUTOMATION_SEND_WEBHOOK_FROM_INCOMING_WEBHOOK'
 >;
+
+/** Optional caller context (e.g. incoming webhook handler). */
+export type FireEventOutboundContext = {
+  incomingWebhookTriggered?: boolean;
+};
 
 function isTruthyEnvFlag(raw: string | undefined): boolean {
   const v = raw?.trim().toLowerCase();
@@ -19,13 +27,21 @@ export async function fireEventRespectingAutomationWebhookHosts(
   bindings: AutomationWebhookBindings,
   lineAccessToken?: string,
   lineAccountId?: string | null,
+  context?: FireEventOutboundContext,
 ): Promise<void> {
+  const suppressAutomationSendWebhook = shouldSuppressAutomationSendWebhook({
+    incomingWebhookTriggered: context?.incomingWebhookTriggered === true,
+    allowSendWebhookFromIncomingEnv: isTruthyEnvFlag(
+      bindings.ALLOW_AUTOMATION_SEND_WEBHOOK_FROM_INCOMING_WEBHOOK,
+    ),
+  });
   const requireHosts = isTruthyEnvFlag(bindings.REQUIRE_AUTOMATION_SEND_WEBHOOK_ALLOWED_HOSTS);
   const hostsRaw = bindings.AUTOMATION_SEND_WEBHOOK_ALLOWED_HOSTS;
-  if (hostsRaw?.trim() || requireHosts) {
+  if (hostsRaw?.trim() || requireHosts || suppressAutomationSendWebhook) {
     await fireEvent(db, eventType, payload, lineAccessToken, lineAccountId, {
       automationSendWebhookAllowedHosts: hostsRaw,
       requireAutomationSendWebhookHostAllowlist: requireHosts,
+      suppressAutomationSendWebhook,
     });
     return;
   }

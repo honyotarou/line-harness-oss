@@ -562,6 +562,34 @@ describe('fireEvent', () => {
     expect(postCalls.length).toBe(0);
   });
 
+  it('does not POST send_webhook when suppressAutomationSendWebhook is set', async () => {
+    dbMocks.getActiveAutomationsByEvent.mockResolvedValue([
+      automationRow({
+        actions: JSON.stringify([
+          { type: 'send_webhook', params: { url: 'https://hooks.slack.com/services/X/Y/Z' } },
+        ]),
+      }),
+    ]);
+
+    const fetchMock = vi.mocked(globalThis.fetch);
+    const { fireEvent } = await import('../../src/services/event-bus.js');
+    await fireEvent(emptyDb, 'friend_add', { friendId: 'f1' }, 'line-token', 'acc-1', {
+      suppressAutomationSendWebhook: true,
+    });
+
+    expect(dbMocks.createAutomationLog).toHaveBeenCalledWith(
+      emptyDb,
+      expect.objectContaining({
+        status: 'failed',
+        actionsResult: expect.stringMatching(/incoming webhooks/i),
+      }),
+    );
+    const slackPosts = fetchMock.mock.calls.filter(
+      (c) => typeof c[0] === 'string' && (c[0] as string).includes('hooks.slack.com'),
+    );
+    expect(slackPosts.length).toBe(0);
+  });
+
   it('allows send_webhook when host matches AUTOMATION_SEND_WEBHOOK_ALLOWED_HOSTS', async () => {
     dbMocks.getActiveAutomationsByEvent.mockResolvedValue([
       automationRow({

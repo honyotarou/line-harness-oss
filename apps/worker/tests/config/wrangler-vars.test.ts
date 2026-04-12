@@ -50,6 +50,7 @@ describe('wrangler config (no third-party demo hosts in repo defaults)', () => {
     expect(wranglerToml).toMatch(/REQUIRE_OWNER_DB_ROLE_FOR_LINE_CREDENTIALS/);
     expect(wranglerToml).toMatch(/AUTOMATION_SEND_WEBHOOK_ALLOWED_HOSTS/);
     expect(wranglerToml).toMatch(/REQUIRE_AUTOMATION_SEND_WEBHOOK_ALLOWED_HOSTS/);
+    expect(wranglerToml).toMatch(/ALLOW_AUTOMATION_SEND_WEBHOOK_FROM_INCOMING_WEBHOOK/);
   });
 
   it('wrangler.toml documents optional admin RBAC table and Cloudflare ops hygiene', () => {

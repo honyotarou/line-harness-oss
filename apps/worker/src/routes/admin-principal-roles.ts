@@ -4,7 +4,6 @@ import {
   deleteAdminPrincipalRole,
   getAdminPrincipalRole,
   listAdminPrincipalRoles,
-  upsertAdminPrincipalRole,
   type AdminPrincipalRole,
 } from '@line-crm/db';
 import type { Env } from '../index.js';
@@ -13,6 +12,7 @@ import {
   getCloudflareAccessEmailFromContext,
   isCloudflareAccessEnforced,
 } from '../services/cloudflare-access-principal.js';
+import { putAdminPrincipalRoleWithBootstrap } from '../services/admin-principal-roles-write.js';
 import { readJsonBodyWithLimit, jsonBodyReadErrorResponse } from '../services/request-body.js';
 
 const BODY_LIMIT = 4 * 1024;
@@ -70,7 +70,10 @@ routes.put('/api/admin/principal-roles', async (c) => {
     if (!role) {
       return c.json({ success: false, error: 'role must be owner, admin, or viewer' }, 400);
     }
-    await upsertAdminPrincipalRole(c.env.DB, email, role);
+    const put = await putAdminPrincipalRoleWithBootstrap(c.env.DB, c.env, email, role);
+    if (!put.ok) {
+      return c.json({ success: false, error: put.error }, put.status);
+    }
     return c.json({ success: true, data: null });
   } catch (err) {
     const jr = jsonBodyReadErrorResponse(err);

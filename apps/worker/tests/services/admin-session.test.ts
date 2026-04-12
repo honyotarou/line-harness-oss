@@ -80,6 +80,24 @@ describe('admin session tokens', () => {
     ).resolves.toBeNull();
   });
 
+  it('rejects tokens whose exp-iat span exceeds MAX_ADMIN_SESSION_VERIFIED_SPAN_SECONDS', async () => {
+    const {
+      issueAdminSessionToken,
+      verifyAdminSessionToken,
+      MAX_ADMIN_SESSION_VERIFIED_SPAN_SECONDS,
+    } = await import('../../src/services/admin-session.js');
+
+    const iat = 1_700_000_000;
+    const token = await issueAdminSessionToken('root-api-key', {
+      issuedAt: iat,
+      expiresInSeconds: MAX_ADMIN_SESSION_VERIFIED_SPAN_SECONDS + 60,
+    });
+
+    await expect(
+      verifyAdminSessionToken('root-api-key', token, { now: iat + 120 }),
+    ).resolves.toBeNull();
+  });
+
   it('isValidAdminAuthToken rejects a revoked jti when D1 is provided', async () => {
     const { issueAdminSessionToken, isValidAdminAuthToken } = await import(
       '../../src/services/admin-session.js'
