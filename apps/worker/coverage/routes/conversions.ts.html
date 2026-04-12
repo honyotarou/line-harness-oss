@@ -23,9 +23,9 @@
         <div class='clearfix'>
             
             <div class='fl pad1y space-right2'>
-                <span class="strong">43.41% </span>
+                <span class="strong">42.1% </span>
                 <span class="quiet">Statements</span>
-                <span class='fraction'>56/129</span>
+                <span class='fraction'>56/133</span>
             </div>
         
             
@@ -44,9 +44,9 @@
         
             
             <div class='fl pad1y space-right2'>
-                <span class="strong">43.41% </span>
+                <span class="strong">42.1% </span>
                 <span class="quiet">Lines</span>
-                <span class='fraction'>56/129</span>
+                <span class='fraction'>56/133</span>
             </div>
         
             
@@ -236,7 +236,23 @@
 <a name='L171'></a><a href='#L171'>171</a>
 <a name='L172'></a><a href='#L172'>172</a>
 <a name='L173'></a><a href='#L173'>173</a>
-<a name='L174'></a><a href='#L174'>174</a></td><td class="line-coverage quiet"><span class="cline-any cline-yes">1x</span>
+<a name='L174'></a><a href='#L174'>174</a>
+<a name='L175'></a><a href='#L175'>175</a>
+<a name='L176'></a><a href='#L176'>176</a>
+<a name='L177'></a><a href='#L177'>177</a>
+<a name='L178'></a><a href='#L178'>178</a>
+<a name='L179'></a><a href='#L179'>179</a>
+<a name='L180'></a><a href='#L180'>180</a>
+<a name='L181'></a><a href='#L181'>181</a>
+<a name='L182'></a><a href='#L182'>182</a>
+<a name='L183'></a><a href='#L183'>183</a>
+<a name='L184'></a><a href='#L184'>184</a></td><td class="line-coverage quiet"><span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
@@ -303,6 +319,8 @@
 <span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-yes">1x</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
@@ -357,6 +375,8 @@
 <span class="cline-any cline-yes">1x</span>
 <span class="cline-any cline-yes">1x</span>
 <span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
@@ -420,6 +440,12 @@ import {
   getConversionReport,
 } from '@line-crm/db';
 import type { Env } from '../index.js';
+import {
+  DEFAULT_ADMIN_JSON_BODY_LIMIT_BYTES,
+  jsonBodyReadErrorResponse,
+  readJsonBodyWithLimit,
+} from '../services/request-body.js';
+import { clampListLimit, clampOffset } from '../services/query-limits.js';
 &nbsp;
 const conversions = new Hono&lt;Env&gt;();
 &nbsp;
@@ -448,11 +474,11 @@ conversions.get('/api/conversions/points', async (c) =&gt; {
 // POST /api/conversions/points - create
 conversions.post('/api/conversions/points', async (c) =&gt; {
   try {
-    const body = await c.req.json&lt;{
+    const body = await readJsonBodyWithLimit&lt;{
       name: string;
       eventType: string;
       value?: number | null;
-    }&gt;();
+    }&gt;(c.req.raw, DEFAULT_ADMIN_JSON_BODY_LIMIT_BYTES);
 &nbsp;
     if (!body.name || !body.eventType) <span class="branch-0 cbranch-no" title="branch not covered" >{</span>
 <span class="cstat-no" title="statement not covered" >      return c.json({ success: false, error: 'name and eventType are required' }, 400);</span>
@@ -473,6 +499,8 @@ conversions.post('/api/conversions/points', async (c) =&gt; {
       201,
     );
 <span class="branch-0 cbranch-no" title="branch not covered" >  } catch (err) {</span>
+<span class="cstat-no" title="statement not covered" >    const jr = jsonBodyReadErrorResponse(err);</span>
+<span class="cstat-no" title="statement not covered" >    if (jr) return c.json(jr.body, jr.status);</span>
 <span class="cstat-no" title="statement not covered" >    console.error('POST /api/conversions/points error:', err);</span>
 <span class="cstat-no" title="statement not covered" >    return c.json({ success: false, error: 'Internal server error' }, 500);</span>
 <span class="cstat-no" title="statement not covered" >  }</span>
@@ -494,13 +522,13 @@ conversions.delete('/api/conversions/points/:id', async (c) =&gt; {
 // POST /api/conversions/track - record conversion
 conversions.post('/api/conversions/track', async (c) =&gt; {
   try {
-    const body = await c.req.json&lt;{
+    const body = await readJsonBodyWithLimit&lt;{
       conversionPointId: string;
       friendId: string;
       userId?: string | null;
       affiliateCode?: string | null;
       metadata?: Record&lt;string, unknown&gt; | null;
-    }&gt;();
+    }&gt;(c.req.raw, DEFAULT_ADMIN_JSON_BODY_LIMIT_BYTES);
 &nbsp;
     if (!body.conversionPointId || !body.friendId) <span class="branch-0 cbranch-no" title="branch not covered" >{</span>
 <span class="cstat-no" title="statement not covered" >      return c.json({ success: false, error: 'conversionPointId and friendId are required' }, 400);</span>
@@ -530,6 +558,8 @@ conversions.post('/api/conversions/track', async (c) =&gt; {
       201,
     );
 <span class="branch-0 cbranch-no" title="branch not covered" >  } catch (err) {</span>
+<span class="cstat-no" title="statement not covered" >    const jr = jsonBodyReadErrorResponse(err);</span>
+<span class="cstat-no" title="statement not covered" >    if (jr) return c.json(jr.body, jr.status);</span>
 <span class="cstat-no" title="statement not covered" >    console.error('POST /api/conversions/track error:', err);</span>
 <span class="cstat-no" title="statement not covered" >    return c.json({ success: false, error: 'Internal server error' }, 500);</span>
 <span class="cstat-no" title="statement not covered" >  }</span>
@@ -544,8 +574,8 @@ conversions.get('/api/conversions/events', async (c) =&gt; {
 <span class="cstat-no" title="statement not covered" >      affiliateCode: c.req.query('affiliateCode'),</span>
 <span class="cstat-no" title="statement not covered" >      startDate: c.req.query('startDate'),</span>
 <span class="cstat-no" title="statement not covered" >      endDate: c.req.query('endDate'),</span>
-<span class="cstat-no" title="statement not covered" >      limit: Number(c.req.query('limit') ?? '100'),</span>
-<span class="cstat-no" title="statement not covered" >      offset: Number(c.req.query('offset') ?? '0'),</span>
+<span class="cstat-no" title="statement not covered" >      limit: clampListLimit(c.req.query('limit'), 100, 500),</span>
+<span class="cstat-no" title="statement not covered" >      offset: clampOffset(c.req.query('offset'), 500_000),</span>
 <span class="cstat-no" title="statement not covered" >    });</span>
 &nbsp;
 <span class="cstat-no" title="statement not covered" >    return c.json({</span>
@@ -589,7 +619,7 @@ export { conversions };
             <div class='footer quiet pad2 space-top1 center small'>
                 Code coverage generated by
                 <a href="https://istanbul.js.org/" target="_blank" rel="noopener noreferrer">istanbul</a>
-                at 2026-04-01T08:56:02.777Z
+                at 2026-04-12T04:29:46.300Z
             </div>
         <script src="../prettify.js"></script>
         <script>

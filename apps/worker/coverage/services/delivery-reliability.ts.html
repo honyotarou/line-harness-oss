@@ -23,9 +23,9 @@
         <div class='clearfix'>
             
             <div class='fl pad1y space-right2'>
-                <span class="strong">74.54% </span>
+                <span class="strong">75.77% </span>
                 <span class="quiet">Statements</span>
-                <span class='fraction'>123/165</span>
+                <span class='fraction'>122/161</span>
             </div>
         
             
@@ -37,16 +37,16 @@
         
             
             <div class='fl pad1y space-right2'>
-                <span class="strong">71.42% </span>
+                <span class="strong">83.33% </span>
                 <span class="quiet">Functions</span>
-                <span class='fraction'>5/7</span>
+                <span class='fraction'>5/6</span>
             </div>
         
             
             <div class='fl pad1y space-right2'>
-                <span class="strong">74.54% </span>
+                <span class="strong">75.77% </span>
                 <span class="quiet">Lines</span>
-                <span class='fraction'>123/165</span>
+                <span class='fraction'>122/161</span>
             </div>
         
             
@@ -282,11 +282,11 @@
 <a name='L217'></a><a href='#L217'>217</a>
 <a name='L218'></a><a href='#L218'>218</a>
 <a name='L219'></a><a href='#L219'>219</a>
-<a name='L220'></a><a href='#L220'>220</a>
-<a name='L221'></a><a href='#L221'>221</a>
-<a name='L222'></a><a href='#L222'>222</a></td><td class="line-coverage quiet"><span class="cline-any cline-yes">1x</span>
+<a name='L220'></a><a href='#L220'>220</a></td><td class="line-coverage quiet"><span class="cline-any cline-yes">1x</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-yes">1x</span>
 <span class="cline-any cline-yes">1x</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
@@ -349,11 +349,6 @@
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-yes">4x</span>
 <span class="cline-any cline-yes">4x</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-yes">4x</span>
 <span class="cline-any cline-yes">4x</span>
@@ -450,6 +445,7 @@
 <span class="cline-any cline-yes">1x</span>
 <span class="cline-any cline-yes">1x</span>
 <span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
@@ -506,10 +502,12 @@
 <span class="cline-any cline-yes">1x</span>
 <span class="cline-any cline-yes">1x</span>
 <span class="cline-any cline-neutral">&nbsp;</span></td><td class="text"><pre class="prettyprint lang-js">import { createNotification, jstNow } from '@line-crm/db';
+import { computeDeliveryRetryDelayMs } from './delivery-retry-backoff.js';
+&nbsp;
+export { computeDeliveryRetryDelayMs };
 &nbsp;
 const DEFAULT_MAX_ATTEMPTS = 3;
 const DEFAULT_RETRY_BASE_MS = 5 * 60_000;
-const MAX_RETRY_DELAY_MS = 60 * 60_000;
 &nbsp;
 type DeliveryOperationStatus = 'pending' | 'sent' | 'failed';
 &nbsp;
@@ -570,11 +568,6 @@ function normalizeMetadata(
 &nbsp;
   return Object.keys(payload).length &gt; 0 ? JSON.stringify(payload) : null;
 }
-&nbsp;
-<span class="cstat-no" title="statement not covered" ><span class="fstat-no" title="function not covered" >function computeRetryDelayMs(attemptCount: number, baseRetryMs: number): number {</span></span>
-<span class="cstat-no" title="statement not covered" >  const exponent = Math.max(attemptCount - 1, 0);</span>
-<span class="cstat-no" title="statement not covered" >  return Math.min(baseRetryMs * 2 ** exponent, MAX_RETRY_DELAY_MS);</span>
-<span class="cstat-no" title="statement not covered" >}</span>
 &nbsp;
 async function getDeliveryOperation(
   db: D1Database,
@@ -672,7 +665,8 @@ export async function markDeliveryAttemptFailed(
   const nextRetryAt = exhausted
     ? <span class="branch-0 cbranch-no" title="branch not covered" >null</span>
 <span class="cstat-no" title="statement not covered" >    : new Date(</span>
-<span class="cstat-no" title="statement not covered" >        nowMs + computeRetryDelayMs(attemptCount, options?.baseRetryMs ?? DEFAULT_RETRY_BASE_MS),</span>
+<span class="cstat-no" title="statement not covered" >        nowMs +</span>
+<span class="cstat-no" title="statement not covered" >          computeDeliveryRetryDelayMs(attemptCount, options?.baseRetryMs ?? DEFAULT_RETRY_BASE_MS),</span>
 <span class="cstat-no" title="statement not covered" >      ).toISOString();</span>
 &nbsp;
   await db
@@ -733,7 +727,7 @@ export async function markDeliveryAttemptFailed(
             <div class='footer quiet pad2 space-top1 center small'>
                 Code coverage generated by
                 <a href="https://istanbul.js.org/" target="_blank" rel="noopener noreferrer">istanbul</a>
-                at 2026-04-01T08:56:02.777Z
+                at 2026-04-12T04:29:46.300Z
             </div>
         <script src="../prettify.js"></script>
         <script>

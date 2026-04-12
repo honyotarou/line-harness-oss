@@ -23,9 +23,9 @@
         <div class='clearfix'>
             
             <div class='fl pad1y space-right2'>
-                <span class="strong">47.36% </span>
+                <span class="strong">46.98% </span>
                 <span class="quiet">Statements</span>
-                <span class='fraction'>36/76</span>
+                <span class='fraction'>39/83</span>
             </div>
         
             
@@ -44,9 +44,9 @@
         
             
             <div class='fl pad1y space-right2'>
-                <span class="strong">47.36% </span>
+                <span class="strong">46.98% </span>
                 <span class="quiet">Lines</span>
-                <span class='fraction'>36/76</span>
+                <span class='fraction'>39/83</span>
             </div>
         
             
@@ -167,7 +167,24 @@
 <a name='L102'></a><a href='#L102'>102</a>
 <a name='L103'></a><a href='#L103'>103</a>
 <a name='L104'></a><a href='#L104'>104</a>
-<a name='L105'></a><a href='#L105'>105</a></td><td class="line-coverage quiet"><span class="cline-any cline-yes">1x</span>
+<a name='L105'></a><a href='#L105'>105</a>
+<a name='L106'></a><a href='#L106'>106</a>
+<a name='L107'></a><a href='#L107'>107</a>
+<a name='L108'></a><a href='#L108'>108</a>
+<a name='L109'></a><a href='#L109'>109</a>
+<a name='L110'></a><a href='#L110'>110</a>
+<a name='L111'></a><a href='#L111'>111</a>
+<a name='L112'></a><a href='#L112'>112</a>
+<a name='L113'></a><a href='#L113'>113</a>
+<a name='L114'></a><a href='#L114'>114</a>
+<a name='L115'></a><a href='#L115'>115</a>
+<a name='L116'></a><a href='#L116'>116</a>
+<a name='L117'></a><a href='#L117'>117</a></td><td class="line-coverage quiet"><span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
@@ -244,6 +261,8 @@
 <span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-yes">1x</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-yes">1x</span>
@@ -255,6 +274,11 @@
 <span class="cline-any cline-yes">1x</span>
 <span class="cline-any cline-yes">1x</span>
 <span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
@@ -280,6 +304,11 @@ import {
   deleteTemplate,
 } from '@line-crm/db';
 import type { Env } from '../index.js';
+import {
+  DEFAULT_ADMIN_JSON_BODY_LIMIT_BYTES,
+  jsonBodyReadErrorResponse,
+  readJsonBodyWithLimit,
+} from '../services/request-body.js';
 &nbsp;
 const templates = new Hono&lt;Env&gt;();
 &nbsp;
@@ -330,12 +359,12 @@ templates.get('/api/templates/:id', async (c) =&gt; {
 &nbsp;
 templates.post('/api/templates', async (c) =&gt; {
   try {
-    const body = await c.req.json&lt;{
+    const body = await readJsonBodyWithLimit&lt;{
       name: string;
       category?: string;
       messageType: string;
       messageContent: string;
-    }&gt;();
+    }&gt;(c.req.raw, DEFAULT_ADMIN_JSON_BODY_LIMIT_BYTES);
     if (!body.name || !body.messageType || !body.messageContent) <span class="branch-0 cbranch-no" title="branch not covered" >{</span>
 <span class="cstat-no" title="statement not covered" >      return c.json(</span>
 <span class="cstat-no" title="statement not covered" >        { success: false, error: 'name, messageType, messageContent are required' },</span>
@@ -345,6 +374,8 @@ templates.post('/api/templates', async (c) =&gt; {
     const item = await createTemplate(c.env.DB, body);
     return c.json({ success: true, data: serializeTemplate(item) }, 201);
 <span class="branch-0 cbranch-no" title="branch not covered" >  } catch (err) {</span>
+<span class="cstat-no" title="statement not covered" >    const jr = jsonBodyReadErrorResponse(err);</span>
+<span class="cstat-no" title="statement not covered" >    if (jr) return c.json(jr.body, jr.status);</span>
 <span class="cstat-no" title="statement not covered" >    console.error('POST /api/templates error:', err);</span>
 <span class="cstat-no" title="statement not covered" >    return c.json({ success: false, error: 'Internal server error' }, 500);</span>
 <span class="cstat-no" title="statement not covered" >  }</span>
@@ -353,12 +384,17 @@ templates.post('/api/templates', async (c) =&gt; {
 templates.put('/api/templates/:id', async (c) =&gt; {
   try {
     const id = c.req.param('id');
-    const body = await c.req.json();
+    const body = await readJsonBodyWithLimit&lt;Record&lt;string, unknown&gt;&gt;(
+      c.req.raw,
+      DEFAULT_ADMIN_JSON_BODY_LIMIT_BYTES,
+    );
     await updateTemplate(c.env.DB, id, body);
     const updated = await getTemplateById(c.env.DB, id);
     if (!updated) <span class="branch-0 cbranch-no" title="branch not covered" >return c.json({ success: false, error: 'Not found' }, 404);</span>
     return c.json({ success: true, data: serializeTemplate(updated) });
 <span class="branch-0 cbranch-no" title="branch not covered" >  } catch (err) {</span>
+<span class="cstat-no" title="statement not covered" >    const jr = jsonBodyReadErrorResponse(err);</span>
+<span class="cstat-no" title="statement not covered" >    if (jr) return c.json(jr.body, jr.status);</span>
 <span class="cstat-no" title="statement not covered" >    console.error('PUT /api/templates/:id error:', err);</span>
 <span class="cstat-no" title="statement not covered" >    return c.json({ success: false, error: 'Internal server error' }, 500);</span>
 <span class="cstat-no" title="statement not covered" >  }</span>
@@ -382,7 +418,7 @@ export { templates };
             <div class='footer quiet pad2 space-top1 center small'>
                 Code coverage generated by
                 <a href="https://istanbul.js.org/" target="_blank" rel="noopener noreferrer">istanbul</a>
-                at 2026-04-01T08:56:02.777Z
+                at 2026-04-12T04:29:46.300Z
             </div>
         <script src="../prettify.js"></script>
         <script>
