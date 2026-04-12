@@ -13,9 +13,10 @@ import {
   jstNow,
 } from '@line-crm/db';
 import type { Friend as DbFriend, Tag as DbTag } from '@line-crm/db';
-import { fireEvent } from '../services/event-bus.js';
+import { fireEventRespectingAutomationWebhookHosts } from '../services/fire-event-outbound.js';
 import { buildMessage } from '../services/step-delivery.js';
 import type { Env } from '../index.js';
+import { lineAccountDbOptions } from '../services/line-account-at-rest-key.js';
 import { resolveLineAccessTokenForFriend } from '../services/line-account-routing.js';
 import { tryParseJsonRecord } from '../services/safe-json.js';
 import {
@@ -288,10 +289,15 @@ friends.post('/api/friends/:id/tags', async (c) => {
     }
 
     // イベントバス発火: tag_change
-    await fireEvent(db, 'tag_change', {
-      friendId,
-      eventData: { tagId: body.tagId, action: 'add' },
-    });
+    await fireEventRespectingAutomationWebhookHosts(
+      db,
+      'tag_change',
+      {
+        friendId,
+        eventData: { tagId: body.tagId, action: 'add' },
+      },
+      c.env,
+    );
 
     return c.json({ success: true, data: null }, 201);
   } catch (err) {
@@ -317,7 +323,12 @@ friends.delete('/api/friends/:id/tags/:tagId', async (c) => {
     await removeTagFromFriend(c.env.DB, friendId, tagId);
 
     // イベントバス発火: tag_change
-    await fireEvent(c.env.DB, 'tag_change', { friendId, eventData: { tagId, action: 'remove' } });
+    await fireEventRespectingAutomationWebhookHosts(
+      c.env.DB,
+      'tag_change',
+      { friendId, eventData: { tagId, action: 'remove' } },
+      c.env,
+    );
 
     return c.json({ success: true, data: null });
   } catch (err) {
@@ -444,6 +455,7 @@ friends.post('/api/friends/:id/messages', async (c) => {
       db,
       c.env.LINE_CHANNEL_ACCESS_TOKEN,
       friendId,
+      lineAccountDbOptions(c.env),
     );
     const lineClient = new LineClient(accessToken);
     const messageType = body.messageType ?? 'text';

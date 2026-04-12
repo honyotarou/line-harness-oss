@@ -1,3 +1,4 @@
+import type { LineAccountDbOptions } from '@line-crm/db';
 import { LineClient } from '@line-crm/line-sdk';
 import { processStepDeliveries } from './step-delivery.js';
 import { processScheduledBroadcasts } from './broadcast.js';
@@ -17,6 +18,7 @@ interface SchedulerParams {
   /** Default bot `channel_id` for auth URL expansion when a friend has no `line_account_id`. */
   defaultLineChannelId?: string;
   dbAccounts: ActiveAccount[];
+  lineAccountDbOptions?: LineAccountDbOptions;
 }
 
 interface SchedulerDeps {
@@ -112,6 +114,7 @@ async function runJobsForTarget(
         params.workerUrl,
         target.lineAccountId,
         params.defaultLineChannelId,
+        params.lineAccountDbOptions,
       ),
     ),
     runScheduledJob('scheduled_broadcasts', target.lineAccountId, () =>
@@ -132,6 +135,6 @@ export async function runScheduledJobs(
 
   await Promise.all([
     runWithConcurrencyLimit(targetTasks, ACCOUNT_CONCURRENCY_LIMIT),
-    deps.checkAccountHealth(params.db),
+    deps.checkAccountHealth(params.db, params.lineAccountDbOptions),
   ]);
 }

@@ -16,3 +16,4 @@ apps/web/coverage/
 apps/worker/coverage/
 playwright-report/
 test-results/
+modifius-file-manifest.txt

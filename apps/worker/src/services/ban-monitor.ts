@@ -5,10 +5,14 @@
  * 403/429 エラーのパターンを分析してリスクレベルを判定
  */
 
+import type { LineAccountDbOptions } from '@line-crm/db';
 import { getLineAccounts, createAccountHealthLog } from '@line-crm/db';
 
-export async function checkAccountHealth(db: D1Database): Promise<void> {
-  const accounts = await getLineAccounts(db);
+export async function checkAccountHealth(
+  db: D1Database,
+  lineAccountOpts?: LineAccountDbOptions,
+): Promise<void> {
+  const accounts = await getLineAccounts(db, lineAccountOpts);
 
   for (const account of accounts) {
     if (!account.is_active) continue;

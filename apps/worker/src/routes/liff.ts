@@ -10,6 +10,7 @@ import { runAuthLineStart } from '../application/liff-oauth-start.js';
 import { runLiffOAuthCallback } from '../application/liff-oauth-callback.js';
 import { errorPage } from '../application/liff-pages.js';
 import type { LiffLineUserBody } from '../application/liff-identity.js';
+import { lineAccountDbOptions } from '../services/line-account-at-rest-key.js';
 import {
   liffAnalyticsRefDetail,
   liffAnalyticsRefSummary,
@@ -83,7 +84,12 @@ liffRoutes.post('/api/liff/profile', async (c) => {
       c.req.raw,
       DEFAULT_PUBLIC_JSON_BODY_LIMIT_BYTES,
     );
-    const r = await liffProfilePost(c.env.DB, c.env.LINE_LOGIN_CHANNEL_ID, body);
+    const r = await liffProfilePost(
+      c.env.DB,
+      c.env.LINE_LOGIN_CHANNEL_ID,
+      body,
+      lineAccountDbOptions(c.env),
+    );
     return c.json(r.body, r.status);
   } catch (err) {
     const jr = jsonBodyReadErrorResponse(err);
@@ -105,6 +111,7 @@ liffRoutes.post('/api/liff/booking/phone-fallback', async (c) => {
       c.env.LINE_LOGIN_CHANNEL_ID,
       c.env.BOOKING_FALLBACK_TEL,
       body,
+      lineAccountDbOptions(c.env),
     );
     return c.json(r.body, r.status);
   } catch (err) {
@@ -122,7 +129,12 @@ liffRoutes.post('/api/liff/link', async (c) => {
       c.req.raw,
       DEFAULT_PUBLIC_JSON_BODY_LIMIT_BYTES,
     );
-    const r = await liffLinkPost(c.env.DB, c.env.LINE_LOGIN_CHANNEL_ID, body);
+    const r = await liffLinkPost(
+      c.env.DB,
+      c.env.LINE_LOGIN_CHANNEL_ID,
+      body,
+      lineAccountDbOptions(c.env),
+    );
     return c.json(r.body, r.status);
   } catch (err) {
     const jr = jsonBodyReadErrorResponse(err);

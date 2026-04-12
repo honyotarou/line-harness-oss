@@ -7,14 +7,15 @@ import { Alert } from '@/components/ui/alert';
 import { Badge } from '@/components/ui/badge';
 import { Input, Select } from '@/components/ui/field';
 
-type Row = { email: string; role: 'admin' | 'viewer'; updatedAt: string };
+type PrincipalRole = 'owner' | 'admin' | 'viewer';
+type Row = { email: string; role: PrincipalRole; updatedAt: string };
 
 export default function AccessRolesPage() {
   const [rows, setRows] = useState<Row[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [email, setEmail] = useState('');
-  const [role, setRole] = useState<'viewer' | 'admin'>('viewer');
+  const [role, setRole] = useState<PrincipalRole>('viewer');
   const [saving, setSaving] = useState(false);
 
   const load = useCallback(async () => {
@@ -85,7 +86,7 @@ export default function AccessRolesPage() {
     <div className="max-w-4xl mx-auto space-y-6">
       <Header
         title="アクセス権"
-        description="Cloudflare Access のメール別ロール（viewer は閲覧のみ）"
+        description="Cloudflare Access のメール別ロール（viewer は閲覧のみ。owner は Messaging 資格情報の作成・更新を許可 — REQUIRE_OWNER_DB_ROLE_FOR_LINE_CREDENTIALS 時）"
       />
 
       {error ? (
@@ -100,8 +101,10 @@ export default function AccessRolesPage() {
           既定では行がないメールはフル管理者です。本番の Zero Trust では Worker に{' '}
           <code className="text-[11px]">REQUIRE_ADMIN_PRINCIPAL_ALLOWLIST=1</code>{' '}
           を設定し、ここにメールを登録したユーザーのみ API を許可してください（空テーブル時は
-          この画面への PUT のみブートストラップ可能）。閲覧のみは <code>viewer</code> を指定します。
-          JWT に <code>email</code> が必要です。
+          この画面への PUT のみブートストラップ可能）。閲覧のみは <code>viewer</code>、LINE
+          チャネル秘密の扱いは <code>owner</code>（本番で{' '}
+          <code className="text-[11px]">REQUIRE_OWNER_DB_ROLE_FOR_LINE_CREDENTIALS=1</code>{' '}
+          のとき）を指定します。 JWT に <code>email</code> が必要です。
         </p>
         <form onSubmit={handleAdd} className="flex flex-col sm:flex-row gap-2 sm:items-end">
           <label className="flex-1 block text-xs text-gray-600">
@@ -120,12 +123,13 @@ export default function AccessRolesPage() {
             ロール
             <Select
               value={role}
-              onChange={(ev) => setRole(ev.target.value as 'viewer' | 'admin')}
+              onChange={(ev) => setRole(ev.target.value as PrincipalRole)}
               className="mt-1"
               disabled={saving}
             >
               <option value="viewer">viewer（閲覧のみ）</option>
-              <option value="admin">admin（明示）</option>
+              <option value="admin">admin（Messaging 資格情報は不可※）</option>
+              <option value="owner">owner（Messaging 資格情報の作成・更新可※）</option>
             </Select>
           </label>
           <button
@@ -137,6 +141,10 @@ export default function AccessRolesPage() {
             保存
           </button>
         </form>
+        <p className="text-[11px] text-gray-500 mt-2">
+          ※ Worker に <code>REQUIRE_OWNER_DB_ROLE_FOR_LINE_CREDENTIALS=1</code> かつ Access
+          利用時のみ。行がないメールは従来どおりフル管理者（資格情報も可）。
+        </p>
       </section>
 
       <section className="bg-white rounded-lg border border-gray-200 shadow-sm overflow-hidden">
@@ -174,6 +182,10 @@ export default function AccessRolesPage() {
                   <td className="px-4 py-2">
                     {r.role === 'viewer' ? (
                       <Badge className="bg-[var(--color-warning-muted)] text-[var(--color-warning)] border border-[var(--color-warning-border)]">
+                        {r.role}
+                      </Badge>
+                    ) : r.role === 'owner' ? (
+                      <Badge className="bg-[var(--color-success-muted)] text-[var(--color-success)] border border-[var(--color-success-border)]">
                         {r.role}
                       </Badge>
                     ) : (

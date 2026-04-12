@@ -1,4 +1,14 @@
-export type AdminPrincipalRole = 'admin' | 'viewer';
+export type AdminPrincipalRole = 'owner' | 'admin' | 'viewer';
+
+function parseStoredRole(raw: string): AdminPrincipalRole {
+  if (raw === 'viewer') {
+    return 'viewer';
+  }
+  if (raw === 'owner') {
+    return 'owner';
+  }
+  return 'admin';
+}
 
 export type AdminPrincipalRow = {
   email: string;
@@ -58,7 +68,7 @@ export async function resolveAdminPrincipalAccess(
     return { kind: 'deny_unlisted' };
   }
 
-  const role: AdminPrincipalRole = row.role === 'viewer' ? 'viewer' : 'admin';
+  const role = parseStoredRole(row.role);
   return { kind: 'allow', role };
 }
 
@@ -83,7 +93,31 @@ export async function getAdminPrincipalRole(
   if (!row?.role) {
     return 'admin';
   }
-  return row.role === 'viewer' ? 'viewer' : 'admin';
+  return parseStoredRole(row.role);
+}
+
+/**
+ * When the email has a row in `admin_principal_roles`, returns that role.
+ * When there is no row, returns `null` (legacy implicit full admin — distinct from an explicit `admin` row).
+ */
+export async function getExplicitAdminPrincipalRole(
+  db: D1Database,
+  email: string,
+): Promise<AdminPrincipalRole | null> {
+  const normalized = normalizePrincipalEmail(email);
+  if (!normalized) {
+    return null;
+  }
+
+  const row = await db
+    .prepare(`SELECT role FROM admin_principal_roles WHERE email = ? COLLATE NOCASE`)
+    .bind(normalized)
+    .first<{ role: string }>();
+
+  if (!row?.role) {
+    return null;
+  }
+  return parseStoredRole(row.role);
 }
 
 export async function listAdminPrincipalRoles(db: D1Database): Promise<AdminPrincipalRow[]> {
@@ -95,7 +129,7 @@ export async function listAdminPrincipalRoles(db: D1Database): Promise<AdminPrin
   const rows = res.results ?? [];
   return rows.map((r) => ({
     email: r.email,
-    role: r.role === 'viewer' ? 'viewer' : 'admin',
+    role: parseStoredRole(r.role),
     updatedAt: r.updatedAt,
   }));
 }

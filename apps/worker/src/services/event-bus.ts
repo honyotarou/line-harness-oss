@@ -21,7 +21,12 @@ import {
   jstNow,
 } from '@line-crm/db';
 import { LineClient } from '@line-crm/line-sdk';
+import {
+  automationSendWebhookHostnameAllowed,
+  parseAutomationSendWebhookHostAllowlist,
+} from './automation-send-webhook-policy.js';
 import { fetchHttpsUrlAfterDnsAssertion } from './outbound-https-fetch.js';
+import { mergeFriendMetadataPatch } from './friend-metadata-merge.js';
 import { parseStringArrayJson, tryParseJsonLoose, tryParseJsonRecord } from './safe-json.js';
 
 export interface EventPayload {
@@ -68,6 +73,19 @@ export function matchAutomationConditions(
   return true;
 }
 
+/** Optional gates for outbound actions triggered by {@link fireEvent}. */
+export type FireEventOptions = {
+  /**
+   * Comma-separated host rules for automation `send_webhook` only: exact `hooks.slack.com` or suffix `.example.com`.
+   * Empty/unset → no host allowlist (SSRF checks still apply).
+   */
+  automationSendWebhookAllowedHosts?: string;
+  /**
+   * When true, `send_webhook` actions fail unless `automationSendWebhookAllowedHosts` parses to a non-empty allowlist.
+   */
+  requireAutomationSendWebhookHostAllowlist?: boolean;
+};
+
 /**
  * イベントを発火し、登録された全ハンドラーを実行
  */
@@ -77,13 +95,42 @@ export async function fireEvent(
   payload: EventPayload,
   lineAccessToken?: string,
   lineAccountId?: string | null,
+  options?: FireEventOptions,
 ): Promise<void> {
+  const sendWebhookHostRules = parseAutomationSendWebhookHostAllowlist(
+    options?.automationSendWebhookAllowedHosts,
+  );
+  const requireAutomationSendWebhookHostAllowlist =
+    options?.requireAutomationSendWebhookHostAllowlist === true;
   await Promise.allSettled([
-    fireOutgoingWebhooks(db, eventType, payload),
+    fireOutgoingWebhooks(db, eventType, payload, lineAccountId),
     processScoring(db, eventType, payload),
-    processAutomations(db, eventType, payload, lineAccessToken, lineAccountId),
+    processAutomations(
+      db,
+      eventType,
+      payload,
+      lineAccessToken,
+      lineAccountId,
+      sendWebhookHostRules,
+      requireAutomationSendWebhookHostAllowlist,
+    ),
     processNotifications(db, eventType, payload, lineAccountId),
   ]);
+}
+
+function outgoingWebhookMatchesEventLineAccount(
+  wh: { line_account_id?: string | null },
+  eventLineAccountId?: string | null,
+): boolean {
+  const scoped = wh.line_account_id?.trim();
+  if (!scoped) {
+    return true;
+  }
+  const ev = eventLineAccountId?.trim();
+  if (!ev) {
+    return false;
+  }
+  return scoped === ev;
 }
 
 /** 送信Webhookへの通知 */
@@ -91,10 +138,14 @@ async function fireOutgoingWebhooks(
   db: D1Database,
   eventType: string,
   payload: EventPayload,
+  lineAccountId?: string | null,
 ): Promise<void> {
   try {
     const webhooks = await getActiveOutgoingWebhooksByEvent(db, eventType);
     for (const wh of webhooks) {
+      if (!outgoingWebhookMatchesEventLineAccount(wh, lineAccountId)) {
+        continue;
+      }
       try {
         const body = JSON.stringify({
           event: eventType,
@@ -160,6 +211,8 @@ async function processAutomations(
   payload: EventPayload,
   lineAccessToken?: string,
   lineAccountId?: string | null,
+  sendWebhookHostRules: string[] = [],
+  requireAutomationSendWebhookHostAllowlist = false,
 ): Promise<void> {
   try {
     const allAutomations = await getActiveAutomationsByEvent(db, eventType);
@@ -222,7 +275,14 @@ async function processAutomations(
 
       for (const action of actions) {
         try {
-          await executeAction(db, action, payload, lineAccessToken);
+          await executeAction(
+            db,
+            action,
+            payload,
+            lineAccessToken,
+            sendWebhookHostRules,
+            requireAutomationSendWebhookHostAllowlist,
+          );
           results.push({ action: action.type, success: true });
         } catch (err) {
           const errorMsg = err instanceof Error ? err.message : String(err);
@@ -252,6 +312,8 @@ async function executeAction(
   action: { type: string; params: Record<string, string> },
   payload: EventPayload,
   lineAccessToken?: string,
+  sendWebhookHostRules: string[] = [],
+  requireAutomationSendWebhookHostAllowlist = false,
 ): Promise<void> {
   const friendId = payload.friendId;
   if (!friendId && action.type !== 'send_webhook') {
@@ -303,6 +365,24 @@ async function executeAction(
       if (!url) {
         throw new Error('send_webhook requires params.url');
       }
+      if (requireAutomationSendWebhookHostAllowlist && sendWebhookHostRules.length === 0) {
+        throw new Error(
+          'send_webhook: set AUTOMATION_SEND_WEBHOOK_ALLOWED_HOSTS (REQUIRE_AUTOMATION_SEND_WEBHOOK_ALLOWED_HOSTS=1)',
+        );
+      }
+      if (sendWebhookHostRules.length > 0) {
+        let host: string;
+        try {
+          host = new URL(url).hostname;
+        } catch {
+          throw new Error('send_webhook: invalid URL');
+        }
+        if (!automationSendWebhookHostnameAllowed(host, sendWebhookHostRules)) {
+          throw new Error(
+            'send_webhook: host not allowed (configure AUTOMATION_SEND_WEBHOOK_ALLOWED_HOSTS)',
+          );
+        }
+      }
       const outbound = await fetchHttpsUrlAfterDnsAssertion(url, fetch, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -345,14 +425,17 @@ async function executeAction(
         .bind(friendId)
         .first<{ metadata: string }>();
       const current = tryParseJsonRecord(existing?.metadata || '{}') ?? {};
-      const patch = tryParseJsonRecord(action.params.data || '{}');
-      if (patch === null) {
+      const patchRaw = tryParseJsonRecord(action.params.data || '{}');
+      if (patchRaw === null) {
         throw new Error('set_metadata params.data must be a JSON object');
       }
-      const merged = { ...current, ...patch };
+      const mergedResult = mergeFriendMetadataPatch(current, patchRaw);
+      if (!mergedResult.ok) {
+        throw new Error(mergedResult.error);
+      }
       await db
         .prepare('UPDATE friends SET metadata = ?, updated_at = ? WHERE id = ?')
-        .bind(JSON.stringify(merged), jstNow(), friendId)
+        .bind(JSON.stringify(mergedResult.merged), jstNow(), friendId)
         .run();
       break;
     }

@@ -113,7 +113,7 @@ describe('automations routes', () => {
       event_type: 'friend_add',
       conditions: '{}',
       actions: '[{"type":"add_tag","params":{"tagId":"tag-x"}}]',
-      line_account_id: null,
+      line_account_id: 'account-1',
       is_active: 1,
       priority: 5,
       created_at: '2026-03-25T10:00:00+09:00',

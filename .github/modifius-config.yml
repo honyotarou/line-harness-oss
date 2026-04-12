@@ -1,0 +1,19 @@
+# Modifius-style scheduled insight — see .github/workflows/modifius-ci.yml
+# Design ref: https://developersblog.dmm.com/entry/2026/04/01/110000
+
+target_branch: main
+
+target_paths:
+  - apps/worker/src/application
+  - apps/worker/src/routes
+  - apps/web/src/lib/api
+
+exclude_patterns:
+  - '\.test\.(ts|tsx)$'
+  - '\.md$'
+
+# Cap lines written to modifius-file-manifest.txt
+max_manifest_files: 200
+
+# Max files sent to Anthropic per workflow run (matrix jobs; see modifius-ci.yml)
+analyze_max_files: 30

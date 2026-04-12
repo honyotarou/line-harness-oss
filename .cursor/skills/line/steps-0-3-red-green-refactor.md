@@ -1,5 +1,11 @@
 # TDD Step 3〜6 — 観点 → Red → Green → Refactor
 
+**スキル上の位置づけ**: 通常の機能 TDD は **3→4→5→6→7**（Step 7 は [steps-4-8-gates.md](steps-4-8-gates.md)）。**セキュリティ（pentest 枝）**も Red / Green / ゲートの**作法は同じ**で、レールは [steps-pentest-tdd-loop.md](steps-pentest-tdd-loop.md)。
+
+**カプセル化は Step 7 待ちにしない**: Worker / Web のレイヤー・`ROUTE_LINE_CAPS` は **Step 4〜5 と同時進行**で守る。PR の **CI は `format:check` の直後**に `pnpm check:encapsulation` が走る（後からまとめて直させない）。
+
+---
+
 ## Step 3 — 観点・受け入れ条件
 
 **目的**: テスト名とファイルパスまで決める。**この段階ではテストコードを書かない**（またはスケルトンのみ）。
@@ -13,7 +19,11 @@
 4. **モック方針**: `vi.mock('@line-crm/db')` の有無、`fetch` スタブの要否
 5. **型・公開 API**: 変える関数・ルート・型の名前
 
-**チェック**: [steps-harness.md](steps-harness.md) の「モノレポの地図」と矛盾しないか。
+**チェック**:
+
+- [steps-harness.md](steps-harness.md) の「モノレポの地図」と矛盾しないか。
+- **新規 HTTP ルート**なら `apps/worker/src/routes/` に置く前提で、**`scripts/check-encapsulation.mjs` の `ROUTE_LINE_CAPS` にファイル名を追加するタスク**を Step 5 のチェックリストに含める。
+- **Web の新 API メソッド**なら `catalog/` のどの断片に足すか（`client` 直書きを増やさない）を決める。
 
 ---
 
@@ -27,6 +37,12 @@
 2. アサーションは **これから実装する振る舞い**を表す（現状のバグを「緑で固定」しない）。
 3. ルートテストは `Hono` の `app.fetch(Request, env, executionCtx)` パターンに合わせる（既存 `apps/worker/tests/routes/*.test.ts` を複製する）。
 4. **`pnpm --filter worker test -- path/to/file.test.ts`**（または該当パッケージ）で **赤を確認**してから次へ。
+5. ルート・`application`・`apps/web/src/lib/api` を触る変更なら、**この直後**に **`pnpm check:encapsulation`** を実行する。落ちたら **Red の置き場所**（例: ルートに厚い検証を書いていないか）か **Step 3 のスコープ**を直してから Step 5 へ（**「あとでカプセル化」で進めない**）。
+
+**カプセル化のコツ（Red 段階から意識）**:
+
+- **ルートファイルが長くなる Red** を書くより、**`application/` の関数の振る舞い**を Red で表現し、ルートは `app.fetch` で薄く検証する方が、後の `ROUTE_LINE_CAPS` と相性がよい。
+- どうしてもルートにロジックを足す場合、Step 5 で **`pnpm check:encapsulation`** が通る行数になるよう **先に抽出**する。
 
 **Worker のコツ**:
 
@@ -53,6 +69,8 @@
 1. 実装を追加・変更する（ルール: 無関係なリファクタ禁止）。
 2. 同じフォーカスコマンドで **緑**を確認。
 3. 必要なら **型**: `pnpm --filter worker typecheck`
+4. **新規 `routes/*.ts`** を追加したら **`scripts/check-encapsulation.mjs` の `ROUTE_LINE_CAPS`** にエントリを足す（忘れると CI / Step 7 で即失敗）。
+5. レイヤー・行数上限を触ったら **Green のあと再度** **`pnpm check:encapsulation`**（Step 7 まで待たない）。
 
 **DB スキーマを変える場合**: `packages/db/migrations/` と `schema.sql` の整合、`createUser` 等のコードパスを同じ PR で更新し、**Red は DB ヘルパーまたはルート経由**で表現する。
 
@@ -70,4 +88,4 @@
 
 ## ステップ完了後
 
-必ず **Step 7**（層別ゲート）に進み、`pnpm harness` で緑を確認する。
+必ず **Step 7**（層別ゲート）に進み、**`pnpm harness`** で緑を確認する（中に **カプセル化・LIFF 本番 build・全パッケージの unit** が入る。ルートだけの修正でもここで落ちうる）。**pentest 自走**でもラウンドごとに同じ（[steps-pentest-tdd-loop.md](steps-pentest-tdd-loop.md)）。

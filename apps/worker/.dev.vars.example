@@ -18,6 +18,12 @@ API_KEY=local-dev-api-key-change-me
 ENABLE_PUBLIC_OPENAPI=1
 # Optional; defaults to API_KEY. HMAC secret for LINE Login OAuth `state` (use a long random value in production).
 # LIFF_STATE_SECRET=
+# Optional; `1` forces OAuth state signing to use LIFF_STATE_SECRET only (no API_KEY fallback).
+# REQUIRE_LIFF_STATE_SECRET=1
+# Local convenience: allow OAuth `state` HMAC with API_KEY when LIFF_STATE_SECRET is unset (do not use in production).
+ALLOW_LIFF_OAUTH_API_KEY_FALLBACK=1
+# Optional; base64 (32 raw bytes) — AES-GCM seals line_accounts secrets in D1 (`lh1:` prefix). See wrangler.toml.
+# LINE_ACCOUNT_SECRETS_KEY=
 LINE_CHANNEL_SECRET=dev-placeholder
 LINE_CHANNEL_ACCESS_TOKEN=dev-placeholder
 LIFF_URL=https://liff.line.me/dev-placeholder
@@ -37,5 +43,7 @@ STRIPE_WEBHOOK_SECRET=whsec_local_placeholder
 # WELCOME_ANXIETY_LINK_FAQ=
 # Optional; `1` で2通目 Flex に予約用ボタンを出さず、リッチメニュー誘導のみ（リッチメニュー予約メイン運用向け）。
 # WELCOME_ANXIETY_RICH_MENU_ONLY=
+# Optional; comma-separated hosts for automation send_webhook only (e.g. hooks.slack.com,.example.com). Unset = no host gate.
+# AUTOMATION_SEND_WEBHOOK_ALLOWED_HOSTS=hooks.slack.com
 # Optional; LIFF でオンライン予約が完結しない場合の電話番号（tel:03-1234-5678 または E.164 風の数字列）。未設定時 POST /api/liff/booking/phone-fallback は 503。
 # BOOKING_FALLBACK_TEL=tel:0312345678

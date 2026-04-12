@@ -14,9 +14,10 @@ import {
   jstNow,
 } from '@line-crm/db';
 import { buildAuthUrlChannelAllowlist } from '../services/auth-url-allowlist.js';
-import { fireEvent } from '../services/event-bus.js';
+import { fireEventRespectingAutomationWebhookHosts } from '../services/fire-event-outbound.js';
 import { buildMessage, expandVariables } from '../services/step-delivery.js';
 import type { Env } from '../index.js';
+import { lineAccountDbOptions } from '../services/line-account-at-rest-key.js';
 import { tryParseJsonRecord } from '../services/safe-json.js';
 import {
   welcomeAnxietyFlowEnabled,
@@ -39,6 +40,7 @@ export async function handleLineWebhookEvent(
   workerUrl?: string,
   bindings?: Env['Bindings'],
 ): Promise<void> {
+  const lineAccOpts = bindings ? lineAccountDbOptions(bindings) : undefined;
   const shouldRun = await tryConsumeLineWebhookEvent(db, event);
   if (!shouldRun) {
     return;
@@ -178,10 +180,11 @@ export async function handleLineWebhookEvent(
     }
 
     // イベントバス発火: friend_add
-    await fireEvent(
+    await fireEventRespectingAutomationWebhookHosts(
       db,
       'friend_add',
       { friendId: friend.id, eventData: { displayName: friend.display_name } },
+      bindings ?? {},
       lineAccessToken,
       lineAccountId,
     );
@@ -372,7 +375,7 @@ export async function handleLineWebhookEvent(
 
     let fallbackChannel = bindings?.LINE_CHANNEL_ID?.trim() ?? '';
     if (lineAccountId) {
-      const acc = await getLineAccountById(db, lineAccountId);
+      const acc = await getLineAccountById(db, lineAccountId, lineAccOpts);
       if (acc?.channel_id?.trim()) {
         fallbackChannel = acc.channel_id.trim();
       }
@@ -381,6 +384,7 @@ export async function handleLineWebhookEvent(
       db,
       { line_account_id: (friend as { line_account_id?: string | null }).line_account_id },
       fallbackChannel,
+      lineAccOpts,
     );
 
     let matched = false;
@@ -421,13 +425,14 @@ export async function handleLineWebhookEvent(
     }
 
     // イベントバス発火: message_received
-    await fireEvent(
+    await fireEventRespectingAutomationWebhookHosts(
       db,
       'message_received',
       {
         friendId: friend.id,
         eventData: { text: incomingText, matched },
       },
+      bindings ?? {},
       lineAccessToken,
       lineAccountId,
     );

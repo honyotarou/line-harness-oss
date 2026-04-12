@@ -11,7 +11,10 @@ const dbMocks = vi.hoisted(() => ({
   getChatById: vi.fn(),
   createChat: vi.fn(),
   updateChat: vi.fn(),
+  getFriendById: vi.fn(),
   jstNow: vi.fn(),
+  listPrincipalLineAccountIdsForEmail: vi.fn(),
+  getLineAccounts: vi.fn(),
 }));
 
 vi.mock('@line-crm/db', () => dbMocks);
@@ -92,9 +95,17 @@ function createDb() {
   } as unknown as D1Database;
 }
 
+const cfEnv = {
+  DB: {} as D1Database,
+  REQUIRE_CLOUDFLARE_ACCESS_JWT: '1',
+  CLOUDFLARE_ACCESS_TEAM_DOMAIN: 'team.cloudflareaccess.com',
+} as const;
+
 describe('chats routes', () => {
   beforeEach(() => {
     Object.values(dbMocks).forEach((mockFn) => mockFn.mockReset());
+    dbMocks.listPrincipalLineAccountIdsForEmail.mockResolvedValue([]);
+    dbMocks.getLineAccounts.mockResolvedValue([]);
   });
 
   it('filters chats by LINE account and returns lineAccountId in the list response', async () => {
@@ -128,7 +139,67 @@ describe('chats routes', () => {
     });
   });
 
+  it('V-5 / P6: returns 404 for GET /api/chats/:id when friend LINE account is outside scope', async () => {
+    dbMocks.listPrincipalLineAccountIdsForEmail.mockResolvedValue(['allowed-account']);
+    dbMocks.getChatById.mockResolvedValue({
+      id: 'chat-out',
+      friend_id: 'friend-out',
+      operator_id: null,
+      status: 'unread',
+      notes: null,
+      last_message_at: '2026-03-26T09:00:00+09:00',
+      line_account_id: null,
+      created_at: '2026-03-26T08:00:00+09:00',
+      updated_at: '2026-03-26T09:00:00+09:00',
+    });
+    dbMocks.getFriendById.mockResolvedValue({
+      id: 'friend-out',
+      line_user_id: 'U-out',
+      line_account_id: 'other-account',
+    });
+
+    const detailDb = {
+      prepare(sql: string) {
+        return {
+          bind(..._bindings: unknown[]) {
+            return {
+              async first() {
+                if (sql.includes('FROM friends WHERE id')) {
+                  return { display_name: 'X', picture_url: null, line_user_id: 'U-out' };
+                }
+                return null;
+              },
+              async all() {
+                return { results: [] };
+              },
+            };
+          },
+        };
+      },
+    } as unknown as D1Database;
+
+    const { chats } = await import('../../src/routes/chats.js');
+    const app = new Hono();
+    app.use('*', async (c, next) => {
+      c.set('cfAccessJwtPayload', { email: 'scoped@example.com' });
+      await next();
+    });
+    app.route('/', chats);
+
+    const response = await app.fetch(new Request('http://localhost/api/chats/chat-out'), {
+      ...cfEnv,
+      DB: detailDb,
+    } as never);
+
+    expect(response.status).toBe(404);
+  });
+
   it('returns lineAccountId when creating a chat', async () => {
+    dbMocks.getFriendById.mockResolvedValue({
+      id: 'friend-1',
+      line_user_id: 'U-line',
+      line_account_id: 'account-1',
+    });
     dbMocks.createChat.mockResolvedValue({
       id: 'chat-1',
       friend_id: 'friend-1',
@@ -175,6 +246,11 @@ describe('chats routes', () => {
   });
 
   it('returns 400 when operator sends flex with invalid JSON content', async () => {
+    dbMocks.getFriendById.mockResolvedValue({
+      id: 'friend-1',
+      line_user_id: 'U999',
+      line_account_id: null,
+    });
     dbMocks.getChatById.mockResolvedValue({
       id: 'chat-1',
       friend_id: 'friend-1',
@@ -229,6 +305,11 @@ describe('chats routes', () => {
   });
 
   it('returns 400 when flex content parses to a non-object JSON value', async () => {
+    dbMocks.getFriendById.mockResolvedValue({
+      id: 'friend-1',
+      line_user_id: 'U999',
+      line_account_id: null,
+    });
     dbMocks.getChatById.mockResolvedValue({
       id: 'chat-1',
       friend_id: 'friend-1',

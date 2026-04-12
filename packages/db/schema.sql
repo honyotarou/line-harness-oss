@@ -158,21 +158,11 @@ CREATE TABLE IF NOT EXISTS auto_replies (
 CREATE INDEX IF NOT EXISTS idx_auto_replies_line_account_id ON auto_replies (line_account_id);
 
 -- ============================================================
--- Admin Users
--- ============================================================
-CREATE TABLE IF NOT EXISTS admin_users (
-  id            TEXT PRIMARY KEY,
-  email         TEXT NOT NULL UNIQUE,
-  password_hash TEXT NOT NULL,
-  created_at    TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%f', 'now', '+9 hours'))
-);
-
--- ============================================================
 -- Round 2: Internal UUID Users (Cross-Account)
 -- ============================================================
 CREATE TABLE IF NOT EXISTS users (
   id           TEXT PRIMARY KEY,
-  email        TEXT,
+  email        TEXT, -- app stores LOWER(TRIM); migration 021 backfills existing DBs
   phone        TEXT,
   external_id  TEXT,
   display_name TEXT,
@@ -308,10 +298,13 @@ CREATE TABLE IF NOT EXISTS outgoing_webhooks (
   url         TEXT NOT NULL,
   event_types TEXT NOT NULL DEFAULT '[]',
   secret      TEXT,
+  line_account_id TEXT,
   is_active   INTEGER NOT NULL DEFAULT 1,
   created_at  TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%f', 'now', '+9 hours')),
   updated_at  TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%f', 'now', '+9 hours'))
 );
+
+CREATE INDEX IF NOT EXISTS idx_outgoing_webhooks_line_account_id ON outgoing_webhooks (line_account_id);
 
 -- ============================================================
 -- Round 3: Google Calendar
@@ -449,7 +442,7 @@ CREATE TABLE IF NOT EXISTS chats (
   id            TEXT PRIMARY KEY,
   friend_id     TEXT NOT NULL REFERENCES friends (id) ON DELETE CASCADE,
   operator_id   TEXT REFERENCES operators (id) ON DELETE SET NULL,
-  line_account_id TEXT,
+  line_account_id TEXT REFERENCES line_accounts (id) ON DELETE SET NULL,
   status        TEXT NOT NULL DEFAULT 'unread' CHECK (status IN ('unread', 'in_progress', 'resolved')),
   notes         TEXT,
   last_message_at TEXT,
@@ -689,11 +682,13 @@ CREATE INDEX IF NOT EXISTS idx_delivery_dead_letters_created_at ON delivery_dead
 
 -- ============================================================
 -- Admin RBAC (optional): maps Cloudflare Access email → role
--- No row = full admin. Row role='viewer' = read-only API (GET only + auth login/logout).
+-- No row = full admin. role='viewer' = read-only API (GET only + auth login/logout).
+-- role='owner' = may write LINE Messaging credentials when REQUIRE_OWNER_DB_ROLE_FOR_LINE_CREDENTIALS=1.
+-- role='admin' (explicit row) = same as admin except credential writes blocked under that flag.
 -- ============================================================
 CREATE TABLE IF NOT EXISTS admin_principal_roles (
   email      TEXT PRIMARY KEY COLLATE NOCASE,
-  role       TEXT NOT NULL CHECK (role IN ('admin', 'viewer')),
+  role       TEXT NOT NULL CHECK (role IN ('owner', 'admin', 'viewer')),
   updated_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%f', 'now', '+9 hours'))
 );
 

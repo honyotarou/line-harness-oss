@@ -29,6 +29,44 @@ describe('broadcast send guard', () => {
     dbMocks.processBroadcastSend.mockReset();
   });
 
+  it('returns 503 when REQUIRE_BROADCAST_SEND_SECRET is on but BROADCAST_SEND_SECRET is unset', async () => {
+    dbMocks.getBroadcastById.mockResolvedValue({
+      id: 'b1',
+      title: 't',
+      message_type: 'text',
+      message_content: 'm',
+      target_type: 'all',
+      target_tag_id: null,
+      line_account_id: 'acc-1',
+      status: 'draft',
+      scheduled_at: null,
+      sent_at: null,
+      total_count: 0,
+      success_count: 0,
+      created_at: '2026-03-25T10:00:00+09:00',
+    });
+
+    const { broadcasts } = await import('../../src/routes/broadcasts.js');
+    const app = new Hono();
+    app.route('/', broadcasts);
+
+    const res = await app.fetch(
+      new Request('http://localhost/api/broadcasts/b1/send', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ confirm: true }),
+      }),
+      {
+        DB: {} as D1Database,
+        LINE_CHANNEL_ACCESS_TOKEN: 't',
+        REQUIRE_BROADCAST_SEND_SECRET: '1',
+      } as never,
+    );
+
+    expect(res.status).toBe(503);
+    expect(dbMocks.processBroadcastSend).not.toHaveBeenCalled();
+  });
+
   it('returns 403 when BROADCAST_SEND_SECRET is set but header is missing', async () => {
     dbMocks.getBroadcastById.mockResolvedValue({
       id: 'b1',

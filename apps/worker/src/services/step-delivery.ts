@@ -1,3 +1,4 @@
+import type { LineAccountDbOptions } from '@line-crm/db';
 import {
   getFriendScenariosDueForDelivery,
   getScenarioSteps,
@@ -48,6 +49,7 @@ export async function processStepDeliveries(
   workerUrl?: string,
   lineAccountId?: string | null,
   defaultLineChannelId?: string,
+  lineAccountOpts?: LineAccountDbOptions,
 ): Promise<void> {
   // Skip delivery outside 9:00-23:00 JST window
   const jstHour = new Date(Date.now() + 9 * 60 * 60_000).getUTCHours();
@@ -63,7 +65,14 @@ export async function processStepDeliveries(
       if (i > 0) {
         await sleep(addJitter(50, 200));
       }
-      await processSingleDelivery(db, lineClient, fs, workerUrl, defaultLineChannelId);
+      await processSingleDelivery(
+        db,
+        lineClient,
+        fs,
+        workerUrl,
+        defaultLineChannelId,
+        lineAccountOpts,
+      );
     } catch (err) {
       console.error(`Error processing friend_scenario ${fs.id}:`, err);
       // Continue with next one
@@ -84,6 +93,7 @@ async function processSingleDelivery(
   },
   workerUrl?: string,
   defaultLineChannelId?: string,
+  lineAccountOpts?: LineAccountDbOptions,
 ): Promise<void> {
   // Get friend first to read preferred delivery hour from metadata
   const friend = await getFriendById(db, fs.friend_id);
@@ -155,6 +165,7 @@ async function processSingleDelivery(
     db,
     { line_account_id: (friend as { line_account_id?: string | null }).line_account_id },
     defaultLineChannelId ?? '',
+    lineAccountOpts,
   );
 
   // Expand template variables ({{name}}, {{uid}}, {{auth_url:CHANNEL_ID}}, etc.)

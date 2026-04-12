@@ -60,12 +60,37 @@ function constantTimeEqual(left: string, right: string): boolean {
   return diff === 0;
 }
 
+function isTruthyEnvFlag(raw: string | undefined): boolean {
+  const v = raw?.trim().toLowerCase();
+  return v === '1' || v === 'true' || v === 'yes' || v === 'on';
+}
+
+/**
+ * HMAC secret for `?f=` tokens. Returns `null` when `REQUIRE_TRACKING_LINK_SECRET=1` but
+ * `TRACKING_LINK_SECRET` is unset — issuance/verification must fail (no API_KEY fallback).
+ */
+export function trackingLinkHmacSecret(env: {
+  TRACKING_LINK_SECRET?: string;
+  API_KEY: string;
+  REQUIRE_TRACKING_LINK_SECRET?: string;
+}): string | null {
+  const dedicated = env.TRACKING_LINK_SECRET?.trim();
+  if (dedicated) {
+    return dedicated;
+  }
+  if (isTruthyEnvFlag(env.REQUIRE_TRACKING_LINK_SECRET)) {
+    return null;
+  }
+  return env.API_KEY;
+}
+
+/** @deprecated use {@link trackingLinkHmacSecret} — kept for tests that expect API_KEY fallback. */
 export function trackingLinkSigningSecret(env: {
   TRACKING_LINK_SECRET?: string;
   API_KEY: string;
+  REQUIRE_TRACKING_LINK_SECRET?: string;
 }): string {
-  const s = env.TRACKING_LINK_SECRET?.trim();
-  return s && s.length > 0 ? s : env.API_KEY;
+  return trackingLinkHmacSecret(env) ?? env.API_KEY;
 }
 
 export async function issueTrackedLinkFriendToken(
@@ -93,11 +118,14 @@ export async function issueTrackedLinkFriendToken(
 }
 
 export async function verifyTrackedLinkFriendToken(
-  secret: string,
+  secret: string | null,
   linkId: string,
   token: string,
   options?: { now?: number },
 ): Promise<string | null> {
+  if (secret === null || secret === '') {
+    return null;
+  }
   const [encodedPayload, providedSignature, ...rest] = token.split('.');
   if (!encodedPayload || !providedSignature || rest.length > 0) {
     return null;

@@ -1,175 +1,138 @@
 ---
 name: line
 description: >-
-  LINE Harness OSS の全工程を GAS スキル型の番号メニューで実行する統合スキル。
-  Pinterest ムードボード→デザイントークン→壁打ち→開発ハーネス（Step 2）→TDD→デプロイまで。
-  デザイン・要件は親 **0（ビジュアル）** と **1（要件・ブランド）** の2段のみ（旧 1.5・1.6 は 1・0 に吸収）。
-  Use when the user says /line, /tdd, Pinterest, ムードボード, デザイン, 壁打ち, ヒアリング,
-  整形外科, リハビリ, 問診, 初診, 再診, 保険, 来院, 診察, 予約導線,
-  リッチメニュー, rich menu, LINE メニュー設計, areas bounds,
-  LINE Harness OSS, line-harness-oss, LINE CRM, Cloudflare Worker, LIFF, application layer, harness, deploy, TDD,
-  penetration test, pentest, ペネトレ, セキュリティレビュー, 攻撃者視点, SSRF, open redirect, webhook security.
+  LINE Harness OSS の統合ワークフロー（/line）。番号メニューでデザイン0・1→ハーネス2→TDD3〜7→ゲート8〜11→デプロイ12。
+  Cloudflare Worker、LIFF、Next 管理画面、カプセル化、pnpm harness、TDD、ペネトレ（steps-pentest-tdd-loop）、デプロイ。
+  Use when: /line, /tdd, LINE CRM, line-harness-oss, デザイン壁打ち, リッチメニュー, harness, pentest, ペネトレ.
 ---
 
-# LINE Harness OSS ワークフロー（`/line`）
+# LINE Harness OSS（`/line`）
 
-**GAS スキルと同型**: 番号で工程を選ぶ。引数なしならメニュー表示。詳細は **参照ファイルを Read** すること。
+**やること**: 下のメニューから **番号**または **キーワード**（`pentest` / `orthopedics`）を選ぶ → **対応する `steps-*.md` を Read**（このファイルは索引。長文は置かない）。
+
+---
+
+## 1. メニュー（入口だけ）
+
+| 種類 | 選び方 |
+|------|--------|
+| **番号** | `0`〜`12`、または `check` |
+| **名前** | `orthopedics` / `pentest`（番号と同列の別入口） |
 
 ```
-LINE Harness OSS:
+【デザイン・要件】親は 0 と 1 のみ
+  0   ビジュアル・トークン → steps-design-0-1.md（Step 0）
+      リッチ枝 → steps-rich-menu-wallball.md
+  1   要件・8 Round・ブランド → steps-design-0-1.md（Step 1）+ steps-brand-1-5.md
+      （Step 1 先頭: エディタでマルチモデル切替する場合は domain-extractor 型の指示あり）
 
-  【デザイン・要件（GAS 型・UI/新機能で先にやる）— 親はこの2つだけ】
-  0  ビジュアル・LINE UI 正本  ムードボード→design-tokens／任意でリッチメニュー壁打ち
-      ・tokens: steps-design-0-1.md（ファイル内「Step 0 — ムードボード」）
-      ・リッチ: steps-rich-menu-wallball.md（サブ0〜7。指示例「リッチの3」。旧1.6もここ）
-  1  要件・ブランド壁打ち     8 Round→設計サマリ ＋ 独自性・一貫性（旧1.5）
-      ・8 Round: steps-design-0-1.md（ファイル内「Step 1 — 設計ヒアリング」）
-      ・Composer 2: 同ファイル「Step 1 の最初（Composer 2・domain-extractor 型）」で業務分析家/レビュアーを貼り付け切替
-      ・ブランド: steps-brand-1-5.md（LP/LIFF/管理/LINE UI の揃え方）
-      ・旧番号「1.5」は本ステップと同義
-  orthopedics  整形外科（壁打ち→反映）  整形外科差分を壁打ちし、必ず repo に反映して完了（詳細: steps-orthopedics-wallball.md）
-  pentest      攻撃者視点レビュー→TDDで潰す→再ペネトレの自走ループ（詳細: steps-pentest-tdd-loop.md；`/pentest-tdd-loop`。**自走**＝フェーズ1: Webhook→管理 API→wrap→Incoming の4、続けフェーズ2: LIFF OAuth 詳細→LIFF JSON→トラッキング→Stripe→CORS→LIFF フロントの6を順に必須、その後変種ラウンド。確認せず最大 100 ラウンドまたは P1 2 連続ゼロまで）
+【ドメイン枝】
+  orthopedics   整形外科壁打ち → steps-orthopedics-wallball.md
 
-  【ハーネス（親0・1の直後に読む・実行する）】
-  2  開発ハーネス        決定論ゲート・E2E層・Hooks・コマンド表（詳細: steps-harness.md）
+【セキュリティ】（TDD 本線の Step 番号は pentest 正本の対応表に従う）
+  pentest       攻撃者視点・自走ループ → steps-pentest-tdd-loop.md または /pentest-tdd-loop
 
-  【TDD・機能追加】
-  3  観点・受け入れ条件   Given/When/Then + 置き場所（テストはまだ書かない）
-  4  Red                 失敗するテストのみ（Vitest / Playwright）
-  5  Green               最小実装で緑
-  6  Refactor            テストは緑のまま整理
-  7  層別ゲート          typecheck + パッケージ test → pnpm harness
-  8  UI 回帰 E2E         Playwright（API はモック）
-  9  API 統合            pnpm test:api（実 Worker + Hurl）
-  10 カバレッジ          test:coverage / ホットスポット
-  11 仕上げ              ADR・D1・セキュリティ境界
+【ハーネス】0・1 の直後や実装前に推奨
+  2   Biome・カプセル化・型・unit → steps-harness.md
+      ※ harness が赤いときの分岐の正本もこのファイル「マージゲートが赤いとき」
 
-  【セットアップ・デプロイ】
-  12 本番まで通す       D1→Worker→LINE→LIFF→Vercel（詳細: steps-deploy.md）
+【TDD・機能追加】
+  3 観点 / 4 Red / 5 Green / 6 Refactor → steps-0-3-red-green-refactor.md
+  7〜11・check → steps-4-8-gates.md（7=pnpm harness まで含む完了条件）
 
-  【広い完了】
-  check  品質ゲート      pnpm harness → test:e2e → test:api（リリース相当）
-
-番号またはやりたいことを指示してください。
+【デプロイ】
+  12  本番手順（手順内 0〜9 は deploy 専用）→ steps-deploy.md
+  check  harness → e2e → test:api → steps-4-8-gates.md
 ```
 
-## 参照ファイル（各ステップの詳細）
+---
 
-| ファイル | 内容 |
+## 2. `steps-*` 早見表
+
+| ファイル | 中身 |
 |----------|------|
-| [steps-design-0-1.md](steps-design-0-1.md) | **親 0**＝見出し Step 0（ムードボード）／**親 1**＝見出し Step 1（8 Round） |
-| [steps-rich-menu-wallball.md](steps-rich-menu-wallball.md) | **親 0** のリッチメニュー枝（サブ 0〜7・任意。旧 **1.6**） |
-| [steps-brand-1-5.md](steps-brand-1-5.md) | **親 1** のブランド一貫性（旧 **1.5**） |
-| [steps-orthopedics-wallball.md](steps-orthopedics-wallball.md) | 整形外科向け「壁打ち→反映」枝（**会話だけで終わらせず** docs/UI/LIFF/worker/DB/テストまで反映） |
-| [steps-pentest-tdd-loop.md](steps-pentest-tdd-loop.md) | **pentest** — 攻撃者視点レビューと攻撃ベクター列挙 → Red/Green → `pnpm harness` を繰り返す |
-| [steps-harness.md](steps-harness.md) | Step **2**（開発ハーネス） |
-| [steps-0-3-red-green-refactor.md](steps-0-3-red-green-refactor.md) | Step **3〜6**（観点 → Red → Green → Refactor） |
-| [steps-4-8-gates.md](steps-4-8-gates.md) | Step **7〜11** + `check` |
-| [steps-deploy.md](steps-deploy.md) | Step **12**（デプロイ手順内の 0〜9 と番号がぶつかるので **steps-deploy だけ読む**） |
+| [steps-design-0-1.md](steps-design-0-1.md) | 親 **0** / **1** |
+| [steps-rich-menu-wallball.md](steps-rich-menu-wallball.md) | 親 0・リッチ |
+| [steps-brand-1-5.md](steps-brand-1-5.md) | 親 1・ブランド |
+| [steps-orthopedics-wallball.md](steps-orthopedics-wallball.md) | orthopedics |
+| [steps-pentest-tdd-loop.md](steps-pentest-tdd-loop.md) | **pentest 正本**（チェックリスト・自走）。分岐表は [steps-harness.md](steps-harness.md) へ |
+| [steps-harness.md](steps-harness.md) | Step **2**・ゲート一覧・**マージゲートが赤いとき**・E2E 層・Modifius §4.1 |
+| [steps-0-3-red-green-refactor.md](steps-0-3-red-green-refactor.md) | Step **3〜6** |
+| [steps-4-8-gates.md](steps-4-8-gates.md) | Step **7〜11**・check |
+| [steps-deploy.md](steps-deploy.md) | Step **12** |
 
-**ポインタ**: ルート **`AGENTS.md`**、`docs/wiki/Getting-Started.md`、`docs/adr/`。
+**その他**: [AGENTS.md](../../../AGENTS.md)、[docs/adr/](../../../docs/adr/)。
 
-## アーキテクチャ（レイヤーとテストの置き場所）
+---
 
-```
-apps/worker/src/application/   ← ユースケース層（Hono 非依存のロジック）
-  calendar-integration.ts        Google Calendar 連携
-  liff-identity.ts               LIFF: ID トークン検証・友だち解決
-  liff-oauth-start.ts            GET /auth/line の分岐
-  liff-oauth-callback.ts         GET /auth/callback（トークン交換〜紐付け）
-  liff-pages.ts                  LIFF 用 HTML（error / completion 等）
-  liff-json-handlers.ts          POST /api/liff/*・analytics・links/wrap
-  line-webhook-handlers.ts       LINE Webhook イベント処理
-  openapi-spec.ts                OpenAPI ドキュメント本文＋公開フラグ
-apps/worker/src/routes/          ← HTTP アダプタ（薄いルート。上記を呼ぶ）
-apps/worker/tests/               ← Worker（Vitest）
-apps/web/src/lib/api/client.ts   ← 管理画面: fetch・セッション・ApiError
-apps/web/src/lib/api/catalog/    ← api.auth / api.friends … をドメイン別に分割
-apps/web/src/**/*.test.ts        ← Web（Vitest）
-packages/sdk/tests/              ← SDK（Vitest）
-tests/e2e/                       ← Playwright（Worker API はモック）
-tests/hurl/*.hurl                ← 実 Worker（pnpm test:api）
-apps/liff/src/config/liff-api-origin.ts  ← LIFF: API origin 解決
-apps/liff/src/api-base.ts        ← LIFF: fetch の表層（shared の safe URL を利用）
-apps/liff/src/                   ← LIFF（typecheck / build）
-docs/design/                     ← 親 0 の design-tokens.json 等（任意で追加）
-packages/db/                     ← スキーマ
-packages/shared/                 ← 型・検証。本番 import はサブパス推奨
-  （例: safe-api-base-url, admin-browser-client, safe-liff-redirect）
-```
+## 3. リポジトリ地図（ルール優先）
 
-**実装の型（Worker）**: 振る舞いの変更は **`application/*.ts`** に寄せ、**`routes/*.ts`** はリクエスト抽出・`c.json` / `c.redirect` / レート制限など配線に留める（既存の `calendar` / `liff` / `webhook` / `openapi` がこの形）。
+| 場所 | 役割 |
+|------|------|
+| `apps/worker/src/application/` | ユースケース（**Hono / routes を import しない**） |
+| `apps/worker/src/routes/` | HTTP アダプタ（薄く） |
+| `apps/worker/src/services/` | ドメイン・ポリシー |
+| `apps/worker/tests/` | Worker Vitest |
+| `apps/web/src/lib/api/client.ts` + `catalog/` | 管理 API クライアント（**client は catalog を import しない**） |
+| `apps/liff/src/` | LIFF（API 基底・build 時ガード） |
+| `tests/e2e/` | Playwright（**API モック**） |
+| `tests/hurl/` | `pnpm test:api`（実 Worker） |
+| `packages/db`, `packages/shared`, `docs/design/` | DB・共有・デザイントークン |
 
-## 必須ルール（全ステップ共通）
+---
 
-### デザイン（親 Step 0〜1）
+## 4. 実装前提（1 行ずつ）
 
-- **親 0（完了条件＝“テンプレ反映”まで）**: ビジュアル正本（トークン・任意リッチメニュー）。**画像はチャット貼り付け**を主とする。ユーザー OK 後に:
-  - **`docs/design/design-tokens.json`**（＋任意 `moodboard-notes.md`）を**必ず**書く
-  - そのトークンを **`apps/web/src/app/globals.css` の `@theme`（または `:root`）へマッピング**し、UI の色・radius・shadow が実際に変わることを担保する
-  - LIFF も触る要件がある場合は **`apps/liff`** に CSS 変数として反映する
-  - ここまでやって初めて「親 0 完了」（チャットだけ／JSON だけで止めない）
-- **親 1（完了条件＝“テンプレ修正の指示”が落ちるまで）**: 要件＋ブランド。**設計サマリに OK が出るまで本番実装を書かない**（GAS と同型）。ユーザー OK 後に:
-  - **`docs/design/hearing-summary.md`** にサマリを**必ず**残す（チャットのみで終わらせない）
-  - 既存 OSS の「どのファイルに何を反映するか」を **差分チェックリスト**まで落とす（“反映先が曖昧”な状態で Step 2 以降へ進まない）
-- **差分チェックリスト（親 0/1 の必須アウトプット）**: 各項目に「反映先ファイル」を必ず紐付ける
-  - **CORS / Origin** → `apps/worker/src/index.ts` + `apps/worker/wrangler.toml` / `.github/workflows/deploy-worker.yml`
-  - **友だち追加 `/auth/line`・OAuth コールバック・LIFF JSON API** → `apps/web/src/app/page.tsx` + `apps/worker/src/routes/liff.ts`（配線）+ 実装本体は `apps/worker/src/application/liff-*.ts` / `liff-json-handlers.ts`（新規ロジックはこちら優先）
-  - **LIFF の環境変数** → `apps/liff/*`（`VITE_*`）+ Vercel Env。API 基底 URL は `liff-api-origin.ts` / `api-base.ts` を確認
-  - **予約の電話フォールバック** → `apps/worker/src/application/liff-json-handlers.ts`（`liffBookingPhoneFallbackPost`）+ `apps/worker/src/routes/liff.ts` + `apps/worker/src/index.ts`（`BOOKING_FALLBACK_TEL` 等 env）+ `apps/worker/tests/routes/liff.test.ts` 等
-  - **LINE Webhook（follow / メッセージ等）** → `apps/worker/src/routes/webhook.ts` + `apps/worker/src/application/line-webhook-handlers.ts`
-  - **管理画面の Worker 呼び出し** → `apps/web/src/lib/api/client.ts` + `apps/web/src/lib/api/catalog/*.ts`（ドメイン別）
+| 領域 | メモ |
+|------|------|
+| Worker | 振る舞いは `application/`・`services/`。`routes/` は配線。 |
+| マルチアカウント | `line_accounts`・スコープ・Webhook destination |
+| LIFF | `/auth/*`、`POST /api/liff/*`、CSP |
+| セキュリティ | 管理セッション、CF Access 任意、LIFF state／リダイレクト、Bot／ホスト |
+| DB | `schema.sql` と `migrations/` を同じ変更単位。**本番 D1 の遅れ**は運用論点 → `AGENTS.md` |
+| カプセル化 | `pnpm check:encapsulation`。新規 `routes/*.ts` は **`ROUTE_LINE_CAPS`** |
+| **harness が赤い** | 分岐の正本 → [steps-harness.md](steps-harness.md) **「マージゲートが赤いとき」** |
 
-### セキュリティ・秘密情報
+---
 
-- シークレットは **`wrangler secret` / Vercel Env / `.dev.vars`**。リポ・チャットに貼らない。
-- `WEB_URL` / `ALLOWED_ORIGINS` / `LIFF_URL` は実際の origin と一致させる。
+## 5. 共通ルール（短く）
 
-### TDD（Step 3〜6）
+### 5.1 よく使う経路
 
-- **Red が無い Green は禁止**。
-- 1 ストーリーあたりまず **1 本の失敗テスト**から。
-- 無関係なリファクタはユーザー明示がない限りしない。
+- **UI・ブランドから**: `0 → 1 → 2 → 3`。**API だけ**: `2`（必要なら）→ `3`。
+- **TDD**: `3→4→5→6` のあと **`7` で `pnpm harness` 緑** → 必要なら 8〜9。**リリース相当**: `11` または `check`。
+- **pentest**: [steps-pentest-tdd-loop.md](steps-pentest-tdd-loop.md)。Red／Green／harness の Step 対応は同ファイル先頭の表。
 
-### このリポジトリ固有
+### 5.2 デザイン完了の意味
 
-- **Playwright** は UI + **モック API**。実 Worker は **Vitest + `pnpm test:api`**。
-- **`liff`（`routes/liff.ts` + `application/liff-*.ts`）/ `webhook`（`application/line-webhook-handlers.ts`）/ `forms` / 認可** は Vitest を厚く。
-- 外部 LINE `fetch` はスタブし、契約をテストに固定。
+- **0**: トークンを **ファイル＋CSS（＋必要なら LIFF）** まで反映。
+- **1**: `hearing-summary.md` と **差分チェックリスト（ファイルパス付き）**。承認前に本番実装を書かない。
 
-### 完了の定義
+### 5.3 秘密・本番
 
-- コード変更後は **`pnpm harness`**（広い変更は **`harness:full`** や **check**）。`harness` には **カプセル化ゲート**（`pnpm check:encapsulation` と同等）が含まれる。
-- **Step 12** 完了報告にはデプロイ手順の「動作確認」の証拠を含める。
+- 秘密は wrangler / Vercel / `.dev.vars` のみ。チャットに貼らない。
+- `WEB_URL` / `ALLOWED_ORIGINS` / `LIFF_URL` は実 origin と一致。
+- **本番**: migrations・`LINE_ACCOUNT_SECRETS_WRITE_SECRET` 等は `AGENTS.md`。**マージゲートの赤**と **本番 env** を混同しない（前者は [steps-harness.md](steps-harness.md)「マージゲートが赤いとき」）。
 
-### AI を使った定期観測（CI/スケジュール運用のコツ）
+### 5.4 TDD とカプセル化
 
-- **目的を分離**: 「日々の開発ゲート（`pnpm harness`）」と「定期的な可視化（週次/月次）」を混ぜない。定期観測は**比較可能な指標**（同条件）を優先する。
-- **対象を絞る**: 全量ではなく、重要ディレクトリ・ホットスポット・変更頻度が高い領域に限定する（運用コストを下げ、継続性を上げる）。
-- **バッチ分割**: 対象ファイル/ケースが多いときは、**一定件数で分割**して実行し、集計で繋ぐ（“1ジョブに詰め込みすぎ” を避ける）。
-- **並列数を制限**: 外部 API / LLM / 生成系はレート制限が起きやすい。**max-parallel を小さく**して安定性を取る（速さより止まらないこと）。
-- **決定性を上げる**: 定点観測はランダム性が敵。可能なら **temperature を 0**（または同等）で “毎回ぶれない” を優先する。
-- **リトライ前提**: 生成/分析は不安定になり得る。失敗時は**自動リトライ**（2回程度）を前提に設計する。
-- **レポートと通知**: “サマリ通知（Slack 等）” と “詳細レポート（HTML 等）” を分け、**見る人の負担**を下げる。ダッシュボードは**過去比較**できる形にする。
-- **キャッシュ/コスト**: 可能なら Prompt Caching 等を利用し、同一入力の再計算を避ける。定期実行の頻度もコストに直結するため、**隔週/月次**から始めて調整する。
+- **Red なし Green 禁止**。
+- Step 4〜5 のループの中で **`pnpm check:encapsulation`**（`ROUTE_LINE_CAPS` 忘れに注意）。
+- **P1〜P7** などコード検証済み論点は pentest 正本の表。**回帰は Vitest に残す**（`pnpm harness` が毎回実行）。
 
-### Step 2（ハーネス）・Step 12（デプロイ）
+### 5.5 テスト階層
 
-- **Step 2**: `steps-harness.md` を Read し、触る作業に応じて `pnpm harness` / `harness:ci` / `harness:full` のどれを完了条件にするか決める。Hooks が無い環境では **`pnpm harness` を明示実行**。
-- **Step 12**: 保護パスは編集ブロックされうる → 人間向けに文章化。
+- Playwright ＝ UI ＋ **モック API**。本物の Worker HTTP は **`pnpm test:api`**。
 
-### UI 微調整
+### 5.6 完了・その他
 
-- `pnpm dev:web` / `pnpm --filter liff dev`；仕上げ **`pnpm harness`**、ルーティング変更時 **`pnpm test:e2e`**。
+- 変更後は **`pnpm harness`**（大きい変更は `harness:full` や `check`）。
+- **Modifius / 定期 CI**: 補助線。詳細は **[steps-harness.md §4.1](steps-harness.md)** のみ（ここでは複製しない）。
+- **Step 12**: 人間手順・証跡を残す。UI 微調整でも最終は harness；ルーティング変えたら e2e 検討。
 
-## ルール（GAS スキルと同型）
+---
 
-- **新規 UI・ブランド寄せ**: **親 0 → 親 1 → 2**（ハーネスでゲートを把握）→ **3**（観点）。バグ修正・API のみなら **2**（必要なら）→ **3** からでよい。
-- **TDD 直列**: 3→4→5→6 を基本。7 を通してから 8/9 を必要に応じて。11 または **check** でリリース相当。
-- **Step 12**: 前段が無いなら先行手順を案内。
-- **Cursor / Composer** で全工程（デプロイはターミナル主導）。
+## 6. 参照リンク
 
-## 参照リンク
-
-- [Harness Engineering（2026）](https://nyosegawa.com/posts/harness-engineering-best-practices-2026/)
+- [Harness Engineering（2026）](https://nyosegawa.com/posts/harness-engineering-best-practices-2026/) — このリポとの対応は [steps-harness.md](steps-harness.md) 冒頭
 - [ADR 0001](../../../docs/adr/0001-testing-and-harness-layers.md) / [ADR 0002](../../../docs/adr/0002-harness-engineering.md)

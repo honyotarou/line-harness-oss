@@ -11,6 +11,7 @@ import {
   enrollFriendInReminder,
   getFriendReminders,
   cancelFriendReminder,
+  getFriendById,
 } from '@line-crm/db';
 import type { Env } from '../index.js';
 import {
@@ -18,6 +19,12 @@ import {
   jsonBodyReadErrorResponse,
   readJsonBodyWithLimit,
 } from '../services/request-body.js';
+import {
+  resolveLineAccountScopeForRequest,
+  resourceLineAccountVisibleInScope,
+  validateScopedLineAccountBody,
+  validateScopedLineAccountQueryParam,
+} from '../services/admin-line-account-scope.js';
 
 const reminders = new Hono<Env>();
 
@@ -25,7 +32,12 @@ const reminders = new Hono<Env>();
 
 reminders.get('/api/reminders', async (c) => {
   try {
+    const scope = await resolveLineAccountScopeForRequest(c.env.DB, c);
     const lineAccountId = c.req.query('lineAccountId');
+    const qRem = validateScopedLineAccountQueryParam(scope, lineAccountId);
+    if (!qRem.ok) {
+      return c.json({ success: false, error: qRem.error }, qRem.status);
+    }
     let items: Awaited<ReturnType<typeof getReminders>>;
     if (lineAccountId) {
       const result = await c.env.DB.prepare(
@@ -58,11 +70,15 @@ reminders.get('/api/reminders', async (c) => {
 reminders.get('/api/reminders/:id', async (c) => {
   try {
     const id = c.req.param('id');
+    const scopeOne = await resolveLineAccountScopeForRequest(c.env.DB, c);
     const [reminder, steps] = await Promise.all([
       getReminderById(c.env.DB, id),
       getReminderSteps(c.env.DB, id),
     ]);
     if (!reminder) return c.json({ success: false, error: 'Reminder not found' }, 404);
+    if (!resourceLineAccountVisibleInScope(scopeOne, reminder.line_account_id)) {
+      return c.json({ success: false, error: 'Reminder not found' }, 404);
+    }
     return c.json({
       success: true,
       data: {
@@ -91,26 +107,31 @@ reminders.get('/api/reminders/:id', async (c) => {
 
 reminders.post('/api/reminders', async (c) => {
   try {
+    const scopePost = await resolveLineAccountScopeForRequest(c.env.DB, c);
     const body = await readJsonBodyWithLimit<{
       name: string;
       description?: string;
       lineAccountId?: string | null;
     }>(c.req.raw, DEFAULT_ADMIN_JSON_BODY_LIMIT_BYTES);
     if (!body.name) return c.json({ success: false, error: 'name is required' }, 400);
-    const item = await createReminder(c.env.DB, body);
-    // Save line_account_id if provided
-    if (body.lineAccountId) {
-      await c.env.DB.prepare(`UPDATE reminders SET line_account_id = ? WHERE id = ?`)
-        .bind(body.lineAccountId, item.id)
-        .run();
+
+    const scoped = validateScopedLineAccountBody(scopePost, body.lineAccountId ?? null);
+    if (!scoped.ok) {
+      return c.json({ success: false, error: scoped.error }, scoped.status);
     }
+
+    const item = await createReminder(c.env.DB, {
+      name: body.name,
+      description: body.description,
+      lineAccountId: scoped.lineAccountId,
+    });
     return c.json(
       {
         success: true,
         data: {
           id: item.id,
           name: item.name,
-          lineAccountId: body.lineAccountId ?? item.line_account_id ?? null,
+          lineAccountId: item.line_account_id ?? null,
           createdAt: item.created_at,
         },
       },
@@ -127,11 +148,31 @@ reminders.post('/api/reminders', async (c) => {
 reminders.put('/api/reminders/:id', async (c) => {
   try {
     const id = c.req.param('id');
+    const scopePut = await resolveLineAccountScopeForRequest(c.env.DB, c);
+    const existingRm = await getReminderById(c.env.DB, id);
+    if (!existingRm) {
+      return c.json({ success: false, error: 'Not found' }, 404);
+    }
+    if (!resourceLineAccountVisibleInScope(scopePut, existingRm.line_account_id)) {
+      return c.json({ success: false, error: 'Not found' }, 404);
+    }
+
     const body = await readJsonBodyWithLimit<Record<string, unknown>>(
       c.req.raw,
       DEFAULT_ADMIN_JSON_BODY_LIMIT_BYTES,
     );
-    await updateReminder(c.env.DB, id, body);
+    if (body.lineAccountId !== undefined || body.line_account_id !== undefined) {
+      const rawLa = body.lineAccountId ?? body.line_account_id;
+      const scopedLa = validateScopedLineAccountBody(
+        scopePut,
+        rawLa === null ? null : typeof rawLa === 'string' ? rawLa : null,
+      );
+      if (!scopedLa.ok) {
+        return c.json({ success: false, error: scopedLa.error }, scopedLa.status);
+      }
+      body.lineAccountId = scopedLa.lineAccountId;
+    }
+    await updateReminder(c.env.DB, id, body as never);
     const updated = await getReminderById(c.env.DB, id);
     if (!updated) return c.json({ success: false, error: 'Not found' }, 404);
     return c.json({
@@ -153,6 +194,14 @@ reminders.put('/api/reminders/:id', async (c) => {
 
 reminders.delete('/api/reminders/:id', async (c) => {
   try {
+    const scopeDelRm = await resolveLineAccountScopeForRequest(c.env.DB, c);
+    const exDel = await getReminderById(c.env.DB, c.req.param('id'));
+    if (!exDel) {
+      return c.json({ success: false, error: 'Not found' }, 404);
+    }
+    if (!resourceLineAccountVisibleInScope(scopeDelRm, exDel.line_account_id)) {
+      return c.json({ success: false, error: 'Not found' }, 404);
+    }
     await deleteReminder(c.env.DB, c.req.param('id'));
     return c.json({ success: true, data: null });
   } catch (err) {
@@ -166,6 +215,15 @@ reminders.delete('/api/reminders/:id', async (c) => {
 reminders.post('/api/reminders/:id/steps', async (c) => {
   try {
     const reminderId = c.req.param('id');
+    const scopeStep = await resolveLineAccountScopeForRequest(c.env.DB, c);
+    const parentRm = await getReminderById(c.env.DB, reminderId);
+    if (!parentRm) {
+      return c.json({ success: false, error: 'Reminder not found' }, 404);
+    }
+    if (!resourceLineAccountVisibleInScope(scopeStep, parentRm.line_account_id)) {
+      return c.json({ success: false, error: 'Reminder not found' }, 404);
+    }
+
     const body = await readJsonBodyWithLimit<{
       offsetMinutes: number;
       messageType: string;
@@ -201,6 +259,23 @@ reminders.post('/api/reminders/:id/steps', async (c) => {
 
 reminders.delete('/api/reminders/:reminderId/steps/:stepId', async (c) => {
   try {
+    const scopeDelStep = await resolveLineAccountScopeForRequest(c.env.DB, c);
+    const reminderIdDel = c.req.param('reminderId');
+    const parentDel = await getReminderById(c.env.DB, reminderIdDel);
+    if (!parentDel) {
+      return c.json({ success: false, error: 'Not found' }, 404);
+    }
+    if (!resourceLineAccountVisibleInScope(scopeDelStep, parentDel.line_account_id)) {
+      return c.json({ success: false, error: 'Not found' }, 404);
+    }
+    const stepRow = await c.env.DB.prepare(
+      `SELECT id FROM reminder_steps WHERE id = ? AND reminder_id = ?`,
+    )
+      .bind(c.req.param('stepId'), reminderIdDel)
+      .first<{ id: string }>();
+    if (!stepRow) {
+      return c.json({ success: false, error: 'Not found' }, 404);
+    }
     await deleteReminderStep(c.env.DB, c.req.param('stepId'));
     return c.json({ success: true, data: null });
   } catch (err) {
@@ -215,6 +290,22 @@ reminders.post('/api/reminders/:id/enroll/:friendId', async (c) => {
   try {
     const reminderId = c.req.param('id');
     const friendId = c.req.param('friendId');
+    const scopeEnroll = await resolveLineAccountScopeForRequest(c.env.DB, c);
+    const remEnroll = await getReminderById(c.env.DB, reminderId);
+    if (!remEnroll) {
+      return c.json({ success: false, error: 'Reminder not found' }, 404);
+    }
+    if (!resourceLineAccountVisibleInScope(scopeEnroll, remEnroll.line_account_id)) {
+      return c.json({ success: false, error: 'Reminder not found' }, 404);
+    }
+    const friendEnroll = await getFriendById(c.env.DB, friendId);
+    if (!friendEnroll) {
+      return c.json({ success: false, error: 'Friend not found' }, 404);
+    }
+    if (!resourceLineAccountVisibleInScope(scopeEnroll, friendEnroll.line_account_id)) {
+      return c.json({ success: false, error: 'Friend not found' }, 404);
+    }
+
     const body = await readJsonBodyWithLimit<{ targetDate: string }>(
       c.req.raw,
       DEFAULT_ADMIN_JSON_BODY_LIMIT_BYTES,
@@ -249,6 +340,14 @@ reminders.post('/api/reminders/:id/enroll/:friendId', async (c) => {
 reminders.get('/api/friends/:friendId/reminders', async (c) => {
   try {
     const friendId = c.req.param('friendId');
+    const scopeFr = await resolveLineAccountScopeForRequest(c.env.DB, c);
+    const friendFr = await getFriendById(c.env.DB, friendId);
+    if (!friendFr) {
+      return c.json({ success: false, error: 'Friend not found' }, 404);
+    }
+    if (!resourceLineAccountVisibleInScope(scopeFr, friendFr.line_account_id)) {
+      return c.json({ success: false, error: 'Friend not found' }, 404);
+    }
     const items = await getFriendReminders(c.env.DB, friendId);
     return c.json({
       success: true,
@@ -269,6 +368,20 @@ reminders.get('/api/friends/:friendId/reminders', async (c) => {
 
 reminders.delete('/api/friend-reminders/:id', async (c) => {
   try {
+    const scopeCancel = await resolveLineAccountScopeForRequest(c.env.DB, c);
+    const frRow = await c.env.DB.prepare(`SELECT friend_id FROM friend_reminders WHERE id = ?`)
+      .bind(c.req.param('id'))
+      .first<{ friend_id: string }>();
+    if (!frRow) {
+      return c.json({ success: false, error: 'Not found' }, 404);
+    }
+    const friendCancel = await getFriendById(c.env.DB, frRow.friend_id);
+    if (
+      !friendCancel ||
+      !resourceLineAccountVisibleInScope(scopeCancel, friendCancel.line_account_id)
+    ) {
+      return c.json({ success: false, error: 'Not found' }, 404);
+    }
     await cancelFriendReminder(c.env.DB, c.req.param('id'));
     return c.json({ success: true, data: null });
   } catch (err) {

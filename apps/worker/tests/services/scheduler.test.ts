@@ -40,6 +40,7 @@ describe('runScheduledJobs', () => {
       'https://worker.example.com',
       null,
       undefined,
+      undefined,
     );
     expect(processStepDeliveries).toHaveBeenNthCalledWith(
       2,
@@ -47,6 +48,7 @@ describe('runScheduledJobs', () => {
       expect.objectContaining({ token: 'shared-token' }),
       'https://worker.example.com',
       'account-1',
+      undefined,
       undefined,
     );
     expect(processStepDeliveries).toHaveBeenNthCalledWith(
@@ -56,10 +58,12 @@ describe('runScheduledJobs', () => {
       'https://worker.example.com',
       'account-2',
       undefined,
+      undefined,
     );
     expect(processScheduledBroadcasts).toHaveBeenCalledTimes(3);
     expect(processReminderDeliveries).toHaveBeenCalledTimes(3);
     expect(checkAccountHealth).toHaveBeenCalledTimes(1);
+    expect(checkAccountHealth).toHaveBeenCalledWith(expect.anything(), undefined);
   });
 
   it('logs named job failures without aborting the remaining scheduled work', async () => {
@@ -92,6 +96,7 @@ describe('runScheduledJobs', () => {
     expect(processScheduledBroadcasts).toHaveBeenCalledTimes(2);
     expect(processReminderDeliveries).toHaveBeenCalledTimes(2);
     expect(checkAccountHealth).toHaveBeenCalledTimes(1);
+    expect(checkAccountHealth).toHaveBeenCalledWith(expect.anything(), undefined);
     expect(errorSpy).toHaveBeenCalledWith(
       'Scheduled job failed:',
       expect.objectContaining({

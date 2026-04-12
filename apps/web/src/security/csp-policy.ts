@@ -41,6 +41,7 @@ export function buildAdminContentSecurityPolicy(options: {
     "media-src 'self'",
     "manifest-src 'self'",
     scriptSrc,
+    "script-src-attr 'none'",
     "style-src 'self' 'unsafe-inline'",
     "img-src 'self' data: blob: https://*.line-scdn.net",
     "font-src 'self' data:",

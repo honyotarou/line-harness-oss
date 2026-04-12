@@ -1,6 +1,6 @@
 /**
  * Signed LINE Login OAuth `state` — prevents tampering with redirect, uid, ref, etc.
- * Secret: `LIFF_STATE_SECRET` if set, else `API_KEY`.
+ * Secret: see {@link resolveLiffOAuthStateSecret} in `liff-identity.ts` (`REQUIRE_LIFF_STATE_SECRET` disables `API_KEY` fallback).
  */
 
 export type LiffOAuthStateFields = {

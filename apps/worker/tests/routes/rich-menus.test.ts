@@ -4,9 +4,18 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 const dbMocks = vi.hoisted(() => ({
   getFriendById: vi.fn(),
   getLineAccountById: vi.fn(),
+  listPrincipalLineAccountIdsForEmail: vi.fn(),
 }));
 
-vi.mock('@line-crm/db', () => dbMocks);
+vi.mock('@line-crm/db', async (importOriginal) => {
+  const o = await importOriginal<typeof import('@line-crm/db')>();
+  return {
+    ...o,
+    getFriendById: dbMocks.getFriendById,
+    getLineAccountById: dbMocks.getLineAccountById,
+    listPrincipalLineAccountIdsForEmail: dbMocks.listPrincipalLineAccountIdsForEmail,
+  };
+});
 
 const lineSdkMocks = vi.hoisted(() => ({
   lineClientCtor: vi.fn(),
@@ -52,11 +61,24 @@ function env(): EnvSubset {
   };
 }
 
+function envCfScoped(): EnvSubset & typeof cfEnv {
+  return {
+    ...env(),
+    ...cfEnv,
+  };
+}
+
 type EnvSubset = { DB: D1Database; LINE_CHANNEL_ACCESS_TOKEN: string };
+
+const cfEnv = {
+  REQUIRE_CLOUDFLARE_ACCESS_JWT: '1',
+  CLOUDFLARE_ACCESS_TEAM_DOMAIN: 'team.cloudflareaccess.com',
+} as const;
 
 describe('rich menu routes', () => {
   beforeEach(() => {
     Object.values(dbMocks).forEach((mockFn) => mockFn.mockReset());
+    dbMocks.listPrincipalLineAccountIdsForEmail.mockResolvedValue([]);
     lineSdkMocks.lineClientCtor.mockClear();
     lineSdkMocks.getRichMenuList.mockClear();
     lineSdkMocks.createRichMenu.mockClear();
@@ -363,6 +385,78 @@ describe('rich menu routes', () => {
     );
 
     expect(response.status).toBe(400);
+    expect(lineSdkMocks.linkRichMenuToUser).not.toHaveBeenCalled();
+  });
+
+  it('returns 400 when a scoped principal omits lineAccountId on GET /api/rich-menus', async () => {
+    dbMocks.listPrincipalLineAccountIdsForEmail.mockResolvedValue(['allowed-account']);
+
+    const { richMenus } = await import('../../src/routes/rich-menus.js');
+    const app = new Hono();
+    app.use('*', async (c, next) => {
+      c.set('cfAccessJwtPayload', { email: 'scoped@example.com' });
+      await next();
+    });
+    app.route('/', richMenus);
+
+    const response = await app.fetch(new Request('http://localhost/api/rich-menus'), envCfScoped());
+
+    expect(response.status).toBe(400);
+    const j = (await response.json()) as { error?: string };
+    expect(j.error).toMatch(/lineAccountId/i);
+    expect(lineSdkMocks.getRichMenuList).not.toHaveBeenCalled();
+  });
+
+  it('returns 400 when a scoped principal omits lineAccountId on POST /api/rich-menus', async () => {
+    dbMocks.listPrincipalLineAccountIdsForEmail.mockResolvedValue(['allowed-account']);
+
+    const { richMenus } = await import('../../src/routes/rich-menus.js');
+    const app = new Hono();
+    app.use('*', async (c, next) => {
+      c.set('cfAccessJwtPayload', { email: 'scoped@example.com' });
+      await next();
+    });
+    app.route('/', richMenus);
+
+    const response = await app.fetch(
+      new Request('http://localhost/api/rich-menus', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ...minimalMenu }),
+      }),
+      envCfScoped(),
+    );
+
+    expect(response.status).toBe(400);
+    expect(lineSdkMocks.createRichMenu).not.toHaveBeenCalled();
+  });
+
+  it('returns 404 for POST /api/friends/:id/rich-menu when friend line account is outside scope', async () => {
+    dbMocks.listPrincipalLineAccountIdsForEmail.mockResolvedValue(['allowed-account']);
+    dbMocks.getFriendById.mockResolvedValue({
+      id: 'friend-1',
+      line_user_id: 'line-user-1',
+      line_account_id: 'other-account',
+    });
+
+    const { richMenus } = await import('../../src/routes/rich-menus.js');
+    const app = new Hono();
+    app.use('*', async (c, next) => {
+      c.set('cfAccessJwtPayload', { email: 'scoped@example.com' });
+      await next();
+    });
+    app.route('/', richMenus);
+
+    const response = await app.fetch(
+      new Request('http://localhost/api/friends/friend-1/rich-menu', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ richMenuId: 'rm-1' }),
+      }),
+      envCfScoped(),
+    );
+
+    expect(response.status).toBe(404);
     expect(lineSdkMocks.linkRichMenuToUser).not.toHaveBeenCalled();
   });
 });

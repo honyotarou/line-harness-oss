@@ -254,6 +254,47 @@ describe('fireEvent', () => {
     );
   });
 
+  it('V-4 / P3: set_metadata calls mergeFriendMetadataPatch (not unvalidated merge)', async () => {
+    const mergeMod = await import('../../src/services/friend-metadata-merge.js');
+    const mergeSpy = vi.spyOn(mergeMod, 'mergeFriendMetadataPatch');
+
+    const runMock = vi.fn().mockResolvedValue({});
+    const dbMeta = {
+      prepare: vi.fn().mockImplementation((sql: string) => ({
+        bind: vi.fn().mockReturnValue({
+          first: vi.fn().mockImplementation(async () => {
+            if (sql.includes('SELECT metadata FROM friends')) {
+              return { metadata: '{}' };
+            }
+            if (sql.includes('SELECT line_user_id FROM friends')) {
+              return null;
+            }
+            return null;
+          }),
+          run: runMock,
+        }),
+      })),
+    } as unknown as D1Database;
+
+    dbMocks.getActiveAutomationsByEvent.mockResolvedValue([
+      automationRow({
+        actions: JSON.stringify([
+          {
+            type: 'set_metadata',
+            params: { data: JSON.stringify({ tier: 'pro' }) },
+          },
+        ]),
+      }),
+    ]);
+
+    const { fireEvent } = await import('../../src/services/event-bus.js');
+    await fireEvent(dbMeta, 'friend_add', { friendId: 'f1' }, 'line-token', 'acc-1');
+
+    expect(mergeSpy).toHaveBeenCalled();
+    expect(mergeSpy.mock.calls[0]?.[1]).toEqual({ tier: 'pro' });
+    mergeSpy.mockRestore();
+  });
+
   it('applies set_metadata when friend metadata in DB is corrupt JSON', async () => {
     const runMock = vi.fn().mockResolvedValue({});
     const dbMeta = {
@@ -334,6 +375,47 @@ describe('fireEvent', () => {
     );
   });
 
+  it('logs automation failure when set_metadata patch exceeds merge key limit', async () => {
+    const patch: Record<string, number> = {};
+    for (let i = 0; i < 201; i++) {
+      patch[`k${i}`] = 1;
+    }
+    const runMock = vi.fn().mockResolvedValue({});
+    const dbMeta = {
+      prepare: vi.fn().mockImplementation((sql: string) => ({
+        bind: vi.fn().mockReturnValue({
+          first: vi.fn().mockImplementation(async () => {
+            if (sql.includes('SELECT metadata FROM friends')) {
+              return { metadata: '{}' };
+            }
+            return null;
+          }),
+          run: runMock,
+        }),
+      })),
+    } as unknown as D1Database;
+
+    dbMocks.getActiveAutomationsByEvent.mockResolvedValue([
+      automationRow({
+        actions: JSON.stringify([
+          { type: 'set_metadata', params: { data: JSON.stringify(patch) } },
+        ]),
+      }),
+    ]);
+
+    const { fireEvent } = await import('../../src/services/event-bus.js');
+    await fireEvent(dbMeta, 'friend_add', { friendId: 'f1' }, 'line-token', 'acc-1');
+
+    expect(dbMocks.createAutomationLog).toHaveBeenCalledWith(
+      dbMeta,
+      expect.objectContaining({
+        status: 'failed',
+        actionsResult: expect.stringMatching(/200 keys/i),
+      }),
+    );
+    expect(runMock).not.toHaveBeenCalled();
+  });
+
   it('logs automation failure when set_metadata patch is a JSON array not an object', async () => {
     const runMock = vi.fn().mockResolvedValue({});
     const dbMeta = {
@@ -409,6 +491,29 @@ describe('fireEvent', () => {
     );
   });
 
+  it('logs automation failure when send_webhook is blocked by empty host allowlist with REQUIRE flag', async () => {
+    dbMocks.getActiveAutomationsByEvent.mockResolvedValue([
+      automationRow({
+        actions: JSON.stringify([
+          { type: 'send_webhook', params: { url: 'https://hooks.slack.com/services/X/Y/Z' } },
+        ]),
+      }),
+    ]);
+
+    const { fireEvent } = await import('../../src/services/event-bus.js');
+    await fireEvent(emptyDb, 'friend_add', { friendId: 'f1' }, 'line-token', 'acc-1', {
+      requireAutomationSendWebhookHostAllowlist: true,
+    });
+
+    expect(dbMocks.createAutomationLog).toHaveBeenCalledWith(
+      emptyDb,
+      expect.objectContaining({
+        status: 'failed',
+        actionsResult: expect.stringMatching(/AUTOMATION_SEND_WEBHOOK_ALLOWED_HOSTS/i),
+      }),
+    );
+  });
+
   it('logs automation failure when send_webhook URL is blocked', async () => {
     dbMocks.getActiveAutomationsByEvent.mockResolvedValue([
       automationRow({
@@ -427,6 +532,59 @@ describe('fireEvent', () => {
         status: 'failed',
       }),
     );
+  });
+
+  it('logs automation failure when send_webhook host is outside AUTOMATION_SEND_WEBHOOK_ALLOWED_HOSTS', async () => {
+    dbMocks.getActiveAutomationsByEvent.mockResolvedValue([
+      automationRow({
+        actions: JSON.stringify([
+          { type: 'send_webhook', params: { url: 'https://example.com/hook' } },
+        ]),
+      }),
+    ]);
+
+    const fetchMock = vi.mocked(globalThis.fetch);
+    const { fireEvent } = await import('../../src/services/event-bus.js');
+    await fireEvent(emptyDb, 'friend_add', { friendId: 'f1' }, 'line-token', 'acc-1', {
+      automationSendWebhookAllowedHosts: 'hooks.slack.com',
+    });
+
+    expect(dbMocks.createAutomationLog).toHaveBeenCalledWith(
+      emptyDb,
+      expect.objectContaining({
+        status: 'failed',
+        actionsResult: expect.stringMatching(/host not allowed/i),
+      }),
+    );
+    const postCalls = fetchMock.mock.calls.filter(
+      (c) => typeof c[0] === 'string' && (c[0] as string).startsWith('https://example.com'),
+    );
+    expect(postCalls.length).toBe(0);
+  });
+
+  it('allows send_webhook when host matches AUTOMATION_SEND_WEBHOOK_ALLOWED_HOSTS', async () => {
+    dbMocks.getActiveAutomationsByEvent.mockResolvedValue([
+      automationRow({
+        actions: JSON.stringify([
+          { type: 'send_webhook', params: { url: 'https://hooks.slack.com/services/XXX/YYY/ZZZ' } },
+        ]),
+      }),
+    ]);
+
+    const fetchMock = vi.mocked(globalThis.fetch);
+    const { fireEvent } = await import('../../src/services/event-bus.js');
+    await fireEvent(emptyDb, 'friend_add', { friendId: 'f1' }, 'line-token', 'acc-1', {
+      automationSendWebhookAllowedHosts: '.slack.com',
+    });
+
+    expect(dbMocks.createAutomationLog).toHaveBeenCalledWith(
+      emptyDb,
+      expect.objectContaining({ status: 'success' }),
+    );
+    const slackPosts = fetchMock.mock.calls.filter(
+      (c) => typeof c[0] === 'string' && (c[0] as string).includes('hooks.slack.com'),
+    );
+    expect(slackPosts.length).toBeGreaterThan(0);
   });
 
   it('creates notifications for matching rules', async () => {

@@ -13,7 +13,7 @@ import type { Env } from '../index.js';
 import {
   DEFAULT_TRACKED_LINK_TTL_SECONDS,
   issueTrackedLinkFriendToken,
-  trackingLinkSigningSecret,
+  trackingLinkHmacSecret,
   verifyTrackedLinkFriendToken,
 } from '../services/tracking-friend-token.js';
 import { assertHttpsOutboundUrlResolvedSafe } from '../services/outbound-url-resolve.js';
@@ -74,7 +74,17 @@ trackedLinks.get('/api/tracked-links/:id/personalized-url', async (c) => {
       return c.json({ success: false, error: 'Tracked link not found' }, 404);
     }
 
-    const secret = trackingLinkSigningSecret(c.env);
+    const secret = trackingLinkHmacSecret(c.env);
+    if (secret === null) {
+      return c.json(
+        {
+          success: false,
+          error:
+            'Tracked link signing is disabled: set TRACKING_LINK_SECRET (REQUIRE_TRACKING_LINK_SECRET=1)',
+        },
+        503,
+      );
+    }
     const token = await issueTrackedLinkFriendToken(secret, {
       linkId: id,
       friendId,
@@ -191,7 +201,7 @@ trackedLinks.get('/t/:linkId', async (c) => {
     return c.json({ success: false, error: 'Link not found' }, 404);
   }
 
-  const secret = trackingLinkSigningSecret(c.env);
+  const secret = trackingLinkHmacSecret(c.env);
   let verifiedFriendId: string | null = null;
   if (fParam) {
     verifiedFriendId = await verifyTrackedLinkFriendToken(secret, linkId, fParam);

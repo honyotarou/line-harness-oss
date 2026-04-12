@@ -14,6 +14,7 @@
  *   ?page=book   — booking page (calendar slot picker)
  */
 
+import './liff-index.css';
 import { getLiffApiBaseUrl } from './api-base.js';
 import { formatLiffUserVisibleError } from './submit-error-message.js';
 import { initBooking } from './booking.js';

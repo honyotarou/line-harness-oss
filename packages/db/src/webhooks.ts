@@ -17,6 +17,7 @@ export interface OutgoingWebhookRow {
   url: string;
   event_types: string; // JSON配列
   secret: string | null;
+  line_account_id: string | null;
   is_active: number;
   created_at: string;
   updated_at: string;
@@ -114,13 +115,19 @@ export async function getOutgoingWebhookById(
 
 export async function createOutgoingWebhook(
   db: D1Database,
-  input: { name: string; url: string; eventTypes: string[]; secret?: string },
+  input: {
+    name: string;
+    url: string;
+    eventTypes: string[];
+    secret?: string;
+    lineAccountId?: string | null;
+  },
 ): Promise<OutgoingWebhookRow> {
   const id = crypto.randomUUID();
   const now = jstNow();
   await db
     .prepare(
-      `INSERT INTO outgoing_webhooks (id, name, url, event_types, secret, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?)`,
+      `INSERT INTO outgoing_webhooks (id, name, url, event_types, secret, line_account_id, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
     )
     .bind(
       id,
@@ -128,6 +135,7 @@ export async function createOutgoingWebhook(
       input.url,
       JSON.stringify(input.eventTypes),
       input.secret ?? null,
+      input.lineAccountId?.trim() || null,
       now,
       now,
     )
@@ -143,6 +151,7 @@ export async function updateOutgoingWebhook(
     url: string;
     eventTypes: string[];
     secret: string;
+    lineAccountId: string | null;
     isActive: boolean;
   }>,
 ): Promise<void> {
@@ -163,6 +172,11 @@ export async function updateOutgoingWebhook(
   if (updates.secret !== undefined) {
     sets.push('secret = ?');
     values.push(updates.secret);
+  }
+  if (updates.lineAccountId !== undefined) {
+    sets.push('line_account_id = ?');
+    const v = updates.lineAccountId;
+    values.push(typeof v === 'string' && v.trim() ? v.trim() : null);
   }
   if (updates.isActive !== undefined) {
     sets.push('is_active = ?');

@@ -40,9 +40,22 @@ LIFF_URL = "https://liff.line.me/YOUR_LIFF_ID"
 # Multi-account on one Worker: force explicit lineAccountId on list APIs (friends, broadcasts, line-accounts, …)
 # MULTI_LINE_ACCOUNT_QUERY_REQUIRES_LINE_ACCOUNT_ID = "1"
 #
+# REQUIRE_LIFF_STATE_SECRET = "1"   OAuth state must use wrangler secret LIFF_STATE_SECRET (no API_KEY fallback)
+# ALLOW_LIFF_OAUTH_API_KEY_FALLBACK = "1"   local/dev only: sign OAuth state with API_KEY when LIFF_STATE_SECRET unset
+# LINE_ACCOUNT_SECRETS_KEY = "<base64 of 32 bytes>"   optional AES-GCM at-rest for line_accounts tokens (`lh1:` in D1)
+#
 # REQUIRE_ADMIN_SESSION_SECRET = "1"   plus wrangler secret put ADMIN_SESSION_SECRET — sessions must not use API_KEY as HMAC
 # Non-local HTTPS WORKER_URL also refuses API_KEY-backed session signing unless ADMIN_SESSION_SECRET is set (or transitional ALLOW_LEGACY_API_KEY_SESSION_SIGNER=1).
 # BROADCAST_SEND_SECRET = "<long random>"   plus header X-Broadcast-Send-Secret on mass send endpoints
+# REQUIRE_BROADCAST_SEND_SECRET = "1"   refuse mass send until BROADCAST_SEND_SECRET is configured
+#
+# LINE_ACCOUNT_SECRETS_WRITE_SECRET = "<long random>"   plus X-Line-Account-Secrets-Write to rotate channel token/secret (PUT /api/line-accounts/:id)
+# ALLOW_LINE_ACCOUNT_CREDENTIAL_PUT_WITHOUT_EXTRA_SECRET = "1"   dev-only: skip the above guard (insecure)
+# REQUIRE_OWNER_DB_ROLE_FOR_LINE_CREDENTIALS = "1"   with Access JWT: explicit admin_principal_roles row must be role owner to create accounts or rotate credentials (no row = legacy full admin)
+#
+# Optional: comma-separated host allowlist for automation action send_webhook only (exact host or `.suffix`).
+# AUTOMATION_SEND_WEBHOOK_ALLOWED_HOSTS = "hooks.slack.com,.mycompany.com"
+# REQUIRE_AUTOMATION_SEND_WEBHOOK_ALLOWED_HOSTS = "1"   refuse send_webhook unless allowlist is non-empty
 #
 # Legacy only: allow Bearer raw API_KEY on GET /api/auth/session (default: off)
 # ALLOW_LEGACY_API_KEY_BEARER_SESSION = "1"

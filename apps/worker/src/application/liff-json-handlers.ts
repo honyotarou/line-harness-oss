@@ -1,3 +1,4 @@
+import type { LineAccountDbOptions } from '@line-crm/db';
 import {
   createUser,
   getEntryRouteByRefCode,
@@ -29,8 +30,14 @@ export async function liffProfilePost(
   db: D1Database,
   loginChannelId: string,
   body: LiffLineUserBody,
+  lineAccountOpts?: LineAccountDbOptions,
 ): Promise<LiffJsonResult> {
-  const resolved = await resolveLiffFriendFromLineUserBody(db, loginChannelId, body);
+  const resolved = await resolveLiffFriendFromLineUserBody(
+    db,
+    loginChannelId,
+    body,
+    lineAccountOpts,
+  );
   if (!resolved.ok) {
     return { status: resolved.status, body: resolved.body as Record<string, unknown> };
   }
@@ -54,6 +61,7 @@ export async function liffBookingPhoneFallbackPost(
   loginChannelId: string,
   bookingFallbackTel: string | undefined,
   body: LiffLineUserBody,
+  lineAccountOpts?: LineAccountDbOptions,
 ): Promise<LiffJsonResult> {
   if (!body.lineUserId || !body.idToken) {
     return {
@@ -76,6 +84,7 @@ export async function liffBookingPhoneFallbackPost(
     loginChannelId,
     body.lineUserId,
     body.idToken,
+    lineAccountOpts,
   );
   if (!resolved.ok) {
     return { status: resolved.status, body: resolved.body as Record<string, unknown> };
@@ -104,12 +113,13 @@ export async function liffLinkPost(
   db: D1Database,
   loginChannelId: string,
   body: LiffLinkBody,
+  lineAccountOpts?: LineAccountDbOptions,
 ): Promise<LiffJsonResult> {
   if (!body.idToken) {
     return { status: 400, body: { success: false, error: 'idToken is required' } };
   }
 
-  const verified = await verifyLineLoginIdToken(db, loginChannelId, body.idToken);
+  const verified = await verifyLineLoginIdToken(db, loginChannelId, body.idToken, lineAccountOpts);
   if (!verified) {
     return { status: 401, body: { success: false, error: 'Invalid ID token' } };
   }

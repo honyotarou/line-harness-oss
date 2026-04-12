@@ -5,6 +5,7 @@ import {
   getCloudflareAccessEmailFromContext,
   isCloudflareAccessEnforced,
 } from './cloudflare-access-principal.js';
+import { lineAccountDbOptions } from './line-account-at-rest-key.js';
 
 export type LineAccountScope = { mode: 'all' } | { mode: 'restricted'; ids: Set<string> };
 
@@ -34,7 +35,7 @@ export async function resolveLineAccountScopeForRequest(
   }
 
   if (isTruthyEnvFlag(c.env.MULTI_LINE_ACCOUNT_QUERY_REQUIRES_LINE_ACCOUNT_ID)) {
-    const accounts = await getLineAccounts(db);
+    const accounts = await getLineAccounts(db, lineAccountDbOptions(c.env));
     const activeIds = accounts.filter((a) => Boolean(a.is_active)).map((a) => a.id);
     if (activeIds.length > 1) {
       return { mode: 'restricted', ids: new Set(activeIds) };
@@ -121,4 +122,21 @@ export function validateScopedLineAccountBody(
     };
   }
   return { ok: true, lineAccountId: q };
+}
+
+const LINE_ACCOUNT_WRITE_FORBIDDEN_ERROR =
+  'Forbidden: mutating LINE accounts requires an unrestricted admin principal';
+
+/**
+ * POST/PUT/DELETE on LINE accounts are owner-equivalent: only `scope.mode === 'all'`
+ * (no Cloudflare line-account restriction, no multi-account restricted API_KEY mode).
+ * Scoped principals may list/read accounts visible to them only.
+ */
+export function lineAccountWriteForbiddenForScope(
+  scope: LineAccountScope,
+): { forbidden: true; error: string } | { forbidden: false } {
+  if (scope.mode === 'all') {
+    return { forbidden: false };
+  }
+  return { forbidden: true, error: LINE_ACCOUNT_WRITE_FORBIDDEN_ERROR };
 }

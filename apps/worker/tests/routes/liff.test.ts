@@ -154,6 +154,7 @@ const STATE_SECRET = 'test-api-key-secret';
 const baseEnv = {
   DB: {} as D1Database,
   API_KEY: STATE_SECRET,
+  ALLOW_LIFF_OAUTH_API_KEY_FALLBACK: '1',
   LIFF_URL: 'https://liff.line.me/2009554425-4IMBmLQ9',
   LINE_LOGIN_CHANNEL_ID: 'login-channel-id',
   LINE_LOGIN_CHANNEL_SECRET: 'login-secret',
@@ -283,6 +284,29 @@ describe('liff auth routes', () => {
     const html = await response.text();
     expect(html).toContain('LIFF_URL');
     expect(html).toContain('設定');
+  });
+
+  it('returns error HTML when REQUIRE_LIFF_STATE_SECRET is on but LIFF_STATE_SECRET is unset', async () => {
+    const { liffRoutes } = await import('../../src/routes/liff.js');
+    const app = new Hono();
+    app.route('/', liffRoutes);
+
+    const response = await app.fetch(
+      new Request('http://localhost/auth/line', {
+        headers: { 'User-Agent': 'Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X)' },
+      }),
+      {
+        ...baseEnv,
+        REQUIRE_LIFF_STATE_SECRET: '1',
+        LIFF_STATE_SECRET: undefined,
+        DB: {} as D1Database,
+      } as never,
+    );
+
+    expect(response.status).toBe(200);
+    const html = await response.text();
+    expect(html).toContain('LIFF_STATE_SECRET');
+    expect(html).toContain('REQUIRE_LIFF_STATE_SECRET');
   });
 
   it('uses OAuth for cross-account mobile links and preserves signed attribution state', async () => {

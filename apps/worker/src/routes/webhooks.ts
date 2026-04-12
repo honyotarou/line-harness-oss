@@ -24,6 +24,12 @@ import {
 } from '../services/request-body.js';
 import { enforceRateLimit } from '../services/request-rate-limit.js';
 import { parseStringArrayJson } from '../services/safe-json.js';
+import {
+  resolveLineAccountScopeForRequest,
+  resourceLineAccountVisibleInScope,
+  validateScopedLineAccountBody,
+  validateScopedLineAccountQueryParam,
+} from '../services/admin-line-account-scope.js';
 
 const webhooks = new Hono<Env>();
 const INCOMING_WEBHOOK_LIMIT_BYTES = 64 * 1024;
@@ -171,7 +177,20 @@ webhooks.delete('/api/webhooks/incoming/:id', async (c) => {
 
 webhooks.get('/api/webhooks/outgoing', async (c) => {
   try {
-    const items = await getOutgoingWebhooks(c.env.DB);
+    const scope = await resolveLineAccountScopeForRequest(c.env.DB, c);
+    const lineAccountId = c.req.query('lineAccountId');
+    const q = validateScopedLineAccountQueryParam(scope, lineAccountId);
+    if (!q.ok) {
+      return c.json({ success: false, error: q.error }, q.status);
+    }
+
+    let items = await getOutgoingWebhooks(c.env.DB);
+    if (scope.mode === 'restricted' && lineAccountId) {
+      items = items.filter((w) => (w.line_account_id ?? null) === lineAccountId);
+    } else if (scope.mode === 'all' && lineAccountId) {
+      items = items.filter((w) => (w.line_account_id ?? null) === lineAccountId);
+    }
+
     return c.json({
       success: true,
       data: items.map((w) => ({
@@ -180,6 +199,7 @@ webhooks.get('/api/webhooks/outgoing', async (c) => {
         url: w.url,
         eventTypes: parseStringArrayJson(w.event_types) ?? [],
         secret: maskSigningSecretForList(w.secret),
+        lineAccountId: w.line_account_id ?? null,
         isActive: Boolean(w.is_active),
         createdAt: w.created_at,
         updatedAt: w.updated_at,
@@ -193,21 +213,35 @@ webhooks.get('/api/webhooks/outgoing', async (c) => {
 
 webhooks.post('/api/webhooks/outgoing', async (c) => {
   try {
+    const scope = await resolveLineAccountScopeForRequest(c.env.DB, c);
     const body = await readJsonBodyWithLimit<{
       name: string;
       url: string;
       eventTypes: string[];
       secret?: string;
+      lineAccountId?: string | null;
     }>(c.req.raw, DEFAULT_ADMIN_JSON_BODY_LIMIT_BYTES);
     if (!body.name || !body.url)
       return c.json({ success: false, error: 'name and url are required' }, 400);
+
+    const scoped = validateScopedLineAccountBody(scope, body.lineAccountId ?? null);
+    if (!scoped.ok) {
+      return c.json({ success: false, error: scoped.error }, scoped.status);
+    }
+    if (scope.mode === 'restricted' && !scoped.lineAccountId) {
+      return c.json({ success: false, error: 'lineAccountId is required for this principal' }, 400);
+    }
+
     const outboundOk = await assertHttpsOutboundUrlResolvedSafe(body.url, fetch);
     if (!outboundOk.ok) {
       return c.json({ success: false, error: outboundOk.reason }, 400);
     }
     const item = await createOutgoingWebhook(c.env.DB, {
-      ...body,
+      name: body.name,
+      url: body.url,
       eventTypes: body.eventTypes ?? [],
+      secret: body.secret,
+      lineAccountId: scoped.lineAccountId,
     });
     return c.json(
       {
@@ -217,6 +251,7 @@ webhooks.post('/api/webhooks/outgoing', async (c) => {
           name: item.name,
           url: item.url,
           eventTypes: parseStringArrayJson(item.event_types) ?? [],
+          lineAccountId: item.line_account_id ?? null,
           isActive: Boolean(item.is_active),
           createdAt: item.created_at,
         },
@@ -234,6 +269,15 @@ webhooks.post('/api/webhooks/outgoing', async (c) => {
 webhooks.put('/api/webhooks/outgoing/:id', async (c) => {
   try {
     const id = c.req.param('id');
+    const scopePut = await resolveLineAccountScopeForRequest(c.env.DB, c);
+    const existingWh = await getOutgoingWebhookById(c.env.DB, id);
+    if (!existingWh) {
+      return c.json({ success: false, error: 'Not found' }, 404);
+    }
+    if (!resourceLineAccountVisibleInScope(scopePut, existingWh.line_account_id)) {
+      return c.json({ success: false, error: 'Not found' }, 404);
+    }
+
     const body = await readJsonBodyWithLimit<Record<string, unknown>>(
       c.req.raw,
       DEFAULT_ADMIN_JSON_BODY_LIMIT_BYTES,
@@ -244,7 +288,29 @@ webhooks.put('/api/webhooks/outgoing/:id', async (c) => {
         return c.json({ success: false, error: outboundOk.reason }, 400);
       }
     }
-    await updateOutgoingWebhook(c.env.DB, id, body);
+
+    const updates: Parameters<typeof updateOutgoingWebhook>[2] = {};
+    if (typeof body.name === 'string') updates.name = body.name;
+    if (body.url !== undefined && body.url !== null) updates.url = String(body.url);
+    if (body.secret !== undefined && body.secret !== null) updates.secret = String(body.secret);
+    const et = body.eventTypes ?? body.event_types;
+    if (Array.isArray(et)) updates.eventTypes = et as string[];
+    const ia = body.isActive ?? body.is_active;
+    if (typeof ia === 'boolean') updates.isActive = ia;
+    else if (ia === 0 || ia === 1) updates.isActive = Boolean(ia);
+    if (body.lineAccountId !== undefined || body.line_account_id !== undefined) {
+      const rawLa = body.lineAccountId ?? body.line_account_id;
+      const scopedLa = validateScopedLineAccountBody(
+        scopePut,
+        rawLa === null ? null : typeof rawLa === 'string' ? rawLa : null,
+      );
+      if (!scopedLa.ok) {
+        return c.json({ success: false, error: scopedLa.error }, scopedLa.status);
+      }
+      updates.lineAccountId = scopedLa.lineAccountId;
+    }
+
+    await updateOutgoingWebhook(c.env.DB, id, updates);
     const updated = await getOutgoingWebhookById(c.env.DB, id);
     if (!updated) return c.json({ success: false, error: 'Not found' }, 404);
     return c.json({
@@ -254,6 +320,7 @@ webhooks.put('/api/webhooks/outgoing/:id', async (c) => {
         name: updated.name,
         url: updated.url,
         eventTypes: parseStringArrayJson(updated.event_types) ?? [],
+        lineAccountId: updated.line_account_id ?? null,
         isActive: Boolean(updated.is_active),
       },
     });
@@ -267,6 +334,14 @@ webhooks.put('/api/webhooks/outgoing/:id', async (c) => {
 
 webhooks.delete('/api/webhooks/outgoing/:id', async (c) => {
   try {
+    const scopeDel = await resolveLineAccountScopeForRequest(c.env.DB, c);
+    const whDel = await getOutgoingWebhookById(c.env.DB, c.req.param('id'));
+    if (!whDel) {
+      return c.json({ success: false, error: 'Not found' }, 404);
+    }
+    if (!resourceLineAccountVisibleInScope(scopeDel, whDel.line_account_id)) {
+      return c.json({ success: false, error: 'Not found' }, 404);
+    }
     await deleteOutgoingWebhook(c.env.DB, c.req.param('id'));
     return c.json({ success: true, data: null });
   } catch (err) {
@@ -338,11 +413,18 @@ webhooks.post('/api/webhooks/incoming/:id/receive', async (c) => {
     }
 
     // イベントバスに発火: source_type をイベントタイプとして使用
-    const { fireEvent } = await import('../services/event-bus.js');
     const eventType = `incoming_webhook.${wh.source_type}`;
-    await fireEvent(c.env.DB, eventType, {
-      eventData: { webhookId: wh.id, source: wh.source_type, payload: body },
-    });
+    const { fireEventRespectingAutomationWebhookHosts } = await import(
+      '../services/fire-event-outbound.js'
+    );
+    await fireEventRespectingAutomationWebhookHosts(
+      c.env.DB,
+      eventType,
+      {
+        eventData: { webhookId: wh.id, source: wh.source_type, payload: body },
+      },
+      c.env,
+    );
 
     return c.json({ success: true, data: { received: true, source: wh.source_type } });
   } catch (err) {

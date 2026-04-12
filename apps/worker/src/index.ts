@@ -1,5 +1,6 @@
 import { Hono } from 'hono';
 import { getLineAccounts } from '@line-crm/db';
+import { lineAccountDbOptions } from './services/line-account-at-rest-key.js';
 import { adminRbacMiddleware } from './middleware/admin-rbac.js';
 import { authMiddleware } from './middleware/auth.js';
 import { cloudflareAccessMiddleware } from './middleware/cloudflare-access.js';
@@ -73,6 +74,24 @@ export type Env = {
     LIFF_STATE_SECRET?: string;
     /** Optional; defaults to API_KEY. HMAC secret for signed `?f=` on tracked links (GET /t/:id). */
     TRACKING_LINK_SECRET?: string;
+    /**
+     * `1` / `true`: refuse tracked-link `?f=` signing/verification unless `TRACKING_LINK_SECRET` is set
+     * (no API_KEY fallback — mitigates token forgery if API_KEY leaks).
+     */
+    REQUIRE_TRACKING_LINK_SECRET?: string;
+    /**
+     * `1` / `true`: OAuth `state` must be signed with `LIFF_STATE_SECRET` only (no `API_KEY` fallback).
+     * Use in production so a leaked API key cannot forge login state.
+     */
+    REQUIRE_LIFF_STATE_SECRET?: string;
+    /**
+     * `1` / `true`: allow OAuth `state` signing with `API_KEY` when `LIFF_STATE_SECRET` is unset (local dev only).
+     */
+    ALLOW_LIFF_OAUTH_API_KEY_FALLBACK?: string;
+    /**
+     * Base64 (standard or URL-safe) of 32 raw bytes — seals `line_accounts` tokens/secrets at rest in D1 (`lh1:` prefix).
+     */
+    LINE_ACCOUNT_SECRETS_KEY?: string;
     /** `1` / `true`: on friend add, send welcome Flex (anxiety picker) once; skip DB scenario step-0 reply if delay=0. Postback `anxiety=*` always handled when user taps buttons. */
     WELCOME_ANXIETY_FLOW?: string;
     /** Optional LIFF URL for booking button in anxiety follow-up (defaults to `LIFF_URL`). */
@@ -155,6 +174,33 @@ export type Env = {
      * with the same value (second factor against accidental or stolen-admin mass send).
      */
     BROADCAST_SEND_SECRET?: string;
+    /**
+     * `1` / `true`: refuse mass send unless `BROADCAST_SEND_SECRET` is set (forces second factor configuration).
+     */
+    REQUIRE_BROADCAST_SEND_SECRET?: string;
+    /**
+     * Optional comma-separated host allowlist for automation `send_webhook` only.
+     * Each entry: exact hostname (`hooks.slack.com`) or suffix (`.example.com`). When unset/empty, only SSRF/DNS checks apply.
+     */
+    AUTOMATION_SEND_WEBHOOK_ALLOWED_HOSTS?: string;
+    /**
+     * `1` / `true`: automation `send_webhook` requires a non-empty `AUTOMATION_SEND_WEBHOOK_ALLOWED_HOSTS` allowlist.
+     */
+    REQUIRE_AUTOMATION_SEND_WEBHOOK_ALLOWED_HOSTS?: string;
+    /**
+     * Secret for rotating `channel_access_token` / `channel_secret` via PUT `/api/line-accounts/:id`
+     * (send matching `X-Line-Account-Secrets-Write`).
+     */
+    LINE_ACCOUNT_SECRETS_WRITE_SECRET?: string;
+    /**
+     * `1` / `true`: allow credential rotation without `LINE_ACCOUNT_SECRETS_WRITE_SECRET` (insecure; dev only).
+     */
+    ALLOW_LINE_ACCOUNT_CREDENTIAL_PUT_WITHOUT_EXTRA_SECRET?: string;
+    /**
+     * `1` / `true`: with Cloudflare Access, only principals **without** an `admin_principal_roles` row
+     * or listed as `owner` may create LINE accounts or rotate Messaging credentials; explicit `admin` is blocked.
+     */
+    REQUIRE_OWNER_DB_ROLE_FOR_LINE_CREDENTIALS?: string;
     /**
      * Optional AES-GCM key material (any string; SHA-256 → 256-bit key) for encrypting Google Calendar
      * `access_token`, `refresh_token`, and `api_key` in D1. When unset, tokens are stored as submitted (legacy).
@@ -278,13 +324,15 @@ async function scheduled(
   env: Env['Bindings'],
   _ctx: ExecutionContext,
 ): Promise<void> {
-  const dbAccounts = await getLineAccounts(env.DB);
+  const laOpts = lineAccountDbOptions(env);
+  const dbAccounts = await getLineAccounts(env.DB, laOpts);
   await runScheduledJobs({
     db: env.DB,
     defaultAccessToken: env.LINE_CHANNEL_ACCESS_TOKEN,
     workerUrl: env.WORKER_URL,
     defaultLineChannelId: env.LINE_CHANNEL_ID,
     dbAccounts,
+    lineAccountDbOptions: laOpts,
   });
 }
 
