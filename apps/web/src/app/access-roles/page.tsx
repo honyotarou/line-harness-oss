@@ -7,14 +7,15 @@ import { Alert } from '@/components/ui/alert';
 import { Badge } from '@/components/ui/badge';
 import { Input, Select } from '@/components/ui/field';
 
-type Row = { email: string; role: 'owner' | 'admin' | 'viewer'; updatedAt: string };
+type PrincipalRole = 'owner' | 'admin' | 'viewer';
+type Row = { email: string; role: PrincipalRole; updatedAt: string };
 
 export default function AccessRolesPage() {
   const [rows, setRows] = useState<Row[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [email, setEmail] = useState('');
-  const [role, setRole] = useState<'viewer' | 'admin'>('viewer');
+  const [role, setRole] = useState<PrincipalRole>('viewer');
   const [saving, setSaving] = useState(false);
 
   const load = useCallback(async () => {
@@ -122,7 +123,7 @@ export default function AccessRolesPage() {
             ロール
             <Select
               value={role}
-              onChange={(ev) => setRole(ev.target.value as 'viewer' | 'admin' | 'owner')}
+              onChange={(ev) => setRole(ev.target.value as PrincipalRole)}
               className="mt-1"
               disabled={saving}
             >
