@@ -23,6 +23,11 @@ export async function cloudflareAccessMiddleware(
     return next();
   }
 
+  // CORS preflight never sends Cf-Access-Jwt-Assertion; let prior CORS middleware answer OPTIONS.
+  if (c.req.method === 'OPTIONS') {
+    return next();
+  }
+
   const url = new URL(c.req.url);
   if (isCloudflareAccessExemptPath(url.pathname, c.req.method)) {
     return next();
