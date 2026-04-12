@@ -66,6 +66,24 @@ describe('cloudflareAccessMiddleware', () => {
     expect(body.error).toMatch(/access/i);
   });
 
+  it('allows OPTIONS without JWT so CORS preflight can complete', async () => {
+    const app = new Hono<{ Bindings: Env['Bindings'] }>();
+    app.use('*', cloudflareAccessMiddleware);
+    app.options('/api/auth/login', (c) => c.body(null, 204));
+
+    const res = await app.fetch(
+      new Request('http://localhost/api/auth/login', {
+        method: 'OPTIONS',
+        headers: { Origin: 'https://admin.example.com' },
+      }),
+      env({
+        REQUIRE_CLOUDFLARE_ACCESS_JWT: '1',
+        CLOUDFLARE_ACCESS_TEAM_DOMAIN: 'team.cloudflareaccess.com',
+      }),
+    );
+    expect(res.status).toBe(204);
+  });
+
   it('returns 403 for POST /api/auth/login when enforcement is on and JWT is missing', async () => {
     const app = new Hono<{ Bindings: Env['Bindings'] }>();
     app.use('*', cloudflareAccessMiddleware);
