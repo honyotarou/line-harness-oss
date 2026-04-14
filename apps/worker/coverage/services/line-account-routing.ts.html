@@ -23,30 +23,30 @@
         <div class='clearfix'>
             
             <div class='fl pad1y space-right2'>
-                <span class="strong">100% </span>
+                <span class="strong">0% </span>
                 <span class="quiet">Statements</span>
-                <span class='fraction'>27/27</span>
+                <span class='fraction'>0/27</span>
             </div>
         
             
             <div class='fl pad1y space-right2'>
-                <span class="strong">100% </span>
+                <span class="strong">0% </span>
                 <span class="quiet">Branches</span>
-                <span class='fraction'>8/8</span>
+                <span class='fraction'>0/1</span>
             </div>
         
             
             <div class='fl pad1y space-right2'>
-                <span class="strong">100% </span>
+                <span class="strong">0% </span>
                 <span class="quiet">Functions</span>
-                <span class='fraction'>2/2</span>
+                <span class='fraction'>0/1</span>
             </div>
         
             
             <div class='fl pad1y space-right2'>
-                <span class="strong">100% </span>
+                <span class="strong">0% </span>
                 <span class="quiet">Lines</span>
-                <span class='fraction'>27/27</span>
+                <span class='fraction'>0/27</span>
             </div>
         
             
@@ -61,7 +61,7 @@
             </div>
         </template>
     </div>
-    <div class='status-line high'></div>
+    <div class='status-line low'></div>
     <pre><table class="coverage">
 <tr><td class="line-count quiet"><a name='L1'></a><a href='#L1'>1</a>
 <a name='L2'></a><a href='#L2'>2</a>
@@ -94,68 +94,68 @@
 <a name='L29'></a><a href='#L29'>29</a>
 <a name='L30'></a><a href='#L30'>30</a>
 <a name='L31'></a><a href='#L31'>31</a>
-<a name='L32'></a><a href='#L32'>32</a></td><td class="line-coverage quiet"><span class="cline-any cline-yes">1x</span>
+<a name='L32'></a><a href='#L32'>32</a></td><td class="line-coverage quiet"><span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-yes">16x</span>
-<span class="cline-any cline-yes">16x</span>
-<span class="cline-any cline-yes">16x</span>
-<span class="cline-any cline-yes">16x</span>
-<span class="cline-any cline-yes">16x</span>
-<span class="cline-any cline-yes">16x</span>
-<span class="cline-any cline-yes">16x</span>
-<span class="cline-any cline-yes">8x</span>
-<span class="cline-any cline-yes">8x</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-yes">8x</span>
-<span class="cline-any cline-yes">16x</span>
-<span class="cline-any cline-yes">16x</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-yes">9x</span>
-<span class="cline-any cline-yes">9x</span>
-<span class="cline-any cline-yes">9x</span>
-<span class="cline-any cline-yes">9x</span>
-<span class="cline-any cline-yes">9x</span>
-<span class="cline-any cline-yes">9x</span>
-<span class="cline-any cline-yes">9x</span>
-<span class="cline-any cline-yes">9x</span>
-<span class="cline-any cline-yes">9x</span>
-<span class="cline-any cline-yes">9x</span>
-<span class="cline-any cline-yes">9x</span>
-<span class="cline-any cline-yes">9x</span>
-<span class="cline-any cline-yes">9x</span>
-<span class="cline-any cline-yes">9x</span>
-<span class="cline-any cline-neutral">&nbsp;</span></td><td class="text"><pre class="prettyprint lang-js">import type { LineAccountDbOptions } from '@line-crm/db';
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span></td><td class="text"><pre class="prettyprint lang-js"><span class="cstat-no" title="statement not covered" ><span class="fstat-no" title="function not covered" ><span class="branch-0 cbranch-no" title="branch not covered" >import type { LineAccountDbOptions } from '@line-crm/db';</span></span></span>
 import { getFriendById, getLineAccountById } from '@line-crm/db';
 &nbsp;
-export async function resolveLineAccessTokenForLineAccountId(
-  db: D1Database,
-  defaultAccessToken: string,
-  lineAccountId?: string | null,
-  lineAccountOpts?: LineAccountDbOptions,
-): Promise&lt;string&gt; {
-  if (!lineAccountId) {
-    return defaultAccessToken;
-  }
+<span class="cstat-no" title="statement not covered" >export async function resolveLineAccessTokenForLineAccountId(</span>
+<span class="cstat-no" title="statement not covered" >  db: D1Database,</span>
+<span class="cstat-no" title="statement not covered" >  defaultAccessToken: string,</span>
+<span class="cstat-no" title="statement not covered" >  lineAccountId?: string | null,</span>
+<span class="cstat-no" title="statement not covered" >  lineAccountOpts?: LineAccountDbOptions,</span>
+<span class="cstat-no" title="statement not covered" >): Promise&lt;string&gt; {</span>
+<span class="cstat-no" title="statement not covered" >  if (!lineAccountId) {</span>
+<span class="cstat-no" title="statement not covered" >    return defaultAccessToken;</span>
+<span class="cstat-no" title="statement not covered" >  }</span>
 &nbsp;
-  const account = await getLineAccountById(db, lineAccountId, lineAccountOpts);
-  return account?.channel_access_token ?? defaultAccessToken;
-}
+<span class="cstat-no" title="statement not covered" >  const account = await getLineAccountById(db, lineAccountId, lineAccountOpts);</span>
+<span class="cstat-no" title="statement not covered" >  return account?.channel_access_token ?? defaultAccessToken;</span>
+<span class="cstat-no" title="statement not covered" >}</span>
 &nbsp;
-export async function resolveLineAccessTokenForFriend(
-  db: D1Database,
-  defaultAccessToken: string,
-  friendId: string,
-  lineAccountOpts?: LineAccountDbOptions,
-): Promise&lt;string&gt; {
-  const friend = await getFriendById(db, friendId);
-  return resolveLineAccessTokenForLineAccountId(
-    db,
-    defaultAccessToken,
-    friend?.line_account_id ?? null,
-    lineAccountOpts,
-  );
-}
+<span class="cstat-no" title="statement not covered" >export async function resolveLineAccessTokenForFriend(</span>
+<span class="cstat-no" title="statement not covered" >  db: D1Database,</span>
+<span class="cstat-no" title="statement not covered" >  defaultAccessToken: string,</span>
+<span class="cstat-no" title="statement not covered" >  friendId: string,</span>
+<span class="cstat-no" title="statement not covered" >  lineAccountOpts?: LineAccountDbOptions,</span>
+<span class="cstat-no" title="statement not covered" >): Promise&lt;string&gt; {</span>
+<span class="cstat-no" title="statement not covered" >  const friend = await getFriendById(db, friendId);</span>
+<span class="cstat-no" title="statement not covered" >  return resolveLineAccessTokenForLineAccountId(</span>
+<span class="cstat-no" title="statement not covered" >    db,</span>
+<span class="cstat-no" title="statement not covered" >    defaultAccessToken,</span>
+<span class="cstat-no" title="statement not covered" >    friend?.line_account_id ?? null,</span>
+<span class="cstat-no" title="statement not covered" >    lineAccountOpts,</span>
+<span class="cstat-no" title="statement not covered" >  );</span>
+<span class="cstat-no" title="statement not covered" >}</span>
 &nbsp;</pre></td></tr></table></pre>
 
                 <div class='push'></div><!-- for sticky footer -->
@@ -163,7 +163,7 @@ export async function resolveLineAccessTokenForFriend(
             <div class='footer quiet pad2 space-top1 center small'>
                 Code coverage generated by
                 <a href="https://istanbul.js.org/" target="_blank" rel="noopener noreferrer">istanbul</a>
-                at 2026-04-12T04:29:46.300Z
+                at 2026-04-14T22:26:55.453Z
             </div>
         <script src="../prettify.js"></script>
         <script>

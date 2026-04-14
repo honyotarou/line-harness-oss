@@ -30,4 +30,30 @@ describe('verifySignedPayload', () => {
       true,
     );
   });
+
+  it('supports timestamped signatures and rejects replays outside the window', async () => {
+    const { buildTimestampedSignedPayload, verifySignedPayload } = await import(
+      '../../src/services/signed-payload.js'
+    );
+    const payload = '{"ok":true}';
+    const ts = '1700000000';
+    const message = buildTimestampedSignedPayload(ts, payload);
+    const mac = sign('top-secret', message);
+
+    await expect(
+      verifySignedPayload('top-secret', payload, mac, {
+        timestamp: ts,
+        maxAgeSec: 300,
+        nowMs: 1700000000_000,
+      }),
+    ).resolves.toBe(true);
+
+    await expect(
+      verifySignedPayload('top-secret', payload, mac, {
+        timestamp: ts,
+        maxAgeSec: 300,
+        nowMs: 1700000400_000,
+      }),
+    ).resolves.toBe(false);
+  });
 });

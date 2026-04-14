@@ -103,7 +103,7 @@ function lineOAuthFetchSuccess(verified: {
   name?: string;
   pictureUrl?: string;
 }) {
-  return vi.fn(async (input: RequestInfo | URL) => {
+  return vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
     const url =
       typeof input === 'string' ? input : input instanceof Request ? input.url : input.toString();
     if (url.includes('cloudflare-dns.com/dns-query')) {
@@ -126,7 +126,15 @@ function lineOAuthFetchSuccess(verified: {
       );
     }
     if (url.includes('/oauth2/v2.1/verify')) {
-      return new Response(JSON.stringify(verified), {
+      let aud = 'login-channel-id';
+      const body = init?.body;
+      if (body instanceof URLSearchParams) {
+        aud = body.get('client_id') ?? aud;
+      } else if (typeof body === 'string') {
+        const sp = new URLSearchParams(body);
+        aud = sp.get('client_id') ?? aud;
+      }
+      return new Response(JSON.stringify({ ...verified, aud }), {
         status: 200,
         headers: { 'Content-Type': 'application/json' },
       });
@@ -755,7 +763,7 @@ describe('liff public API routes', () => {
     vi.stubGlobal(
       'fetch',
       vi.fn().mockResolvedValue(
-        new Response(JSON.stringify({ sub: 'Ux' }), {
+        new Response(JSON.stringify({ sub: 'Ux', aud: 'login-channel-id' }), {
           status: 200,
           headers: { 'Content-Type': 'application/json' },
         }),
@@ -782,7 +790,7 @@ describe('liff public API routes', () => {
     vi.stubGlobal(
       'fetch',
       vi.fn().mockResolvedValue(
-        new Response(JSON.stringify({ sub: 'Ux' }), {
+        new Response(JSON.stringify({ sub: 'Ux', aud: 'login-channel-id' }), {
           status: 200,
           headers: { 'Content-Type': 'application/json' },
         }),
@@ -862,7 +870,7 @@ describe('liff public API routes', () => {
     vi.stubGlobal(
       'fetch',
       vi.fn().mockResolvedValue(
-        new Response(JSON.stringify({ sub: 'U-unknown' }), {
+        new Response(JSON.stringify({ sub: 'U-unknown', aud: 'login-channel-id' }), {
           status: 200,
           headers: { 'Content-Type': 'application/json' },
         }),
@@ -890,7 +898,7 @@ describe('liff public API routes', () => {
     vi.stubGlobal(
       'fetch',
       vi.fn().mockResolvedValue(
-        new Response(JSON.stringify({ sub: 'U1', email: 'a@b.com' }), {
+        new Response(JSON.stringify({ sub: 'U1', email: 'a@b.com', aud: 'login-channel-id' }), {
           status: 200,
           headers: { 'Content-Type': 'application/json' },
         }),
@@ -937,10 +945,18 @@ describe('liff public API routes', () => {
     vi.stubGlobal(
       'fetch',
       vi.fn().mockResolvedValue(
-        new Response(JSON.stringify({ sub: 'U1', email: 'newperson@example.com', name: 'N' }), {
-          status: 200,
-          headers: { 'Content-Type': 'application/json' },
-        }),
+        new Response(
+          JSON.stringify({
+            sub: 'U1',
+            email: 'newperson@example.com',
+            name: 'N',
+            aud: 'login-channel-id',
+          }),
+          {
+            status: 200,
+            headers: { 'Content-Type': 'application/json' },
+          },
+        ),
       ),
     );
 
@@ -992,10 +1008,18 @@ describe('liff public API routes', () => {
     vi.stubGlobal(
       'fetch',
       vi.fn().mockResolvedValue(
-        new Response(JSON.stringify({ sub: 'U1', email: 'recover@example.com', name: 'R' }), {
-          status: 200,
-          headers: { 'Content-Type': 'application/json' },
-        }),
+        new Response(
+          JSON.stringify({
+            sub: 'U1',
+            email: 'recover@example.com',
+            name: 'R',
+            aud: 'login-channel-id',
+          }),
+          {
+            status: 200,
+            headers: { 'Content-Type': 'application/json' },
+          },
+        ),
       ),
     );
 
@@ -1047,10 +1071,18 @@ describe('liff public API routes', () => {
     vi.stubGlobal(
       'fetch',
       vi.fn().mockResolvedValue(
-        new Response(JSON.stringify({ sub: 'U1', email: 'new@example.com', name: 'R' }), {
-          status: 200,
-          headers: { 'Content-Type': 'application/json' },
-        }),
+        new Response(
+          JSON.stringify({
+            sub: 'U1',
+            email: 'new@example.com',
+            name: 'R',
+            aud: 'login-channel-id',
+          }),
+          {
+            status: 200,
+            headers: { 'Content-Type': 'application/json' },
+          },
+        ),
       ),
     );
 

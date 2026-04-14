@@ -13,6 +13,7 @@ const dbMocks = vi.hoisted(() => ({
   completeFriendScenario: vi.fn(),
   upsertChatOnMessage: vi.fn(),
   getLineAccounts: vi.fn(),
+  getLineAccountById: vi.fn(),
   jstNow: vi.fn(() => '2026-03-25T10:00:00+09:00'),
 }));
 
@@ -122,6 +123,7 @@ describe('line webhook route', () => {
     vi.resetModules();
     Object.values(dbMocks).forEach((mockFn) => mockFn.mockReset());
     dbMocks.getLineAccounts.mockResolvedValue([]);
+    dbMocks.getLineAccountById.mockResolvedValue(null);
     lineSdkMocks.verifySignature.mockClear();
     lineSdkMocks.verifySignature.mockResolvedValue(true);
     lineSdkMocks.replyMessage.mockClear();
@@ -251,6 +253,107 @@ describe('line webhook route', () => {
     expect(response.status).toBe(200);
     await Promise.all(pending);
     expect(lineSdkMocks.verifySignature).toHaveBeenCalled();
+  });
+
+  it('returns 200 and truncates excess events, processing the first batch (DoS guard)', async () => {
+    const handlers = await import('../../src/application/line-webhook-handlers.js');
+    const handlerSpy = vi.spyOn(handlers, 'handleLineWebhookEvent').mockResolvedValue(undefined);
+    const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    try {
+      const { webhook } = await import('../../src/routes/webhook.js');
+      const app = new Hono();
+      app.route('/', webhook);
+      const { pending, ctx } = executionCtxWithPending();
+
+      const events = Array.from({ length: 51 }, (_, i) => ({
+        type: 'message',
+        timestamp: 0,
+        source: { type: 'user', userId: `U${i}` },
+        message: { id: String(i), type: 'text', text: 'hi' },
+        replyToken: 'r',
+        mode: 'active',
+        webhookEventId: `e-${i}`,
+        deliveryContext: { isRedelivery: false },
+      }));
+      const body = JSON.stringify({ destination: 'dest', events });
+      const response = await app.fetch(
+        new Request('http://localhost/webhook', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'X-Line-Signature': 'sig' },
+          body,
+        }),
+        {
+          DB: createLineWebhookDedupDb(),
+          LINE_CHANNEL_SECRET: 'line-secret',
+          LINE_CHANNEL_ACCESS_TOKEN: 'line-access-token',
+          WORKER_URL: 'https://worker.example.com',
+        } as never,
+        ctx,
+      );
+
+      expect(response.status).toBe(200);
+      expect(pending.length).toBe(1);
+      await Promise.all(pending);
+      expect(handlerSpy).toHaveBeenCalledTimes(50);
+      expect(warnSpy).toHaveBeenCalledWith(
+        'LINE webhook truncated: 51 events, processing first 50',
+      );
+    } finally {
+      warnSpy.mockRestore();
+      handlerSpy.mockRestore();
+    }
+  });
+
+  it('processes follow before message even if the webhook orders message first (avoid drop)', async () => {
+    const handlers = await import('../../src/application/line-webhook-handlers.js');
+    const handlerSpy = vi.spyOn(handlers, 'handleLineWebhookEvent').mockResolvedValue(undefined);
+
+    const { webhook } = await import('../../src/routes/webhook.js');
+    const app = new Hono();
+    app.route('/', webhook);
+    const { pending, ctx } = executionCtxWithPending();
+
+    const messageEvent = {
+      type: 'message',
+      timestamp: 0,
+      source: { type: 'user', userId: 'U-order' },
+      message: { id: 'm1', type: 'text', text: 'hi' },
+      replyToken: 'rt-msg',
+      mode: 'active',
+      webhookEventId: 'we-msg',
+      deliveryContext: { isRedelivery: false },
+    };
+    const followEvent = {
+      type: 'follow',
+      timestamp: 0,
+      source: { type: 'user', userId: 'U-order' },
+      replyToken: 'rt-follow',
+      mode: 'active',
+      webhookEventId: 'we-follow',
+      deliveryContext: { isRedelivery: false },
+    };
+
+    const body = JSON.stringify({ destination: 'dest', events: [messageEvent, followEvent] });
+    const response = await app.fetch(
+      new Request('http://localhost/webhook', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'X-Line-Signature': 'sig' },
+        body,
+      }),
+      {
+        DB: createLineWebhookDedupDb(),
+        LINE_CHANNEL_SECRET: 'line-secret',
+        LINE_CHANNEL_ACCESS_TOKEN: 'line-access-token',
+        WORKER_URL: 'https://worker.example.com',
+      } as never,
+      ctx,
+    );
+
+    expect(response.status).toBe(200);
+    await Promise.all(pending);
+    expect(handlerSpy).toHaveBeenCalledTimes(2);
+    expect(handlerSpy.mock.calls[0]?.[2]).toMatchObject({ type: 'follow' });
+    expect(handlerSpy.mock.calls[1]?.[2]).toMatchObject({ type: 'message' });
   });
 
   it('resolves credentials from DB when destination matches an account signature', async () => {

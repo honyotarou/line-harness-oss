@@ -27,15 +27,60 @@ function constantTimeEqualHex(a: string, b: string): boolean {
   return diff === 0;
 }
 
+export function buildTimestampedSignedPayload(timestamp: string, payload: string): string {
+  return `${timestamp}.${payload}`;
+}
+
+function isAsciiDigits(s: string): boolean {
+  return /^[0-9]+$/.test(s);
+}
+
 export async function verifySignedPayload(
   secret: string,
   payload: string,
   providedSignature: string,
+  options?: {
+    timestamp?: string;
+    /** Reject replays older than this (seconds). When unset, no replay window check. */
+    maxAgeSec?: number;
+    nowMs?: number;
+    /** When true, missing/invalid timestamp fails verification. */
+    requireTimestamp?: boolean;
+  },
 ): Promise<boolean> {
   if (!providedSignature) {
     return false;
   }
 
+  const ts = options?.timestamp;
+  const requireTs = options?.requireTimestamp === true;
+  if (ts !== undefined) {
+    const t = ts.trim();
+    if (!isAsciiDigits(t)) {
+      return false;
+    }
+    const maxAgeSec = options?.maxAgeSec;
+    if (maxAgeSec !== undefined) {
+      const nowMs = options?.nowMs ?? Date.now();
+      const tsMs = Number(t) * 1000;
+      if (!Number.isFinite(tsMs)) {
+        return false;
+      }
+      const ageMs = Math.abs(nowMs - tsMs);
+      if (ageMs > maxAgeSec * 1000) {
+        return false;
+      }
+    }
+    const message = buildTimestampedSignedPayload(t, payload);
+    const expectedSignature = await computeHexHmac(secret, message);
+    return constantTimeEqualHex(providedSignature, expectedSignature);
+  }
+
+  if (requireTs) {
+    return false;
+  }
+
+  // Legacy mode (no timestamp).
   const expectedSignature = await computeHexHmac(secret, payload);
   return constantTimeEqualHex(providedSignature, expectedSignature);
 }

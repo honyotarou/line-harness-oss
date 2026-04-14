@@ -128,6 +128,7 @@ describe('fireEvent', () => {
     expect((init.headers as Record<string, string>)['X-Webhook-Signature']).toMatch(
       /^[0-9a-f]{64}$/,
     );
+    expect((init.headers as Record<string, string>)['X-Webhook-Timestamp']).toMatch(/^[0-9]{10}$/);
   });
 
   it('executes add_tag automation and logs success', async () => {
@@ -250,6 +251,79 @@ describe('fireEvent', () => {
       expect.objectContaining({
         status: 'failed',
         actionsResult: expect.stringContaining('must be a JSON object'),
+      }),
+    );
+  });
+
+  it('caps the number of automations executed per event (DoS guard)', async () => {
+    const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    try {
+      const { MAX_AUTOMATIONS_PER_EVENT } = await import('../../src/services/event-bus.js');
+      const overCap = MAX_AUTOMATIONS_PER_EVENT + 5;
+      dbMocks.getActiveAutomationsByEvent.mockResolvedValue(
+        Array.from({ length: overCap }, (_, i) => automationRow({ id: `auto-${i}`, priority: i })),
+      );
+
+      const { fireEvent } = await import('../../src/services/event-bus.js');
+      await fireEvent(emptyDb, 'friend_add', { friendId: 'f1' }, 'line-token', 'acc-1');
+
+      // add_tag is executed at most MAX_AUTOMATIONS_PER_EVENT times
+      expect(dbMocks.addTagToFriend).toHaveBeenCalledTimes(MAX_AUTOMATIONS_PER_EVENT);
+      expect(dbMocks.createAutomationLog).toHaveBeenCalledTimes(MAX_AUTOMATIONS_PER_EVENT);
+
+      expect(warnSpy).toHaveBeenCalledTimes(1);
+      expect(String(warnSpy.mock.calls[0]?.[0])).toMatch(
+        new RegExp(
+          `processAutomations: truncating ${overCap} automations to ${MAX_AUTOMATIONS_PER_EVENT} for event friend_add`,
+        ),
+      );
+    } finally {
+      warnSpy.mockRestore();
+    }
+  });
+
+  it('does not warn when automation count is at the per-event cap', async () => {
+    const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    try {
+      const { MAX_AUTOMATIONS_PER_EVENT, fireEvent } = await import(
+        '../../src/services/event-bus.js'
+      );
+      dbMocks.getActiveAutomationsByEvent.mockResolvedValue(
+        Array.from({ length: MAX_AUTOMATIONS_PER_EVENT }, (_, i) =>
+          automationRow({ id: `auto-${i}`, priority: i }),
+        ),
+      );
+
+      await fireEvent(emptyDb, 'friend_add', { friendId: 'f1' }, 'line-token', 'acc-1');
+
+      expect(warnSpy).not.toHaveBeenCalled();
+    } finally {
+      warnSpy.mockRestore();
+    }
+  });
+
+  it('rejects automations with too many actions (DoS guard)', async () => {
+    const { MAX_AUTOMATION_ACTIONS_PER_RULE } = await import('../../src/services/event-bus.js');
+    dbMocks.getActiveAutomationsByEvent.mockResolvedValue([
+      automationRow({
+        actions: JSON.stringify(
+          Array.from({ length: MAX_AUTOMATION_ACTIONS_PER_RULE + 1 }, () => ({
+            type: 'add_tag',
+            params: { tagId: 't1' },
+          })),
+        ),
+      }),
+    ]);
+
+    const { fireEvent } = await import('../../src/services/event-bus.js');
+    await fireEvent(emptyDb, 'friend_add', { friendId: 'f1' }, 'line-token', 'acc-1');
+
+    expect(dbMocks.addTagToFriend).not.toHaveBeenCalled();
+    expect(dbMocks.createAutomationLog).toHaveBeenCalledWith(
+      emptyDb,
+      expect.objectContaining({
+        status: 'failed',
+        actionsResult: expect.stringContaining('actions must be <='),
       }),
     );
   });

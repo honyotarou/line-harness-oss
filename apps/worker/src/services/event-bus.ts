@@ -34,6 +34,9 @@ export interface EventPayload {
   eventData?: Record<string, unknown>;
 }
 
+export const MAX_AUTOMATIONS_PER_EVENT = 200;
+export const MAX_AUTOMATION_ACTIONS_PER_RULE = 50;
+
 /**
  * Automation `conditions` JSON must be explicit: empty `{}` does not match (prevents “always on” backdoors).
  * Use `{ "match_always": true }` only when an admin intentionally wants every event of that type to run the rule.
@@ -163,6 +166,7 @@ async function fireOutgoingWebhooks(
 
         // HMAC署名（シークレットがある場合）
         if (wh.secret) {
+          const ts = Math.floor(Date.now() / 1000).toString();
           const encoder = new TextEncoder();
           const key = await crypto.subtle.importKey(
             'raw',
@@ -171,11 +175,13 @@ async function fireOutgoingWebhooks(
             false,
             ['sign'],
           );
-          const signature = await crypto.subtle.sign('HMAC', key, encoder.encode(body));
+          const signaturePayload = `${ts}.${body}`;
+          const signature = await crypto.subtle.sign('HMAC', key, encoder.encode(signaturePayload));
           const hexSignature = Array.from(new Uint8Array(signature))
             .map((b) => b.toString(16).padStart(2, '0'))
             .join('');
           headers['X-Webhook-Signature'] = hexSignature;
+          headers['X-Webhook-Timestamp'] = ts;
         }
 
         const outbound = await fetchHttpsUrlAfterDnsAssertion(wh.url, fetch, {
@@ -224,9 +230,15 @@ async function processAutomations(
   try {
     const allAutomations = await getActiveAutomationsByEvent(db, eventType);
     // Filter by account: match this account's automations + unassigned (backward compat)
-    const automations = allAutomations.filter(
+    const filtered = allAutomations.filter(
       (a) => !a.line_account_id || !lineAccountId || a.line_account_id === lineAccountId,
     );
+    if (filtered.length > MAX_AUTOMATIONS_PER_EVENT) {
+      console.warn(
+        `processAutomations: truncating ${filtered.length} automations to ${MAX_AUTOMATIONS_PER_EVENT} for event ${eventType}`,
+      );
+    }
+    const automations = filtered.slice(0, MAX_AUTOMATIONS_PER_EVENT);
 
     for (const automation of automations) {
       let conditionsParsed: unknown;
@@ -277,6 +289,23 @@ async function processAutomations(
       const actions = actionsParsed as Array<{ type: string; params: Record<string, string> }>;
 
       if (!matchAutomationConditions(conditions, payload)) continue;
+
+      if (actions.length > MAX_AUTOMATION_ACTIONS_PER_RULE) {
+        await createAutomationLog(db, {
+          automationId: automation.id,
+          friendId: payload.friendId,
+          eventData: JSON.stringify(payload.eventData ?? {}),
+          actionsResult: JSON.stringify([
+            {
+              action: '_guard',
+              success: false,
+              error: `Automation actions must be <= ${MAX_AUTOMATION_ACTIONS_PER_RULE}`,
+            },
+          ]),
+          status: 'failed',
+        });
+        continue;
+      }
 
       const results: Array<{ action: string; success: boolean; error?: string }> = [];
 

@@ -30,7 +30,7 @@ export const CLOUDFLARE_ACCESS_EMAIL_REQUIRED_ERROR =
   'Forbidden: Cloudflare Access email claim required';
 
 function normalizeAccessPrincipalEmail(raw: string): string | null {
-  const t = raw.trim();
+  const t = raw.trim().normalize('NFKC');
   if (t.length === 0 || t.length > ACCESS_EMAIL_MAX_LEN || !t.includes('@')) {
     return null;
   }
