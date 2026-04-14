@@ -51,7 +51,11 @@ incomingWebhookReceive.post('/api/webhooks/incoming/:id/receive', async (c) => {
 
     const rawBody = await readTextBodyWithLimit(c.req.raw, INCOMING_WEBHOOK_LIMIT_BYTES);
     const signature = c.req.header('X-Webhook-Signature') ?? '';
-    const valid = await verifySignedPayload(wh.secret, rawBody, signature);
+    const ts = c.req.header('X-Webhook-Timestamp') ?? undefined;
+    const valid = await verifySignedPayload(wh.secret, rawBody, signature, {
+      timestamp: ts,
+      maxAgeSec: 300,
+    });
     if (!valid) {
       return c.json(INCOMING_WEBHOOK_UNAUTHORIZED, 401);
     }

@@ -83,7 +83,7 @@ describe('LIFF booking — phone fallback', () => {
     vi.stubGlobal(
       'fetch',
       vi.fn().mockResolvedValue(
-        new Response(JSON.stringify({ sub: 'other-user' }), {
+        new Response(JSON.stringify({ sub: 'other-user', aud: 'login-channel-id' }), {
           status: 200,
           headers: { 'Content-Type': 'application/json' },
         }),
@@ -110,7 +110,7 @@ describe('LIFF booking — phone fallback', () => {
     vi.stubGlobal(
       'fetch',
       vi.fn().mockResolvedValue(
-        new Response(JSON.stringify({ sub: 'Ux' }), {
+        new Response(JSON.stringify({ sub: 'Ux', aud: 'login-channel-id' }), {
           status: 200,
           headers: { 'Content-Type': 'application/json' },
         }),
@@ -138,7 +138,7 @@ describe('LIFF booking — phone fallback', () => {
     vi.stubGlobal(
       'fetch',
       vi.fn().mockResolvedValue(
-        new Response(JSON.stringify({ sub: 'Ux' }), {
+        new Response(JSON.stringify({ sub: 'Ux', aud: 'login-channel-id' }), {
           status: 200,
           headers: { 'Content-Type': 'application/json' },
         }),
@@ -183,7 +183,7 @@ describe('LIFF booking — phone fallback', () => {
     vi.stubGlobal(
       'fetch',
       vi.fn().mockResolvedValue(
-        new Response(JSON.stringify({ sub: 'Ux' }), {
+        new Response(JSON.stringify({ sub: 'Ux', aud: 'login-channel-id' }), {
           status: 200,
           headers: { 'Content-Type': 'application/json' },
         }),

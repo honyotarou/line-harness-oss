@@ -38,6 +38,9 @@ describe('getValidatedAccessEmailFromPayload', () => {
     expect(getValidatedAccessEmailFromPayload({ email: '   ' })).toBeNull();
     expect(getValidatedAccessEmailFromPayload({ email: 'not-email' })).toBeNull();
     expect(getValidatedAccessEmailFromPayload({ email: '  A@X.COM  ' })).toBe('a@x.com');
+    expect(getValidatedAccessEmailFromPayload({ email: '  ＡＤＭＩＮ@Example.com  ' })).toBe(
+      'admin@example.com',
+    );
     expect(getValidatedAccessEmailFromPayload({ email: 'user@example.com' })).toBe(
       'user@example.com',
     );

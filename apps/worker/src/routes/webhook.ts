@@ -7,9 +7,11 @@ import { lineAccountDbOptions } from '../services/line-account-at-rest-key.js';
 import { BodyTooLargeError, readTextBodyWithLimit } from '../services/request-body.js';
 import { handleLineWebhookEvent } from '../application/line-webhook-handlers.js';
 import { enforceRateLimit } from '../services/request-rate-limit.js';
+import { prioritizeLineWebhookEvents } from '../services/line-webhook-event-order.js';
 
 const webhook = new Hono<Env>();
 const LINE_WEBHOOK_LIMIT_BYTES = 256 * 1024;
+const LINE_WEBHOOK_MAX_EVENTS = 50;
 const LINE_WEBHOOK_RATE_LIMIT = { limit: 300, windowMs: 60_000 };
 
 webhook.post('/webhook', async (c) => {
@@ -74,9 +76,18 @@ webhook.post('/webhook', async (c) => {
 
   const lineClient = new LineClient(channelAccessToken);
 
+  if (!Array.isArray(body.events)) {
+    return c.json({ status: 'ok' }, 200);
+  }
+
+  if (body.events.length > LINE_WEBHOOK_MAX_EVENTS) {
+    console.error(`LINE webhook skipped: too many events (${body.events.length})`);
+    return c.json({ status: 'ok' }, 200);
+  }
+
   // 非同期処理 — LINE は ~1s 以内のレスポンスを要求
   const processingPromise = (async () => {
-    for (const event of body.events) {
+    for (const event of prioritizeLineWebhookEvents(body.events)) {
       try {
         await handleLineWebhookEvent(
           db,
