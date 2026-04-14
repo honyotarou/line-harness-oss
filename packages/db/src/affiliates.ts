@@ -161,19 +161,23 @@ export async function getAffiliateReport(
     return d;
   };
 
-  // Build date conditions for subqueries with validated dates
+  // Date filters use bound parameters (same validated strings repeated per subquery).
   let clickDateCond = '';
   let cvDateCond = '';
+  const dateBinds: string[] = [];
   if (opts.startDate) {
     const sd = safeDate(opts.startDate);
-    clickDateCond += ` AND ac.created_at >= '${sd}'`;
-    cvDateCond += ` AND ce.created_at >= '${sd}'`;
+    clickDateCond += ' AND ac.created_at >= ?';
+    cvDateCond += ' AND ce.created_at >= ?';
+    dateBinds.push(sd);
   }
   if (opts.endDate) {
     const ed = safeDate(opts.endDate);
-    clickDateCond += ` AND ac.created_at <= '${ed}'`;
-    cvDateCond += ` AND ce.created_at <= '${ed}'`;
+    clickDateCond += ' AND ac.created_at <= ?';
+    cvDateCond += ' AND ce.created_at <= ?';
+    dateBinds.push(ed);
   }
+  const dateBindAll = dateBinds.length > 0 ? [...dateBinds, ...dateBinds, ...dateBinds] : [];
 
   const result = await db
     .prepare(
@@ -191,7 +195,7 @@ export async function getAffiliateReport(
        ${where}
        ORDER BY total_conversions DESC`,
     )
-    .bind(...values)
+    .bind(...values, ...dateBindAll)
     .all<{
       affiliate_id: string;
       affiliate_name: string;

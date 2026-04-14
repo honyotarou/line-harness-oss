@@ -2,6 +2,7 @@ import {
   isEligibleWorkerAdminProxyTargetPath,
   stripAdminAccessProxyPrefix,
 } from '@line-crm/shared';
+import { STRIP_REQUEST_HOP_BY_HOP_HEADERS } from './hop-headers.js';
 
 export interface Env {
   UPSTREAM_API_ORIGIN: string;
@@ -10,19 +11,7 @@ export interface Env {
   CF_ACCESS_CLIENT_SECRET: string;
 }
 
-const HOP_HEADERS = new Set(
-  [
-    'cf-connecting-ip',
-    'cf-ray',
-    'cf-visitor',
-    'cf-access-client-id',
-    'cf-access-client-secret',
-    'cf-access-jwt-assertion',
-    'host',
-    'connection',
-    'content-length',
-  ].map((s) => s.toLowerCase()),
-);
+export { STRIP_REQUEST_HOP_BY_HOP_HEADERS } from './hop-headers.js';
 
 export default {
   async fetch(request: Request, env: Env): Promise<Response> {
@@ -47,7 +36,7 @@ export default {
 
     const headers = new Headers();
     for (const [k, v] of request.headers) {
-      if (HOP_HEADERS.has(k.toLowerCase())) {
+      if (STRIP_REQUEST_HOP_BY_HOP_HEADERS.has(k.toLowerCase())) {
         continue;
       }
       headers.set(k, v);
