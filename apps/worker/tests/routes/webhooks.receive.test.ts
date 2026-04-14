@@ -1,6 +1,7 @@
 import { createHmac } from 'node:crypto';
 import { Hono } from 'hono';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { resetRequestRateLimits } from '../../src/services/request-rate-limit.js';
 
 const dbMocks = vi.hoisted(() => ({
   getIncomingWebhooks: vi.fn(),
@@ -85,6 +86,7 @@ function createReceiveTestDb() {
 describe('incoming webhook receive route', () => {
   beforeEach(() => {
     vi.resetModules();
+    resetRequestRateLimits();
     Object.values(dbMocks).forEach((mockFn) => mockFn.mockReset());
     eventBusMocks.fireEvent.mockClear();
   });
@@ -361,45 +363,53 @@ describe('incoming webhook receive route', () => {
   });
 
   it('rate limits across many incoming webhook IDs (global per-IP budget)', async () => {
-    dbMocks.getIncomingWebhookById.mockImplementation(async (_db: unknown, id: string) => ({
-      id,
-      source_type: 'custom',
-      secret: 'top-secret',
-      line_account_id: null,
-      is_active: 1,
-    }));
+    // D1-backed limits key by floor(Date.now()/windowMs). Freeze time so a slow CI/coverage
+    // run cannot span a window boundary and reset the global counter mid-loop.
+    const frozenMs = Date.UTC(2026, 3, 15, 12, 0, 0, 0);
+    vi.useFakeTimers({ now: frozenMs, toFake: ['Date'] });
+    try {
+      dbMocks.getIncomingWebhookById.mockImplementation(async (_db: unknown, id: string) => ({
+        id,
+        source_type: 'custom',
+        secret: 'top-secret',
+        line_account_id: null,
+        is_active: 1,
+      }));
 
-    const { webhooks, INCOMING_WEBHOOK_GLOBAL_RATE_LIMIT } = await import(
-      '../../src/routes/webhooks.js'
-    );
-    const app = new Hono();
-    app.route('/', webhooks);
-
-    const db = createReceiveTestDb();
-    const limit = INCOMING_WEBHOOK_GLOBAL_RATE_LIMIT.limit;
-    for (let i = 0; i < limit + 1; i += 1) {
-      const id = `incoming-${i}`;
-      const body = JSON.stringify({ n: i });
-      const response = await app.fetch(
-        new Request(`http://localhost/api/webhooks/incoming/${id}/receive`, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'CF-Connecting-IP': '203.0.113.99',
-            'X-Webhook-Signature': sign('top-secret', body),
-          },
-          body,
-        }),
-        { DB: db } as never,
+      const { webhooks, INCOMING_WEBHOOK_GLOBAL_RATE_LIMIT } = await import(
+        '../../src/routes/webhooks.js'
       );
-      if (i < limit) {
-        expect(response.status).toBe(200);
-      } else {
-        expect(response.status).toBe(429);
-      }
-    }
+      const app = new Hono();
+      app.route('/', webhooks);
 
-    expect(eventBusMocks.fireEvent).toHaveBeenCalledTimes(limit);
+      const db = createReceiveTestDb();
+      const limit = INCOMING_WEBHOOK_GLOBAL_RATE_LIMIT.limit;
+      for (let i = 0; i < limit + 1; i += 1) {
+        const id = `incoming-${i}`;
+        const body = JSON.stringify({ n: i });
+        const response = await app.fetch(
+          new Request(`http://localhost/api/webhooks/incoming/${id}/receive`, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'CF-Connecting-IP': '203.0.113.99',
+              'X-Webhook-Signature': sign('top-secret', body),
+            },
+            body,
+          }),
+          { DB: db } as never,
+        );
+        if (i < limit) {
+          expect(response.status).toBe(200);
+        } else {
+          expect(response.status).toBe(429);
+        }
+      }
+
+      expect(eventBusMocks.fireEvent).toHaveBeenCalledTimes(limit);
+    } finally {
+      vi.useRealTimers();
+    }
   });
 
   it('rate limits repeated incoming webhook requests from the same client', async () => {

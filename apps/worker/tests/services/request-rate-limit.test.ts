@@ -159,6 +159,24 @@ describe('request rate limit helpers', () => {
     ).resolves.toMatchObject({ allowed: false, remaining: 0 });
   });
 
+  it('blocks the 101st D1 consume when limit is 100 within one window (fixed now)', async () => {
+    const { checkRateLimitWithDb } = await import('../../src/services/request-rate-limit.js');
+    const db = createRateLimitDb();
+    const now = Date.UTC(2026, 3, 15, 12, 0, 0, 0);
+    const opts = {
+      bucket: 'incoming-webhook:global',
+      key: '203.0.113.99',
+      limit: 100,
+      windowMs: 60_000,
+      now,
+    } as const;
+
+    for (let i = 0; i < 100; i += 1) {
+      await expect(checkRateLimitWithDb(db, opts)).resolves.toMatchObject({ allowed: true });
+    }
+    await expect(checkRateLimitWithDb(db, opts)).resolves.toMatchObject({ allowed: false });
+  });
+
   it('returns 503 for auth-login when D1 binding is missing (no in-memory brute-force window)', async () => {
     const { enforceRateLimit } = await import('../../src/services/request-rate-limit.js');
     const app = new Hono();
