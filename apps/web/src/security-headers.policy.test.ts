@@ -37,6 +37,7 @@ describe('security headers for static admin (Vercel)', () => {
     expect(prod).toContain("worker-src 'none'");
     expect(prod).toContain("media-src 'self'");
     expect(prod).toContain("script-src 'self' 'unsafe-inline'");
+    expect(prod).toContain('https://static.cloudflareinsights.com');
     expect(prod).toContain("script-src-attr 'none'");
   });
 
@@ -46,6 +47,7 @@ describe('security headers for static admin (Vercel)', () => {
       narrowConnectSrcFromApiUrl: 'https://crm-api.example.com',
     });
     expect(csp).toMatch(/connect-src 'self' https:\/\/crm-api\.example\.com/);
+    expect(csp).toContain('https://cloudflareinsights.com');
     expect(csp).not.toMatch(/connect-src 'self' https:;/);
   });
 
@@ -55,6 +57,7 @@ describe('security headers for static admin (Vercel)', () => {
       narrowConnectSrcFromApiUrl: 'https://admin.example.com/api/lh-upstream',
     });
     expect(csp).toMatch(/connect-src 'self' https:\/\/admin\.example\.com/);
+    expect(csp).toContain('https://cloudflareinsights.com');
   });
 
   it('keeps broad connect-src when API URL is the repo placeholder or invalid', () => {

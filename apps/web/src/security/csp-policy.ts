@@ -11,12 +11,15 @@ import { validateAdminApiFetchBase } from '@line-crm/shared';
  *   `narrowConnectSrcFromApiUrl` (build-time `NEXT_PUBLIC_API_URL`) to restrict fetch targets when the URL
  *   validates as a non-placeholder origin.
  */
+/** Cloudflare Web Analytics / Insights beacon (browser RUM). */
+const CLOUDFLARE_INSIGHTS_CONNECT = 'https://cloudflareinsights.com';
+
 function connectSrcDirective(narrowApiUrl?: string): string {
   const trimmed = narrowApiUrl?.trim();
   if (trimmed) {
     const v = validateAdminApiFetchBase(trimmed, { allowPlaceholderTemplate: false });
     if (v.ok) {
-      return `connect-src 'self' ${v.origin}`;
+      return `connect-src 'self' ${v.origin} ${CLOUDFLARE_INSIGHTS_CONNECT}`;
     }
   }
   return "connect-src 'self' https:";
@@ -27,9 +30,10 @@ export function buildAdminContentSecurityPolicy(options: {
   /** When set to a valid, non-placeholder API origin, narrows `connect-src` (used in `next dev` / CI). */
   narrowConnectSrcFromApiUrl?: string;
 }): string {
+  const cfInsightsScript = ' https://static.cloudflareinsights.com';
   const scriptSrc = options.allowUnsafeEval
-    ? "script-src 'self' 'unsafe-inline' 'unsafe-eval'"
-    : "script-src 'self' 'unsafe-inline'";
+    ? `script-src 'self' 'unsafe-inline' 'unsafe-eval'${cfInsightsScript}`
+    : `script-src 'self' 'unsafe-inline'${cfInsightsScript}`;
   return [
     "default-src 'self'",
     "base-uri 'self'",
