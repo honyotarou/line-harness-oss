@@ -66,6 +66,9 @@ function createDeliveryDb() {
                   string,
                   string,
                 ];
+                if (sql.includes('ON CONFLICT') && operations.has(idempotencyKey)) {
+                  return { meta: { changes: 0 } };
+                }
                 operations.set(idempotencyKey, {
                   id,
                   idempotency_key: idempotencyKey,
@@ -75,7 +78,7 @@ function createDeliveryDb() {
                   last_error: null,
                   metadata,
                 });
-                return { success: true };
+                return { meta: { changes: 1 } };
               }
 
               if (sql.includes(`UPDATE delivery_operations SET status = 'pending'`)) {
@@ -196,6 +199,28 @@ describe('delivery reliability helpers', () => {
     ).resolves.toBe(false);
 
     expect(operations.get('step:1')?.status).toBe('pending');
+  });
+
+  it('allows only one reservation when two begins race on the same idempotency key', async () => {
+    const { beginDeliveryAttempt } = await import('../../src/services/delivery-reliability.js');
+    const { db, operations } = createDeliveryDb();
+    const input = {
+      idempotencyKey: 'race:1',
+      jobName: 'broadcast_send_segment',
+      sourceType: 'broadcast',
+      sourceId: 'b1',
+      friendId: null,
+      lineAccountId: null,
+    } as const;
+
+    const [a, b] = await Promise.all([
+      beginDeliveryAttempt(db, input),
+      beginDeliveryAttempt(db, input),
+    ]);
+
+    expect(a !== b).toBe(true);
+    expect(a || b).toBe(true);
+    expect(operations.get('race:1')?.status).toBe('pending');
   });
 
   it('moves exhausted failures to the dead-letter queue and creates a dashboard notification', async () => {

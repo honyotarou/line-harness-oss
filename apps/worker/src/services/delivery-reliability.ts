@@ -83,29 +83,36 @@ export async function beginDeliveryAttempt(
 ): Promise<boolean> {
   const nowMs = options?.now ?? Date.now();
   const now = jstNow();
-  const existing = await getDeliveryOperation(db, input.idempotencyKey);
 
-  if (!existing) {
-    await db
-      .prepare(
-        `INSERT INTO delivery_operations
-           (id, idempotency_key, job_name, line_account_id, source_type, source_id, friend_id, metadata, created_at, updated_at)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-      )
-      .bind(
-        crypto.randomUUID(),
-        input.idempotencyKey,
-        input.jobName,
-        input.lineAccountId ?? null,
-        input.sourceType,
-        input.sourceId,
-        input.friendId ?? null,
-        normalizeMetadata(input.metadata),
-        now,
-        now,
-      )
-      .run();
+  const insertResult = await db
+    .prepare(
+      `INSERT INTO delivery_operations
+         (id, idempotency_key, job_name, line_account_id, source_type, source_id, friend_id, metadata, created_at, updated_at)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+       ON CONFLICT (idempotency_key) DO NOTHING`,
+    )
+    .bind(
+      crypto.randomUUID(),
+      input.idempotencyKey,
+      input.jobName,
+      input.lineAccountId ?? null,
+      input.sourceType,
+      input.sourceId,
+      input.friendId ?? null,
+      normalizeMetadata(input.metadata),
+      now,
+      now,
+    )
+    .run();
+
+  const inserted = (insertResult.meta?.changes ?? 0) > 0;
+  if (inserted) {
     return true;
+  }
+
+  const existing = await getDeliveryOperation(db, input.idempotencyKey);
+  if (!existing) {
+    return false;
   }
 
   if (existing.status === 'sent' || existing.status === 'pending') {

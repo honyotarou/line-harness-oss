@@ -1,15 +1,34 @@
 import { getBroadcastById, updateBroadcastStatus, jstNow } from '@line-crm/db';
 import type { Broadcast } from '@line-crm/db';
 import type { LineClient } from '@line-crm/line-sdk';
-import { buildMessageFromStoredContent } from './stored-line-message.js';
-import { calculateStaggerDelay, sleep, addMessageVariation } from './stealth.js';
-import { buildSegmentQuery } from './segment-query.js';
-import type { SegmentCondition } from './segment-query.js';
 import {
   beginDeliveryAttempt,
   markDeliveryAttemptFailed,
   markDeliveryAttemptSucceeded,
 } from './delivery-reliability.js';
+import { buildMessageFromStoredContent } from './stored-line-message.js';
+import { calculateStaggerDelay, sleep, addMessageVariation } from './stealth.js';
+import { buildSegmentQuery } from './segment-query.js';
+import type { SegmentCondition } from './segment-query.js';
+
+/** Canonical JSON for hashing so rule order does not spawn duplicate sends for the same segment. */
+function canonicalSegmentConditionJson(condition: SegmentCondition): string {
+  const rules = [...condition.rules].sort((a, b) => {
+    const sa = `${a.type}\0${JSON.stringify(a.value)}`;
+    const sb = `${b.type}\0${JSON.stringify(b.value)}`;
+    return sa.localeCompare(sb);
+  });
+  return JSON.stringify({ operator: condition.operator, rules });
+}
+
+async function segmentConditionIdempotencyTag(condition: SegmentCondition): Promise<string> {
+  const payload = canonicalSegmentConditionJson(condition);
+  const digest = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(payload));
+  return [...new Uint8Array(digest)]
+    .map((b) => b.toString(16).padStart(2, '0'))
+    .join('')
+    .slice(0, 24);
+}
 
 const MULTICAST_BATCH_SIZE = 500;
 
@@ -29,7 +48,8 @@ export async function processSegmentSend(
     throw new Error(`Broadcast ${broadcastId} not found`);
   }
 
-  const idempotencyKey = `broadcast-segment:${broadcast.id}`;
+  const segmentTag = await segmentConditionIdempotencyTag(condition);
+  const idempotencyKey = `broadcast-segment:${broadcast.id}:${segmentTag}`;
   const attempt = {
     idempotencyKey,
     jobName: 'broadcast_send_segment',

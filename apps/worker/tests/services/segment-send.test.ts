@@ -106,6 +106,30 @@ describe('processSegmentSend', () => {
     expect(deliveryMocks.markDeliveryAttemptSucceeded).not.toHaveBeenCalled();
   });
 
+  it('uses distinct delivery idempotency keys for different segment conditions on the same broadcast', async () => {
+    dbMocks.getBroadcastById.mockResolvedValue({ ...baseBroadcast, id: 'b-same' });
+    deliveryMocks.beginDeliveryAttempt.mockResolvedValue(true);
+    const { processSegmentSend } = await import('../../src/services/segment-send.js');
+    const db = createMockDb([]);
+    const lineClient = { multicast: vi.fn().mockResolvedValue(undefined) };
+
+    await processSegmentSend(db, lineClient as never, 'b-same', {
+      operator: 'AND',
+      rules: [{ type: 'tag_exists', value: 't1' }],
+    });
+    await processSegmentSend(db, lineClient as never, 'b-same', {
+      operator: 'AND',
+      rules: [{ type: 'tag_exists', value: 't2' }],
+    });
+
+    const keys = deliveryMocks.beginDeliveryAttempt.mock.calls.map(
+      (c) => (c[1] as { idempotencyKey: string }).idempotencyKey,
+    );
+    expect(keys[0]).toMatch(/^broadcast-segment:b-same:[a-f0-9]{24}$/);
+    expect(keys[1]).toMatch(/^broadcast-segment:b-same:[a-f0-9]{24}$/);
+    expect(keys[0]).not.toBe(keys[1]);
+  });
+
   it('marks sent with zero recipients when segment is empty', async () => {
     deliveryMocks.beginDeliveryAttempt.mockResolvedValue(true);
     dbMocks.getBroadcastById
