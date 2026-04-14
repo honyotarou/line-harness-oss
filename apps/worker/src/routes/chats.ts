@@ -1,17 +1,5 @@
 import { Hono } from 'hono';
-import {
-  getOperators,
-  getOperatorById,
-  createOperator,
-  updateOperator,
-  deleteOperator,
-  getChats,
-  getChatById,
-  createChat,
-  updateChat,
-  getFriendById,
-  jstNow,
-} from '@line-crm/db';
+import { getChats, getChatById, createChat, updateChat, getFriendById, jstNow } from '@line-crm/db';
 import type { Env } from '../index.js';
 import { lineAccountDbOptions } from '../services/line-account-at-rest-key.js';
 import { resolveLineAccessTokenForFriend } from '../services/line-account-routing.js';
@@ -29,88 +17,6 @@ import {
 } from '../services/admin-line-account-scope.js';
 
 const chats = new Hono<Env>();
-
-// ========== オペレーターCRUD ==========
-
-chats.get('/api/operators', async (c) => {
-  try {
-    const items = await getOperators(c.env.DB);
-    return c.json({
-      success: true,
-      data: items.map((o) => ({
-        id: o.id,
-        name: o.name,
-        email: o.email,
-        role: o.role,
-        isActive: Boolean(o.is_active),
-        createdAt: o.created_at,
-        updatedAt: o.updated_at,
-      })),
-    });
-  } catch (err) {
-    console.error('GET /api/operators error:', err);
-    return c.json({ success: false, error: 'Internal server error' }, 500);
-  }
-});
-
-chats.post('/api/operators', async (c) => {
-  try {
-    const body = await readJsonBodyWithLimit<{ name: string; email: string; role?: string }>(
-      c.req.raw,
-      DEFAULT_ADMIN_JSON_BODY_LIMIT_BYTES,
-    );
-    if (!body.name || !body.email)
-      return c.json({ success: false, error: 'name and email are required' }, 400);
-    const item = await createOperator(c.env.DB, body);
-    return c.json(
-      { success: true, data: { id: item.id, name: item.name, email: item.email, role: item.role } },
-      201,
-    );
-  } catch (err) {
-    const jr = jsonBodyReadErrorResponse(err);
-    if (jr) return c.json(jr.body, jr.status);
-    console.error('POST /api/operators error:', err);
-    return c.json({ success: false, error: 'Internal server error' }, 500);
-  }
-});
-
-chats.put('/api/operators/:id', async (c) => {
-  try {
-    const id = c.req.param('id');
-    const body = await readJsonBodyWithLimit<Record<string, unknown>>(
-      c.req.raw,
-      DEFAULT_ADMIN_JSON_BODY_LIMIT_BYTES,
-    );
-    await updateOperator(c.env.DB, id, body as never);
-    const updated = await getOperatorById(c.env.DB, id);
-    if (!updated) return c.json({ success: false, error: 'Not found' }, 404);
-    return c.json({
-      success: true,
-      data: {
-        id: updated.id,
-        name: updated.name,
-        email: updated.email,
-        role: updated.role,
-        isActive: Boolean(updated.is_active),
-      },
-    });
-  } catch (err) {
-    const jr = jsonBodyReadErrorResponse(err);
-    if (jr) return c.json(jr.body, jr.status);
-    console.error('PUT /api/operators/:id error:', err);
-    return c.json({ success: false, error: 'Internal server error' }, 500);
-  }
-});
-
-chats.delete('/api/operators/:id', async (c) => {
-  try {
-    await deleteOperator(c.env.DB, c.req.param('id'));
-    return c.json({ success: true, data: null });
-  } catch (err) {
-    console.error('DELETE /api/operators/:id error:', err);
-    return c.json({ success: false, error: 'Internal server error' }, 500);
-  }
-});
 
 // ========== チャットCRUD ==========
 

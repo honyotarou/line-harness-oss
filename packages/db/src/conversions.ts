@@ -7,6 +7,7 @@ export interface ConversionPoint {
   id: string;
   name: string;
   event_type: string;
+  line_account_id: string | null;
   value: number | null;
   created_at: string;
 }
@@ -18,15 +19,27 @@ export interface ConversionEvent {
   user_id: string | null;
   affiliate_code: string | null;
   metadata: string | null;
+  line_account_id: string | null;
   created_at: string;
 }
 
 // ── Conversion Points CRUD ──────────────────────────────────────────────────
 
-export async function getConversionPoints(db: D1Database): Promise<ConversionPoint[]> {
-  const result = await db
-    .prepare(`SELECT * FROM conversion_points ORDER BY created_at DESC`)
-    .all<ConversionPoint>();
+export async function getConversionPoints(
+  db: D1Database,
+  opts: { lineAccountId?: string | null } = {},
+): Promise<ConversionPoint[]> {
+  const id = opts.lineAccountId?.trim();
+  const stmt = id
+    ? db
+        .prepare(
+          `SELECT * FROM conversion_points WHERE line_account_id = ? ORDER BY created_at DESC`,
+        )
+        .bind(id)
+    : db.prepare(
+        `SELECT * FROM conversion_points WHERE line_account_id IS NULL ORDER BY created_at DESC`,
+      );
+  const result = await stmt.all<ConversionPoint>();
   return result.results;
 }
 
@@ -43,6 +56,7 @@ export async function getConversionPointById(
 export interface CreateConversionPointInput {
   name: string;
   eventType: string;
+  lineAccountId?: string | null;
   value?: number | null;
 }
 
@@ -55,10 +69,17 @@ export async function createConversionPoint(
 
   await db
     .prepare(
-      `INSERT INTO conversion_points (id, name, event_type, value, created_at)
-       VALUES (?, ?, ?, ?, ?)`,
+      `INSERT INTO conversion_points (id, name, event_type, line_account_id, value, created_at)
+       VALUES (?, ?, ?, ?, ?, ?)`,
     )
-    .bind(id, input.name, input.eventType, input.value ?? null, now)
+    .bind(
+      id,
+      input.name,
+      input.eventType,
+      input.lineAccountId?.trim() || null,
+      input.value ?? null,
+      now,
+    )
     .run();
 
   return (await getConversionPointById(db, id))!;
@@ -73,6 +94,7 @@ export async function deleteConversionPoint(db: D1Database, id: string): Promise
 export interface TrackConversionInput {
   conversionPointId: string;
   friendId: string;
+  lineAccountId?: string | null;
   userId?: string | null;
   affiliateCode?: string | null;
   metadata?: string | null;
@@ -87,8 +109,8 @@ export async function trackConversion(
 
   await db
     .prepare(
-      `INSERT INTO conversion_events (id, conversion_point_id, friend_id, user_id, affiliate_code, metadata, created_at)
-       VALUES (?, ?, ?, ?, ?, ?, ?)`,
+      `INSERT INTO conversion_events (id, conversion_point_id, friend_id, user_id, affiliate_code, metadata, line_account_id, created_at)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
     )
     .bind(
       id,
@@ -97,6 +119,7 @@ export async function trackConversion(
       input.userId ?? null,
       input.affiliateCode ?? null,
       input.metadata ?? null,
+      input.lineAccountId?.trim() || null,
       now,
     )
     .run();
@@ -113,6 +136,7 @@ export async function getConversionEvents(
     conversionPointId?: string;
     friendId?: string;
     affiliateCode?: string;
+    lineAccountId?: string | null;
     startDate?: string;
     endDate?: string;
     limit?: number;
@@ -133,6 +157,12 @@ export async function getConversionEvents(
   if (opts.affiliateCode) {
     conditions.push('affiliate_code = ?');
     values.push(opts.affiliateCode);
+  }
+  if (opts.lineAccountId?.trim()) {
+    conditions.push('line_account_id = ?');
+    values.push(opts.lineAccountId.trim());
+  } else if (opts.lineAccountId === null) {
+    conditions.push('line_account_id IS NULL');
   }
   if (opts.startDate) {
     conditions.push('created_at >= ?');
@@ -166,7 +196,7 @@ export interface ConversionReport {
 
 export async function getConversionReport(
   db: D1Database,
-  opts: { startDate?: string; endDate?: string } = {},
+  opts: { startDate?: string; endDate?: string; lineAccountId?: string | null } = {},
 ): Promise<ConversionReport[]> {
   const conditions: string[] = [];
   const values: unknown[] = [];
@@ -178,6 +208,12 @@ export async function getConversionReport(
   if (opts.endDate) {
     conditions.push('ce.created_at <= ?');
     values.push(opts.endDate);
+  }
+  if (opts.lineAccountId?.trim()) {
+    conditions.push('ce.line_account_id = ?');
+    values.push(opts.lineAccountId.trim());
+  } else if (opts.lineAccountId === null) {
+    conditions.push('ce.line_account_id IS NULL');
   }
 
   const where = conditions.length > 0 ? `WHERE ${conditions.join(' AND ')}` : '';

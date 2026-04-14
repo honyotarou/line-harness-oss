@@ -233,6 +233,7 @@ CREATE TABLE IF NOT EXISTS conversion_points (
   id         TEXT PRIMARY KEY,
   name       TEXT NOT NULL,
   event_type TEXT NOT NULL,
+  line_account_id TEXT REFERENCES line_accounts (id) ON DELETE SET NULL,
   value      REAL,
   created_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%f', 'now', '+9 hours'))
 );
@@ -247,12 +248,15 @@ CREATE TABLE IF NOT EXISTS conversion_events (
   user_id             TEXT,
   affiliate_code      TEXT,
   metadata            TEXT,
+  line_account_id     TEXT REFERENCES line_accounts (id) ON DELETE SET NULL,
   created_at          TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%f', 'now', '+9 hours'))
 );
 
 CREATE INDEX IF NOT EXISTS idx_conversion_events_point ON conversion_events (conversion_point_id);
 CREATE INDEX IF NOT EXISTS idx_conversion_events_friend ON conversion_events (friend_id);
 CREATE INDEX IF NOT EXISTS idx_conversion_events_affiliate ON conversion_events (affiliate_code);
+CREATE INDEX IF NOT EXISTS idx_conversion_events_line_account_id ON conversion_events (line_account_id);
+CREATE INDEX IF NOT EXISTS idx_conversion_points_line_account_id ON conversion_points (line_account_id);
 
 -- ============================================================
 -- Round 2: Affiliates
@@ -287,10 +291,13 @@ CREATE TABLE IF NOT EXISTS incoming_webhooks (
   name        TEXT NOT NULL,
   source_type TEXT NOT NULL DEFAULT 'custom',
   secret      TEXT,
+  line_account_id TEXT REFERENCES line_accounts (id) ON DELETE SET NULL,
   is_active   INTEGER NOT NULL DEFAULT 1,
   created_at  TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%f', 'now', '+9 hours')),
   updated_at  TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%f', 'now', '+9 hours'))
 );
+
+CREATE INDEX IF NOT EXISTS idx_incoming_webhooks_line_account_id ON incoming_webhooks (line_account_id);
 
 CREATE TABLE IF NOT EXISTS outgoing_webhooks (
   id          TEXT PRIMARY KEY,
@@ -431,12 +438,17 @@ CREATE INDEX IF NOT EXISTS idx_templates_category ON templates (category);
 CREATE TABLE IF NOT EXISTS operators (
   id         TEXT PRIMARY KEY,
   name       TEXT NOT NULL,
-  email      TEXT NOT NULL UNIQUE,
+  email      TEXT NOT NULL,
+  line_account_id TEXT REFERENCES line_accounts (id) ON DELETE SET NULL,
   role       TEXT NOT NULL DEFAULT 'operator' CHECK (role IN ('admin', 'operator')),
   is_active  INTEGER NOT NULL DEFAULT 1,
   created_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%f', 'now', '+9 hours')),
   updated_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%f', 'now', '+9 hours'))
 );
+
+CREATE UNIQUE INDEX IF NOT EXISTS idx_operators_email_line_account
+  ON operators (email, line_account_id);
+CREATE INDEX IF NOT EXISTS idx_operators_line_account_id ON operators (line_account_id);
 
 CREATE TABLE IF NOT EXISTS chats (
   id            TEXT PRIMARY KEY,

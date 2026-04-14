@@ -9,6 +9,7 @@ const dbMocks = vi.hoisted(() => ({
   trackConversion: vi.fn(),
   getConversionEvents: vi.fn(),
   getConversionReport: vi.fn(),
+  getFriendById: vi.fn(),
 }));
 
 vi.mock('@line-crm/db', () => dbMocks);
@@ -23,6 +24,7 @@ describe('conversion routes', () => {
       id: 'point-1',
       name: 'Purchase',
       event_type: 'purchase',
+      line_account_id: null,
       value: 5000,
       created_at: '2026-03-26T10:00:00+09:00',
     });
@@ -51,6 +53,7 @@ describe('conversion routes', () => {
         id: 'point-1',
         name: 'Purchase',
         eventType: 'purchase',
+        lineAccountId: null,
         value: 5000,
         createdAt: '2026-03-26T10:00:00+09:00',
       },
@@ -58,6 +61,11 @@ describe('conversion routes', () => {
   });
 
   it('stringifies conversion metadata before persistence', async () => {
+    dbMocks.getFriendById.mockResolvedValue({
+      id: 'friend-1',
+      line_user_id: 'U1',
+      line_account_id: 'account-1',
+    });
     dbMocks.trackConversion.mockResolvedValue({
       id: 'event-1',
       conversion_point_id: 'point-1',
@@ -65,6 +73,7 @@ describe('conversion routes', () => {
       user_id: 'user-1',
       affiliate_code: 'partner-1',
       metadata: '{"orderId":"order-1"}',
+      line_account_id: 'account-1',
       created_at: '2026-03-26T10:00:00+09:00',
     });
 
@@ -91,6 +100,7 @@ describe('conversion routes', () => {
     expect(dbMocks.trackConversion).toHaveBeenCalledWith(expect.anything(), {
       conversionPointId: 'point-1',
       friendId: 'friend-1',
+      lineAccountId: 'account-1',
       userId: 'user-1',
       affiliateCode: 'partner-1',
       metadata: '{"orderId":"order-1"}',
@@ -104,6 +114,7 @@ describe('conversion routes', () => {
         userId: 'user-1',
         affiliateCode: 'partner-1',
         metadata: '{"orderId":"order-1"}',
+        lineAccountId: 'account-1',
         createdAt: '2026-03-26T10:00:00+09:00',
       },
     });

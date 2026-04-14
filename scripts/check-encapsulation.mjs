@@ -133,6 +133,8 @@ const ROUTE_LINE_CAPS = {
   'calendar.ts': 212,
   'chats.ts': 430,
   'conversions.ts': 208,
+  'conversions.events.ts': 160,
+  'conversions.points.ts': 120,
   'forms.ts': 497,
   'friends.ts': 498,
   'health.ts': 174,
@@ -140,6 +142,7 @@ const ROUTE_LINE_CAPS = {
   'liff.ts': 203,
   'notifications.ts': 270,
   'openapi.ts': 92,
+  'operators.ts': 190,
   'reminders.ts': 400,
   'rich-menus.ts': 330,
   'scenarios.ts': 462,
@@ -151,6 +154,9 @@ const ROUTE_LINE_CAPS = {
   'users.ts': 240,
   'webhook.ts': 129,
   'webhooks.ts': 455,
+  'webhooks.incoming-admin.ts': 240,
+  'webhooks.outgoing-admin.ts': 230,
+  'webhooks.receive.ts': 130,
 };
 
 const routeFiles = listFilesRecursive(routesDir, (p) => p.endsWith('.ts'));

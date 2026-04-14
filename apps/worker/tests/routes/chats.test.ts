@@ -103,6 +103,7 @@ const cfEnv = {
 
 describe('chats routes', () => {
   beforeEach(() => {
+    vi.resetModules();
     Object.values(dbMocks).forEach((mockFn) => mockFn.mockReset());
     dbMocks.listPrincipalLineAccountIdsForEmail.mockResolvedValue([]);
     dbMocks.getLineAccounts.mockResolvedValue([]);
@@ -111,7 +112,7 @@ describe('chats routes', () => {
   it('filters chats by LINE account and returns lineAccountId in the list response', async () => {
     const { chats } = await import('../../src/routes/chats.js');
     const app = new Hono();
-    app.route('/', chats);
+    app.route('', chats);
 
     const response = await app.fetch(
       new Request('http://localhost/api/chats?lineAccountId=account-1'),
@@ -132,6 +133,49 @@ describe('chats routes', () => {
           notes: null,
           lastMessageAt: '2026-03-26T09:00:00+09:00',
           lineAccountId: 'account-1',
+          createdAt: '2026-03-26T08:00:00+09:00',
+          updatedAt: '2026-03-26T09:00:00+09:00',
+        },
+      ],
+    });
+  });
+
+  it('GET /api/operators returns lineAccountId field', async () => {
+    dbMocks.getOperators.mockResolvedValue([
+      {
+        id: 'op-1',
+        name: 'Alice',
+        email: 'alice@example.com',
+        role: 'operator',
+        line_account_id: 'account-1',
+        is_active: 1,
+        created_at: '2026-03-26T08:00:00+09:00',
+        updated_at: '2026-03-26T09:00:00+09:00',
+      },
+    ]);
+
+    const { operators } = await import('../../src/routes/operators.js');
+    const app = new Hono();
+    app.route('', operators);
+
+    const response = await app.fetch(
+      new Request('http://localhost/api/operators?lineAccountId=account-1'),
+      {
+        DB: {} as D1Database,
+      } as never,
+    );
+
+    expect(response.status).toBe(200);
+    await expect(response.json()).resolves.toEqual({
+      success: true,
+      data: [
+        {
+          id: 'op-1',
+          name: 'Alice',
+          email: 'alice@example.com',
+          role: 'operator',
+          lineAccountId: 'account-1',
+          isActive: true,
           createdAt: '2026-03-26T08:00:00+09:00',
           updatedAt: '2026-03-26T09:00:00+09:00',
         },
