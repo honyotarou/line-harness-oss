@@ -5,6 +5,11 @@ import { buildMessageFromStoredContent } from './stored-line-message.js';
 import { calculateStaggerDelay, sleep, addMessageVariation } from './stealth.js';
 import { buildSegmentQuery } from './segment-query.js';
 import type { SegmentCondition } from './segment-query.js';
+import {
+  beginDeliveryAttempt,
+  markDeliveryAttemptFailed,
+  markDeliveryAttemptSucceeded,
+} from './delivery-reliability.js';
 
 const MULTICAST_BATCH_SIZE = 500;
 
@@ -19,13 +24,30 @@ export async function processSegmentSend(
   broadcastId: string,
   condition: SegmentCondition,
 ): Promise<Broadcast> {
-  // Mark as sending
-  await updateBroadcastStatus(db, broadcastId, 'sending');
-
   const broadcast = await getBroadcastById(db, broadcastId);
   if (!broadcast) {
     throw new Error(`Broadcast ${broadcastId} not found`);
   }
+
+  const idempotencyKey = `broadcast-segment:${broadcast.id}`;
+  const attempt = {
+    idempotencyKey,
+    jobName: 'broadcast_send_segment',
+    sourceType: 'broadcast',
+    sourceId: broadcast.id,
+    lineAccountId: broadcast.line_account_id ?? null,
+    metadata: {
+      conditionOperator: condition.operator,
+      rulesCount: condition.rules.length,
+    },
+  };
+  const reserved = await beginDeliveryAttempt(db, attempt);
+  if (!reserved) {
+    return broadcast;
+  }
+
+  // Mark as sending only after the delivery slot is reserved.
+  await updateBroadcastStatus(db, broadcastId, 'sending');
 
   const message = buildMessageFromStoredContent(broadcast.message_type, broadcast.message_content, {
     flexAltFallback: 'Message',
@@ -93,9 +115,24 @@ export async function processSegmentSend(
       }
     }
 
+    await markDeliveryAttemptSucceeded(db, { idempotencyKey });
     await updateBroadcastStatus(db, broadcastId, 'sent', { totalCount, successCount });
   } catch (err) {
     // On failure, reset to draft so it can be retried
+    await markDeliveryAttemptFailed(
+      db,
+      {
+        ...attempt,
+        error: err,
+        metadata: {
+          conditionOperator: condition.operator,
+          rulesCount: condition.rules.length,
+          totalCount,
+          successCount,
+        },
+      },
+      undefined,
+    );
     await updateBroadcastStatus(db, broadcastId, 'draft');
     throw err;
   }

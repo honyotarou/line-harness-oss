@@ -139,9 +139,15 @@ export async function verifyCloudflareAccessJwt(
     try {
       // Never follow redirects: a malicious or misconfigured endpoint could otherwise
       // serve attacker-controlled JWKS that we would cache under the trusted team domain.
-      certsRes = await fetchImpl(certsUrl, { redirect: 'error' });
+      // Note: Workers fetch does not consistently support `redirect: "error"`, so use "manual"
+      // and reject 3xx explicitly.
+      certsRes = await fetchImpl(certsUrl, { redirect: 'manual' });
     } catch {
       return { ok: false, reason: 'Failed to fetch Cloudflare Access certs' };
+    }
+
+    if (certsRes.status >= 300 && certsRes.status < 400) {
+      return { ok: false, reason: 'Cloudflare Access certs must not redirect' };
     }
 
     if (!certsRes.ok) {

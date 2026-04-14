@@ -17,6 +17,14 @@ const stealthMocks = vi.hoisted(() => ({
 
 vi.mock('../../src/services/stealth.js', () => stealthMocks);
 
+const deliveryMocks = vi.hoisted(() => ({
+  beginDeliveryAttempt: vi.fn(),
+  markDeliveryAttemptSucceeded: vi.fn(),
+  markDeliveryAttemptFailed: vi.fn(),
+}));
+
+vi.mock('../../src/services/delivery-reliability.js', () => deliveryMocks);
+
 function createMockDb(friends: { id: string; line_user_id: string }[]) {
   return {
     prepare: vi.fn().mockImplementation(() => {
@@ -57,6 +65,11 @@ describe('processSegmentSend', () => {
     stealthMocks.calculateStaggerDelay.mockReturnValue(0);
     stealthMocks.sleep.mockClear();
     stealthMocks.addMessageVariation.mockImplementation((t: string, i: number) => `${t}[${i}]`);
+    deliveryMocks.beginDeliveryAttempt.mockReset();
+    deliveryMocks.markDeliveryAttemptSucceeded.mockReset();
+    deliveryMocks.markDeliveryAttemptFailed.mockReset();
+    // Default: allow the attempt so existing tests exercise send behavior.
+    deliveryMocks.beginDeliveryAttempt.mockResolvedValue(true);
   });
 
   it('throws when broadcast is missing after status update', async () => {
@@ -72,10 +85,29 @@ describe('processSegmentSend', () => {
       }),
     ).rejects.toThrow('Broadcast missing-id not found');
 
-    expect(dbMocks.updateBroadcastStatus).toHaveBeenCalledWith(db, 'missing-id', 'sending');
+    expect(dbMocks.updateBroadcastStatus).not.toHaveBeenCalled();
+  });
+
+  it('is idempotent: returns without sending when delivery attempt is not reserved', async () => {
+    dbMocks.getBroadcastById.mockResolvedValue({ ...baseBroadcast, id: 'b0' });
+    deliveryMocks.beginDeliveryAttempt.mockResolvedValue(false);
+    const { processSegmentSend } = await import('../../src/services/segment-send.js');
+    const db = createMockDb([{ id: 'f1', line_user_id: 'U1' }]);
+    const lineClient = { multicast: vi.fn().mockResolvedValue(undefined) };
+
+    const out = await processSegmentSend(db, lineClient as never, 'b0', {
+      operator: 'AND',
+      rules: [{ type: 'is_following', value: true }],
+    });
+
+    expect(out.id).toBe('b0');
+    expect(dbMocks.updateBroadcastStatus).not.toHaveBeenCalled();
+    expect(lineClient.multicast).not.toHaveBeenCalled();
+    expect(deliveryMocks.markDeliveryAttemptSucceeded).not.toHaveBeenCalled();
   });
 
   it('marks sent with zero recipients when segment is empty', async () => {
+    deliveryMocks.beginDeliveryAttempt.mockResolvedValue(true);
     dbMocks.getBroadcastById
       .mockResolvedValueOnce({ ...baseBroadcast, id: 'b1' })
       .mockResolvedValueOnce({
@@ -96,6 +128,7 @@ describe('processSegmentSend', () => {
 
     expect(out.status).toBe('sent');
     expect(lineClient.multicast).not.toHaveBeenCalled();
+    expect(deliveryMocks.markDeliveryAttemptSucceeded).toHaveBeenCalled();
     expect(dbMocks.updateBroadcastStatus).toHaveBeenCalledWith(db, 'b1', 'sent', {
       totalCount: 0,
       successCount: 0,
@@ -103,6 +136,7 @@ describe('processSegmentSend', () => {
   });
 
   it('multicasts text and logs each friend', async () => {
+    deliveryMocks.beginDeliveryAttempt.mockResolvedValue(true);
     const friends = [
       { id: 'f1', line_user_id: 'U1' },
       { id: 'f2', line_user_id: 'U2' },
@@ -130,6 +164,7 @@ describe('processSegmentSend', () => {
       ['U1', 'U2'],
       [{ type: 'text', text: 'hello' }],
     );
+    expect(deliveryMocks.markDeliveryAttemptSucceeded).toHaveBeenCalled();
     expect(dbMocks.updateBroadcastStatus).toHaveBeenCalledWith(db, 'b2', 'sent', {
       totalCount: 2,
       successCount: 2,
@@ -137,6 +172,7 @@ describe('processSegmentSend', () => {
   });
 
   it('uses stagger and message variation for multi-batch text sends', async () => {
+    deliveryMocks.beginDeliveryAttempt.mockResolvedValue(true);
     const friends = Array.from({ length: 501 }, (_, i) => ({
       id: `f${i}`,
       line_user_id: `U${i}`,
@@ -172,6 +208,7 @@ describe('processSegmentSend', () => {
   });
 
   it('resets broadcast to draft when segment query throws', async () => {
+    deliveryMocks.beginDeliveryAttempt.mockResolvedValue(true);
     const db = {
       prepare: vi.fn().mockImplementation(() => ({
         bind: vi.fn().mockReturnValue({
@@ -193,10 +230,12 @@ describe('processSegmentSend', () => {
       }),
     ).rejects.toThrow('d1 fail');
 
+    expect(deliveryMocks.markDeliveryAttemptFailed).toHaveBeenCalled();
     expect(dbMocks.updateBroadcastStatus).toHaveBeenCalledWith(db, 'b4', 'draft');
   });
 
   it('continues when a multicast batch fails', async () => {
+    deliveryMocks.beginDeliveryAttempt.mockResolvedValue(true);
     const friends = Array.from({ length: 501 }, (_, i) => ({
       id: `f${i}`,
       line_user_id: `U${i}`,
@@ -222,6 +261,7 @@ describe('processSegmentSend', () => {
     });
 
     expect(lineClient.multicast).toHaveBeenCalledTimes(2);
+    expect(deliveryMocks.markDeliveryAttemptSucceeded).toHaveBeenCalled();
     expect(dbMocks.updateBroadcastStatus).toHaveBeenCalledWith(db, 'b5', 'sent', {
       totalCount: 501,
       successCount: 1,
@@ -229,6 +269,7 @@ describe('processSegmentSend', () => {
   });
 
   it('builds image messages from JSON content', async () => {
+    deliveryMocks.beginDeliveryAttempt.mockResolvedValue(true);
     const img = JSON.stringify({
       originalContentUrl: 'https://example.com/o.jpg',
       previewImageUrl: 'https://example.com/p.jpg',

@@ -81,7 +81,7 @@ async function signCfAccessJwt(
     'fetch',
     vi.fn().mockImplementation((url: string, init?: RequestInit) => {
       expect(url).toBe(`https://${teamDomain}/cdn-cgi/access/certs`);
-      expect(init?.redirect).toBe('error');
+      expect(init?.redirect).toBe('manual');
       return new Response(JSON.stringify({ keys: [pubJwk] }), {
         status: 200,
         headers: { 'Content-Type': 'application/json' },

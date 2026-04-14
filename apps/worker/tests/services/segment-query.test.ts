@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { buildSegmentQuery } from '../../src/services/segment-query.js';
+import { MAX_SEGMENT_RULES, buildSegmentQuery } from '../../src/services/segment-query.js';
 
 describe('buildSegmentQuery', () => {
   it('builds SQL and bindings for every supported rule type', () => {
@@ -73,5 +73,13 @@ describe('buildSegmentQuery', () => {
         ],
       }),
     ).toThrow(/metadata key must be 1–64 chars/);
+  });
+
+  it('rejects absurdly large rule sets (DoS guard)', () => {
+    const rules = Array.from({ length: MAX_SEGMENT_RULES + 1 }, () => ({
+      type: 'is_following' as const,
+      value: true,
+    }));
+    expect(() => buildSegmentQuery({ operator: 'AND', rules })).toThrow(/rules must be <=/i);
   });
 });
