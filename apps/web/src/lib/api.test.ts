@@ -25,6 +25,8 @@ describe('api object (integration via global fetch)', () => {
 
   afterEach(() => {
     vi.unstubAllGlobals();
+    delete process.env.NEXT_PUBLIC_ADMIN_BROWSER_API_BASE;
+    vi.resetModules();
   });
 
   it('getApiBaseUrl returns NEXT_PUBLIC_API_URL', async () => {
@@ -39,6 +41,16 @@ describe('api object (integration via global fetch)', () => {
     expect(globalThis.fetch).toHaveBeenCalledWith(
       'https://worker.test/api/friends?offset=0&limit=10&lineAccountId=acc-1',
       expect.objectContaining({ credentials: 'include' }),
+    );
+  });
+
+  it('uses NEXT_PUBLIC_ADMIN_BROWSER_API_BASE for fetch when set', async () => {
+    process.env.NEXT_PUBLIC_ADMIN_BROWSER_API_BASE = 'https://admin.test/api/lh-upstream';
+    const { api } = await import('./api');
+    await api.friends.list();
+    expect(globalThis.fetch).toHaveBeenCalledWith(
+      expect.stringMatching(/^https:\/\/admin\.test\/api\/lh-upstream\/api\/friends\??$/),
+      expect.any(Object),
     );
   });
 

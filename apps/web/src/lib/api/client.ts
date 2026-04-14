@@ -4,9 +4,10 @@ import {
   ADMIN_BROWSER_CLIENT_HEADER,
   ADMIN_BROWSER_CLIENT_HEADER_VALUE,
 } from '@line-crm/shared/admin-browser-client';
-import { validateClientApiBaseUrl } from '@line-crm/shared/safe-api-base-url';
+import { validateAdminApiFetchBase } from '@line-crm/shared';
 import {
   allowAdminApiUrlPlaceholderTemplate,
+  getAdminBrowserApiFetchBase,
   getAdminWorkerApiOrigin,
   isAdminCloudflareAccessLoginEnabled,
 } from '../admin-public-config.js';
@@ -31,7 +32,7 @@ export function getApiBaseUrl(): string {
 }
 
 function resolveApiUrl(): string {
-  return getApiBaseUrl();
+  return getAdminBrowserApiFetchBase();
 }
 
 function getStoredAdminSessionToken(): string | null {
@@ -97,18 +98,18 @@ export async function fetchApiCore<T>(
   path: string,
   options?: RequestInit,
 ): Promise<T> {
-  const validated = validateClientApiBaseUrl(baseUrl, apiBaseUrlValidationOptions());
+  const validated = validateAdminApiFetchBase(baseUrl, apiBaseUrlValidationOptions());
   if (!validated.ok) {
     throw new ApiError(`Misconfigured API URL: ${validated.reason}`, 503);
   }
-  const origin = validated.normalizedOrigin;
+  const fetchBase = validated.fetchBase;
 
   const headers: Record<string, string> = {
     ...(options?.headers as Record<string, string> | undefined),
     'Content-Type': 'application/json',
     [ADMIN_BROWSER_CLIENT_HEADER]: ADMIN_BROWSER_CLIENT_HEADER_VALUE,
   };
-  const res = await fetchImpl(`${origin}${path}`, {
+  const res = await fetchImpl(`${fetchBase}${path}`, {
     ...options,
     credentials: 'include',
     headers,

@@ -1,6 +1,7 @@
 import { afterEach, describe, expect, it } from 'vitest';
 import {
   allowAdminApiUrlPlaceholderTemplate,
+  getAdminBrowserApiFetchBase,
   getAdminWorkerApiOrigin,
   isAdminCloudflareAccessLoginEnabled,
 } from './admin-public-config.js';
@@ -8,6 +9,7 @@ import {
 describe('admin-public-config', () => {
   const saved = {
     api: process.env.NEXT_PUBLIC_API_URL,
+    browserBase: process.env.NEXT_PUBLIC_ADMIN_BROWSER_API_BASE,
     cf: process.env.NEXT_PUBLIC_USE_CLOUDFLARE_ACCESS_LOGIN,
     nodeEnv: process.env.NODE_ENV,
   };
@@ -15,6 +17,8 @@ describe('admin-public-config', () => {
   afterEach(() => {
     if (saved.api === undefined) delete process.env.NEXT_PUBLIC_API_URL;
     else process.env.NEXT_PUBLIC_API_URL = saved.api;
+    if (saved.browserBase === undefined) delete process.env.NEXT_PUBLIC_ADMIN_BROWSER_API_BASE;
+    else process.env.NEXT_PUBLIC_ADMIN_BROWSER_API_BASE = saved.browserBase;
     if (saved.cf === undefined) delete process.env.NEXT_PUBLIC_USE_CLOUDFLARE_ACCESS_LOGIN;
     else process.env.NEXT_PUBLIC_USE_CLOUDFLARE_ACCESS_LOGIN = saved.cf;
     process.env.NODE_ENV = saved.nodeEnv;
@@ -23,6 +27,14 @@ describe('admin-public-config', () => {
   it('getAdminWorkerApiOrigin prefers NEXT_PUBLIC_API_URL', () => {
     process.env.NEXT_PUBLIC_API_URL = 'https://worker.example.com';
     expect(getAdminWorkerApiOrigin()).toBe('https://worker.example.com');
+  });
+
+  it('getAdminBrowserApiFetchBase prefers NEXT_PUBLIC_ADMIN_BROWSER_API_BASE', () => {
+    process.env.NEXT_PUBLIC_API_URL = 'https://api.example.com';
+    process.env.NEXT_PUBLIC_ADMIN_BROWSER_API_BASE = 'https://admin.example.com/api/lh-upstream';
+    expect(getAdminBrowserApiFetchBase()).toBe('https://admin.example.com/api/lh-upstream');
+    delete process.env.NEXT_PUBLIC_ADMIN_BROWSER_API_BASE;
+    expect(getAdminBrowserApiFetchBase()).toBe('https://api.example.com');
   });
 
   it('isAdminCloudflareAccessLoginEnabled reads truthy flag', () => {

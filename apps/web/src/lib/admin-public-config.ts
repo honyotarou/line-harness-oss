@@ -10,6 +10,18 @@ export function getAdminWorkerApiOrigin(): string {
   return process.env.NEXT_PUBLIC_API_URL || DEFAULT_WORKER_API_ORIGIN;
 }
 
+/**
+ * Base URL for browser `fetch` to the Worker admin API. When set, may include a same-origin
+ * `/api/...` prefix (Cloudflare Access proxy Worker). LIFF/OAuth links still use {@link getAdminWorkerApiOrigin}.
+ */
+export function getAdminBrowserApiFetchBase(): string {
+  const v = process.env.NEXT_PUBLIC_ADMIN_BROWSER_API_BASE?.trim();
+  if (v) {
+    return v;
+  }
+  return getAdminWorkerApiOrigin();
+}
+
 /** Cloudflare Access 経由ログイン（POST login は空 JSON）。 */
 export function isAdminCloudflareAccessLoginEnabled(): boolean {
   const v = process.env.NEXT_PUBLIC_USE_CLOUDFLARE_ACCESS_LOGIN?.trim().toLowerCase();

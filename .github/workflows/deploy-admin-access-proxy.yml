@@ -1,0 +1,55 @@
+name: Deploy admin Access proxy Worker
+
+# Secrets (reuse Worker deploy):
+# - CLOUDFLARE_API_TOKEN, CLOUDFLARE_ACCOUNT_ID (required)
+# Proxy service token (GitHub → Worker secrets; synced after each deploy):
+# - ADMIN_ACCESS_PROXY_CF_ACCESS_CLIENT_ID
+# - ADMIN_ACCESS_PROXY_CF_ACCESS_CLIENT_SECRET
+# If those two are unset, deploy still runs (forks); set them in production so the proxy can reach API Access.
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - 'apps/admin-access-proxy-worker/**'
+      - 'packages/shared/**'
+      - '.github/workflows/deploy-admin-access-proxy.yml'
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: pnpm
+
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm --filter @line-crm/shared build
+
+      - uses: cloudflare/wrangler-action@v3
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          workingDirectory: apps/admin-access-proxy-worker
+          command: deploy
+
+      - name: Sync Access service token from GitHub Secrets to Worker secrets
+        working-directory: apps/admin-access-proxy-worker
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          CF_ACCESS_CLIENT_ID: ${{ secrets.ADMIN_ACCESS_PROXY_CF_ACCESS_CLIENT_ID }}
+          CF_ACCESS_CLIENT_SECRET: ${{ secrets.ADMIN_ACCESS_PROXY_CF_ACCESS_CLIENT_SECRET }}
+        run: |
+          if [ -z "$CF_ACCESS_CLIENT_ID" ] || [ -z "$CF_ACCESS_CLIENT_SECRET" ]; then
+            echo "::warning::ADMIN_ACCESS_PROXY_CF_ACCESS_CLIENT_ID / ADMIN_ACCESS_PROXY_CF_ACCESS_CLIENT_SECRET not set — Worker deployed without updating service token secrets (set repo secrets or use wrangler secret put locally)."
+            exit 0
+          fi
+          printf '%s' "$CF_ACCESS_CLIENT_ID" | pnpm exec wrangler secret put CF_ACCESS_CLIENT_ID
+          printf '%s' "$CF_ACCESS_CLIENT_SECRET" | pnpm exec wrangler secret put CF_ACCESS_CLIENT_SECRET

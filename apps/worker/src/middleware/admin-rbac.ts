@@ -32,7 +32,8 @@ function isViewerAllowedAdminMutation(pathname: string, method: string): boolean
 }
 
 /**
- * When Cloudflare Access is enforced, JWT must carry a valid `email` (enforced in cloudflareAccessMiddleware).
+ * When Cloudflare Access is enforced, JWT must carry a valid `email`, except trusted **service token**
+ * JWTs (`cfAccessServiceAuth`) used only from an Access-protected same-origin BFF Worker.
  * Optional D1 row `admin_principal_roles` can set `viewer` for read-only API access.
  * When `REQUIRE_ADMIN_PRINCIPAL_ALLOWLIST` is set, only listed emails may use the API (except bootstrap on empty table).
  */
@@ -46,6 +47,10 @@ export async function adminRbacMiddleware(c: Context<Env>, next: Next): Promise<
   }
 
   if (!isCloudflareAccessEnforced(c.env)) {
+    return next();
+  }
+
+  if (c.get('cfAccessServiceAuth') === true) {
     return next();
   }
 

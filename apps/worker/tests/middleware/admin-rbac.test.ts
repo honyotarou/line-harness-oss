@@ -73,6 +73,23 @@ function dbEmptyPrincipalTableMock(): D1Database {
 }
 
 describe('adminRbacMiddleware', () => {
+  it('skips email RBAC when cfAccessServiceAuth (Access service token / BFF)', async () => {
+    const app = new Hono<Env>();
+    app.use('*', async (c, next) => {
+      c.set('cfAccessServiceAuth', true);
+      c.set('cfAccessJwtPayload', { common_name: 'proxy.access' });
+      await next();
+    });
+    app.use('*', adminRbacMiddleware);
+    app.get('/api/friends', (c) => c.json({ ok: true }));
+
+    const res = await app.fetch(new Request('http://localhost/api/friends'), {
+      ...cfAccessEnv({ DB: dbStrictUnlistedMock() }),
+    } as never);
+
+    expect(res.status).toBe(200);
+  });
+
   it('skips RBAC for auth-exempt paths', async () => {
     const app = new Hono<Env>();
     app.use('*', async (c, next) => {

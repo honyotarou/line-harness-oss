@@ -1,4 +1,4 @@
-import { validateClientApiBaseUrl } from '@line-crm/shared/safe-api-base-url';
+import { validateAdminApiFetchBase } from '@line-crm/shared';
 
 /**
  * CSP for the exported admin static app (see `vercel.json`) and for `next dev` / Playwright.
@@ -14,9 +14,9 @@ import { validateClientApiBaseUrl } from '@line-crm/shared/safe-api-base-url';
 function connectSrcDirective(narrowApiUrl?: string): string {
   const trimmed = narrowApiUrl?.trim();
   if (trimmed) {
-    const v = validateClientApiBaseUrl(trimmed, { allowPlaceholderTemplate: false });
+    const v = validateAdminApiFetchBase(trimmed, { allowPlaceholderTemplate: false });
     if (v.ok) {
-      return `connect-src 'self' ${v.normalizedOrigin}`;
+      return `connect-src 'self' ${v.origin}`;
     }
   }
   return "connect-src 'self' https:";
