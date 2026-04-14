@@ -135,6 +135,7 @@ const ROUTE_LINE_CAPS = {
   'conversions.ts': 208,
   'conversions.events.ts': 160,
   'conversions.points.ts': 120,
+  'env-probe.ts': 55,
   'forms.ts': 497,
   'friends.ts': 498,
   'health.ts': 174,

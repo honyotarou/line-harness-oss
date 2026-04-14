@@ -41,6 +41,11 @@ describe('isAuthExemptPath', () => {
     expect(isAuthExemptPath('/favicon.ico', 'POST')).toBe(false);
   });
 
+  it('treats GET /api/_debug/env-probe as exempt for bearer auth (gated by ALLOW_WORKER_ENV_PROBE)', () => {
+    expect(isAuthExemptPath('/api/_debug/env-probe', 'GET')).toBe(true);
+    expect(isAuthExemptPath('/api/_debug/env-probe', 'POST')).toBe(false);
+  });
+
   it('does not treat encoded-slash traversal as /api/liff/ prefix (admin paths stay protected)', () => {
     expect(isAuthExemptPath('/api/liff%2f../links/wrap', 'POST')).toBe(false);
     expect(isAuthExemptPath('/api/liff%2F../analytics/ref-summary', 'GET')).toBe(false);
@@ -59,6 +64,10 @@ describe('isCloudflareAccessExemptPath', () => {
   it('does not exempt /api/auth/* while still exempting webhook', () => {
     expect(isCloudflareAccessExemptPath('/api/auth/login', 'POST')).toBe(false);
     expect(isCloudflareAccessExemptPath('/webhook', 'POST')).toBe(true);
+  });
+
+  it('does not exempt env-probe from Cloudflare Access (same as /api/auth/session)', () => {
+    expect(isCloudflareAccessExemptPath('/api/_debug/env-probe', 'GET')).toBe(false);
   });
 
   it('exempts GET /favicon.ico from Cloudflare Access (matches auth exempt)', () => {

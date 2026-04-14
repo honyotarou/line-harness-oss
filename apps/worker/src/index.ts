@@ -41,6 +41,7 @@ import { chats } from './routes/chats.js';
 import { operators } from './routes/operators.js';
 import { notifications } from './routes/notifications.js';
 import { stripe } from './routes/stripe.js';
+import { envProbe } from './routes/env-probe.js';
 import { health } from './routes/health.js';
 import { automations } from './routes/automations.js';
 import { richMenus } from './routes/rich-menus.js';
@@ -180,6 +181,12 @@ export type Env = {
      */
     ALLOW_LEGACY_API_KEY_SESSION_SIGNER?: string;
     /**
+     * `1` / `true` / `yes` / `on`: `GET /api/_debug/env-probe` returns non-secret booleans (binding presence only).
+     * When off, that path returns 404. Remove after troubleshooting. With `REQUIRE_CLOUDFLARE_ACCESS_JWT`,
+     * a valid Cf-Access-Jwt-Assertion is still required (same as `/api/auth/session`).
+     */
+    ALLOW_WORKER_ENV_PROBE?: string;
+    /**
      * `1` / `true`: when more than one active LINE account exists, require explicit `lineAccountId` on
      * scoped list APIs (same validation as Zero Trust principals) to block cross-account enumeration with one API key.
      */
@@ -291,6 +298,7 @@ app.use('*', adminRbacMiddleware);
 
 // Mount route groups — MVP & Round 2
 app.route('/', webhook);
+app.route('/', envProbe);
 app.route('/', authRoutes);
 app.route('/', friends);
 app.route('/', tags);
