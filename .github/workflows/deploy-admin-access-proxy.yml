@@ -55,28 +55,41 @@ jobs:
             printf '\nroutes = [\n  { pattern = "%s", zone_name = "%s" },\n]\n' "$ROUTE" "$ZONE" >> wrangler.toml
           fi
 
+      - name: Detect admin proxy Access service token secrets
+        id: proxy_cf
+        run: |
+          if [ -n "${{ secrets.ADMIN_ACCESS_PROXY_CF_ACCESS_CLIENT_ID }}" ] && [ -n "${{ secrets.ADMIN_ACCESS_PROXY_CF_ACCESS_CLIENT_SECRET }}" ]; then
+            echo "present=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "present=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Require proxy CF Access secrets on manual deploy
+        if: github.event_name == 'workflow_dispatch' && steps.proxy_cf.outputs.present != 'true'
+        run: |
+          echo "::error::Manual deploy requires ADMIN_ACCESS_PROXY_CF_ACCESS_CLIENT_ID and ADMIN_ACCESS_PROXY_CF_ACCESS_CLIENT_SECRET. Set them under Settings → Secrets and variables → Actions."
+          exit 1
+
       - uses: cloudflare/wrangler-action@v3
         with:
           apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
           workingDirectory: apps/admin-access-proxy-worker
+          packageManager: pnpm
           command: deploy
 
-      - name: Sync Access service token from GitHub Secrets to Worker secrets
-        working-directory: apps/admin-access-proxy-worker
+      - name: Upload CF Access service token to Worker secrets
+        if: steps.proxy_cf.outputs.present == 'true'
+        uses: cloudflare/wrangler-action@v3
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          workingDirectory: apps/admin-access-proxy-worker
+          packageManager: pnpm
+          command: whoami
+          secrets: |
+            CF_ACCESS_CLIENT_ID
+            CF_ACCESS_CLIENT_SECRET
         env:
-          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
-          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
           CF_ACCESS_CLIENT_ID: ${{ secrets.ADMIN_ACCESS_PROXY_CF_ACCESS_CLIENT_ID }}
           CF_ACCESS_CLIENT_SECRET: ${{ secrets.ADMIN_ACCESS_PROXY_CF_ACCESS_CLIENT_SECRET }}
-        run: |
-          if [ -z "$CF_ACCESS_CLIENT_ID" ] || [ -z "$CF_ACCESS_CLIENT_SECRET" ]; then
-            if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
-              echo "::error::Manual run requires ADMIN_ACCESS_PROXY_CF_ACCESS_CLIENT_ID and ADMIN_ACCESS_PROXY_CF_ACCESS_CLIENT_SECRET. Set them under Settings → Secrets and variables → Actions, or run sync-admin-access-proxy-secrets.yml after setting them."
-              exit 1
-            fi
-            echo "::warning::ADMIN_ACCESS_PROXY_CF_ACCESS_CLIENT_ID / ADMIN_ACCESS_PROXY_CF_ACCESS_CLIENT_SECRET not set — deploy finished without updating Worker secrets (fork OK). After setting secrets, run workflow manually or sync-admin-access-proxy-secrets.yml."
-            exit 0
-          fi
-          printf '%s' "$CF_ACCESS_CLIENT_ID" | pnpm exec wrangler secret put CF_ACCESS_CLIENT_ID
-          printf '%s' "$CF_ACCESS_CLIENT_SECRET" | pnpm exec wrangler secret put CF_ACCESS_CLIENT_SECRET

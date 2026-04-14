@@ -13,8 +13,9 @@ describe('deploy-admin-access-proxy workflow', () => {
   it('documents GitHub Secrets for service token sync after deploy', () => {
     expect(workflow).toMatch(/ADMIN_ACCESS_PROXY_CF_ACCESS_CLIENT_ID/);
     expect(workflow).toMatch(/ADMIN_ACCESS_PROXY_CF_ACCESS_CLIENT_SECRET/);
-    expect(workflow).toMatch(/wrangler secret put CF_ACCESS_CLIENT_ID/);
-    expect(workflow).toMatch(/wrangler secret put CF_ACCESS_CLIENT_SECRET/);
+    expect(workflow).toMatch(/proxy_cf/);
+    expect(workflow).toMatch(/secrets:\s*\|\s*\n\s*CF_ACCESS_CLIENT_ID/);
+    expect(workflow).toMatch(/CF_ACCESS_CLIENT_SECRET/);
   });
 
   it('reuses Cloudflare API token and deploys from apps/admin-access-proxy-worker', () => {

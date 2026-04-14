@@ -15,11 +15,14 @@ describe('sync-admin-access-proxy-secrets workflow', () => {
     expect(workflow).not.toMatch(/^\s*push:/m);
   });
 
-  it('requires CF Access proxy token secrets and uses wrangler secret put', () => {
+  it('requires Cloudflare auth + proxy token secrets and uploads via wrangler-action', () => {
     expect(workflow).toMatch(/ADMIN_ACCESS_PROXY_CF_ACCESS_CLIENT_ID/);
     expect(workflow).toMatch(/ADMIN_ACCESS_PROXY_CF_ACCESS_CLIENT_SECRET/);
-    expect(workflow).toMatch(/wrangler secret put CF_ACCESS_CLIENT_ID/);
-    expect(workflow).toMatch(/wrangler secret put CF_ACCESS_CLIENT_SECRET/);
+    expect(workflow).toMatch(/CLOUDFLARE_ACCOUNT_ID/);
+    expect(workflow).toMatch(/cloudflare\/wrangler-action@v3/);
+    expect(workflow).toMatch(/CF_ACCESS_CLIENT_ID/);
+    expect(workflow).toMatch(/CF_ACCESS_CLIENT_SECRET/);
+    expect(workflow).toMatch(/command:\s*whoami/);
     expect(workflow).toMatch(/::error::/);
   });
 });
