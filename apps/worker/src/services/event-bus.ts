@@ -233,6 +233,11 @@ async function processAutomations(
     const filtered = allAutomations.filter(
       (a) => !a.line_account_id || !lineAccountId || a.line_account_id === lineAccountId,
     );
+    if (filtered.length > MAX_AUTOMATIONS_PER_EVENT) {
+      console.warn(
+        `processAutomations: truncating ${filtered.length} automations to ${MAX_AUTOMATIONS_PER_EVENT} for event ${eventType}`,
+      );
+    }
     const automations = filtered.slice(0, MAX_AUTOMATIONS_PER_EVENT);
 
     for (const automation of automations) {

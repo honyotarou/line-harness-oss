@@ -77,12 +77,15 @@ webhook.post('/webhook', async (c) => {
   const lineClient = new LineClient(channelAccessToken);
 
   if (!Array.isArray(body.events)) {
+    console.warn('LINE webhook: body.events is not an array');
     return c.json({ status: 'ok' }, 200);
   }
 
   if (body.events.length > LINE_WEBHOOK_MAX_EVENTS) {
-    console.error(`LINE webhook skipped: too many events (${body.events.length})`);
-    return c.json({ status: 'ok' }, 200);
+    console.warn(
+      `LINE webhook truncated: ${body.events.length} events, processing first ${LINE_WEBHOOK_MAX_EVENTS}`,
+    );
+    body.events = body.events.slice(0, LINE_WEBHOOK_MAX_EVENTS);
   }
 
   // 非同期処理 — LINE は ~1s 以内のレスポンスを要求

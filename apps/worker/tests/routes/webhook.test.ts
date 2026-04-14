@@ -255,40 +255,53 @@ describe('line webhook route', () => {
     expect(lineSdkMocks.verifySignature).toHaveBeenCalled();
   });
 
-  it('returns 200 and skips processing when too many events are included (DoS guard)', async () => {
-    const { webhook } = await import('../../src/routes/webhook.js');
-    const app = new Hono();
-    app.route('/', webhook);
-    const { pending, ctx } = executionCtxWithPending();
+  it('returns 200 and truncates excess events, processing the first batch (DoS guard)', async () => {
+    const handlers = await import('../../src/application/line-webhook-handlers.js');
+    const handlerSpy = vi.spyOn(handlers, 'handleLineWebhookEvent').mockResolvedValue(undefined);
+    const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    try {
+      const { webhook } = await import('../../src/routes/webhook.js');
+      const app = new Hono();
+      app.route('/', webhook);
+      const { pending, ctx } = executionCtxWithPending();
 
-    const events = Array.from({ length: 51 }, (_, i) => ({
-      type: 'message',
-      timestamp: 0,
-      source: { type: 'user', userId: `U${i}` },
-      message: { id: String(i), type: 'text', text: 'hi' },
-      replyToken: 'r',
-      mode: 'active',
-      webhookEventId: `e-${i}`,
-      deliveryContext: { isRedelivery: false },
-    }));
-    const body = JSON.stringify({ destination: 'dest', events });
-    const response = await app.fetch(
-      new Request('http://localhost/webhook', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'X-Line-Signature': 'sig' },
-        body,
-      }),
-      {
-        DB: createLineWebhookDedupDb(),
-        LINE_CHANNEL_SECRET: 'line-secret',
-        LINE_CHANNEL_ACCESS_TOKEN: 'line-access-token',
-        WORKER_URL: 'https://worker.example.com',
-        executionCtx: ctx,
-      } as never,
-    );
+      const events = Array.from({ length: 51 }, (_, i) => ({
+        type: 'message',
+        timestamp: 0,
+        source: { type: 'user', userId: `U${i}` },
+        message: { id: String(i), type: 'text', text: 'hi' },
+        replyToken: 'r',
+        mode: 'active',
+        webhookEventId: `e-${i}`,
+        deliveryContext: { isRedelivery: false },
+      }));
+      const body = JSON.stringify({ destination: 'dest', events });
+      const response = await app.fetch(
+        new Request('http://localhost/webhook', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'X-Line-Signature': 'sig' },
+          body,
+        }),
+        {
+          DB: createLineWebhookDedupDb(),
+          LINE_CHANNEL_SECRET: 'line-secret',
+          LINE_CHANNEL_ACCESS_TOKEN: 'line-access-token',
+          WORKER_URL: 'https://worker.example.com',
+        } as never,
+        ctx,
+      );
 
-    expect(response.status).toBe(200);
-    expect(pending.length).toBe(0);
+      expect(response.status).toBe(200);
+      expect(pending.length).toBe(1);
+      await Promise.all(pending);
+      expect(handlerSpy).toHaveBeenCalledTimes(50);
+      expect(warnSpy).toHaveBeenCalledWith(
+        'LINE webhook truncated: 51 events, processing first 50',
+      );
+    } finally {
+      warnSpy.mockRestore();
+      handlerSpy.mockRestore();
+    }
   });
 
   it('processes follow before message even if the webhook orders message first (avoid drop)', async () => {
@@ -332,8 +345,8 @@ describe('line webhook route', () => {
         LINE_CHANNEL_SECRET: 'line-secret',
         LINE_CHANNEL_ACCESS_TOKEN: 'line-access-token',
         WORKER_URL: 'https://worker.example.com',
-        executionCtx: ctx,
       } as never,
+      ctx,
     );
 
     expect(response.status).toBe(200);
