@@ -11,12 +11,14 @@ name: Deploy admin Access proxy Worker
 # If those two are unset, deploy still runs (forks); set them in production so the proxy can reach API Access.
 #
 # 重要: Repository secrets だけ更新した場合は Actions は起動しません。main へ空コミットでも push するか、
-# Actions → 本 workflow / 「Sync GitHub secrets to Cloudflare」が走るよう main を更新してください。
+# Actions → 本 workflow を手動実行してください（push と同じ内容）。
 # （手動時、CF 用プロキシトークン未設定ならジョブ失敗）
 # Secret のみ・デプロイなし: sync-admin-access-proxy-secrets.yml を手動実行。
 
 on:
   workflow_dispatch:
+  push:
+    branches: [main]
 
 jobs:
   deploy:

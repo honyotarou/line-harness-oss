@@ -17,10 +17,13 @@ name: Deploy Worker
 #
 # After schema changes (e.g. admin_principal_roles), run D1 migrations against remote before relying on new features.
 
-# Auto-runs via `sync-github-secrets-to-cloudflare.yml` on every push to `main` (dispatches this workflow).
+# Runs on every push to `main` (no path filter) so GitHub Repository secrets are re-applied to Cloudflare each commit.
+# `GITHUB_TOKEN` cannot chain-trigger other workflows — do not use gh workflow run for deploys.
 # Manual: Actions → Deploy Worker → Run workflow.
 on:
   workflow_dispatch:
+  push:
+    branches: [main]
 
 jobs:
   deploy:

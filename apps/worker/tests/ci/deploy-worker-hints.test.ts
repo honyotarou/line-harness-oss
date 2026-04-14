@@ -13,10 +13,12 @@ describe('deploy-worker workflow operational hints', () => {
     expect(workflow).toMatch(/D1 migrations/i);
   });
 
-  it('is dispatch-only; main pushes trigger it via sync-github-secrets-to-cloudflare.yml', () => {
+  it('runs on every push to main so CI reapplies GitHub secrets to Cloudflare (no path filter)', () => {
     expect(workflow).toMatch(/workflow_dispatch/);
-    expect(workflow).toMatch(/sync-github-secrets-to-cloudflare\.yml/);
-    expect(workflow).not.toMatch(/^\s*push:/m);
+    expect(workflow).toMatch(/^\s*push:/m);
+    expect(workflow).toMatch(/branches:\s*\[\s*main\s*\]/);
+    expect(workflow).not.toMatch(/paths:/);
+    expect(workflow).toMatch(/GITHUB_TOKEN.*chain/i);
   });
 
   it('documents secrets, OpenAPI lockdown, host allowlist, Access, and Bot Management', () => {
