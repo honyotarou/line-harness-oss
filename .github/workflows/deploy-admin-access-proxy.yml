@@ -10,23 +10,20 @@ name: Deploy admin Access proxy Worker
 # - ADMIN_ACCESS_PROXY_ROUTE_PATTERN + ADMIN_ACCESS_PROXY_ZONE_NAME (e.g. example.com/api/lh-upstream/* + example.com)
 # If those two are unset, deploy still runs (forks); set them in production so the proxy can reach API Access.
 #
-# 重要: Repository secrets を編集しただけでは Actions は走りません。次のどちらかが必要です。
-# - Actions → 本 workflow を「Run workflow」で手動実行（手動時、CF 用シークレット未設定ならジョブ失敗）
-# - または sync-admin-access-proxy-secrets.yml を手動実行（デプロイなしで Secret のみ反映）
-# - または main へ proxy 関連パスの push
+# 重要: Repository secrets だけ更新した場合は Actions は起動しません。main へ空コミットでも push するか、
+# Actions → 本 workflow / 「Sync GitHub secrets to Cloudflare」が走るよう main を更新してください。
+# （手動時、CF 用プロキシトークン未設定ならジョブ失敗）
+# Secret のみ・デプロイなし: sync-admin-access-proxy-secrets.yml を手動実行。
 
 on:
   workflow_dispatch:
-  push:
-    branches: [main]
-    paths:
-      - 'apps/admin-access-proxy-worker/**'
-      - 'packages/shared/**'
-      - '.github/workflows/deploy-admin-access-proxy.yml'
 
 jobs:
   deploy:
     runs-on: ubuntu-latest
+    concurrency:
+      group: cloudflare-deploy-admin-access-proxy-${{ github.ref }}
+      cancel-in-progress: false
     steps:
       - uses: actions/checkout@v4
 

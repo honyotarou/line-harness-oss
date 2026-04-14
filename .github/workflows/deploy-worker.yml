@@ -17,21 +17,17 @@ name: Deploy Worker
 #
 # After schema changes (e.g. admin_principal_roles), run D1 migrations against remote before relying on new features.
 
-# Configure CLOUDFLARE_API_TOKEN and CLOUDFLARE_ACCOUNT_ID secrets to enable auto-deploy
+# Auto-runs via `sync-github-secrets-to-cloudflare.yml` on every push to `main` (dispatches this workflow).
+# Manual: Actions → Deploy Worker → Run workflow.
 on:
   workflow_dispatch:
-  push:
-    branches: [main]
-    paths:
-      - 'apps/worker/**'
-      - 'packages/db/**'
-      - 'packages/shared/**'
-      - 'packages/line-sdk/**'
-      - '.github/workflows/deploy-worker.yml'
 
 jobs:
   deploy:
     runs-on: ubuntu-latest
+    concurrency:
+      group: cloudflare-deploy-line-crm-worker-${{ github.ref }}
+      cancel-in-progress: false
     steps:
       - uses: actions/checkout@v4
 

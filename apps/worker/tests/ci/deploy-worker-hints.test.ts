@@ -13,6 +13,12 @@ describe('deploy-worker workflow operational hints', () => {
     expect(workflow).toMatch(/D1 migrations/i);
   });
 
+  it('is dispatch-only; main pushes trigger it via sync-github-secrets-to-cloudflare.yml', () => {
+    expect(workflow).toMatch(/workflow_dispatch/);
+    expect(workflow).toMatch(/sync-github-secrets-to-cloudflare\.yml/);
+    expect(workflow).not.toMatch(/^\s*push:/m);
+  });
+
   it('documents secrets, OpenAPI lockdown, host allowlist, Access, and Bot Management', () => {
     expect(workflow).toMatch(/wrangler secret put/i);
     expect(workflow).toMatch(/DISABLE_PUBLIC_OPENAPI/);
