@@ -66,6 +66,29 @@ describe('cloudflareAccessMiddleware', () => {
     expect(body.error).toMatch(/access/i);
   });
 
+  it('accepts CF_Authorization cookie as the application token when header is missing', async () => {
+    const cfJwt = await import('../../src/services/cloudflare-access-jwt.js');
+    vi.spyOn(cfJwt, 'verifyCloudflareAccessJwt').mockResolvedValue({
+      ok: true,
+      payload: { email: 'user@example.com' },
+    });
+
+    const app = new Hono<{ Bindings: Env['Bindings'] }>();
+    app.use('*', cloudflareAccessMiddleware);
+    app.get('/private', (c) => c.json({ ok: true }));
+
+    const res = await app.fetch(
+      new Request('http://localhost/private', {
+        headers: { Cookie: 'CF_Authorization=fake.jwt.here; other=1' },
+      }),
+      env({
+        REQUIRE_CLOUDFLARE_ACCESS_JWT: '1',
+        CLOUDFLARE_ACCESS_TEAM_DOMAIN: 'team.cloudflareaccess.com',
+      }),
+    );
+    expect(res.status).toBe(200);
+  });
+
   it('allows OPTIONS without JWT so CORS preflight can complete', async () => {
     const app = new Hono<{ Bindings: Env['Bindings'] }>();
     app.use('*', cloudflareAccessMiddleware);

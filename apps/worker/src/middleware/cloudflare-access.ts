@@ -34,7 +34,14 @@ export async function cloudflareAccessMiddleware(
     return next();
   }
 
-  const jwt = c.req.header(CF_ACCESS_JWT_HEADER) ?? c.req.header('CF-Access-Jwt-Assertion') ?? '';
+  const jwtHeader =
+    c.req.header(CF_ACCESS_JWT_HEADER) ?? c.req.header('CF-Access-Jwt-Assertion') ?? '';
+
+  // Access can also provide the application token as a cookie (CF_Authorization).
+  // Prefer the assertion header when present.
+  const cookie = c.req.header('Cookie') ?? '';
+  const jwtCookie = jwtHeader ? '' : extractCookieValue(cookie, 'CF_Authorization');
+  const jwt = jwtHeader || jwtCookie || '';
 
   const allowedEmails = c.env.CLOUDFLARE_ACCESS_ALLOWED_EMAILS?.trim();
 
@@ -69,4 +76,27 @@ export async function cloudflareAccessMiddleware(
   }
 
   return c.json({ success: false, error: CLOUDFLARE_ACCESS_EMAIL_CLAIM_ERROR }, 403);
+}
+
+function extractCookieValue(cookieHeader: string, name: string): string {
+  if (!cookieHeader) {
+    return '';
+  }
+  const parts = cookieHeader.split(';');
+  for (const raw of parts) {
+    const trimmed = raw.trim();
+    if (!trimmed) {
+      continue;
+    }
+    const eq = trimmed.indexOf('=');
+    if (eq <= 0) {
+      continue;
+    }
+    const k = trimmed.slice(0, eq).trim();
+    if (k !== name) {
+      continue;
+    }
+    return trimmed.slice(eq + 1).trim();
+  }
+  return '';
 }
