@@ -13,6 +13,9 @@ concurrency:
 jobs:
   observe:
     runs-on: ubuntu-latest
+    container:
+      # Avoid apt-get --with-deps (can hang on mirrors). Keep in sync with Playwright version in pnpm-lock.
+      image: mcr.microsoft.com/playwright:v1.58.2-jammy
 
     strategy:
       # "Speed is optional; stability is mandatory"
@@ -42,7 +45,8 @@ jobs:
 
       - name: Install Playwright Chromium (for e2e slice)
         if: matrix.slice.name == 'e2e'
-        run: pnpm exec playwright install chromium --with-deps
+        # Browsers + OS deps are preinstalled in the Playwright container.
+        run: pnpm exec playwright install chromium
 
       - name: Install Hurl (for api-integration slice)
         if: matrix.slice.name == 'api-integration'
