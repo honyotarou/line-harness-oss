@@ -28,4 +28,10 @@ describe('deploy-admin-access-proxy workflow', () => {
     expect(workflow).toMatch(/ADMIN_ACCESS_PROXY_ROUTE_PATTERN/);
     expect(workflow).toMatch(/ADMIN_ACCESS_PROXY_ZONE_NAME/);
   });
+
+  it('fails manual runs when CF proxy token secrets are missing', () => {
+    expect(workflow).toMatch(/workflow_dispatch/);
+    expect(workflow).toMatch(/github.event_name/);
+    expect(workflow).toMatch(/::error::/);
+  });
 });
