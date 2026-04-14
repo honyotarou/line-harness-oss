@@ -23,5 +23,6 @@ describe('deploy-worker workflow operational hints', () => {
     expect(workflow).toMatch(/MULTI_LINE_ACCOUNT_QUERY_REQUIRES_LINE_ACCOUNT_ID/);
     expect(workflow).toMatch(/BROADCAST_SEND_SECRET/);
     expect(workflow).toMatch(/REQUIRE_ADMIN_SESSION_SECRET/);
+    expect(workflow).toMatch(/CLOUDFLARE_ACCESS_TRUSTED_SERVICE_CLIENT_IDS/);
   });
 });

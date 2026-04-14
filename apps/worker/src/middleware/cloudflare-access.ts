@@ -8,6 +8,7 @@ import {
   isCloudflareAccessEnforced,
 } from '../services/cloudflare-access-principal.js';
 import { verifyCloudflareAccessJwt } from '../services/cloudflare-access-jwt.js';
+import { isTrustedCloudflareAccessServiceTokenPayload } from '../services/cloudflare-access-service-token.js';
 
 /**
  * Optional gate: when `REQUIRE_CLOUDFLARE_ACCESS_JWT` + `CLOUDFLARE_ACCESS_TEAM_DOMAIN` are set,
@@ -51,10 +52,21 @@ export async function cloudflareAccessMiddleware(
   }
 
   const email = getValidatedAccessEmailFromPayload(result.payload);
-  if (!email) {
-    return c.json({ success: false, error: CLOUDFLARE_ACCESS_EMAIL_CLAIM_ERROR }, 403);
+  if (email) {
+    c.set('cfAccessJwtPayload', result.payload);
+    return next();
   }
 
-  c.set('cfAccessJwtPayload', result.payload);
-  return next();
+  if (
+    isTrustedCloudflareAccessServiceTokenPayload(
+      result.payload,
+      c.env.CLOUDFLARE_ACCESS_TRUSTED_SERVICE_CLIENT_IDS,
+    )
+  ) {
+    c.set('cfAccessJwtPayload', result.payload);
+    c.set('cfAccessServiceAuth', true);
+    return next();
+  }
+
+  return c.json({ success: false, error: CLOUDFLARE_ACCESS_EMAIL_CLAIM_ERROR }, 403);
 }

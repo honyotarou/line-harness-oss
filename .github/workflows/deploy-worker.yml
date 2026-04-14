@@ -9,6 +9,7 @@ name: Deploy Worker
 # - DISABLE_PUBLIC_OPENAPI=1 unless you intentionally expose /openapi.json.
 # - ALLOWED_HOSTNAMES for your API hostname(s).
 # - REQUIRE_CLOUDFLARE_ACCESS_JWT + CLOUDFLARE_ACCESS_TEAM_DOMAIN: set as GitHub Secrets; CI injects into wrangler.toml before deploy (dashboard-only edits are overwritten every deploy).
+# - CLOUDFLARE_ACCESS_TRUSTED_SERVICE_CLIENT_IDS: optional; GitHub Secret → wrangler.toml (admin-access-proxy service token client id(s), *.access).
 # - Optional WAF/Bot: enable Cloudflare Bot Management on the zone, then MIN_CF_BOT_SCORE (e.g. 30) on the Worker.
 # - Multi LINE accounts on one Worker: MULTI_LINE_ACCOUNT_QUERY_REQUIRES_LINE_ACCOUNT_ID=1
 # - REQUIRE_ADMIN_SESSION_SECRET=1 + ADMIN_SESSION_SECRET (wrangler secret) so sessions are not signed with API_KEY
@@ -81,6 +82,16 @@ jobs:
           if [ -n "$INJECT_CF_ACCESS_JWT" ] && [ -n "$INJECT_CF_ACCESS_DOMAIN" ]; then
             sed -i.bak "s|^REQUIRE_CLOUDFLARE_ACCESS_JWT = .*|REQUIRE_CLOUDFLARE_ACCESS_JWT = \"${INJECT_CF_ACCESS_JWT}\"|" wrangler.toml
             sed -i.bak "s|^CLOUDFLARE_ACCESS_TEAM_DOMAIN = .*|CLOUDFLARE_ACCESS_TEAM_DOMAIN = \"${INJECT_CF_ACCESS_DOMAIN}\"|" wrangler.toml
+            rm -f wrangler.toml.bak
+          fi
+
+      - name: Inject Cloudflare Access trusted service client ids (optional; GitHub Secret)
+        working-directory: apps/worker
+        env:
+          INJECT_TRUSTED_SERVICE: ${{ secrets.CLOUDFLARE_ACCESS_TRUSTED_SERVICE_CLIENT_IDS }}
+        run: |
+          if [ -n "$INJECT_TRUSTED_SERVICE" ]; then
+            sed -i.bak "s|^CLOUDFLARE_ACCESS_TRUSTED_SERVICE_CLIENT_IDS = .*|CLOUDFLARE_ACCESS_TRUSTED_SERVICE_CLIENT_IDS = \"${INJECT_TRUSTED_SERVICE}\"|" wrangler.toml
             rm -f wrangler.toml.bak
           fi
 

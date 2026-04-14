@@ -51,6 +51,8 @@ export type Env = {
   Variables: {
     /** Set by {@link cloudflareAccessMiddleware} after JWT verification. */
     cfAccessJwtPayload?: Record<string, unknown>;
+    /** Service-token Access JWT (BFF / same-origin proxy); skips email-based RBAC when true. */
+    cfAccessServiceAuth?: boolean;
   };
   Bindings: {
     DB: D1Database;
@@ -145,6 +147,11 @@ export type Env = {
      * (string or array) after signature verification — reduces cross-app JWT reuse on the same team domain.
      */
     CLOUDFLARE_ACCESS_AUDIENCE?: string;
+    /**
+     * Comma-separated Access service token client ids (`*.access`) whose JWT may omit `email`.
+     * Used with a same-origin Worker (or other BFF) that adds CF-Access-Client-Id/Secret.
+     */
+    CLOUDFLARE_ACCESS_TRUSTED_SERVICE_CLIENT_IDS?: string;
     /**
      * Optional comma-separated hostnames for `Host` header allowlisting (DNS rebinding mitigation).
      * When unset or empty, no check (typical for local dev). In production, set to your worker hostname(s).

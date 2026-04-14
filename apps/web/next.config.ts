@@ -12,7 +12,8 @@ const ADMIN_SECURITY_HEADERS = [
     key: 'Content-Security-Policy',
     value: buildAdminContentSecurityPolicy({
       allowUnsafeEval: isNextDev,
-      narrowConnectSrcFromApiUrl: process.env.NEXT_PUBLIC_API_URL,
+      narrowConnectSrcFromApiUrl:
+        process.env.NEXT_PUBLIC_ADMIN_BROWSER_API_BASE || process.env.NEXT_PUBLIC_API_URL,
     }),
   },
   ...(isNextDev

@@ -72,6 +72,7 @@ pnpm exec lefthook install
 - **切り分け:** `curl -i -X OPTIONS 'https://<api-host>/api/auth/login' -H 'Origin: https://<web-host>' -H 'Access-Control-Request-Method: POST'` で **`Content-Type: text/html`** の 403 なら、Worker の JSON ではなく **Access 等の手前**の応答を疑う。
 - **対処:** Cloudflare One の該当 **Access アプリ**で **Advanced settings → Cross-Origin Resource Sharing (CORS) settings** を開き、公式のいずれかに合わせる — **Bypass options requests to origin**（オリジン側で CORS を既に強制している場合のみ）または **Access がプリフライトに応答**（オリジンが返す CORS ヘッダと整合させる）。手順の正本: [Cloudflare Access — CORS](https://developers.cloudflare.com/cloudflare-one/access-controls/applications/http-apps/authorization-cookie/cors/)。
 - **補足:** 公式どおり、**シークレット／プライベートウィンドウ**では `CF_Authorization` の扱いで切り分けが狂いやすい。本番確認は通常プロファイル推奨。
+- **Vercel など別オリジンで `CF_Authorization` が `fetch` に載らないとき:** [Access CORS — Send authentication token with Cloudflare Worker](https://developers.cloudflare.com/cloudflare-one/access-controls/applications/http-apps/authorization-cookie/cors/#send-authentication-token-with-cloudflare-worker) に沿い、**管理画面と同じホスト上**に `apps/admin-access-proxy-worker` をデプロイしルートを **`/api/lh-upstream/*`** にする。ブラウザは **`NEXT_PUBLIC_ADMIN_BROWSER_API_BASE`**（例: `https://your-admin.example.com/api/lh-upstream`）へだけ `fetch` し、プロキシが **サービストークン**で API Worker に中継する。API の Access アプリに **Service Auth（Service Token）** を追加し、line-crm Worker に **`CLOUDFLARE_ACCESS_TRUSTED_SERVICE_CLIENT_IDS`**（JWT の `common_name`）を設定する。**GitHub 運用:** リポジトリシークレット **`ADMIN_ACCESS_PROXY_CF_ACCESS_CLIENT_ID`** / **`ADMIN_ACCESS_PROXY_CF_ACCESS_CLIENT_SECRET`** → workflow **`deploy-admin-access-proxy.yml`** がデプロイ後に Worker secret を同期。line-crm 側は **`CLOUDFLARE_ACCESS_TRUSTED_SERVICE_CLIENT_IDS`** を **`deploy-worker.yml`** が `wrangler.toml` に注入（`CLOUDFLARE_API_TOKEN` / `CLOUDFLARE_ACCOUNT_ID` は既存どおり）。
 
 **LIFF の手動スモーク（ステージング推奨）**
 
@@ -85,6 +86,7 @@ pnpm exec lefthook install
 ## パッケージ
 
 - `apps/worker` — Cloudflare Workers + Hono + Vitest
+- `apps/admin-access-proxy-worker` — 任意: 管理画面と同オリジンの Access プロキシ（サービストークンで line-crm API へ）
 - `apps/web` — Next.js + Vitest
 - `packages/db`, `packages/shared`, `packages/line-sdk`
 

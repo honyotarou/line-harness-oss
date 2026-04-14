@@ -129,6 +129,37 @@ describe('cloudflareAccessMiddleware', () => {
     expect(body.error).toMatch(/email/i);
   });
 
+  it('allows verified service-token JWT without email when common_name is allowlisted', async () => {
+    const cfJwt = await import('../../src/services/cloudflare-access-jwt.js');
+    vi.spyOn(cfJwt, 'verifyCloudflareAccessJwt').mockResolvedValue({
+      ok: true,
+      payload: {
+        type: 'app',
+        common_name: 'svcclient.access',
+        iss: 'https://team.cloudflareaccess.com',
+      },
+    });
+
+    const app = new Hono<Env>();
+    app.use('*', cloudflareAccessMiddleware);
+    app.get('/private', (c) => c.json({ ok: true, svc: c.get('cfAccessServiceAuth') === true }));
+
+    const res = await app.fetch(
+      new Request('http://localhost/private', {
+        headers: { 'Cf-Access-Jwt-Assertion': 'fake.jwt.here' },
+      }),
+      env({
+        REQUIRE_CLOUDFLARE_ACCESS_JWT: '1',
+        CLOUDFLARE_ACCESS_TEAM_DOMAIN: 'team.cloudflareaccess.com',
+        CLOUDFLARE_ACCESS_TRUSTED_SERVICE_CLIENT_IDS: 'svcclient.access',
+      }),
+    );
+    expect(res.status).toBe(200);
+    const body = (await res.json()) as { ok: boolean; svc: boolean };
+    expect(body.ok).toBe(true);
+    expect(body.svc).toBe(true);
+  });
+
   it('returns 403 when enforcement is on but jwt verification fails', async () => {
     const app = new Hono<{ Bindings: Env['Bindings'] }>();
     app.use('*', cloudflareAccessMiddleware);

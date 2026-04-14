@@ -49,6 +49,14 @@ describe('security headers for static admin (Vercel)', () => {
     expect(csp).not.toMatch(/connect-src 'self' https:;/);
   });
 
+  it('narrows connect-src to origin only when API URL includes /api path prefix', () => {
+    const csp = buildAdminContentSecurityPolicy({
+      allowUnsafeEval: false,
+      narrowConnectSrcFromApiUrl: 'https://admin.example.com/api/lh-upstream',
+    });
+    expect(csp).toMatch(/connect-src 'self' https:\/\/admin\.example\.com/);
+  });
+
   it('keeps broad connect-src when API URL is the repo placeholder or invalid', () => {
     const ph = buildAdminContentSecurityPolicy({
       allowUnsafeEval: false,
