@@ -19,4 +19,10 @@ describe('admin-access-proxy wrangler (fork-friendly placeholders)', () => {
     expect(wrangler).toMatch(/YOUR_UPSTREAM_API_ORIGIN/);
     expect(wrangler).toMatch(/ADMIN_ACCESS_PROXY_ROUTE_PATTERN/);
   });
+
+  it('documents Access tokens as Worker secrets, not [vars] (matches Cloudflare secrets docs)', () => {
+    expect(wrangler).toMatch(/CF_ACCESS_CLIENT_ID/);
+    expect(wrangler).toMatch(/CF_ACCESS_CLIENT_SECRET/);
+    expect(wrangler).toMatch(/developers\.cloudflare\.com\/workers\/configuration\/secrets/);
+  });
 });

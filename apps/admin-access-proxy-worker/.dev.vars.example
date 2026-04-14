@@ -1,0 +1,9 @@
+# Copy to `.dev.vars` for local `pnpm exec wrangler dev` (never commit `.dev.vars`).
+#
+# Cloudflare Access の Service Token（API に付けた Access の「Client ID / Client Secret」）を設定する。
+# 本番・ステージングはダッシュボードの Worker Variables and Secrets、または
+# `wrangler secret put CF_ACCESS_CLIENT_ID` / `CF_ACCESS_CLIENT_SECRET`、または
+# GitHub Repository secrets → Actions（sync-admin-access-proxy-secrets.yml など）。
+
+CF_ACCESS_CLIENT_ID=local-dev-access-service-token-client-id
+CF_ACCESS_CLIENT_SECRET=local-dev-access-service-token-secret
