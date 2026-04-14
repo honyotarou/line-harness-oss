@@ -409,17 +409,23 @@ async function submitForm(): Promise<void> {
 
   try {
     const data = collectFormData();
-    console.log('Form data collected:', JSON.stringify(data));
+    if (import.meta.env.DEV) {
+      console.log('Form data collected:', JSON.stringify(data));
+    }
     const body: Record<string, unknown> = { data };
     const idToken = liff.getIDToken();
     if (idToken) body.idToken = idToken;
-    console.log('Submitting to:', `${API_BASE}/api/forms/${state.formDef.id}/submit`);
+    if (import.meta.env.DEV) {
+      console.log('Submitting to:', `${API_BASE}/api/forms/${state.formDef.id}/submit`);
+    }
 
     const res = await apiCall(`/api/forms/${state.formDef.id}/submit`, {
       method: 'POST',
       body: JSON.stringify(body),
     });
-    console.log('Response status:', res.status);
+    if (import.meta.env.DEV) {
+      console.log('Response status:', res.status);
+    }
 
     if (!res.ok) {
       const errText = await res.text().catch(() => '');

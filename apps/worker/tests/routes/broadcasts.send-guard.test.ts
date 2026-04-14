@@ -1,5 +1,6 @@
 import { Hono } from 'hono';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { resetRequestRateLimits } from '../../src/services/request-rate-limit.js';
 
 const dbMocks = vi.hoisted(() => ({
   getBroadcastById: vi.fn(),
@@ -24,6 +25,7 @@ vi.mock('@line-crm/line-sdk', () => ({
 
 describe('broadcast send guard', () => {
   beforeEach(() => {
+    resetRequestRateLimits();
     vi.resetModules();
     dbMocks.getBroadcastById.mockReset();
     dbMocks.processBroadcastSend.mockReset();

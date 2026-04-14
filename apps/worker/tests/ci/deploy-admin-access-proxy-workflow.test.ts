@@ -22,4 +22,10 @@ describe('deploy-admin-access-proxy workflow', () => {
     expect(workflow).toMatch(/apps\/admin-access-proxy-worker/);
     expect(workflow).toMatch(/command: deploy/);
   });
+
+  it('documents optional route and upstream injection secrets', () => {
+    expect(workflow).toMatch(/ADMIN_ACCESS_PROXY_UPSTREAM_ORIGIN/);
+    expect(workflow).toMatch(/ADMIN_ACCESS_PROXY_ROUTE_PATTERN/);
+    expect(workflow).toMatch(/ADMIN_ACCESS_PROXY_ZONE_NAME/);
+  });
 });

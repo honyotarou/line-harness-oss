@@ -183,9 +183,28 @@ export async function checkRateLimitWithStorage(
 /** Brute-force sensitive paths must not rely on per-isolate memory (see pentest / rate-limit note). */
 const RATE_LIMIT_BUCKETS_REQUIRING_D1 = new Set(['auth-login', 'auth-session']);
 
+export type EnforceRateLimitOptions = Omit<RateLimitStorageOptions, 'key' | 'now'> & {
+  /** When set, replaces client-IP keying (e.g. per Bearer session for mass-send endpoints). */
+  resolveKey?: (req: Request) => Promise<string> | string;
+};
+
+/**
+ * Stable rate-limit subject for authenticated admin mass-send routes: hash Bearer token when
+ * present, else fall back to {@link getRequestClientAddress}.
+ */
+export async function massSendAdminRateLimitKey(request: Request): Promise<string> {
+  const auth = request.headers.get('Authorization')?.trim() ?? '';
+  if (auth.startsWith('Bearer ') && auth.length > 14) {
+    const digest = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(auth));
+    const hex = [...new Uint8Array(digest)].map((b) => b.toString(16).padStart(2, '0')).join('');
+    return `bearer:${hex.slice(0, 40)}`;
+  }
+  return `ip:${getRequestClientAddress(request)}`;
+}
+
 export async function enforceRateLimit(
   c: Context,
-  options: Omit<RateLimitStorageOptions, 'key' | 'now'>,
+  options: EnforceRateLimitOptions,
 ): Promise<Response | null> {
   if (RATE_LIMIT_BUCKETS_REQUIRING_D1.has(options.bucket)) {
     if (!options.db || typeof options.db.prepare !== 'function') {
@@ -199,9 +218,14 @@ export async function enforceRateLimit(
     }
   }
 
+  const { resolveKey, ...rest } = options;
+  const key = resolveKey
+    ? await Promise.resolve(resolveKey(c.req.raw))
+    : getRequestClientAddress(c.req.raw);
+
   const decision = await checkRateLimitWithStorage({
-    ...options,
-    key: getRequestClientAddress(c.req.raw),
+    ...rest,
+    key,
   });
 
   c.header('X-RateLimit-Limit', String(options.limit));

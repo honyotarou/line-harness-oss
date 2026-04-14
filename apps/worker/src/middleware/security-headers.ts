@@ -1,5 +1,6 @@
 import type { Context, Next } from 'hono';
 import { canonicalRequestPathname } from '../services/auth-paths.js';
+import { LIFF_WORKER_HTML_CONTENT_SECURITY_POLICY } from '../services/liff-html-csp.js';
 
 function isHttpsRequest(c: Context): boolean {
   const url = new URL(c.req.url);
@@ -21,12 +22,17 @@ export async function securityHeadersMiddleware(c: Context, next: Next): Promise
     c.header('X-Content-Type-Options', 'nosniff');
     c.header('X-Frame-Options', 'DENY');
     c.header('Permissions-Policy', 'camera=(), microphone=(), geolocation=()');
+    c.header('Referrer-Policy', 'strict-origin-when-cross-origin');
     if (isHttpsRequest(c)) {
       c.header('Strict-Transport-Security', 'max-age=31536000; includeSubDomains');
     }
     const path = canonicalRequestPathname(new URL(c.req.url).pathname);
     if (path.startsWith('/api/')) {
       c.header('Cache-Control', 'no-store, private');
+    }
+    const ct = c.res?.headers?.get('content-type') ?? '';
+    if (ct.includes('text/html')) {
+      c.header('Content-Security-Policy', LIFF_WORKER_HTML_CONTENT_SECURITY_POLICY);
     }
   }
 }

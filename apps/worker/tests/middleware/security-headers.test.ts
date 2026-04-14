@@ -58,4 +58,34 @@ describe('securityHeadersMiddleware', () => {
     expect(res.headers.get('X-Frame-Options')).toBe('DENY');
     expect(res.headers.get('Permissions-Policy')).toContain('camera=()');
   });
+
+  it('adds Referrer-Policy on all responses', async () => {
+    const app = new Hono();
+    app.use('*', securityHeadersMiddleware);
+    app.get('/api/ping', (c) => c.json({ ok: true }));
+
+    const res = await app.fetch(new Request('http://localhost/api/ping'));
+    expect(res.headers.get('Referrer-Policy')).toBe('strict-origin-when-cross-origin');
+  });
+
+  it('adds a tight Content-Security-Policy on HTML responses only', async () => {
+    const app = new Hono();
+    app.use('*', securityHeadersMiddleware);
+    app.get('/p/lp', (c) => c.html('<!doctype html><html><body>x</body></html>'));
+
+    const res = await app.fetch(new Request('http://localhost/p/lp'));
+    const csp = res.headers.get('Content-Security-Policy');
+    expect(csp).toBeTruthy();
+    expect(csp).toContain("script-src 'self' 'unsafe-inline'");
+    expect(csp).toContain("frame-ancestors 'none'");
+  });
+
+  it('does not set HTML CSP on JSON responses', async () => {
+    const app = new Hono();
+    app.use('*', securityHeadersMiddleware);
+    app.get('/api/ping', (c) => c.json({ ok: true }));
+
+    const res = await app.fetch(new Request('http://localhost/api/ping'));
+    expect(res.headers.get('Content-Security-Policy')).toBeNull();
+  });
 });
