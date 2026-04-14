@@ -68,6 +68,15 @@ export async function verifyCloudflareAccessJwt(
     return { ok: false, reason: 'Missing Cloudflare Access JWT' };
   }
 
+  const teamDomain = input.teamDomain
+    .trim()
+    // Accept common misconfig: full URL pasted from docs / dashboard.
+    .replace(/^https?:\/\//i, '')
+    .replace(/\/+$/, '');
+  if (!teamDomain) {
+    return { ok: false, reason: 'Missing Cloudflare Access team domain' };
+  }
+
   const parts = jwt.split('.');
   if (parts.length !== 3) {
     return { ok: false, reason: 'Malformed JWT' };
@@ -94,7 +103,7 @@ export async function verifyCloudflareAccessJwt(
   }
 
   const iss = typeof payload.iss === 'string' ? payload.iss : '';
-  const expectedIss = `https://${input.teamDomain.replace(/\/+$/, '')}`;
+  const expectedIss = `https://${teamDomain}`;
   if (iss !== expectedIss) {
     return { ok: false, reason: 'Invalid JWT issuer' };
   }
@@ -113,7 +122,7 @@ export async function verifyCloudflareAccessJwt(
     }
   }
 
-  const domainNorm = input.teamDomain.replace(/\/+$/, '');
+  const domainNorm = teamDomain;
   const fetchImpl = input.fetchFn ?? fetch;
   const certsUrl = `https://${domainNorm}/cdn-cgi/access/certs`;
 

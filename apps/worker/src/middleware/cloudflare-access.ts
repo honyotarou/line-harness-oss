@@ -47,15 +47,29 @@ export async function cloudflareAccessMiddleware(
 
   const audience = c.env.CLOUDFLARE_ACCESS_AUDIENCE?.trim();
 
+  const teamDomain = c.env
+    .CLOUDFLARE_ACCESS_TEAM_DOMAIN!.trim()
+    .replace(/^https?:\/\//i, '')
+    .replace(/\/+$/, '');
+
   const result = await verifyCloudflareAccessJwt({
     jwt,
-    teamDomain: c.env.CLOUDFLARE_ACCESS_TEAM_DOMAIN!.trim(),
+    teamDomain,
     allowedEmails: allowedEmails || undefined,
     expectedAudience: audience && audience.length > 0 ? audience : undefined,
   });
 
   if (!result.ok) {
-    return c.json({ success: false, error: 'Cloudflare Access required' }, 403);
+    const debug = (c.env.CLOUDFLARE_ACCESS_DEBUG ?? '').trim().toLowerCase();
+    const isDebug = debug === '1' || debug === 'true' || debug === 'yes' || debug === 'on';
+    return c.json(
+      {
+        success: false,
+        error: 'Cloudflare Access required',
+        ...(isDebug ? { reason: result.reason, teamDomain } : {}),
+      },
+      403,
+    );
   }
 
   const email = getValidatedAccessEmailFromPayload(result.payload);

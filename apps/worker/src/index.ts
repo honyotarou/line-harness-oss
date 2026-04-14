@@ -149,6 +149,11 @@ export type Env = {
      */
     CLOUDFLARE_ACCESS_AUDIENCE?: string;
     /**
+     * `1` / `true`: include JWT verification failure reason in 403 JSON responses.
+     * Useful for troubleshooting misconfig (team domain / audience / certs) without adding new endpoints.
+     */
+    CLOUDFLARE_ACCESS_DEBUG?: string;
+    /**
      * Comma-separated Access service token client ids (`*.access`) whose JWT may omit `email`.
      * Used with a same-origin Worker (or other BFF) that adds CF-Access-Client-Id/Secret.
      */
