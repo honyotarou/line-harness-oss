@@ -15,11 +15,15 @@ export function isTrustedCloudflareAccessServiceTokenPayload(
   if (typeof cn !== 'string' || !cn.endsWith('.access')) {
     return false;
   }
+  // Accept both:
+  // - full service token id: "<clientId>.access" (recommended)
+  // - bare client id: "<clientId>" (common misconfig)
   const allow = new Set(
     raw
       .split(',')
       .map((s) => s.trim().toLowerCase())
-      .filter(Boolean),
+      .filter(Boolean)
+      .map((s) => (s.endsWith('.access') ? s : `${s}.access`)),
   );
   return allow.has(cn.toLowerCase());
 }
