@@ -1,4 +1,4 @@
-import { buildAllowedOrigins, type AllowedOriginsEnv } from './allowed-origins.js';
+import { buildAllowedOrigins, type AllowedOriginsEnv } from './allowed-origins';
 
 export type { AllowedOriginsEnv };
 

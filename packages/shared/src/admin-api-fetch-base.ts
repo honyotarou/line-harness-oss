@@ -1,8 +1,8 @@
-import type { ClientApiBaseUrlResult } from './safe-api-base-url.js';
+import type { ClientApiBaseUrlResult } from './safe-api-base-url';
 import {
   type ValidateClientApiBaseUrlOptions,
   validateClientApiBaseUrl,
-} from './safe-api-base-url.js';
+} from './safe-api-base-url';
 
 export type AdminApiFetchBaseResult =
   | { ok: true; fetchBase: string; origin: string }
