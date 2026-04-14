@@ -6,6 +6,7 @@ export interface OperatorRow {
   name: string;
   email: string;
   role: string;
+  line_account_id: string | null;
   is_active: number;
   created_at: string;
   updated_at: string;
@@ -25,10 +26,17 @@ export interface ChatRow {
 
 // --- オペレーター ---
 
-export async function getOperators(db: D1Database): Promise<OperatorRow[]> {
-  const result = await db
-    .prepare(`SELECT * FROM operators ORDER BY created_at DESC`)
-    .all<OperatorRow>();
+export async function getOperators(
+  db: D1Database,
+  opts: { lineAccountId?: string | null } = {},
+): Promise<OperatorRow[]> {
+  const id = opts.lineAccountId?.trim();
+  const stmt = id
+    ? db
+        .prepare(`SELECT * FROM operators WHERE line_account_id = ? ORDER BY created_at DESC`)
+        .bind(id)
+    : db.prepare(`SELECT * FROM operators WHERE line_account_id IS NULL ORDER BY created_at DESC`);
+  const result = await stmt.all<OperatorRow>();
   return result.results;
 }
 
@@ -38,15 +46,23 @@ export async function getOperatorById(db: D1Database, id: string): Promise<Opera
 
 export async function createOperator(
   db: D1Database,
-  input: { name: string; email: string; role?: string },
+  input: { name: string; email: string; role?: string; lineAccountId?: string | null },
 ): Promise<OperatorRow> {
   const id = crypto.randomUUID();
   const now = jstNow();
   await db
     .prepare(
-      `INSERT INTO operators (id, name, email, role, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?)`,
+      `INSERT INTO operators (id, name, email, role, line_account_id, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?)`,
     )
-    .bind(id, input.name, input.email, input.role ?? 'operator', now, now)
+    .bind(
+      id,
+      input.name,
+      input.email,
+      input.role ?? 'operator',
+      input.lineAccountId?.trim() || null,
+      now,
+      now,
+    )
     .run();
   return (await getOperatorById(db, id))!;
 }
@@ -54,7 +70,13 @@ export async function createOperator(
 export async function updateOperator(
   db: D1Database,
   id: string,
-  updates: Partial<{ name: string; email: string; role: string; isActive: boolean }>,
+  updates: Partial<{
+    name: string;
+    email: string;
+    role: string;
+    lineAccountId: string | null;
+    isActive: boolean;
+  }>,
 ): Promise<void> {
   const sets: string[] = [];
   const values: unknown[] = [];
@@ -69,6 +91,11 @@ export async function updateOperator(
   if (updates.role !== undefined) {
     sets.push('role = ?');
     values.push(updates.role);
+  }
+  if (updates.lineAccountId !== undefined) {
+    sets.push('line_account_id = ?');
+    const v = updates.lineAccountId;
+    values.push(typeof v === 'string' && v.trim() ? v.trim() : null);
   }
   if (updates.isActive !== undefined) {
     sets.push('is_active = ?');

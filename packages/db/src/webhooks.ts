@@ -6,6 +6,7 @@ export interface IncomingWebhookRow {
   name: string;
   source_type: string;
   secret: string | null;
+  line_account_id: string | null;
   is_active: number;
   created_at: string;
   updated_at: string;
@@ -25,10 +26,21 @@ export interface OutgoingWebhookRow {
 
 // --- 受信Webhook ---
 
-export async function getIncomingWebhooks(db: D1Database): Promise<IncomingWebhookRow[]> {
-  const result = await db
-    .prepare(`SELECT * FROM incoming_webhooks ORDER BY created_at DESC`)
-    .all<IncomingWebhookRow>();
+export async function getIncomingWebhooks(
+  db: D1Database,
+  opts: { lineAccountId?: string | null } = {},
+): Promise<IncomingWebhookRow[]> {
+  const id = opts.lineAccountId?.trim();
+  const stmt = id
+    ? db
+        .prepare(
+          `SELECT * FROM incoming_webhooks WHERE line_account_id = ? ORDER BY created_at DESC`,
+        )
+        .bind(id)
+    : db.prepare(
+        `SELECT * FROM incoming_webhooks WHERE line_account_id IS NULL ORDER BY created_at DESC`,
+      );
+  const result = await stmt.all<IncomingWebhookRow>();
   return result.results;
 }
 
@@ -44,15 +56,23 @@ export async function getIncomingWebhookById(
 
 export async function createIncomingWebhook(
   db: D1Database,
-  input: { name: string; sourceType?: string; secret?: string },
+  input: { name: string; sourceType?: string; secret?: string; lineAccountId?: string | null },
 ): Promise<IncomingWebhookRow> {
   const id = crypto.randomUUID();
   const now = jstNow();
   await db
     .prepare(
-      `INSERT INTO incoming_webhooks (id, name, source_type, secret, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?)`,
+      `INSERT INTO incoming_webhooks (id, name, source_type, secret, line_account_id, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?)`,
     )
-    .bind(id, input.name, input.sourceType ?? 'custom', input.secret ?? null, now, now)
+    .bind(
+      id,
+      input.name,
+      input.sourceType ?? 'custom',
+      input.secret ?? null,
+      input.lineAccountId?.trim() || null,
+      now,
+      now,
+    )
     .run();
   return (await getIncomingWebhookById(db, id))!;
 }
@@ -60,7 +80,13 @@ export async function createIncomingWebhook(
 export async function updateIncomingWebhook(
   db: D1Database,
   id: string,
-  updates: Partial<{ name: string; sourceType: string; secret: string; isActive: boolean }>,
+  updates: Partial<{
+    name: string;
+    sourceType: string;
+    secret: string;
+    lineAccountId: string | null;
+    isActive: boolean;
+  }>,
 ): Promise<void> {
   const sets: string[] = [];
   const values: unknown[] = [];
@@ -75,6 +101,11 @@ export async function updateIncomingWebhook(
   if (updates.secret !== undefined) {
     sets.push('secret = ?');
     values.push(updates.secret);
+  }
+  if (updates.lineAccountId !== undefined) {
+    sets.push('line_account_id = ?');
+    const v = updates.lineAccountId;
+    values.push(typeof v === 'string' && v.trim() ? v.trim() : null);
   }
   if (updates.isActive !== undefined) {
     sets.push('is_active = ?');

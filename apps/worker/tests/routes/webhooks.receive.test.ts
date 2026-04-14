@@ -94,6 +94,7 @@ describe('incoming webhook receive route', () => {
       id: 'incoming-1',
       source_type: 'custom',
       secret: 'top-secret',
+      line_account_id: null,
       is_active: 1,
     });
 
@@ -141,6 +142,7 @@ describe('incoming webhook receive route', () => {
       id: 'incoming-1',
       source_type: 'custom',
       secret: 'top-secret',
+      line_account_id: null,
       is_active: 1,
     });
     const badSig = await app.fetch(
@@ -184,6 +186,7 @@ describe('incoming webhook receive route', () => {
       id: 'incoming-1',
       source_type: 'custom',
       secret: 'configured',
+      line_account_id: null,
       is_active: 0,
     });
     const inactive = await app.fetch(
@@ -209,6 +212,7 @@ describe('incoming webhook receive route', () => {
       id: 'incoming-1',
       source_type: 'custom',
       secret: 'top-secret',
+      line_account_id: null,
       is_active: 1,
     });
 
@@ -238,6 +242,7 @@ describe('incoming webhook receive route', () => {
       id: 'incoming-1',
       source_type: 'custom',
       secret: 'top-secret',
+      line_account_id: null,
       is_active: 1,
     });
 
@@ -272,6 +277,7 @@ describe('incoming webhook receive route', () => {
       id: 'incoming-1',
       source_type: 'custom',
       secret: null,
+      line_account_id: null,
       is_active: 1,
     });
 
@@ -298,6 +304,7 @@ describe('incoming webhook receive route', () => {
       id: 'incoming-1',
       source_type: 'custom',
       secret: 'top-secret',
+      line_account_id: null,
       is_active: 1,
     });
 
@@ -328,6 +335,7 @@ describe('incoming webhook receive route', () => {
       id: 'incoming-1',
       source_type: 'custom',
       secret: 'top-secret',
+      line_account_id: null,
       is_active: 1,
     });
 
@@ -357,6 +365,7 @@ describe('incoming webhook receive route', () => {
       id,
       source_type: 'custom',
       secret: 'top-secret',
+      line_account_id: null,
       is_active: 1,
     }));
 
@@ -398,6 +407,7 @@ describe('incoming webhook receive route', () => {
       id: 'incoming-1',
       source_type: 'custom',
       secret: 'top-secret',
+      line_account_id: null,
       is_active: 1,
     });
 
