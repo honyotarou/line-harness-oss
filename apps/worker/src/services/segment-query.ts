@@ -14,6 +14,8 @@ export interface SegmentCondition {
   rules: SegmentRule[];
 }
 
+export const MAX_SEGMENT_RULES = 100;
+
 /** Single JSON path segment only (mitigate json_extract path injection). */
 const SAFE_METADATA_KEY = /^[a-zA-Z0-9_]{1,64}$/;
 
@@ -27,6 +29,9 @@ export function buildSegmentQuery(condition: SegmentCondition): {
   sql: string;
   bindings: unknown[];
 } {
+  if (condition.rules.length > MAX_SEGMENT_RULES) {
+    throw new Error(`segment rules must be <= ${MAX_SEGMENT_RULES}`);
+  }
   const bindings: unknown[] = [];
   const clauses: string[] = [];
 
