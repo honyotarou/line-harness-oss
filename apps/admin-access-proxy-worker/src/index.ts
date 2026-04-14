@@ -52,20 +52,48 @@ export default {
       }
       headers.set(k, v);
     }
-    headers.set('CF-Access-Client-Id', env.CF_ACCESS_CLIENT_ID);
-    headers.set('CF-Access-Client-Secret', env.CF_ACCESS_CLIENT_SECRET);
+    const id = env.CF_ACCESS_CLIENT_ID?.trim() ?? '';
+    const secret = env.CF_ACCESS_CLIENT_SECRET?.trim() ?? '';
+    if (!id || !secret) {
+      return new Response(
+        JSON.stringify({
+          success: false,
+          error:
+            'Proxy misconfigured: CF_ACCESS_CLIENT_ID / CF_ACCESS_CLIENT_SECRET are missing (set Worker secrets or GitHub Actions secrets).',
+        }),
+        { status: 503, headers: { 'Content-Type': 'application/json' } },
+      );
+    }
+    headers.set('CF-Access-Client-Id', id);
+    headers.set('CF-Access-Client-Secret', secret);
 
+    const method = request.method;
     const init: RequestInit & { duplex?: 'half' } = {
-      method: request.method,
+      method,
       headers,
       redirect: 'manual',
     };
-    if (request.method !== 'GET' && request.method !== 'HEAD') {
+    // OPTIONS must not use a streaming body / duplex; omit body for read-only methods.
+    if (method !== 'GET' && method !== 'HEAD' && method !== 'OPTIONS') {
       init.body = request.body;
       init.duplex = 'half';
     }
 
     const res = await fetch(upstreamUrl, init);
+    // Upstream Access login redirects break browser fetch (cross-origin redirect + no CORS).
+    if (res.status >= 300 && res.status < 400) {
+      const loc = res.headers.get('Location') ?? '';
+      if (loc.includes('cloudflareaccess.com') && loc.includes('access/login')) {
+        return new Response(
+          JSON.stringify({
+            success: false,
+            error:
+              'API Access did not accept the service token (see JWT meta service_token_status). Check: (1) Worker secrets match the Service Token, (2) line-crm-api policy allows that token, (3) CLOUDFLARE_ACCESS_TRUSTED_SERVICE_CLIENT_IDS on line-crm Worker.',
+          }),
+          { status: 502, headers: { 'Content-Type': 'application/json' } },
+        );
+      }
+    }
     const out = new Response(res.body, res);
     out.headers.delete('set-cookie');
     return out;

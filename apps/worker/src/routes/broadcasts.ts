@@ -30,6 +30,7 @@ import {
   validateScopedLineAccountQueryParam,
 } from '../services/admin-line-account-scope.js';
 import { denyIfBroadcastSendSecretMissing } from '../services/broadcast-send-guard.js';
+import { enforceBroadcastMassSendRateLimit } from '../services/broadcast-mass-send-rate-limit.js';
 
 const broadcasts = new Hono<Env>();
 
@@ -253,6 +254,9 @@ broadcasts.post('/api/broadcasts/:id/send', async (c) => {
       return denied;
     }
 
+    const limitedSend = await enforceBroadcastMassSendRateLimit(c, 'broadcast-send');
+    if (limitedSend) return limitedSend;
+
     let confirmSend: { confirm?: boolean };
     try {
       confirmSend = await readJsonBodyWithLimit<{ confirm?: boolean }>(
@@ -326,6 +330,9 @@ broadcasts.post('/api/broadcasts/:id/send-segment', async (c) => {
     if (deniedSeg) {
       return deniedSeg;
     }
+
+    const limitedSeg = await enforceBroadcastMassSendRateLimit(c, 'broadcast-send-segment');
+    if (limitedSeg) return limitedSeg;
 
     const id = c.req.param('id');
     const existing = await getBroadcastById(c.env.DB, id);

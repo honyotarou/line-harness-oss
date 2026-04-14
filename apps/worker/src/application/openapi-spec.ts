@@ -420,7 +420,10 @@ export const openApiSpec = {
         tags: ['Broadcasts'],
         summary: '即時配信',
         parameters: [{ name: 'id', in: 'path', required: true, schema: { type: 'string' } }],
-        responses: { '200': { description: 'Sent' } },
+        responses: {
+          '200': { description: 'Sent' },
+          '429': { description: 'Too many requests (per-admin mass-send rate limit)' },
+        },
       },
     },
     // ── Users (UUID Cross-Account) ──────────────────────────────────────────

@@ -2,22 +2,10 @@ name = "line-harness-admin-access-proxy"
 main = "src/index.ts"
 compatibility_date = "2024-12-01"
 
-# Custom host: browser hits same origin /api/lh-upstream/* on admin domain.
-routes = [
-  { pattern = "familybondnet.tokyo/api/lh-upstream/*", zone_name = "familybondnet.tokyo" },
-]
-
-# If deploy errors on routes, remove `routes` above and add the same pattern in the dashboard:
-# Workers & Pages → this worker → Triggers → Routes.
-#
-# Vars / secrets (production):
-# - UPSTREAM_API_ORIGIN = "https://api.yourdomain.com"   (line-crm-worker hostname, no trailing slash)
-# - PATH_PREFIX = "/api/lh-upstream"
-# - CF_ACCESS_CLIENT_ID / CF_ACCESS_CLIENT_SECRET = Access service token (GitHub: deploy-admin-access-proxy.yml + ADMIN_ACCESS_PROXY_CF_* secrets, or wrangler secret put)
-#
-# Zero Trust: on the **API** Access app, add an Allow policy "Service Auth — Service Token".
-# On the **dashboard** hostname, add Access so only your IdP users reach this worker.
+# Custom routes: optional. GitHub Actions appends `routes = [...]` when secrets
+# ADMIN_ACCESS_PROXY_ROUTE_PATTERN + ADMIN_ACCESS_PROXY_ZONE_NAME are set
+# (see deploy-admin-access-proxy.yml). Otherwise the Worker is reachable on *.workers.dev only.
 
 [vars]
-UPSTREAM_API_ORIGIN = "https://api.familybondnet.tokyo"
+UPSTREAM_API_ORIGIN = "https://YOUR_UPSTREAM_API_ORIGIN"
 PATH_PREFIX = "/api/lh-upstream"
