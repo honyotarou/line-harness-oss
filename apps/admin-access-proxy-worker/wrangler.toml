@@ -2,12 +2,12 @@ name = "line-harness-admin-access-proxy"
 main = "src/index.ts"
 compatibility_date = "2024-12-01"
 
-# Cloudflare Access サービストークンなどの機密は [vars] に書かない（Git に載るため禁止）。
-# 実行時は Worker の Encrypted secrets として `CF_ACCESS_CLIENT_ID` / `CF_ACCESS_CLIENT_SECRET` を渡す。
-# 設定経路: ダッシュボード、手元の `wrangler secret put …`、または GitHub Actions（sync / deploy ワークフロー）。
-# 公式: https://developers.cloudflare.com/workers/configuration/secrets/
-# （名前だけデプロイ前検証したい場合は wrangler の [secrets].required もあるが、
-#  シークレット未設定の fork 向け初回 deploy と両立しないため本リポでは使わない。）
+# Secrets policy:
+# - Do NOT put sensitive values under [vars] (plaintext, committed & deployed).
+# - Use Worker secrets for sensitive values like Cloudflare Access service tokens.
+#   - CF_ACCESS_CLIENT_ID
+#   - CF_ACCESS_CLIENT_SECRET
+# Official docs: https://developers.cloudflare.com/workers/configuration/secrets/
 
 # Custom routes: optional. GitHub Actions appends `routes = [...]` when secrets
 # ADMIN_ACCESS_PROXY_ROUTE_PATTERN + ADMIN_ACCESS_PROXY_ZONE_NAME are set
