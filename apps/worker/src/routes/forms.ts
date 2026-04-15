@@ -41,19 +41,12 @@ import {
   stripPrototypePollutionKeys,
 } from '../services/form-metadata-filter.js';
 import { tryParseJsonArray, tryParseJsonRecord } from '../services/safe-json.js';
+import { rejectInvalidFormPathId } from '../services/form-path-validation.js';
+import { resolveFormSubmitFlexFooterText } from '../services/form-submit-footer.js';
 
 const forms = new Hono<Env>();
 const PUBLIC_FORM_SUBMIT_LIMIT_BYTES = 64 * 1024;
 const PUBLIC_FORM_SUBMIT_RATE_LIMIT = { limit: 10, windowMs: 60_000 };
-
-/** Fallback footer in the LINE Flex after LIFF form submit. Override with Worker var `FORM_SUBMIT_FLEX_FOOTER`. */
-export const DEFAULT_FORM_SUBMIT_FLEX_FOOTER =
-  'この内容はアカウントに記録され、タグやシナリオ等に利用される場合があります。チャットでの即時返信はできない場合があります。';
-
-export function resolveFormSubmitFlexFooterText(env: { FORM_SUBMIT_FLEX_FOOTER?: string }): string {
-  const custom = env.FORM_SUBMIT_FLEX_FOOTER?.trim();
-  return custom && custom.length > 0 ? custom : DEFAULT_FORM_SUBMIT_FLEX_FOOTER;
-}
 
 function serializeForm(row: DbForm) {
   const fieldsRaw = tryParseJsonArray(row.fields || '[]');
@@ -125,6 +118,9 @@ forms.get('/api/forms', async (c) => {
 // GET /api/forms/:id — get form (admin session or LINE Login ID token; not anonymous)
 forms.get('/api/forms/:id', async (c) => {
   try {
+    const invalid = rejectInvalidFormPathId(c);
+    if (invalid) return invalid;
+
     const mode = await resolveFormDefinitionReader(c);
     if (!mode) {
       return c.json({ success: false, error: 'Unauthorized' }, 401);
@@ -188,6 +184,9 @@ forms.post('/api/forms', async (c) => {
 // PUT /api/forms/:id — update form
 forms.put('/api/forms/:id', async (c) => {
   try {
+    const invalid = rejectInvalidFormPathId(c);
+    if (invalid) return invalid;
+
     const id = c.req.param('id');
     const body = await readJsonBodyWithLimit<{
       name?: string;
@@ -225,6 +224,9 @@ forms.put('/api/forms/:id', async (c) => {
 // DELETE /api/forms/:id
 forms.delete('/api/forms/:id', async (c) => {
   try {
+    const invalid = rejectInvalidFormPathId(c);
+    if (invalid) return invalid;
+
     const id = c.req.param('id');
     const form = await getFormById(c.env.DB, id);
     if (!form) {
@@ -241,6 +243,9 @@ forms.delete('/api/forms/:id', async (c) => {
 // GET /api/forms/:id/submissions — list submissions
 forms.get('/api/forms/:id/submissions', async (c) => {
   try {
+    const invalid = rejectInvalidFormPathId(c);
+    if (invalid) return invalid;
+
     const id = c.req.param('id');
     const form = await getFormById(c.env.DB, id);
     if (!form) {
@@ -257,6 +262,9 @@ forms.get('/api/forms/:id/submissions', async (c) => {
 // POST /api/forms/:id/submit — submit form (public, used by LIFF)
 forms.post('/api/forms/:id/submit', async (c) => {
   try {
+    const invalid = rejectInvalidFormPathId(c);
+    if (invalid) return invalid;
+
     const limited = await enforceRateLimit(c, {
       bucket: `public-form-submit:${c.req.param('id')}`,
       db: c.env.DB,

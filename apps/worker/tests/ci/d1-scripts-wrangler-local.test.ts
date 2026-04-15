@@ -7,6 +7,9 @@ const repoRoot = join(dirname(fileURLToPath(import.meta.url)), '../../../..');
 
 describe('root D1 helper scripts use wrangler.local.toml when present', () => {
   it.each([
+    'd1-fresh-start-local.sh',
+    'd1-fresh-start-remote.sh',
+    'd1-apply-post-007-migrations.sh',
     'd1-apply-010.sh',
     'd1-apply-011.sh',
     'd1-apply-012.sh',

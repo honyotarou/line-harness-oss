@@ -45,6 +45,28 @@ describe('webhook URL and secret validation', () => {
     vi.unstubAllGlobals();
   });
 
+  it('POST /api/webhooks/outgoing rejects create without signing secret', async () => {
+    const { webhooks } = await import('../../src/routes/webhooks.js');
+    const app = new Hono();
+    app.route('/', webhooks);
+
+    const res = await app.fetch(
+      new Request('http://localhost/api/webhooks/outgoing', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          name: 'NoSecret',
+          url: 'https://example.com/hook',
+          eventTypes: [],
+        }),
+      }),
+      { DB: {} as D1Database } as never,
+    );
+
+    expect(res.status).toBe(400);
+    expect(dbMocks.createOutgoingWebhook).not.toHaveBeenCalled();
+  });
+
   it('POST /api/webhooks/incoming rejects create without secret', async () => {
     const { webhooks } = await import('../../src/routes/webhooks.js');
     const app = new Hono();
@@ -76,6 +98,7 @@ describe('webhook URL and secret validation', () => {
           name: 'Bad',
           url: 'https://192.168.1.1/hook',
           eventTypes: [],
+          secret: 'outgoing-signing-secret',
         }),
       }),
       { DB: {} as D1Database } as never,
@@ -109,6 +132,7 @@ describe('webhook URL and secret validation', () => {
           name: 'DnsEvil',
           url: 'https://rebind.example/hook',
           eventTypes: [],
+          secret: 'outgoing-signing-secret',
         }),
       }),
       { DB: {} as D1Database } as never,

@@ -1,53 +1,8 @@
 import { Hono } from 'hono';
 import { describe, expect, it } from 'vitest';
+import { createRateLimitD1Stub } from '../helpers/rate-limit-d1-stub.js';
 
-function createRateLimitDb() {
-  const rows = new Map<string, { count: number; updatedAt: number }>();
-
-  return {
-    prepare(sql: string) {
-      return {
-        bind(...bindings: unknown[]) {
-          return {
-            async run() {
-              if (sql.includes('INSERT INTO request_rate_limits')) {
-                const [bucket, subjectKey, windowStartedAt] = bindings as [string, string, number];
-                const key = `${bucket}:${subjectKey}:${windowStartedAt}`;
-                const current = rows.get(key);
-                rows.set(key, {
-                  count: (current?.count ?? 0) + 1,
-                  updatedAt: Number(windowStartedAt),
-                });
-                return { success: true };
-              }
-
-              if (sql.includes('DELETE FROM request_rate_limits')) {
-                const [cutoff] = bindings as [number];
-                for (const [key, value] of rows.entries()) {
-                  if (value.updatedAt < cutoff) {
-                    rows.delete(key);
-                  }
-                }
-                return { success: true };
-              }
-
-              throw new Error(`Unexpected run SQL: ${sql}`);
-            },
-            async first<T>() {
-              if (sql.includes('SELECT count FROM request_rate_limits')) {
-                const [bucket, subjectKey, windowStartedAt] = bindings as [string, string, number];
-                const key = `${bucket}:${subjectKey}:${windowStartedAt}`;
-                const row = rows.get(key);
-                return (row ? { count: row.count } : null) as T | null;
-              }
-              throw new Error(`Unexpected first SQL: ${sql}`);
-            },
-          };
-        },
-      };
-    },
-  } as unknown as D1Database;
-}
+const createRateLimitDb = createRateLimitD1Stub;
 
 /** Semantics of {@link consumeRateLimitSlotDb} UPSERT + WHERE count < limit (no unbounded increments when capped). */
 function createConsumeRateLimitDb() {
@@ -263,6 +218,22 @@ describe('request rate limit helpers', () => {
       success: false,
       error: expect.stringMatching(/D1 database binding required/i),
     });
+  });
+
+  it('returns 503 for incoming-webhook:global when D1 binding is missing', async () => {
+    const { enforceRateLimit } = await import('../../src/services/request-rate-limit.js');
+    const app = new Hono();
+    app.get('/t', async (c) => {
+      const blocked = await enforceRateLimit(c, {
+        bucket: 'incoming-webhook:global',
+        limit: 100,
+        windowMs: 60_000,
+      });
+      return blocked ?? c.text('ok');
+    });
+
+    const res = await app.fetch(new Request('http://localhost/t'));
+    expect(res.status).toBe(503);
   });
 
   it('does not emit X-RateLimit-* headers for auth-login (budget leak)', async () => {

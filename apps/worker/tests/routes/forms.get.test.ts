@@ -75,6 +75,26 @@ describe('GET /api/forms/:id', () => {
     expect(json.data.fields).toEqual([]);
   });
 
+  it('returns 400 when form id is not a safe path segment (blocks odd URL shapes)', async () => {
+    const { forms } = await import('../../src/routes/forms.js');
+    const app = new Hono();
+    app.route('/', forms);
+
+    const res = await app.fetch(
+      new Request('http://localhost/api/forms/a..bad', {
+        headers: { Authorization: 'Bearer line-id-token-jwt' },
+      }),
+      {
+        DB: {} as D1Database,
+        API_KEY: 'k',
+        LINE_LOGIN_CHANNEL_ID: 'login-channel',
+      } as never,
+    );
+
+    expect(res.status).toBe(400);
+    expect(dbMocks.getFormById).not.toHaveBeenCalled();
+  });
+
   it('returns 401 without admin session or LINE ID token', async () => {
     dbMocks.getFormById.mockResolvedValue(formRow);
 

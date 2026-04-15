@@ -21,6 +21,7 @@ import {
   validateScopedLineAccountBody,
   validateScopedLineAccountQueryParam,
 } from '../services/admin-line-account-scope.js';
+import { fireAdminAuditLog } from '../services/admin-audit-log.js';
 
 const outgoingWebhooksAdmin = new Hono<Env>();
 
@@ -70,6 +71,16 @@ outgoingWebhooksAdmin.post('/api/webhooks/outgoing', async (c) => {
     }>(c.req.raw, DEFAULT_ADMIN_JSON_BODY_LIMIT_BYTES);
     if (!body.name || !body.url)
       return c.json({ success: false, error: 'name and url are required' }, 400);
+    if (!body.secret?.trim()) {
+      return c.json(
+        {
+          success: false,
+          error:
+            'secret is required (outgoing webhooks must sign payloads with HMAC so receivers can verify)',
+        },
+        400,
+      );
+    }
 
     const scoped = validateScopedLineAccountBody(scope, body.lineAccountId ?? null);
     if (!scoped.ok) {
@@ -89,6 +100,12 @@ outgoingWebhooksAdmin.post('/api/webhooks/outgoing', async (c) => {
       eventTypes: body.eventTypes ?? [],
       secret: body.secret,
       lineAccountId: scoped.lineAccountId,
+    });
+    fireAdminAuditLog(c, {
+      action: 'webhook.outgoing.create',
+      resourceType: 'outgoing_webhook',
+      resourceId: item.id,
+      metadata: { name: body.name },
     });
     return c.json(
       {
@@ -129,6 +146,18 @@ outgoingWebhooksAdmin.put('/api/webhooks/outgoing/:id', async (c) => {
       c.req.raw,
       DEFAULT_ADMIN_JSON_BODY_LIMIT_BYTES,
     );
+    if (body.secret !== undefined && body.secret !== null) {
+      if (String(body.secret).trim() === '') {
+        return c.json(
+          {
+            success: false,
+            error:
+              'secret cannot be empty; set a non-empty signing secret or omit the field to leave it unchanged',
+          },
+          400,
+        );
+      }
+    }
     if (body.url !== undefined && body.url !== null && String(body.url).trim() !== '') {
       const outboundOk = await assertHttpsOutboundUrlResolvedSafe(String(body.url), fetch);
       if (!outboundOk.ok) {
@@ -160,6 +189,12 @@ outgoingWebhooksAdmin.put('/api/webhooks/outgoing/:id', async (c) => {
     await updateOutgoingWebhook(c.env.DB, id, updates);
     const updated = await getOutgoingWebhookById(c.env.DB, id);
     if (!updated) return c.json({ success: false, error: 'Not found' }, 404);
+    fireAdminAuditLog(c, {
+      action: 'webhook.outgoing.update',
+      resourceType: 'outgoing_webhook',
+      resourceId: id,
+      metadata: { keys: Object.keys(updates) },
+    });
     return c.json({
       success: true,
       data: {
@@ -189,7 +224,13 @@ outgoingWebhooksAdmin.delete('/api/webhooks/outgoing/:id', async (c) => {
     if (!resourceLineAccountVisibleInScope(scopeDel, whDel.line_account_id)) {
       return c.json({ success: false, error: 'Not found' }, 404);
     }
-    await deleteOutgoingWebhook(c.env.DB, c.req.param('id'));
+    const wid = c.req.param('id');
+    await deleteOutgoingWebhook(c.env.DB, wid);
+    fireAdminAuditLog(c, {
+      action: 'webhook.outgoing.delete',
+      resourceType: 'outgoing_webhook',
+      resourceId: wid,
+    });
     return c.json({ success: true, data: null });
   } catch (err) {
     console.error('DELETE /api/webhooks/outgoing/:id error:', err);

@@ -13,6 +13,7 @@ import {
   isCloudflareAccessEnforced,
 } from '../services/cloudflare-access-principal.js';
 import { putAdminPrincipalRoleWithBootstrap } from '../services/admin-principal-roles-write.js';
+import { fireAdminAuditLog } from '../services/admin-audit-log.js';
 import { readJsonBodyWithLimit, jsonBodyReadErrorResponse } from '../services/request-body.js';
 
 const BODY_LIMIT = 4 * 1024;
@@ -74,6 +75,12 @@ routes.put('/api/admin/principal-roles', async (c) => {
     if (!put.ok) {
       return c.json({ success: false, error: put.error }, put.status);
     }
+    fireAdminAuditLog(c, {
+      action: 'admin.principal_role.put',
+      resourceType: 'admin_principal_role',
+      resourceId: email,
+      metadata: { role },
+    });
     return c.json({ success: true, data: null });
   } catch (err) {
     const jr = jsonBodyReadErrorResponse(err);
@@ -91,6 +98,12 @@ routes.delete('/api/admin/principal-roles/:email', async (c) => {
       return c.json({ success: false, error: 'Invalid email' }, 400);
     }
     const removed = await deleteAdminPrincipalRole(c.env.DB, email);
+    fireAdminAuditLog(c, {
+      action: 'admin.principal_role.delete',
+      resourceType: 'admin_principal_role',
+      resourceId: email,
+      metadata: { removed },
+    });
     return c.json({ success: true, data: { removed } });
   } catch (err) {
     console.error('DELETE /api/admin/principal-roles/:email error:', err);

@@ -19,6 +19,7 @@ import {
   validateScopedLineAccountBody,
   validateScopedLineAccountQueryParam,
 } from '../services/admin-line-account-scope.js';
+import { fireAdminAuditLog } from '../services/admin-audit-log.js';
 
 function buildIncomingWebhookUpdates(body: Record<string, unknown>): Partial<{
   name: string;
@@ -110,6 +111,12 @@ incomingWebhooksAdmin.post('/api/webhooks/incoming', async (c) => {
       secret: body.secret,
       lineAccountId: scoped.lineAccountId,
     });
+    fireAdminAuditLog(c, {
+      action: 'webhook.incoming.create',
+      resourceType: 'incoming_webhook',
+      resourceId: item.id,
+      metadata: { name: body.name, sourceType: body.sourceType ?? 'custom' },
+    });
     return c.json(
       {
         success: true,
@@ -171,6 +178,12 @@ incomingWebhooksAdmin.put('/api/webhooks/incoming/:id', async (c) => {
     await updateIncomingWebhook(c.env.DB, id, updates);
     const updated = await getIncomingWebhookById(c.env.DB, id);
     if (!updated) return c.json({ success: false, error: 'Not found' }, 404);
+    fireAdminAuditLog(c, {
+      action: 'webhook.incoming.update',
+      resourceType: 'incoming_webhook',
+      resourceId: id,
+      metadata: { keys: Object.keys(updates) },
+    });
     return c.json({
       success: true,
       data: {
@@ -199,6 +212,11 @@ incomingWebhooksAdmin.delete('/api/webhooks/incoming/:id', async (c) => {
       return c.json({ success: true, data: null });
     }
     await deleteIncomingWebhook(c.env.DB, id);
+    fireAdminAuditLog(c, {
+      action: 'webhook.incoming.delete',
+      resourceType: 'incoming_webhook',
+      resourceId: id,
+    });
     return c.json({ success: true, data: null });
   } catch (err) {
     console.error('DELETE /api/webhooks/incoming/:id error:', err);

@@ -24,6 +24,7 @@ import {
 import { effectiveRequireCalendarTokenEncryption } from '../services/deployed-security-defaults.js';
 import { clampIntInRange } from '../services/query-limits.js';
 import { enforceRateLimit } from '../services/request-rate-limit.js';
+import { fireAdminAuditLog } from '../services/admin-audit-log.js';
 
 const calendar = new Hono<Env>();
 const CALENDAR_API_RATE_LIMIT = { limit: 120, windowMs: 60_000 };
@@ -80,6 +81,18 @@ calendar.post('/api/integrations/google-calendar/connect', async (c) => {
     }>(c.req.raw, DEFAULT_ADMIN_JSON_BODY_LIMIT_BYTES);
     if (!body.calendarId) return c.json({ success: false, error: 'calendarId is required' }, 400);
     const conn = await connectGoogleCalendar(calendarDeps(c), body);
+    fireAdminAuditLog(c, {
+      action: 'calendar.connection.create',
+      resourceType: 'google_calendar_connection',
+      resourceId: conn.id,
+      metadata: {
+        calendarId: body.calendarId,
+        authType: body.authType,
+        hasAccessToken: Boolean(body.accessToken?.trim()),
+        hasRefreshToken: Boolean(body.refreshToken?.trim()),
+        hasApiKey: Boolean(body.apiKey?.trim()),
+      },
+    });
     return c.json(
       {
         success: true,
@@ -97,7 +110,13 @@ calendar.post('/api/integrations/google-calendar/connect', async (c) => {
 
 calendar.delete('/api/integrations/google-calendar/:id', async (c) => {
   try {
-    await deleteCalendarConnection(c.env.DB, c.req.param('id'));
+    const cid = c.req.param('id');
+    await deleteCalendarConnection(c.env.DB, cid);
+    fireAdminAuditLog(c, {
+      action: 'calendar.connection.delete',
+      resourceType: 'google_calendar_connection',
+      resourceId: cid,
+    });
     return c.json({ success: true, data: null });
   } catch (err) {
     console.error('DELETE /api/integrations/google-calendar/:id error:', err);

@@ -51,7 +51,7 @@ describe('outgoing webhooks LINE account scope', () => {
       name: 'Global',
       url: 'https://example.com/h',
       event_types: '[]',
-      secret: null,
+      secret: 'placeholder-secret',
       line_account_id: null,
       is_active: 1,
       created_at: '2026-01-01T00:00:00+09:00',

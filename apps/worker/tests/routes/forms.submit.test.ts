@@ -1,5 +1,6 @@
 import { Hono } from 'hono';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { createRateLimitD1Stub } from '../helpers/rate-limit-d1-stub.js';
 
 const dbMocks = vi.hoisted(() => ({
   getForms: vi.fn(),
@@ -63,7 +64,7 @@ describe('public form submit route', () => {
         body: JSON.stringify({ data: { name: 'Alice' } }),
       }),
       {
-        DB: {} as D1Database,
+        DB: createRateLimitD1Stub(),
         LINE_LOGIN_CHANNEL_ID: 'default-login-channel',
         LINE_CHANNEL_ACCESS_TOKEN: 'default-access-token',
       } as never,
@@ -137,7 +138,7 @@ describe('public form submit route', () => {
         }),
       }),
       {
-        DB: {} as D1Database,
+        DB: createRateLimitD1Stub(),
         LINE_LOGIN_CHANNEL_ID: 'default-login-channel',
         LINE_CHANNEL_ACCESS_TOKEN: 'default-access-token',
       } as never,
@@ -225,7 +226,7 @@ describe('public form submit route', () => {
         }),
       }),
       {
-        DB: {} as D1Database,
+        DB: createRateLimitD1Stub(),
         LINE_LOGIN_CHANNEL_ID: 'default-login-channel',
         LINE_CHANNEL_ACCESS_TOKEN: 'default-access-token',
         FORM_SUBMIT_FLEX_FOOTER: 'カスタムフッター文言',
@@ -242,8 +243,12 @@ describe('public form submit route', () => {
 
   it('merges only declared form field keys into friend metadata (blocks arbitrary metadata injection)', async () => {
     let savedMetadata = '';
+    const rateLimitDb = createRateLimitD1Stub();
     const db = {
       prepare(sql: string) {
+        if (sql.includes('request_rate_limits')) {
+          return rateLimitDb.prepare(sql);
+        }
         return {
           bind(...args: unknown[]) {
             return {
@@ -376,7 +381,7 @@ describe('public form submit route', () => {
         body: payload,
       }),
       {
-        DB: {} as D1Database,
+        DB: createRateLimitD1Stub(),
         LINE_LOGIN_CHANNEL_ID: 'default-login-channel',
         LINE_CHANNEL_ACCESS_TOKEN: 'default-access-token',
       } as never,
@@ -409,6 +414,7 @@ describe('public form submit route', () => {
     const app = new Hono();
     app.route('/', forms);
 
+    const rateLimitDb = createRateLimitD1Stub();
     let response: Response | undefined;
     for (let attempt = 0; attempt < 11; attempt += 1) {
       response = await app.fetch(
@@ -421,7 +427,7 @@ describe('public form submit route', () => {
           body: JSON.stringify({ data: { name: 'Alice' } }),
         }),
         {
-          DB: {} as D1Database,
+          DB: rateLimitDb,
           LINE_LOGIN_CHANNEL_ID: 'default-login-channel',
           LINE_CHANNEL_ACCESS_TOKEN: 'default-access-token',
         } as never,

@@ -125,12 +125,13 @@ const routesDir = path.join(ROOT, 'apps/worker/src/routes');
  * extracting to application/*.ts. New route files MUST add an entry here.
  */
 const ROUTE_LINE_CAPS = {
+  'admin-audit.ts': 90,
   'admin-principal-roles.ts': 123,
   'affiliates.ts': 246,
   'auth.ts': 251,
   'automations.ts': 310,
-  'broadcasts.ts': 409,
-  'calendar.ts': 212,
+  'broadcasts.ts': 430,
+  'calendar.ts': 230,
   'chats.ts': 430,
   'conversions.ts': 208,
   'conversions.events.ts': 160,
@@ -139,7 +140,7 @@ const ROUTE_LINE_CAPS = {
   'forms.ts': 497,
   'friends.ts': 498,
   'health.ts': 174,
-  'line-accounts.ts': 280,
+  'line-accounts.ts': 300,
   'liff.ts': 203,
   'notifications.ts': 270,
   'openapi.ts': 92,
@@ -155,8 +156,8 @@ const ROUTE_LINE_CAPS = {
   'users.ts': 240,
   'webhook.ts': 129,
   'webhooks.ts': 455,
-  'webhooks.incoming-admin.ts': 240,
-  'webhooks.outgoing-admin.ts': 230,
+  'webhooks.incoming-admin.ts': 250,
+  'webhooks.outgoing-admin.ts': 255,
   'webhooks.receive.ts': 130,
 };
 

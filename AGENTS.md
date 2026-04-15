@@ -24,6 +24,8 @@
 | Playwright（UI；API はモック） | `pnpm test:e2e` |
 | **API 統合（実 Worker ローカル + [Hurl](https://hurl.dev)）** | `pnpm test:api` |
 | D1 スキーマをローカルに流す（worker ディレクトリ基準） | `pnpm db:migrate:worker-local` |
+| D1 ローカルを**完全初期化**（`.wrangler` 削除 → `schema.sql`） | `pnpm db:fresh:local` |
+| D1 リモート `line-crm` を**削除して作り直し** → `schema.sql`（全データ消去） | `CONFIRM=YES CONFIRM_REMOTE_D1_WIPE=YES pnpm db:fresh:remote` |
 | D1 010 適用前の重複チェック（local / remote） | `pnpm db:pre-010-check` / `pnpm db:pre-010-check:remote` |
 | D1 `010_users_unique_contact` 適用（local） | `pnpm db:apply-010:local` |
 | デプロイ先 Worker の HTTP スモーク + LIFF 手動メモ | `STAGING_WORKER_URL=… pnpm smoke:staging` |
@@ -54,7 +56,7 @@ pnpm exec lefthook install
 
 - `packages/db/schema.sql` には部分 UNIQUE（`email` / `phone` / `external_id`）が含まれる。**空の DB にフルスキーマを流す**だけなら追加作業は不要。
 - **既存データがある D1**では、まず `pnpm db:pre-010-check`（ローカル）または `pnpm db:pre-010-check:remote`（本番相当）。**重複が 1 件でもあると exit 1**（`jq` 推奨）。運用方針に沿ってマージ・NULL 化などで整えたあと、ローカル検証なら `pnpm db:apply-010:local`。リモートは `CONFIRM=YES bash scripts/d1-apply-010.sh remote`（`wrangler.toml` の `database_name` が `line-crm` 前提）。
-- ルートの `pnpm db:migrate` は **リモートに `schema.sql` 全体**を流す。既存データとの兼ね合いは必ず確認すること。
+- ルートの `pnpm db:migrate` は **リモートに `schema.sql` 全体**を流す。既存データとの兼ね合いは必ず確認すること。**中身を捨てて空に近づける**なら `pnpm db:fresh:local` / `pnpm db:fresh:remote`（リモートは `wrangler d1 delete`＋`create` で UUID が変わる → `wrangler.local.toml` の `database_id` をスクリプトが更新。本番 Worker / CI の binding も新 ID に合わせて再デプロイ）。
 
 **Worker シークレット（LIFF まわり）**
 

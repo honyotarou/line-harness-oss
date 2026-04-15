@@ -25,6 +25,7 @@ import { lineAccountDbOptions } from '../services/line-account-at-rest-key.js';
 import { denyUnlessOwnerOrImplicitAdminForLineCredentials } from '../services/line-account-credential-owner-guard.js';
 import { denyUnlessLineAccountAtRestKeyForCreates } from '../services/line-account-at-rest-policy.js';
 import { denyUnlessLineAccountSecretsWriteAllowed } from '../services/line-account-secrets-write-guard.js';
+import { fireAdminAuditLog } from '../services/admin-audit-log.js';
 
 const lineAccounts = new Hono<Env>();
 const PROFILE_LOOKUP_CONCURRENCY = 3;
@@ -240,6 +241,17 @@ lineAccounts.put('/api/line-accounts/:id', async (c) => {
     if (!updated) {
       return c.json({ success: false, error: 'LINE account not found' }, 404);
     }
+    fireAdminAuditLog(c, {
+      action: 'line_account.update',
+      resourceType: 'line_account',
+      resourceId: id,
+      metadata: {
+        nameTouched: body.name !== undefined,
+        tokenTouched: body.channelAccessToken !== undefined,
+        secretTouched: body.channelSecret !== undefined,
+        isActiveTouched: body.isActive !== undefined,
+      },
+    });
     return c.json({ success: true, data: serializeLineAccount(updated) });
   } catch (err) {
     const jr = jsonBodyReadErrorResponse(err);
@@ -266,6 +278,11 @@ lineAccounts.delete('/api/line-accounts/:id', async (c) => {
       return c.json({ success: false, error: delDenied.error }, 403);
     }
     await deleteLineAccount(c.env.DB, idDel);
+    fireAdminAuditLog(c, {
+      action: 'line_account.delete',
+      resourceType: 'line_account',
+      resourceId: idDel,
+    });
     return c.json({ success: true, data: null });
   } catch (err) {
     console.error('DELETE /api/line-accounts/:id error:', err);

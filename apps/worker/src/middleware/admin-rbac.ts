@@ -22,6 +22,10 @@ function isAdminPrincipalRolesPath(pathname: string): boolean {
   );
 }
 
+function isAdminAuditLogPath(pathname: string): boolean {
+  return pathname === '/api/admin/audit-log' || pathname.startsWith('/api/admin/audit-log/');
+}
+
 /** Mutations a read-only principal must still perform to use the admin UI. */
 function isViewerAllowedAdminMutation(pathname: string, method: string): boolean {
   const m = method.toUpperCase();
@@ -90,6 +94,10 @@ export async function adminRbacMiddleware(c: Context<Env>, next: Next): Promise<
   const role = access.role;
   if (role !== 'viewer') {
     return next();
+  }
+
+  if (isAdminAuditLogPath(pathname)) {
+    return c.json({ success: false, error: 'Forbidden: read-only role' }, 403);
   }
 
   if (!isStateChangingAdminMethod(method)) {

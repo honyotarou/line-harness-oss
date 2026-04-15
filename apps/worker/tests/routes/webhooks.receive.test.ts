@@ -111,7 +111,7 @@ describe('incoming webhook receive route', () => {
         headers: { 'Content-Type': 'application/json' },
         body,
       }),
-      { DB: {} as D1Database } as never,
+      { DB: createReceiveTestDb() } as never,
     );
 
     expect(response.status).toBe(401);
@@ -274,11 +274,12 @@ describe('incoming webhook receive route', () => {
     expect(eventBusMocks.fireEvent).toHaveBeenCalledTimes(1);
   });
 
-  it('rejects receive when the webhook has no signing secret configured', async () => {
+  it('rejects receive when the webhook signing secret is blank (whitespace-only)', async () => {
     dbMocks.getIncomingWebhookById.mockResolvedValue({
       id: 'incoming-1',
+      name: 'Hook',
       source_type: 'custom',
-      secret: null,
+      secret: '   ',
       line_account_id: null,
       is_active: 1,
     });
@@ -293,7 +294,7 @@ describe('incoming webhook receive route', () => {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ ok: true }),
       }),
-      { DB: {} as D1Database } as never,
+      { DB: createReceiveTestDb() } as never,
     );
 
     expect(response.status).toBe(401);
@@ -324,7 +325,7 @@ describe('incoming webhook receive route', () => {
           },
           body,
         }),
-        { DB: {} as D1Database } as never,
+        { DB: createReceiveTestDb() } as never,
       );
 
       expect(response.status).toBe(400);
@@ -355,7 +356,7 @@ describe('incoming webhook receive route', () => {
         },
         body,
       }),
-      { DB: {} as D1Database } as never,
+      { DB: createReceiveTestDb() } as never,
     );
 
     expect(response.status).toBe(413);
