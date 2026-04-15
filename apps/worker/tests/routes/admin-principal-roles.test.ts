@@ -106,6 +106,15 @@ function createStatefulDb(initial: Row[], viewerEmail: string | null) {
           },
         };
       }
+      if (sql.includes('INSERT INTO admin_audit_log')) {
+        return {
+          bind(..._args: unknown[]) {
+            return {
+              run: async () => ({ success: true, meta: { changes: 1 } }),
+            };
+          },
+        };
+      }
       throw new Error(`unexpected SQL in mock: ${sql.slice(0, 80)}`);
     },
   } as unknown as D1Database;

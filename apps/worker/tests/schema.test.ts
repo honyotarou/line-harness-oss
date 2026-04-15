@@ -55,6 +55,11 @@ const migration021Path = resolve(
   '../../packages/db/migrations/021_users_email_lowercase.sql',
 );
 
+const migration025Path = resolve(
+  process.cwd(),
+  '../../packages/db/migrations/025_audit_log_webhook_secret_not_null.sql',
+);
+
 describe('schema.sql', () => {
   it('migration 011 matches admin_principal_roles DDL', () => {
     const m011 = readFileSync(migration011Path, 'utf8');
@@ -89,6 +94,7 @@ describe('schema.sql', () => {
     expect(schema).toContain('CREATE TABLE IF NOT EXISTS line_webhook_processed_events');
     expect(schema).toContain('CREATE TABLE IF NOT EXISTS incoming_webhook_processed_payloads');
     expect(schema).toContain('CREATE TABLE IF NOT EXISTS admin_session_revocations');
+    expect(schema).toContain('CREATE TABLE IF NOT EXISTS admin_audit_log');
   });
 
   it('defines friend columns required by runtime code', () => {
@@ -142,6 +148,30 @@ describe('schema.sql', () => {
     const m021 = readFileSync(migration021Path, 'utf8');
     expect(m021).toContain('UPDATE users');
     expect(m021).toContain('LOWER(TRIM(email))');
+  });
+
+  it('migration 025 adds admin_audit_log and rebuilds webhooks with NOT NULL secret + backfill', () => {
+    const m025 = readFileSync(migration025Path, 'utf8');
+    expect(m025).toContain('CREATE TABLE IF NOT EXISTS admin_audit_log');
+    expect(m025).toContain('idx_admin_audit_log_created_at');
+    expect(m025).toContain('incoming_webhooks__m025');
+    expect(m025).toContain('outgoing_webhooks__m025');
+    expect(m025).toContain('secret TEXT NOT NULL');
+    expect(m025).toMatch(/WHEN secret IS NULL OR trim\(secret\) = ''/);
+    expect(m025).toContain('lower(hex(randomblob(32)))');
+  });
+
+  it('requires webhook signing secrets and documents calendar token ciphertext in schema', () => {
+    const incomingBlock = schema.match(
+      /CREATE TABLE IF NOT EXISTS incoming_webhooks \(([\s\S]*?)\n\);/,
+    );
+    expect(incomingBlock?.[1]).toContain('secret      TEXT NOT NULL');
+    const outgoingBlock = schema.match(
+      /CREATE TABLE IF NOT EXISTS outgoing_webhooks \(([\s\S]*?)\n\);/,
+    );
+    expect(outgoingBlock?.[1]).toContain('secret      TEXT NOT NULL');
+    expect(schema).toMatch(/enc1\.\*\/enc2\.\*/);
+    expect(schema).toContain('CREATE TABLE IF NOT EXISTS google_calendar_connections');
   });
 
   it('schema lists owner in admin_principal_roles CHECK and chats.line_account_id FK', () => {

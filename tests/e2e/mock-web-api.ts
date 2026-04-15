@@ -222,7 +222,7 @@ export async function mockWebApi(page: Page, hooks?: MockWebApiHooks): Promise<v
           name: '外部通知',
           url: 'https://example.com/hook',
           eventTypes: ['friend_add'],
-          secret: null,
+          secret: 'outgoing-secret-placeholder',
           isActive: true,
           createdAt: '2026-01-01T00:00:00.000Z',
           updatedAt: '2026-01-01T00:00:00.000Z',

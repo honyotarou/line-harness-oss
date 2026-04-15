@@ -290,7 +290,7 @@ CREATE TABLE IF NOT EXISTS incoming_webhooks (
   id          TEXT PRIMARY KEY,
   name        TEXT NOT NULL,
   source_type TEXT NOT NULL DEFAULT 'custom',
-  secret      TEXT,
+  secret      TEXT NOT NULL,
   line_account_id TEXT REFERENCES line_accounts (id) ON DELETE SET NULL,
   is_active   INTEGER NOT NULL DEFAULT 1,
   created_at  TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%f', 'now', '+9 hours')),
@@ -304,7 +304,7 @@ CREATE TABLE IF NOT EXISTS outgoing_webhooks (
   name        TEXT NOT NULL,
   url         TEXT NOT NULL,
   event_types TEXT NOT NULL DEFAULT '[]',
-  secret      TEXT,
+  secret      TEXT NOT NULL,
   line_account_id TEXT,
   is_active   INTEGER NOT NULL DEFAULT 1,
   created_at  TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%f', 'now', '+9 hours')),
@@ -314,8 +314,28 @@ CREATE TABLE IF NOT EXISTS outgoing_webhooks (
 CREATE INDEX IF NOT EXISTS idx_outgoing_webhooks_line_account_id ON outgoing_webhooks (line_account_id);
 
 -- ============================================================
+-- Admin audit (L5): security-relevant mutations (Worker writes rows).
+-- ============================================================
+CREATE TABLE IF NOT EXISTS admin_audit_log (
+  id TEXT PRIMARY KEY,
+  created_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%f', 'now', '+9 hours')),
+  action TEXT NOT NULL,
+  actor_email TEXT,
+  actor_kind TEXT NOT NULL DEFAULT 'unknown',
+  resource_type TEXT,
+  resource_id TEXT,
+  metadata TEXT,
+  request_path TEXT,
+  ip_hash TEXT
+);
+
+CREATE INDEX IF NOT EXISTS idx_admin_audit_log_created_at ON admin_audit_log (created_at DESC);
+
+-- ============================================================
 -- Round 3: Google Calendar
 -- ============================================================
+-- access_token / refresh_token / api_key: values may be legacy plaintext or enc1.*/enc2.* AES-GCM
+-- ciphertext when CALENDAR_TOKEN_ENCRYPTION_SECRET is set (Worker calendar-tokens + calendar-integration).
 CREATE TABLE IF NOT EXISTS google_calendar_connections (
   id            TEXT PRIMARY KEY,
   calendar_id   TEXT NOT NULL,

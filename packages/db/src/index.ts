@@ -8,6 +8,7 @@ export * from './line-accounts';
 export * from './conversions';
 export * from './affiliates';
 export * from './webhooks';
+export * from './audit-log';
 export * from './calendar';
 export * from './reminders';
 export * from './scoring';

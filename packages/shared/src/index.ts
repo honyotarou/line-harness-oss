@@ -6,3 +6,4 @@ export * from './admin-api-fetch-base';
 export * from './admin-browser-client';
 export * from './allowed-origins';
 export * from './safe-liff-redirect';
+export * from './safe-path-segment-id';

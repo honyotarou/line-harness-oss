@@ -32,6 +32,7 @@ import {
 } from '../services/admin-line-account-scope.js';
 import { denyIfBroadcastSendSecretMissing } from '../services/broadcast-send-guard.js';
 import { enforceBroadcastMassSendRateLimit } from '../services/broadcast-mass-send-rate-limit.js';
+import { fireAdminAuditLog } from '../services/admin-audit-log.js';
 
 const broadcasts = new Hono<Env>();
 
@@ -155,6 +156,12 @@ broadcasts.post('/api/broadcasts', async (c) => {
         .run();
     }
 
+    fireAdminAuditLog(c, {
+      action: 'broadcast.create',
+      resourceType: 'broadcast',
+      resourceId: broadcast.id,
+      metadata: { title: body.title, targetType: body.targetType },
+    });
     return c.json(
       {
         success: true,
@@ -218,6 +225,11 @@ broadcasts.put('/api/broadcasts/:id', async (c) => {
       ...(statusUpdate !== undefined ? { status: statusUpdate } : {}),
     });
 
+    fireAdminAuditLog(c, {
+      action: 'broadcast.update',
+      resourceType: 'broadcast',
+      resourceId: id,
+    });
     return c.json({ success: true, data: updated ? serializeBroadcast(updated) : null });
   } catch (err) {
     const jr = jsonBodyReadErrorResponse(err);
@@ -240,6 +252,11 @@ broadcasts.delete('/api/broadcasts/:id', async (c) => {
       return c.json({ success: false, error: 'Broadcast not found' }, 404);
     }
     await deleteBroadcast(c.env.DB, id);
+    fireAdminAuditLog(c, {
+      action: 'broadcast.delete',
+      resourceType: 'broadcast',
+      resourceId: id,
+    });
     return c.json({ success: true, data: null });
   } catch (err) {
     console.error('DELETE /api/broadcasts/:id error:', err);
@@ -316,6 +333,11 @@ broadcasts.post('/api/broadcasts/:id/send', async (c) => {
         502,
       );
     }
+    fireAdminAuditLog(c, {
+      action: 'broadcast.send',
+      resourceType: 'broadcast',
+      resourceId: id,
+    });
     return c.json({ success: true, data: result ? serializeBroadcast(result) : null });
   } catch (err) {
     const jr = jsonBodyReadErrorResponse(err);
@@ -385,6 +407,11 @@ broadcasts.post('/api/broadcasts/:id/send-segment', async (c) => {
     await processSegmentSend(c.env.DB, lineClient, id, body.conditions, { skipMarkSending: true });
 
     const result = await getBroadcastById(c.env.DB, id);
+    fireAdminAuditLog(c, {
+      action: 'broadcast.send_segment',
+      resourceType: 'broadcast',
+      resourceId: id,
+    });
     return c.json({ success: true, data: result ? serializeBroadcast(result) : null });
   } catch (err) {
     const jr = jsonBodyReadErrorResponse(err);

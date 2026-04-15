@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import {
   DEFAULT_FORM_SUBMIT_FLEX_FOOTER,
   resolveFormSubmitFlexFooterText,
-} from '../../src/routes/forms.js';
+} from '../../src/services/form-submit-footer.js';
 
 describe('resolveFormSubmitFlexFooterText', () => {
   it('returns default when unset or blank', () => {

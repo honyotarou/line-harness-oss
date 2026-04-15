@@ -283,4 +283,20 @@ describe('adminRbacMiddleware', () => {
 
     expect(res.status).toBe(200);
   });
+
+  it('blocks viewer principals from reading the admin audit log', async () => {
+    const app = new Hono<Env>();
+    app.use('*', async (c, next) => {
+      c.set('cfAccessJwtPayload', { email: 'v@example.com' });
+      await next();
+    });
+    app.use('*', adminRbacMiddleware);
+    app.get('/api/admin/audit-log', (c) => c.json({ ok: true }));
+
+    const res = await app.fetch(new Request('http://localhost/api/admin/audit-log'), {
+      ...cfAccessEnv({ DB: dbReturningRole('viewer') }),
+    } as never);
+
+    expect(res.status).toBe(403);
+  });
 });

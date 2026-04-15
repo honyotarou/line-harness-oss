@@ -219,7 +219,7 @@ describe('fireEvent', () => {
         name: 'Local',
         url: 'https://127.0.0.1/out',
         event_types: '[]',
-        secret: null,
+        secret: 'unsigned-outbound-placeholder',
         is_active: 1,
         created_at: '',
         updated_at: '',

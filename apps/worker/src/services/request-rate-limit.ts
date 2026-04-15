@@ -236,8 +236,16 @@ export async function checkRateLimitWithStorage(
   return checkRateLimit(options);
 }
 
-/** Brute-force sensitive paths must not rely on per-isolate memory (see pentest / rate-limit note). */
-const RATE_LIMIT_BUCKETS_REQUIRING_D1 = new Set(['auth-login', 'auth-session']);
+/**
+ * Brute-force / abuse-sensitive buckets must not rely on per-isolate memory (Workers scale out).
+ * Auth endpoints and per-IP webhook / public-form abstractions use D1 when bound; callers still
+ * pass `db: c.env.DB` for other buckets so misconfigured Workers get consistent storage when present.
+ */
+export function rateLimitBucketRequiresD1(bucket: string): boolean {
+  if (bucket.startsWith('incoming-webhook:')) return true;
+  if (bucket.startsWith('public-form-submit:')) return true;
+  return bucket === 'auth-login' || bucket === 'auth-session';
+}
 
 /** Do not expose remaining budget in headers for auth endpoints (information leak). */
 const RATE_LIMIT_OMIT_HEADER_BUCKETS = new Set(['auth-login', 'auth-session']);
@@ -265,12 +273,12 @@ export async function enforceRateLimit(
   c: Context,
   options: EnforceRateLimitOptions,
 ): Promise<Response | null> {
-  if (RATE_LIMIT_BUCKETS_REQUIRING_D1.has(options.bucket)) {
+  if (rateLimitBucketRequiresD1(options.bucket)) {
     if (!options.db || typeof options.db.prepare !== 'function') {
       return c.json(
         {
           success: false,
-          error: 'Server misconfigured: D1 database binding required for auth rate limiting',
+          error: 'Server misconfigured: D1 database binding required for this rate limit bucket',
         },
         503,
       );

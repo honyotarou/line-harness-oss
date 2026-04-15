@@ -5,7 +5,7 @@ export interface IncomingWebhookRow {
   id: string;
   name: string;
   source_type: string;
-  secret: string | null;
+  secret: string;
   line_account_id: string | null;
   is_active: number;
   created_at: string;
@@ -17,7 +17,7 @@ export interface OutgoingWebhookRow {
   name: string;
   url: string;
   event_types: string; // JSON配列
-  secret: string | null;
+  secret: string;
   line_account_id: string | null;
   is_active: number;
   created_at: string;
@@ -56,7 +56,7 @@ export async function getIncomingWebhookById(
 
 export async function createIncomingWebhook(
   db: D1Database,
-  input: { name: string; sourceType?: string; secret?: string; lineAccountId?: string | null },
+  input: { name: string; sourceType?: string; secret: string; lineAccountId?: string | null },
 ): Promise<IncomingWebhookRow> {
   const id = crypto.randomUUID();
   const now = jstNow();
@@ -68,7 +68,7 @@ export async function createIncomingWebhook(
       id,
       input.name,
       input.sourceType ?? 'custom',
-      input.secret ?? null,
+      input.secret,
       input.lineAccountId?.trim() || null,
       now,
       now,
@@ -150,7 +150,7 @@ export async function createOutgoingWebhook(
     name: string;
     url: string;
     eventTypes: string[];
-    secret?: string;
+    secret: string;
     lineAccountId?: string | null;
   },
 ): Promise<OutgoingWebhookRow> {
@@ -165,7 +165,7 @@ export async function createOutgoingWebhook(
       input.name,
       input.url,
       JSON.stringify(input.eventTypes),
-      input.secret ?? null,
+      input.secret,
       input.lineAccountId?.trim() || null,
       now,
       now,

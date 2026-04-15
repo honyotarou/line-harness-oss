@@ -10,6 +10,7 @@
  * URL format: https://liff.line.me/{LIFF_ID}?page=form&id={FORM_ID}
  */
 
+import { isSafePathSegmentResourceId } from '@line-crm/shared';
 import { getLiffApiBaseUrl } from './api-base.js';
 import { sanitizeLineProfilePictureUrlForHtml } from './safe-line-picture-url.js';
 import { formatLiffUserVisibleError, formatSubmitErrorMessage } from './submit-error-message.js';
@@ -470,6 +471,10 @@ function attachFormEvents(): void {
 export async function initForm(formId: string | null): Promise<void> {
   if (!formId) {
     renderFormError('フォームIDが指定されていません');
+    return;
+  }
+  if (!isSafePathSegmentResourceId(formId)) {
+    renderFormError('フォームIDの形式が正しくありません');
     return;
   }
 

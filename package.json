@@ -36,7 +36,11 @@
     "deploy:worker": "pnpm --filter worker run deploy",
     "deploy:web": "pnpm --filter web build",
     "db:migrate": "pnpm --filter worker exec bash scripts/wrangler.sh d1 execute line-crm --remote --file=../../packages/db/schema.sql",
-    "db:migrate:local": "pnpm --filter worker exec bash scripts/wrangler.sh d1 execute line-crm --local --file=../../packages/db/schema.sql"
+    "db:migrate:local": "pnpm --filter worker exec bash scripts/wrangler.sh d1 execute line-crm --local --file=../../packages/db/schema.sql",
+    "db:fresh:local": "bash scripts/d1-fresh-start-local.sh",
+    "db:fresh:remote": "bash scripts/d1-fresh-start-remote.sh",
+    "db:apply-migrations:local": "bash scripts/d1-apply-post-007-migrations.sh local",
+    "db:apply-migrations:remote": "bash scripts/d1-apply-post-007-migrations.sh remote"
   },
   "packageManager": "pnpm@9.15.4",
   "engines": {

@@ -49,6 +49,7 @@ import { richMenus } from './routes/rich-menus.js';
 import { trackedLinks } from './routes/tracked-links.js';
 import { forms } from './routes/forms.js';
 import { adminPrincipalRolesRoutes } from './routes/admin-principal-roles.js';
+import { adminAudit } from './routes/admin-audit.js';
 
 export type Env = {
   Variables: {
@@ -396,6 +397,7 @@ app.route('/', richMenus);
 app.route('/', trackedLinks);
 app.route('/', forms);
 app.route('/', adminPrincipalRolesRoutes);
+app.route('/', adminAudit);
 
 const SHORT_LINK_LANDING_RATE_LIMIT = { limit: 120, windowMs: 60_000 };
 

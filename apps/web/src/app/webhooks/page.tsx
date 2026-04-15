@@ -140,7 +140,7 @@ export default function WebhooksPage() {
 
   const handleCreateOutgoing = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!outForm.name || !outForm.url) return;
+    if (!outForm.name || !outForm.url || !outForm.secret.trim()) return;
     try {
       const eventTypes = outForm.eventTypes
         .split(',')
@@ -150,7 +150,7 @@ export default function WebhooksPage() {
         name: outForm.name,
         url: outForm.url,
         eventTypes,
-        secret: outForm.secret || undefined,
+        secret: outForm.secret.trim(),
       });
       setOutForm({ name: '', url: '', eventTypes: '', secret: '' });
       setShowCreate(false);
@@ -293,13 +293,14 @@ export default function WebhooksPage() {
             </div>
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">
-                シークレット (任意)
+                シークレット (HMAC 署名用・必須)
               </label>
               <Input
                 value={outForm.secret}
                 onChange={(e) => setOutForm({ ...outForm, secret: e.target.value })}
                 className=""
                 placeholder="webhook-secret-key"
+                required
               />
             </div>
           </div>
