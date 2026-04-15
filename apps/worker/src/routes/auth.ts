@@ -31,6 +31,7 @@ import {
   getValidatedAccessEmailFromPayload,
   isCloudflareAccessEnforced,
 } from '../services/cloudflare-access-principal.js';
+import { formatDeployedSecurityRelaxPairHint } from '../services/deployed-security-defaults.js';
 import { timingSafeEqualUtf8 } from '../services/timing-safe-equal.js';
 
 const authRoutes = new Hono<Env>();
@@ -118,8 +119,7 @@ authRoutes.post('/api/auth/login', async (c) => {
       return c.json(
         {
           success: false,
-          error:
-            'REQUIRE_ADMIN_SESSION_SECRET is enabled but ADMIN_SESSION_SECRET is not configured; set a dedicated session signing secret.',
+          error: `ADMIN_SESSION_SECRET is required on this HTTPS Worker (or ${formatDeployedSecurityRelaxPairHint()} for staging relax, or ALLOW_LEGACY_API_KEY_SESSION_SIGNER=1 only for migration); set a dedicated session signing secret.`,
         },
         503,
       );

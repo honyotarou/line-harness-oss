@@ -23,6 +23,7 @@ import {
 } from '../services/admin-line-account-scope.js';
 import { lineAccountDbOptions } from '../services/line-account-at-rest-key.js';
 import { denyUnlessOwnerOrImplicitAdminForLineCredentials } from '../services/line-account-credential-owner-guard.js';
+import { denyUnlessLineAccountAtRestKeyForCreates } from '../services/line-account-at-rest-policy.js';
 import { denyUnlessLineAccountSecretsWriteAllowed } from '../services/line-account-secrets-write-guard.js';
 
 const lineAccounts = new Hono<Env>();
@@ -169,6 +170,11 @@ lineAccounts.post('/api/line-accounts', async (c) => {
     );
     if (ownerDeniedPost) {
       return ownerDeniedPost;
+    }
+
+    const atRestDenied = denyUnlessLineAccountAtRestKeyForCreates(c);
+    if (atRestDenied) {
+      return atRestDenied;
     }
 
     const account = await createLineAccount(c.env.DB, body, lineAccountDbOptions(c.env));

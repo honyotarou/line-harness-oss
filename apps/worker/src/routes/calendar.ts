@@ -21,6 +21,7 @@ import {
   jsonBodyReadErrorResponse,
   readJsonBodyWithLimit,
 } from '../services/request-body.js';
+import { effectiveRequireCalendarTokenEncryption } from '../services/deployed-security-defaults.js';
 import { clampIntInRange } from '../services/query-limits.js';
 import { enforceRateLimit } from '../services/request-rate-limit.js';
 
@@ -49,7 +50,7 @@ function calendarDeps(c: { env: Env['Bindings'] }) {
   return {
     db: c.env.DB,
     calendarTokenEncryptionSecret: c.env.CALENDAR_TOKEN_ENCRYPTION_SECRET,
-    requireCalendarTokenEncryption: isTruthyEnvFlag(c.env.REQUIRE_CALENDAR_TOKEN_ENCRYPTION),
+    requireCalendarTokenEncryption: effectiveRequireCalendarTokenEncryption(c.env),
   };
 }
 

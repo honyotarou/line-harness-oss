@@ -6,6 +6,7 @@ import {
   readAdminSessionCookie,
   resolveAdminSessionSecret,
 } from './admin-session.js';
+import { effectiveRequireDedicatedAdminSessionSecret } from './deployed-security-defaults.js';
 
 function truthyEnv(raw: string | undefined): boolean {
   const v = raw?.trim().toLowerCase();
@@ -46,7 +47,7 @@ export async function handleEnvProbeGet(c: Context<Env>): Promise<Response> {
       hasCloudflareAccessTeamDomain: Boolean(c.env.CLOUDFLARE_ACCESS_TEAM_DOMAIN?.trim()),
       hasCloudflareAccessAudience: Boolean(c.env.CLOUDFLARE_ACCESS_AUDIENCE?.trim()),
       requireCloudflareAccessJwt: truthyEnv(c.env.REQUIRE_CLOUDFLARE_ACCESS_JWT),
-      requireAdminSessionSecret: truthyEnv(c.env.REQUIRE_ADMIN_SESSION_SECRET),
+      requireDedicatedAdminSessionSecret: effectiveRequireDedicatedAdminSessionSecret(c.env),
       workerUrlHost,
     },
   });

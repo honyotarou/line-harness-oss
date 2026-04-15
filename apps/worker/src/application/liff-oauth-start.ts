@@ -55,10 +55,10 @@ export async function runAuthLineStart(input: AuthLineStartInput): Promise<AuthL
     return {
       kind: 'log_error',
       message: requireDedicated
-        ? 'GET /auth/line: REQUIRE_LIFF_STATE_SECRET is on but LIFF_STATE_SECRET is missing'
+        ? 'GET /auth/line: LIFF_STATE_SECRET is required (REQUIRE_LIFF_STATE_SECRET or non-local HTTPS defaults) but missing'
         : 'GET /auth/line: set LIFF_STATE_SECRET or ALLOW_LIFF_OAUTH_API_KEY_FALLBACK=1 (with API_KEY) for OAuth state',
       userHtmlMessage: requireDedicated
-        ? 'サーバー設定エラー: LIFF_STATE_SECRET を設定してください（REQUIRE_LIFF_STATE_SECRET が有効です）。'
+        ? 'サーバー設定エラー: LIFF_STATE_SECRET を設定してください（本番 HTTPS ではデフォルトで必須です）。'
         : 'サーバー設定エラー: LIFF_STATE_SECRET を設定するか、開発用に ALLOW_LIFF_OAUTH_API_KEY_FALLBACK=1 と API_KEY を設定してください。',
     };
   }

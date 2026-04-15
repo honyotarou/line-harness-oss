@@ -21,6 +21,7 @@ import {
   jstNow,
 } from '@line-crm/db';
 import { LineClient } from '@line-crm/line-sdk';
+import { formatDeployedSecurityRelaxPairHint } from './deployed-security-defaults.js';
 import {
   automationSendWebhookHostnameAllowed,
   parseAutomationSendWebhookHostAllowlist,
@@ -410,7 +411,7 @@ async function executeAction(
       }
       if (requireAutomationSendWebhookHostAllowlist && sendWebhookHostRules.length === 0) {
         throw new Error(
-          'send_webhook: set AUTOMATION_SEND_WEBHOOK_ALLOWED_HOSTS (REQUIRE_AUTOMATION_SEND_WEBHOOK_ALLOWED_HOSTS=1)',
+          `send_webhook: set AUTOMATION_SEND_WEBHOOK_ALLOWED_HOSTS (required by default on non-local HTTPS; or ${formatDeployedSecurityRelaxPairHint()} for staging relax, or ALLOW_AUTOMATION_SEND_WEBHOOK_WITHOUT_HOST_ALLOWLIST=1)`,
         );
       }
       if (sendWebhookHostRules.length > 0) {

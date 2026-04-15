@@ -72,6 +72,16 @@ export type Env = {
     LINE_LOGIN_CHANNEL_ID: string;
     LINE_LOGIN_CHANNEL_SECRET: string;
     WORKER_URL: string;
+    /**
+     * `1` / `true`: first step to opt out of secure-by-default on non-local HTTPS `WORKER_URL` (staging).
+     * On HTTPS this alone does nothing; set {@link RELAX_DEPLOYED_SECURITY_CONFIRM} to the documented phrase.
+     */
+    RELAX_DEPLOYED_SECURITY_DEFAULTS?: string;
+    /**
+     * Must equal `YES_I_ACCEPT_REDUCED_SECURITY` when relaxing HTTPS defaults together with
+     * {@link RELAX_DEPLOYED_SECURITY_DEFAULTS} (two-step to avoid accidental relax).
+     */
+    RELAX_DEPLOYED_SECURITY_CONFIRM?: string;
     WEB_URL?: string;
     /** Optional; overrides default footer text in the LINE Flex after LIFF form submit. */
     FORM_SUBMIT_FLEX_FOOTER?: string;
@@ -83,7 +93,8 @@ export type Env = {
     TRACKING_LINK_SECRET?: string;
     /**
      * `1` / `true`: refuse tracked-link `?f=` signing/verification unless `TRACKING_LINK_SECRET` is set
-     * (no API_KEY fallback — mitigates token forgery if API_KEY leaks).
+     * (no API_KEY fallback — mitigates token forgery if API_KEY leaks). Same policy applies by default on
+     * non-local HTTPS `WORKER_URL` unless `RELAX_DEPLOYED_SECURITY_DEFAULTS` or `ALLOW_TRACKING_LINK_API_KEY_FALLBACK`.
      */
     REQUIRE_TRACKING_LINK_SECRET?: string;
     /**
@@ -93,7 +104,8 @@ export type Env = {
     ALLOW_TRACKING_LINK_API_KEY_FALLBACK?: string;
     /**
      * `1` / `true`: OAuth `state` must be signed with `LIFF_STATE_SECRET` only (no `API_KEY` fallback).
-     * Use in production so a leaked API key cannot forge login state.
+     * Non-local HTTPS `WORKER_URL` uses the same rule by default unless `RELAX_DEPLOYED_SECURITY_DEFAULTS` or
+     * `ALLOW_LIFF_OAUTH_API_KEY_FALLBACK`.
      */
     REQUIRE_LIFF_STATE_SECRET?: string;
     /**
@@ -104,6 +116,11 @@ export type Env = {
      * Base64 (standard or URL-safe) of 32 raw bytes — seals `line_accounts` tokens/secrets at rest in D1 (`lh1:` prefix).
      */
     LINE_ACCOUNT_SECRETS_KEY?: string;
+    /**
+     * `1` / `true`: on non-local HTTPS `WORKER_URL`, allow POST `/api/line-accounts` without
+     * `LINE_ACCOUNT_SECRETS_KEY` (stores channel tokens as plaintext in D1). Default off — migration only.
+     */
+    ALLOW_LINE_ACCOUNT_SECRETS_PLAINTEXT_AT_REST?: string;
     /** `1` / `true`: on friend add, send welcome Flex (anxiety picker) once; skip DB scenario step-0 reply if delay=0. Postback `anxiety=*` always handled when user taps buttons. */
     WELCOME_ANXIETY_FLOW?: string;
     /** Optional LIFF URL for booking button in anxiety follow-up (defaults to `LIFF_URL`). */
@@ -177,7 +194,8 @@ export type Env = {
     ALLOW_LEGACY_API_KEY_BEARER_SESSION?: string;
     /**
      * `1` / `true`: refuse login/session issuance unless `ADMIN_SESSION_SECRET` is set (sessions must not
-     * share the same signing key as `API_KEY`).
+     * share the same signing key as `API_KEY`). Non-local HTTPS `WORKER_URL` enforces this by default unless
+     * `RELAX_DEPLOYED_SECURITY_DEFAULTS` or `ALLOW_LEGACY_API_KEY_SESSION_SIGNER`.
      */
     REQUIRE_ADMIN_SESSION_SECRET?: string;
     /**
@@ -197,6 +215,11 @@ export type Env = {
      * scoped list APIs (same validation as Zero Trust principals) to block cross-account enumeration with one API key.
      */
     MULTI_LINE_ACCOUNT_QUERY_REQUIRES_LINE_ACCOUNT_ID?: string;
+    /**
+     * `1` / `true`: allow multi-account list APIs without explicit `lineAccountId` on non-local HTTPS (legacy).
+     * Default on HTTPS requires scoped queries unless {@link RELAX_DEPLOYED_SECURITY_DEFAULTS} is set.
+     */
+    ALLOW_MULTI_LINE_ACCOUNT_QUERY_WITHOUT_LINE_ACCOUNT_ID?: string;
     /**
      * When set, POST `/api/broadcasts/:id/send` and `/send-segment` require header `X-Broadcast-Send-Secret`
      * with the same value (second factor against accidental or stolen-admin mass send).
@@ -220,6 +243,11 @@ export type Env = {
      * `1` / `true`: automation `send_webhook` requires a non-empty `AUTOMATION_SEND_WEBHOOK_ALLOWED_HOSTS` allowlist.
      */
     REQUIRE_AUTOMATION_SEND_WEBHOOK_ALLOWED_HOSTS?: string;
+    /**
+     * `1` / `true`: allow `send_webhook` without a non-empty `AUTOMATION_SEND_WEBHOOK_ALLOWED_HOSTS` on HTTPS.
+     * Default on non-local HTTPS requires an allowlist unless {@link RELAX_DEPLOYED_SECURITY_DEFAULTS} is set.
+     */
+    ALLOW_AUTOMATION_SEND_WEBHOOK_WITHOUT_HOST_ALLOWLIST?: string;
     /**
      * `1` / `true`: allow automation `send_webhook` when the event was triggered from an incoming partner webhook.
      * Default is off — disabling blocks incoming → outbound → incoming automation loops (DoS).
@@ -250,6 +278,11 @@ export type Env = {
      */
     ADMIN_BROWSER_CLIENT_TOKEN?: string;
     /**
+     * `1` / `true`: on non-local HTTPS `WORKER_URL`, accept the default `X-Line-Harness-Client: 1` when
+     * `ADMIN_BROWSER_CLIENT_TOKEN` is unset. Default off — set a random `ADMIN_BROWSER_CLIENT_TOKEN` + web env instead.
+     */
+    ALLOW_DEFAULT_ADMIN_BROWSER_CLIENT?: string;
+    /**
      * Optional AES-GCM key material (any string; HKDF-SHA256-derived key for new `enc2.` payloads; legacy `enc1.` still decrypts) for encrypting Google Calendar
      * `access_token`, `refresh_token`, and `api_key` in D1. When unset, tokens are stored as submitted (legacy).
      */
@@ -258,6 +291,11 @@ export type Env = {
      * `1` / `true`: refuse to store Google Calendar OAuth/API secrets unless `CALENDAR_TOKEN_ENCRYPTION_SECRET` is set.
      */
     REQUIRE_CALENDAR_TOKEN_ENCRYPTION?: string;
+    /**
+     * `1` / `true`: allow persisting Google Calendar secrets without `CALENDAR_TOKEN_ENCRYPTION_SECRET` on HTTPS.
+     * Default on non-local HTTPS refuses unless {@link RELAX_DEPLOYED_SECURITY_DEFAULTS} is set.
+     */
+    ALLOW_CALENDAR_SECRETS_PLAINTEXT_AT_REST?: string;
     /**
      * `1` / `true` / `yes` / `on`: when Cloudflare Access is enforced, require a row in `admin_principal_roles`
      * for the JWT email (no row → 403). While the table is empty, only `/api/admin/principal-roles` is allowed

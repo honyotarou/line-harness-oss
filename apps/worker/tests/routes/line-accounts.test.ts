@@ -26,6 +26,9 @@ vi.mock('../../src/services/line-account-profile-cache.js', () => ({
   loadLineAccountProfile: serviceMocks.loadLineAccountProfile,
 }));
 
+/** 32 raw bytes as standard base64 — valid `LINE_ACCOUNT_SECRETS_KEY` for tests. */
+const TEST_AT_REST_KEY_B64 = btoa(String.fromCharCode(...Array.from({ length: 32 }, (_, i) => i)));
+
 describe('line account routes', () => {
   beforeEach(() => {
     Object.values(dbMocks).forEach((mockFn) => mockFn.mockReset());
@@ -573,5 +576,71 @@ describe('line account routes', () => {
 
     expect(response.status).toBe(403);
     expect(dbMocks.createLineAccount).not.toHaveBeenCalled();
+  });
+
+  it('returns 503 on POST /api/line-accounts for non-local HTTPS without LINE_ACCOUNT_SECRETS_KEY', async () => {
+    const { lineAccounts } = await import('../../src/routes/line-accounts.js');
+    const app = new Hono();
+    app.route('/', lineAccounts);
+
+    const response = await app.fetch(
+      new Request('http://localhost/api/line-accounts', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          channelId: 'new-ch',
+          name: 'New',
+          channelAccessToken: 't',
+          channelSecret: 's',
+        }),
+      }),
+      {
+        DB: {} as D1Database,
+        API_KEY: 'k',
+        WORKER_URL: 'https://api.example.com',
+      } as never,
+    );
+
+    expect(response.status).toBe(503);
+    expect(dbMocks.createLineAccount).not.toHaveBeenCalled();
+  });
+
+  it('allows POST /api/line-accounts on HTTPS when LINE_ACCOUNT_SECRETS_KEY is configured', async () => {
+    dbMocks.createLineAccount.mockResolvedValue({
+      id: 'new-1',
+      channel_id: 'new-ch',
+      name: 'New',
+      channel_access_token: 't',
+      channel_secret: 's',
+      is_active: 1,
+      created_at: '2026-03-25T10:00:00+09:00',
+      updated_at: '2026-03-25T10:00:00+09:00',
+    });
+
+    const { lineAccounts } = await import('../../src/routes/line-accounts.js');
+    const app = new Hono();
+    app.route('/', lineAccounts);
+
+    const response = await app.fetch(
+      new Request('http://localhost/api/line-accounts', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          channelId: 'new-ch',
+          name: 'New',
+          channelAccessToken: 't',
+          channelSecret: 's',
+        }),
+      }),
+      {
+        DB: {} as D1Database,
+        API_KEY: 'k',
+        WORKER_URL: 'https://api.example.com',
+        LINE_ACCOUNT_SECRETS_KEY: TEST_AT_REST_KEY_B64,
+      } as never,
+    );
+
+    expect(response.status).toBe(201);
+    expect(dbMocks.createLineAccount).toHaveBeenCalled();
   });
 });

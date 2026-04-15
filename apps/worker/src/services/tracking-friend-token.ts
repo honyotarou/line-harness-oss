@@ -3,7 +3,7 @@
  * so anonymous clients cannot trigger tag/scenario side effects for arbitrary friends.
  */
 
-import { isNonLocalHttpsWorkerUrl } from './production-cloud-policy.js';
+import { effectiveRequireTrackingLinkDedicatedSecret } from './deployed-security-defaults.js';
 import { timingSafeEqualUtf8 } from './timing-safe-equal.js';
 
 /** Default validity for signed tracking URLs (personalized links). */
@@ -54,13 +54,8 @@ async function signPayload(secret: string, payload: string): Promise<string> {
   return btoa(binary).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/g, '');
 }
 
-function isTruthyEnvFlag(raw: string | undefined): boolean {
-  const v = raw?.trim().toLowerCase();
-  return v === '1' || v === 'true' || v === 'yes' || v === 'on';
-}
-
 /**
- * HMAC secret for `?f=` tokens. Returns `null` when `REQUIRE_TRACKING_LINK_SECRET=1` but
+ * HMAC secret for `?f=` tokens. Returns `null` when a dedicated secret is required but
  * `TRACKING_LINK_SECRET` is unset — issuance/verification must fail (no API_KEY fallback).
  */
 export function trackingLinkHmacSecret(env: {
@@ -68,6 +63,7 @@ export function trackingLinkHmacSecret(env: {
   API_KEY: string;
   REQUIRE_TRACKING_LINK_SECRET?: string;
   WORKER_URL?: string;
+  RELAX_DEPLOYED_SECURITY_DEFAULTS?: string;
   /** `1`: allow `API_KEY` fallback for `?f=` signing on non-local HTTPS (insecure; dev migration only). */
   ALLOW_TRACKING_LINK_API_KEY_FALLBACK?: string;
 }): string | null {
@@ -75,11 +71,7 @@ export function trackingLinkHmacSecret(env: {
   if (dedicated) {
     return dedicated;
   }
-  if (isTruthyEnvFlag(env.REQUIRE_TRACKING_LINK_SECRET)) {
-    return null;
-  }
-  const deployedHttps = isNonLocalHttpsWorkerUrl(env.WORKER_URL ?? '');
-  if (deployedHttps && !isTruthyEnvFlag(env.ALLOW_TRACKING_LINK_API_KEY_FALLBACK)) {
+  if (effectiveRequireTrackingLinkDedicatedSecret(env)) {
     return null;
   }
   return env.API_KEY;
@@ -92,6 +84,7 @@ export function trackingLinkSigningSecret(env: {
   REQUIRE_TRACKING_LINK_SECRET?: string;
   WORKER_URL?: string;
   ALLOW_TRACKING_LINK_API_KEY_FALLBACK?: string;
+  RELAX_DEPLOYED_SECURITY_DEFAULTS?: string;
 }): string {
   return trackingLinkHmacSecret(env) ?? env.API_KEY;
 }

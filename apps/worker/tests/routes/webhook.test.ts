@@ -529,6 +529,11 @@ describe('line webhook route', () => {
       { friendId: 'friend-follow-1', eventData: { displayName: 'Follower' } },
       'line-access-token',
       null,
+      {
+        automationSendWebhookAllowedHosts: undefined,
+        requireAutomationSendWebhookHostAllowlist: true,
+        suppressAutomationSendWebhook: false,
+      },
     );
   });
 
@@ -613,6 +618,11 @@ describe('line webhook route', () => {
       expect.any(Object),
       'token-from-db',
       'acc-line-1',
+      {
+        automationSendWebhookAllowedHosts: undefined,
+        requireAutomationSendWebhookHostAllowlist: true,
+        suppressAutomationSendWebhook: false,
+      },
     );
   });
 
@@ -811,6 +821,11 @@ describe('line webhook route', () => {
       },
       'line-access-token',
       null,
+      {
+        automationSendWebhookAllowedHosts: undefined,
+        requireAutomationSendWebhookHostAllowlist: true,
+        suppressAutomationSendWebhook: false,
+      },
     );
   });
 

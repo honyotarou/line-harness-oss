@@ -86,27 +86,74 @@ describe('production-cloud-policy', () => {
     expect(w.some((x) => x.includes('ALLOWED_HOSTNAMES is unset'))).toBe(false);
   });
 
-  it('warns about admin session secret, broadcast send secret, and multi-account scoping on https worker', () => {
+  it('warns about admin session secret, broadcast send secret, and browser client token on https worker', () => {
     const w = getProductionCloudSurfaceWarnings({
       API_KEY: 'x'.repeat(40),
       WORKER_URL: 'https://api.example.com',
     });
-    expect(w.some((x) => x.includes('REQUIRE_ADMIN_SESSION_SECRET'))).toBe(true);
+    expect(w.some((x) => x.includes('ADMIN_SESSION_SECRET is required'))).toBe(true);
     expect(w.some((x) => x.includes('BROADCAST_SEND_SECRET'))).toBe(true);
     expect(w.some((x) => x.includes('LINE_ACCOUNT_SECRETS_WRITE_SECRET'))).toBe(true);
+    expect(w.some((x) => x.includes('MULTI_LINE_ACCOUNT_QUERY_REQUIRES_LINE_ACCOUNT_ID'))).toBe(
+      false,
+    );
+    expect(w.some((x) => x.includes('ADMIN_BROWSER_CLIENT_TOKEN is unset'))).toBe(true);
+  });
+
+  it('warns about multi-account scoping when full HTTPS RELAX pair is active', () => {
+    const w = getProductionCloudSurfaceWarnings({
+      API_KEY: 'x'.repeat(40),
+      WORKER_URL: 'https://api.example.com',
+      RELAX_DEPLOYED_SECURITY_DEFAULTS: '1',
+      RELAX_DEPLOYED_SECURITY_CONFIRM: 'YES_I_ACCEPT_REDUCED_SECURITY',
+    });
     expect(w.some((x) => x.includes('MULTI_LINE_ACCOUNT_QUERY_REQUIRES_LINE_ACCOUNT_ID'))).toBe(
       true,
     );
   });
 
-  it('does not warn admin session checklist when REQUIRE + ADMIN_SESSION_SECRET are configured', () => {
+  it('warns when RELAX is set on HTTPS without confirmation (strict defaults remain)', () => {
     const w = getProductionCloudSurfaceWarnings({
       API_KEY: 'x'.repeat(40),
       WORKER_URL: 'https://api.example.com',
-      REQUIRE_ADMIN_SESSION_SECRET: '1',
+      RELAX_DEPLOYED_SECURITY_DEFAULTS: '1',
+    });
+    expect(w.some((x) => x.includes('incomplete'))).toBe(true);
+    expect(w.some((x) => x.includes('RELAX_DEPLOYED_SECURITY_CONFIRM'))).toBe(true);
+  });
+
+  it('does not warn ADMIN_BROWSER_CLIENT_TOKEN when set or allow-default is on', () => {
+    const withToken = getProductionCloudSurfaceWarnings({
+      API_KEY: 'x'.repeat(40),
+      WORKER_URL: 'https://api.example.com',
+      ADMIN_BROWSER_CLIENT_TOKEN: 'long-random-shared',
+    });
+    expect(withToken.some((x) => x.includes('ADMIN_BROWSER_CLIENT_TOKEN is unset'))).toBe(false);
+
+    const withAllow = getProductionCloudSurfaceWarnings({
+      API_KEY: 'x'.repeat(40),
+      WORKER_URL: 'https://api.example.com',
+      ALLOW_DEFAULT_ADMIN_BROWSER_CLIENT: '1',
+    });
+    expect(withAllow.some((x) => x.includes('ADMIN_BROWSER_CLIENT_TOKEN is unset'))).toBe(false);
+  });
+
+  it('warns when ALLOW_LINE_ACCOUNT_SECRETS_PLAINTEXT_AT_REST is on', () => {
+    const w = getProductionCloudSurfaceWarnings({
+      API_KEY: 'x'.repeat(40),
+      WORKER_URL: 'https://api.example.com',
+      ALLOW_LINE_ACCOUNT_SECRETS_PLAINTEXT_AT_REST: '1',
+    });
+    expect(w.some((x) => x.includes('ALLOW_LINE_ACCOUNT_SECRETS_PLAINTEXT_AT_REST'))).toBe(true);
+  });
+
+  it('does not warn admin session checklist when ADMIN_SESSION_SECRET is configured', () => {
+    const w = getProductionCloudSurfaceWarnings({
+      API_KEY: 'x'.repeat(40),
+      WORKER_URL: 'https://api.example.com',
       ADMIN_SESSION_SECRET: 'dedicated-session-hmac-secret-value',
     });
-    expect(w.some((x) => x.includes('REQUIRE_ADMIN_SESSION_SECRET=1'))).toBe(false);
+    expect(w.some((x) => x.includes('ADMIN_SESSION_SECRET is required'))).toBe(false);
   });
 
   it('warns when ALLOW_LEGACY_API_KEY_SESSION_SIGNER is on for an https worker URL', () => {

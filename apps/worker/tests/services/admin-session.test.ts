@@ -1,11 +1,19 @@
 import { describe, expect, it } from 'vitest';
 
 describe('isAdminSessionSecretRequired', () => {
-  it('detects REQUIRE_ADMIN_SESSION_SECRET flag', async () => {
+  it('is true on non-local HTTPS or when REQUIRE_ADMIN_SESSION_SECRET is set', async () => {
     const { isAdminSessionSecretRequired, isDedicatedAdminSessionSecretConfigured } = await import(
       '../../src/services/admin-session.js'
     );
     expect(isAdminSessionSecretRequired({})).toBe(false);
+    expect(isAdminSessionSecretRequired({ WORKER_URL: 'https://api.example.com' })).toBe(true);
+    expect(
+      isAdminSessionSecretRequired({
+        WORKER_URL: 'https://api.example.com',
+        RELAX_DEPLOYED_SECURITY_DEFAULTS: '1',
+        RELAX_DEPLOYED_SECURITY_CONFIRM: 'YES_I_ACCEPT_REDUCED_SECURITY',
+      }),
+    ).toBe(false);
     expect(isAdminSessionSecretRequired({ REQUIRE_ADMIN_SESSION_SECRET: '1' })).toBe(true);
     expect(isDedicatedAdminSessionSecretConfigured({})).toBe(false);
     expect(isDedicatedAdminSessionSecretConfigured({ ADMIN_SESSION_SECRET: 'x' })).toBe(true);
