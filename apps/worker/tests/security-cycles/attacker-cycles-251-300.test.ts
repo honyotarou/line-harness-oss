@@ -84,17 +84,19 @@ describe('攻撃者サイクル 251–300（セキュリティバッチ）', () 
     expect(isSafeHttpsOutboundUrl('https://example.com:443/x')).toBe(true);
   });
 
-  it('cycle 264: mergeFriendMetadataPatch with only forbidden keys leaves existing unchanged', async () => {
+  it('cycle 264: mergeFriendMetadataPatch with only forbidden keys is rejected', async () => {
     const { mergeFriendMetadataPatch } = await import(
       '../../src/services/friend-metadata-merge.js'
     );
-    const r = mergeFriendMetadataPatch({ keep: 1 }, {
-      __proto__: { x: 1 },
-      constructor: { y: 1 },
-      prototype: { z: 1 },
-    } as Record<string, unknown>);
-    expect(r.ok).toBe(true);
-    if (r.ok) expect(r.merged).toEqual({ keep: 1 });
+    const r = mergeFriendMetadataPatch(
+      { keep: 1 },
+      JSON.parse('{"__proto__":{"x":1},"constructor":{"y":1},"prototype":{"z":1}}') as Record<
+        string,
+        unknown
+      >,
+    );
+    expect(r.ok).toBe(false);
+    if (!r.ok) expect(r.error).toMatch(/forbidden key/);
   });
 
   it('cycle 265: computeDeliveryRetryDelayMs uses base when attemptCount is 0', async () => {
@@ -245,15 +247,17 @@ describe('攻撃者サイクル 251–300（セキュリティバッチ）', () 
     expect(new InvalidJsonBodyError().message).toMatch(/Invalid JSON/);
   });
 
-  it('cycle 281: mergeFriendMetadataPatch allows 199 new keys with one forbidden stripped', async () => {
+  it('cycle 281: mergeFriendMetadataPatch rejects patch mixing forbidden key with safe keys', async () => {
     const { mergeFriendMetadataPatch } = await import(
       '../../src/services/friend-metadata-merge.js'
     );
-    const patch: Record<string, unknown> = { __proto__: 1 };
-    for (let i = 0; i < 199; i++) patch[`k${i}`] = i;
-    const r = mergeFriendMetadataPatch({}, patch);
-    expect(r.ok).toBe(true);
-    if (r.ok) expect(Object.keys(r.merged).length).toBe(199);
+    const keys = Array.from({ length: 199 }, (_, i) => `"k${i}":${i}`).join(',');
+    const r = mergeFriendMetadataPatch(
+      {},
+      JSON.parse(`{"__proto__":1,${keys}}`) as Record<string, unknown>,
+    );
+    expect(r.ok).toBe(false);
+    if (!r.ok) expect(r.error).toMatch(/forbidden key/);
   });
 
   it('cycle 282: runWithConcurrencyLimit completes five tasks with limit 10', async () => {

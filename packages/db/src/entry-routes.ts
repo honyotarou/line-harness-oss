@@ -29,6 +29,15 @@ export interface CreateEntryRouteInput {
   isActive?: boolean;
 }
 
+export function assertValidEntryRouteRefCode(refCode: string): void {
+  if (refCode !== refCode.trim()) {
+    throw new Error('ref_code must not have leading or trailing whitespace');
+  }
+  if (!/^[a-zA-Z0-9_-]{1,64}$/.test(refCode)) {
+    throw new Error('ref_code must be 1–64 letters, digits, underscore, or hyphen');
+  }
+}
+
 export async function getEntryRoutes(db: D1Database): Promise<EntryRoute[]> {
   const result = await db
     .prepare(`SELECT * FROM entry_routes ORDER BY created_at DESC`)
@@ -50,6 +59,7 @@ export async function createEntryRoute(
   db: D1Database,
   input: CreateEntryRouteInput,
 ): Promise<EntryRoute> {
+  assertValidEntryRouteRefCode(input.refCode);
   const id = crypto.randomUUID();
   const now = jstNow();
   const isActive = input.isActive !== false ? 1 : 0;
@@ -93,6 +103,7 @@ export async function updateEntryRoute(
     values.push(input.name);
   }
   if (input.refCode !== undefined) {
+    assertValidEntryRouteRefCode(input.refCode);
     fields.push('ref_code = ?');
     values.push(input.refCode);
   }

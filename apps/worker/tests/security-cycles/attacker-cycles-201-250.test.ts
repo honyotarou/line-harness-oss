@@ -30,22 +30,20 @@ describe('攻撃者サイクル 201–250（セキュリティバッチ）', () 
     expect(r.ok).toBe(false);
   });
 
-  it('cycle 204: mergeFriendMetadataPatch strips __proto__ key', async () => {
+  it('cycle 204: mergeFriendMetadataPatch rejects __proto__ in patch', async () => {
     const { mergeFriendMetadataPatch } = await import(
       '../../src/services/friend-metadata-merge.js'
     );
-    const r = mergeFriendMetadataPatch({ a: 1 }, { __proto__: { polluted: true }, b: 2 } as Record<
-      string,
-      unknown
-    >);
-    expect(r.ok).toBe(true);
-    if (r.ok) {
-      expect(r.merged).toEqual({ a: 1, b: 2 });
-      expect(Object.prototype.hasOwnProperty.call(r.merged, '__proto__')).toBe(false);
-    }
+    // JSON.parse yields an own __proto__ key; object literals do not (they mutate [[Prototype]]).
+    const r = mergeFriendMetadataPatch(
+      { a: 1 },
+      JSON.parse('{"__proto__":{"polluted":true},"b":2}') as Record<string, unknown>,
+    );
+    expect(r.ok).toBe(false);
+    if (!r.ok) expect(r.error).toMatch(/forbidden key/);
   });
 
-  it('cycle 205: mergeFriendMetadataPatch strips constructor and prototype', async () => {
+  it('cycle 205: mergeFriendMetadataPatch rejects constructor and prototype keys', async () => {
     const { mergeFriendMetadataPatch } = await import(
       '../../src/services/friend-metadata-merge.js'
     );
@@ -54,8 +52,8 @@ describe('攻撃者サイクル 201–250（セキュリティバッチ）', () 
       prototype: { y: 1 },
       ok: true,
     } as Record<string, unknown>);
-    expect(r.ok).toBe(true);
-    if (r.ok) expect(r.merged).toEqual({ ok: true });
+    expect(r.ok).toBe(false);
+    if (!r.ok) expect(r.error).toMatch(/forbidden key/);
   });
 
   it('cycle 206: mergeFriendMetadataPatch rejects more than 200 safe keys', async () => {
@@ -98,15 +96,11 @@ describe('攻撃者サイクル 201–250（セキュリティバッチ）', () 
     if (r.ok) expect(r.merged).toEqual({ x: 1 });
   });
 
-  it('cycle 210: forbidden keys do not count toward 200-key cap', async () => {
+  it('cycle 210: mergeFriendMetadataPatch allows 200 safe top-level keys', async () => {
     const { mergeFriendMetadataPatch } = await import(
       '../../src/services/friend-metadata-merge.js'
     );
-    const patch: Record<string, unknown> = {
-      __proto__: {},
-      constructor: {},
-      prototype: {},
-    };
+    const patch: Record<string, unknown> = {};
     for (let i = 0; i < 200; i++) patch[`f${i}`] = 1;
     const r = mergeFriendMetadataPatch({}, patch);
     expect(r.ok).toBe(true);
@@ -354,6 +348,18 @@ describe('攻撃者サイクル 201–250（セキュリティバッチ）', () 
     const r = mergeFriendMetadataPatch({}, { nested: { a: 1 } });
     expect(r.ok).toBe(true);
     if (r.ok) expect(r.merged.nested).toEqual({ a: 1 });
+  });
+
+  it('cycle 235n: mergeFriendMetadataPatch rejects nested forbidden keys', async () => {
+    const { mergeFriendMetadataPatch } = await import(
+      '../../src/services/friend-metadata-merge.js'
+    );
+    const r = mergeFriendMetadataPatch(
+      {},
+      JSON.parse('{"nested":{"__proto__":1}}') as Record<string, unknown>,
+    );
+    expect(r.ok).toBe(false);
+    if (!r.ok) expect(r.error).toMatch(/forbidden key/);
   });
 
   it('cycle 236: tryParseJsonArray returns empty for JSON null', async () => {

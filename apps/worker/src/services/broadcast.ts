@@ -7,7 +7,12 @@ import {
 } from '@line-crm/db';
 import type { Broadcast } from '@line-crm/db';
 import type { LineClient } from '@line-crm/line-sdk';
-import { calculateStaggerDelay, sleep, addMessageVariation } from './stealth.js';
+import {
+  calculateStaggerDelay,
+  sleep,
+  addMessageVariation,
+  StealthRateLimiter,
+} from './stealth.js';
 import { buildMessageFromStoredContent } from './stored-line-message.js';
 import {
   beginDeliveryAttempt,
@@ -73,6 +78,10 @@ export async function processBroadcastSend(
       // Send in batches with stealth delays to mimic human patterns
       const now = jstNow();
       const totalBatches = Math.ceil(followingFriends.length / MULTICAST_BATCH_SIZE);
+      const stealthLimiter = new StealthRateLimiter(1000, 60_000, {
+        db,
+        subjectKey: `line:${broadcast.line_account_id ?? 'default'}`,
+      });
       for (let i = 0; i < followingFriends.length; i += MULTICAST_BATCH_SIZE) {
         const batchIndex = Math.floor(i / MULTICAST_BATCH_SIZE);
         const batch = followingFriends.slice(i, i + MULTICAST_BATCH_SIZE);
@@ -90,11 +99,14 @@ export async function processBroadcastSend(
           batchMessage = { ...message, text: addMessageVariation(message.text, batchIndex) };
         }
 
-        await lineClient.multicast(lineUserIds, [batchMessage]);
-        successCount += batch.length;
+        await stealthLimiter.waitForSlot();
+        const multicastResult = await lineClient.multicast(lineUserIds, [batchMessage]);
+        const invalid = new Set(multicastResult?.invalidUserIds ?? []);
+        const delivered = batch.filter((f) => !invalid.has(f.line_user_id));
+        successCount += delivered.length;
 
         // Log only successfully sent messages
-        for (const friend of batch) {
+        for (const friend of delivered) {
           const logId = crypto.randomUUID();
           await db
             .prepare(

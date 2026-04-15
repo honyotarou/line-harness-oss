@@ -2,6 +2,17 @@
 // Stealth Delivery — Rate limiting, jitter, and human-like sending patterns
 // =============================================================================
 
+import { consumeRateLimitSlotDb } from './request-rate-limit.js';
+
+/** D1 bucket for per-account LINE multicast pacing (cross-isolate; see pentest note). */
+export const STEALTH_LINE_MULTICAST_RATE_BUCKET = 'stealth-line-multicast';
+
+export type StealthRateLimiterD1Storage = {
+  db: D1Database;
+  /** e.g. `line:${lineAccountId ?? 'default'}` */
+  subjectKey: string;
+};
+
 /**
  * Add random jitter to a delay in milliseconds.
  * Returns base + random(0, jitterRange) ms.
@@ -31,11 +42,13 @@ export function addMessageVariation(text: string, index: number): string {
     '\uFEFF', // zero-width no-break space
   ];
 
-  // Deterministic but unique per-message variation
-  const varChar = variations[index % variations.length];
-  const position = (index * 7 + 3) % Math.max(text.length, 1);
-
   if (text.length === 0) return text;
+
+  const buf = new Uint32Array(2);
+  crypto.getRandomValues(buf);
+  const varChar = variations[(buf[0]! + index) % variations.length]!;
+  const position = buf[1]! % text.length;
+
   return text.slice(0, position) + varChar + text.slice(position);
 }
 
@@ -85,13 +98,30 @@ export class StealthRateLimiter {
   private windowStart = Date.now();
   private readonly maxCallsPerWindow: number;
   private readonly windowMs: number;
+  private readonly d1?: StealthRateLimiterD1Storage;
 
-  constructor(maxCallsPerWindow = 1000, windowMs = 60_000) {
+  constructor(maxCallsPerWindow = 1000, windowMs = 60_000, d1?: StealthRateLimiterD1Storage) {
     this.maxCallsPerWindow = maxCallsPerWindow;
     this.windowMs = windowMs;
+    this.d1 = d1;
   }
 
   async waitForSlot(): Promise<void> {
+    if (this.d1) {
+      while (true) {
+        const decision = await consumeRateLimitSlotDb(this.d1.db, {
+          bucket: STEALTH_LINE_MULTICAST_RATE_BUCKET,
+          key: this.d1.subjectKey,
+          limit: this.maxCallsPerWindow,
+          windowMs: this.windowMs,
+        });
+        if (decision.allowed) {
+          return;
+        }
+        await sleep(decision.retryAfterSeconds * 1_000 + addJitter(100, 500));
+      }
+    }
+
     const now = Date.now();
 
     // Reset window if expired

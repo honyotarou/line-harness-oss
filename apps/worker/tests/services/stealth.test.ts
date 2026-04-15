@@ -25,10 +25,18 @@ describe('stealth helpers', () => {
     expect(addMessageVariation('', 0)).toBe('');
   });
 
-  it('addMessageVariation inserts a deterministic unicode variant', () => {
+  it('addMessageVariation inserts a unicode variant using crypto randomness', () => {
+    vi.stubGlobal('crypto', {
+      getRandomValues(arr: Uint32Array) {
+        arr[0] = 0;
+        arr[1] = 2;
+        return arr;
+      },
+    });
     const out = addMessageVariation('hello', 0);
     expect(out.length).toBeGreaterThan('hello'.length);
     expect(out).toContain('h');
+    vi.unstubAllGlobals();
   });
 
   it('calculateStaggerDelay uses small jitter for <=100 messages', () => {
@@ -62,5 +70,35 @@ describe('stealth helpers', () => {
     const limiter = new StealthRateLimiter(10, 60_000);
     await limiter.waitForSlot();
     await limiter.waitForSlot();
+  });
+
+  /**
+   * Pentest: multicast pacing must not rely on per-isolate memory alone.
+   * Production paths (`broadcast`, `segment-send`) pass D1; this locks that contract.
+   */
+  it('StealthRateLimiter with db delegates to consumeRateLimitSlotDb for shared caps', async () => {
+    const rr = await import('../../src/services/request-rate-limit.js');
+    const spy = vi.spyOn(rr, 'consumeRateLimitSlotDb').mockResolvedValue({
+      allowed: true,
+      remaining: 999,
+      resetAt: Date.now() + 60_000,
+      retryAfterSeconds: 60,
+    });
+    const { StealthRateLimiter, STEALTH_LINE_MULTICAST_RATE_BUCKET } = await import(
+      '../../src/services/stealth.js'
+    );
+    const db = {} as D1Database;
+    const limiter = new StealthRateLimiter(1000, 60_000, { db, subjectKey: 'line:test-acct' });
+    await limiter.waitForSlot();
+    expect(spy).toHaveBeenCalledTimes(1);
+    expect(spy).toHaveBeenCalledWith(
+      db,
+      expect.objectContaining({
+        bucket: STEALTH_LINE_MULTICAST_RATE_BUCKET,
+        key: 'line:test-acct',
+        limit: 1000,
+        windowMs: 60_000,
+      }),
+    );
   });
 });
