@@ -141,7 +141,11 @@ describe('auth routes', () => {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ apiKey: 'root-api-key' }),
       }),
-      { API_KEY: 'root-api-key', DB: createAuthIntegrationDb() } as never,
+      {
+        API_KEY: 'root-api-key',
+        INCLUDE_SESSION_TOKEN_IN_LOGIN_BODY: '1',
+        DB: createAuthIntegrationDb(),
+      } as never,
     );
 
     expect(response.status).toBe(200);
@@ -156,6 +160,34 @@ describe('auth routes', () => {
     expect(json.data?.sessionToken).toBeTruthy();
   });
 
+  it('omits sessionToken from login JSON by default (HttpOnly cookie only)', async () => {
+    const { authRoutes } = await import('../../src/routes/auth.js');
+    const app = new Hono();
+    app.route('/', authRoutes);
+
+    const response = await app.fetch(
+      new Request('http://localhost/api/auth/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ apiKey: 'root-api-key' }),
+      }),
+      {
+        API_KEY: 'root-api-key',
+        DB: createAuthIntegrationDb(),
+      } as never,
+    );
+
+    expect(response.status).toBe(200);
+    expect(response.headers.get('Set-Cookie')).toContain('lh_admin_session=');
+    const json = (await response.json()) as {
+      success: boolean;
+      data?: { expiresAt?: string; sessionToken?: string };
+    };
+    expect(json.success).toBe(true);
+    expect(json.data?.expiresAt).toBeTruthy();
+    expect(json.data?.sessionToken).toBeUndefined();
+  });
+
   it('validates signed admin sessions via the session endpoint using Bearer sessionToken', async () => {
     const { authRoutes } = await import('../../src/routes/auth.js');
     const app = new Hono();
@@ -167,7 +199,11 @@ describe('auth routes', () => {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ apiKey: 'root-api-key' }),
       }),
-      { API_KEY: 'root-api-key', DB: createAuthIntegrationDb() } as never,
+      {
+        API_KEY: 'root-api-key',
+        INCLUDE_SESSION_TOKEN_IN_LOGIN_BODY: '1',
+        DB: createAuthIntegrationDb(),
+      } as never,
     );
     const body = (await loginResponse.json()) as {
       data?: { sessionToken?: string };
@@ -179,7 +215,11 @@ describe('auth routes', () => {
       new Request('http://localhost/api/auth/session', {
         headers: { Authorization: `Bearer ${sessionToken}` },
       }),
-      { API_KEY: 'root-api-key', DB: createAuthIntegrationDb() } as never,
+      {
+        API_KEY: 'root-api-key',
+        INCLUDE_SESSION_TOKEN_IN_LOGIN_BODY: '1',
+        DB: createAuthIntegrationDb(),
+      } as never,
     );
 
     expect(sessionResponse.status).toBe(200);
@@ -204,7 +244,11 @@ describe('auth routes', () => {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ apiKey: 'root-api-key' }),
       }),
-      { API_KEY: 'root-api-key', DB: createAuthIntegrationDb() } as never,
+      {
+        API_KEY: 'root-api-key',
+        INCLUDE_SESSION_TOKEN_IN_LOGIN_BODY: '1',
+        DB: createAuthIntegrationDb(),
+      } as never,
     );
     const body = (await loginResponse.json()) as { data?: { sessionToken?: string } };
     const sessionToken = body.data?.sessionToken;
@@ -214,7 +258,11 @@ describe('auth routes', () => {
       new Request('http://localhost/api/auth/session', {
         headers: { Authorization: `bearer ${sessionToken}` },
       }),
-      { API_KEY: 'root-api-key', DB: createAuthIntegrationDb() } as never,
+      {
+        API_KEY: 'root-api-key',
+        INCLUDE_SESSION_TOKEN_IN_LOGIN_BODY: '1',
+        DB: createAuthIntegrationDb(),
+      } as never,
     );
 
     expect(sessionResponse.status).toBe(200);
@@ -231,7 +279,11 @@ describe('auth routes', () => {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ apiKey: 'root-api-key' }),
       }),
-      { API_KEY: 'root-api-key', DB: createAuthIntegrationDb() } as never,
+      {
+        API_KEY: 'root-api-key',
+        INCLUDE_SESSION_TOKEN_IN_LOGIN_BODY: '1',
+        DB: createAuthIntegrationDb(),
+      } as never,
     );
     const sessionCookie = loginResponse.headers.get('Set-Cookie');
     expect(sessionCookie).toContain('lh_admin_session=');
@@ -240,7 +292,11 @@ describe('auth routes', () => {
       new Request('http://localhost/api/auth/session', {
         headers: { Cookie: sessionCookie ?? '' },
       }),
-      { API_KEY: 'root-api-key', DB: createAuthIntegrationDb() } as never,
+      {
+        API_KEY: 'root-api-key',
+        INCLUDE_SESSION_TOKEN_IN_LOGIN_BODY: '1',
+        DB: createAuthIntegrationDb(),
+      } as never,
     );
 
     expect(sessionResponse.status).toBe(200);
@@ -265,7 +321,11 @@ describe('auth routes', () => {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ apiKey: 'wrong-key' }),
       }),
-      { API_KEY: 'root-api-key', DB: createAuthIntegrationDb() } as never,
+      {
+        API_KEY: 'root-api-key',
+        INCLUDE_SESSION_TOKEN_IN_LOGIN_BODY: '1',
+        DB: createAuthIntegrationDb(),
+      } as never,
     );
     const sessionResponse = await app.fetch(new Request('http://localhost/api/auth/session'), {
       API_KEY: 'root-api-key',
@@ -285,7 +345,11 @@ describe('auth routes', () => {
       new Request('http://localhost/api/auth/session', {
         headers: { Authorization: 'Bearer root-api-key' },
       }),
-      { API_KEY: 'root-api-key', DB: createAuthIntegrationDb() } as never,
+      {
+        API_KEY: 'root-api-key',
+        INCLUDE_SESSION_TOKEN_IN_LOGIN_BODY: '1',
+        DB: createAuthIntegrationDb(),
+      } as never,
     );
 
     expect(response.status).toBe(401);
@@ -306,6 +370,7 @@ describe('auth routes', () => {
       {
         API_KEY: 'root-api-key',
         ADMIN_SESSION_SECRET: 'only-for-sessions',
+        INCLUDE_SESSION_TOKEN_IN_LOGIN_BODY: '1',
         DB: createAuthIntegrationDb(),
       } as never,
     );
@@ -332,6 +397,7 @@ describe('auth routes', () => {
       {
         API_KEY: 'root-api-key',
         ADMIN_SESSION_SECRET: 'only-for-sessions',
+        INCLUDE_SESSION_TOKEN_IN_LOGIN_BODY: '1',
         DB: createAuthIntegrationDb(),
       } as never,
     );
@@ -371,7 +437,11 @@ describe('auth routes', () => {
         method: 'POST',
         headers: { 'X-Line-Harness-Client': '1' },
       }),
-      { API_KEY: 'root-api-key', DB: createAuthIntegrationDb() } as never,
+      {
+        API_KEY: 'root-api-key',
+        INCLUDE_SESSION_TOKEN_IN_LOGIN_BODY: '1',
+        DB: createAuthIntegrationDb(),
+      } as never,
     );
 
     expect(response.status).toBe(200);
@@ -390,7 +460,11 @@ describe('auth routes', () => {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ apiKey: 'root-api-key' }),
       }),
-      { API_KEY: 'root-api-key', DB: createAuthIntegrationDb() } as never,
+      {
+        API_KEY: 'root-api-key',
+        INCLUDE_SESSION_TOKEN_IN_LOGIN_BODY: '1',
+        DB: createAuthIntegrationDb(),
+      } as never,
     );
     const cookie = loginResponse.headers.get('Set-Cookie') ?? '';
 
@@ -399,7 +473,11 @@ describe('auth routes', () => {
         method: 'POST',
         headers: { Cookie: cookie },
       }),
-      { API_KEY: 'root-api-key', DB: createAuthIntegrationDb() } as never,
+      {
+        API_KEY: 'root-api-key',
+        INCLUDE_SESSION_TOKEN_IN_LOGIN_BODY: '1',
+        DB: createAuthIntegrationDb(),
+      } as never,
     );
 
     expect(response.status).toBe(403);
@@ -416,7 +494,11 @@ describe('auth routes', () => {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ apiKey: 'root-api-key' }),
       }),
-      { API_KEY: 'root-api-key', DB: createAuthIntegrationDb() } as never,
+      {
+        API_KEY: 'root-api-key',
+        INCLUDE_SESSION_TOKEN_IN_LOGIN_BODY: '1',
+        DB: createAuthIntegrationDb(),
+      } as never,
     );
     const cookie = loginResponse.headers.get('Set-Cookie') ?? '';
 
@@ -425,7 +507,11 @@ describe('auth routes', () => {
         method: 'POST',
         headers: { Cookie: cookie, 'X-Line-Harness-Client': '1' },
       }),
-      { API_KEY: 'root-api-key', DB: createAuthIntegrationDb() } as never,
+      {
+        API_KEY: 'root-api-key',
+        INCLUDE_SESSION_TOKEN_IN_LOGIN_BODY: '1',
+        DB: createAuthIntegrationDb(),
+      } as never,
     );
 
     expect(response.status).toBe(200);
@@ -443,7 +529,7 @@ describe('auth routes', () => {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ apiKey: 'root-api-key' }),
       }),
-      { API_KEY: 'root-api-key', DB: db } as never,
+      { API_KEY: 'root-api-key', INCLUDE_SESSION_TOKEN_IN_LOGIN_BODY: '1', DB: db } as never,
     );
     expect(loginResponse.status).toBe(200);
     const loginJson = (await loginResponse.json()) as { data?: { sessionToken?: string } };
@@ -455,7 +541,7 @@ describe('auth routes', () => {
       new Request('http://localhost/api/auth/session', {
         headers: { Authorization: `Bearer ${sessionToken}` },
       }),
-      { API_KEY: 'root-api-key', DB: db } as never,
+      { API_KEY: 'root-api-key', INCLUDE_SESSION_TOKEN_IN_LOGIN_BODY: '1', DB: db } as never,
     );
     expect(sessionBefore.status).toBe(200);
 
@@ -464,14 +550,14 @@ describe('auth routes', () => {
         method: 'POST',
         headers: { Cookie: cookie, 'X-Line-Harness-Client': '1' },
       }),
-      { API_KEY: 'root-api-key', DB: db } as never,
+      { API_KEY: 'root-api-key', INCLUDE_SESSION_TOKEN_IN_LOGIN_BODY: '1', DB: db } as never,
     );
 
     const sessionAfter = await app.fetch(
       new Request('http://localhost/api/auth/session', {
         headers: { Authorization: `Bearer ${sessionToken}` },
       }),
-      { API_KEY: 'root-api-key', DB: db } as never,
+      { API_KEY: 'root-api-key', INCLUDE_SESSION_TOKEN_IN_LOGIN_BODY: '1', DB: db } as never,
     );
     expect(sessionAfter.status).toBe(401);
   });
@@ -491,7 +577,11 @@ describe('auth routes', () => {
         },
         body: payload,
       }),
-      { API_KEY: 'root-api-key', DB: createAuthIntegrationDb() } as never,
+      {
+        API_KEY: 'root-api-key',
+        INCLUDE_SESSION_TOKEN_IN_LOGIN_BODY: '1',
+        DB: createAuthIntegrationDb(),
+      } as never,
     );
 
     expect(response.status).toBe(413);
@@ -509,7 +599,7 @@ describe('auth routes', () => {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ apiKey: 'root-api-key' }),
       }),
-      { API_KEY: 'root-api-key', DB: rateDb } as never,
+      { API_KEY: 'root-api-key', INCLUDE_SESSION_TOKEN_IN_LOGIN_BODY: '1', DB: rateDb } as never,
     );
     const body = (await loginResponse.json()) as { data?: { sessionToken?: string } };
     const sessionToken = body.data?.sessionToken;
@@ -524,7 +614,7 @@ describe('auth routes', () => {
             'CF-Connecting-IP': '198.51.100.77',
           },
         }),
-        { API_KEY: 'root-api-key', DB: rateDb } as never,
+        { API_KEY: 'root-api-key', INCLUDE_SESSION_TOKEN_IN_LOGIN_BODY: '1', DB: rateDb } as never,
       );
       lastStatus = res.status;
     }
@@ -549,7 +639,7 @@ describe('auth routes', () => {
           },
           body: JSON.stringify({ apiKey: 'wrong-key' }),
         }),
-        { API_KEY: 'root-api-key', DB: rateDb } as never,
+        { API_KEY: 'root-api-key', INCLUDE_SESSION_TOKEN_IN_LOGIN_BODY: '1', DB: rateDb } as never,
       );
     }
 

@@ -41,8 +41,8 @@ describe('isAuthExemptPath', () => {
     expect(isAuthExemptPath('/favicon.ico', 'POST')).toBe(false);
   });
 
-  it('treats GET /api/_debug/env-probe as exempt for bearer auth (gated by ALLOW_WORKER_ENV_PROBE)', () => {
-    expect(isAuthExemptPath('/api/_debug/env-probe', 'GET')).toBe(true);
+  it('does not exempt GET /api/_debug/env-probe (requires admin session when ALLOW_WORKER_ENV_PROBE)', () => {
+    expect(isAuthExemptPath('/api/_debug/env-probe', 'GET')).toBe(false);
     expect(isAuthExemptPath('/api/_debug/env-probe', 'POST')).toBe(false);
   });
 

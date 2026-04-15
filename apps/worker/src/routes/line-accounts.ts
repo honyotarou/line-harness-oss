@@ -214,7 +214,7 @@ lineAccounts.put('/api/line-accounts/:id', async (c) => {
       return ownerDeniedPut;
     }
 
-    const secretsDenied = denyUnlessLineAccountSecretsWriteAllowed(c, bodyRecord);
+    const secretsDenied = await denyUnlessLineAccountSecretsWriteAllowed(c, bodyRecord);
     if (secretsDenied) {
       return secretsDenied;
     }

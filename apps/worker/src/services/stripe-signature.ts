@@ -2,20 +2,9 @@
  * Verify Stripe webhook `Stripe-Signature` header (t=..., v1=...).
  * Rejects timestamps outside `toleranceSeconds` (replay protection; Stripe recommends ~5 minutes).
  */
-const DEFAULT_STRIPE_SIGNATURE_TOLERANCE_SECONDS = 300;
+import { timingSafeEqualUtf8 } from './timing-safe-equal.js';
 
-function constantTimeEqualHex(a: string, b: string): boolean {
-  if (a.length !== b.length) return false;
-  let diff = 0;
-  for (let i = 0; i < a.length; i++) {
-    const ca = a.charCodeAt(i);
-    const cb = b.charCodeAt(i);
-    const na = ca >= 65 && ca <= 70 ? ca + 32 : ca;
-    const nb = cb >= 65 && cb <= 70 ? cb + 32 : cb;
-    diff |= na ^ nb;
-  }
-  return diff === 0;
-}
+const DEFAULT_STRIPE_SIGNATURE_TOLERANCE_SECONDS = 300;
 
 export async function verifyStripeSignature(
   secret: string,
@@ -54,5 +43,5 @@ export async function verifyStripeSignature(
   const computedSig = Array.from(new Uint8Array(sig))
     .map((b) => b.toString(16).padStart(2, '0'))
     .join('');
-  return constantTimeEqualHex(computedSig, expectedSig);
+  return await timingSafeEqualUtf8(computedSig.toLowerCase(), expectedSig.trim().toLowerCase());
 }

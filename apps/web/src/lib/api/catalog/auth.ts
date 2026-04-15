@@ -6,7 +6,7 @@ export const auth = {
     const body = useCloudflareAccessLoginMode()
       ? JSON.stringify({})
       : JSON.stringify({ apiKey: apiKey ?? '' });
-    return fetchApi<ApiResponse<{ expiresAt: string; sessionToken: string; email?: string }>>(
+    return fetchApi<ApiResponse<{ expiresAt: string; sessionToken?: string; email?: string }>>(
       '/api/auth/login',
       {
         method: 'POST',

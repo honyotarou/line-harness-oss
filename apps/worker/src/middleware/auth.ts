@@ -29,7 +29,7 @@ export async function authMiddleware(c: Context<Env>, next: Next): Promise<Respo
 
   if (
     shouldRequireAdminBrowserClientHeader(method, authz, cookieTok) &&
-    !hasValidAdminBrowserClientHeader(c.req)
+    !(await hasValidAdminBrowserClientHeader(c.req, c.env))
   ) {
     return c.json({ success: false, error: 'Forbidden' }, 403);
   }

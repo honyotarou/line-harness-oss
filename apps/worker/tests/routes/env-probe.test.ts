@@ -1,5 +1,6 @@
 import { Hono } from 'hono';
 import { describe, expect, it } from 'vitest';
+import { issueAdminSessionToken } from '../../src/services/admin-session.js';
 
 describe('GET /api/_debug/env-probe', () => {
   it('returns 404 when ALLOW_WORKER_ENV_PROBE is unset', async () => {
@@ -15,7 +16,7 @@ describe('GET /api/_debug/env-probe', () => {
     expect(res.status).toBe(404);
   });
 
-  it('returns booleans only when ALLOW_WORKER_ENV_PROBE is on', async () => {
+  it('returns 401 without credentials when probe is enabled', async () => {
     const { envProbe } = await import('../../src/routes/env-probe.js');
     const app = new Hono();
     app.route('/', envProbe);
@@ -27,8 +28,43 @@ describe('GET /api/_debug/env-probe', () => {
       WORKER_URL: 'https://api.example.com',
       ALLOW_WORKER_ENV_PROBE: '1',
       ADMIN_SESSION_SECRET: 'secret',
-      CLOUDFLARE_ACCESS_TEAM_DOMAIN: 'team.cloudflareaccess.com',
     } as never);
+    expect(res.status).toBe(401);
+  });
+
+  it('returns booleans only when ALLOW_WORKER_ENV_PROBE is on and session is valid', async () => {
+    const { envProbe } = await import('../../src/routes/env-probe.js');
+    const app = new Hono();
+    app.route('/', envProbe);
+
+    const token = await issueAdminSessionToken('secret');
+    const db = {
+      prepare() {
+        return {
+          bind: () => ({
+            async first() {
+              return null;
+            },
+            async run() {
+              return { success: true };
+            },
+          }),
+        };
+      },
+    } as unknown as D1Database;
+    const res = await app.fetch(
+      new Request('http://localhost/api/_debug/env-probe', {
+        headers: { Authorization: `Bearer ${token}` },
+      }),
+      {
+        DB: db,
+        API_KEY: 'k',
+        WORKER_URL: 'https://api.example.com',
+        ALLOW_WORKER_ENV_PROBE: '1',
+        ADMIN_SESSION_SECRET: 'secret',
+        CLOUDFLARE_ACCESS_TEAM_DOMAIN: 'team.cloudflareaccess.com',
+      } as never,
+    );
     expect(res.status).toBe(200);
     const json = (await res.json()) as {
       success: boolean;

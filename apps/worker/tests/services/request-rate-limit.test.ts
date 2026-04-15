@@ -264,4 +264,33 @@ describe('request rate limit helpers', () => {
       error: expect.stringMatching(/D1 database binding required/i),
     });
   });
+
+  it('does not emit X-RateLimit-* headers for auth-login (budget leak)', async () => {
+    const { enforceRateLimit } = await import('../../src/services/request-rate-limit.js');
+    const db = createRateLimitDb();
+    const app = new Hono();
+    app.get('/t', async (c) => {
+      const blocked = await enforceRateLimit(c, {
+        bucket: 'auth-login',
+        db,
+        limit: 2,
+        windowMs: 60_000,
+      });
+      return blocked ?? c.text('ok');
+    });
+
+    const ok1 = await app.fetch(new Request('http://localhost/t'));
+    expect(ok1.status).toBe(200);
+    expect(ok1.headers.get('X-RateLimit-Limit')).toBeNull();
+    expect(ok1.headers.get('X-RateLimit-Remaining')).toBeNull();
+
+    const ok2 = await app.fetch(new Request('http://localhost/t'));
+    expect(ok2.status).toBe(200);
+    expect(ok2.headers.get('X-RateLimit-Limit')).toBeNull();
+
+    const blocked = await app.fetch(new Request('http://localhost/t'));
+    expect(blocked.status).toBe(429);
+    expect(blocked.headers.get('X-RateLimit-Limit')).toBeNull();
+    expect(blocked.headers.get('Retry-After')).toBeTruthy();
+  });
 });

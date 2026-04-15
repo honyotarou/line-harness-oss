@@ -104,10 +104,14 @@ export async function fetchApiCore<T>(
   }
   const fetchBase = validated.fetchBase;
 
+  const browserClientValue =
+    (typeof process !== 'undefined' &&
+      process.env.NEXT_PUBLIC_ADMIN_BROWSER_CLIENT_TOKEN?.trim()) ||
+    ADMIN_BROWSER_CLIENT_HEADER_VALUE;
   const headers: Record<string, string> = {
     ...(options?.headers as Record<string, string> | undefined),
     'Content-Type': 'application/json',
-    [ADMIN_BROWSER_CLIENT_HEADER]: ADMIN_BROWSER_CLIENT_HEADER_VALUE,
+    [ADMIN_BROWSER_CLIENT_HEADER]: browserClientValue,
   };
   const res = await fetchImpl(`${fetchBase}${path}`, {
     ...options,

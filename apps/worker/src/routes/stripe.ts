@@ -4,6 +4,7 @@ import type { Env } from '../index.js';
 import { verifyStripeSignature } from '../services/stripe-signature.js';
 import { tryParseJsonRecord } from '../services/safe-json.js';
 import { clampListLimit } from '../services/query-limits.js';
+import { resolveLineAccountScopeForRequest } from '../services/admin-line-account-scope.js';
 import {
   jsonBodyReadErrorResponse,
   readTextBodyWithLimit,
@@ -36,7 +37,14 @@ stripe.get('/api/integrations/stripe/events', async (c) => {
     const friendId = c.req.query('friendId') ?? undefined;
     const eventType = c.req.query('eventType') ?? undefined;
     const limit = clampListLimit(c.req.query('limit'), 100, 500);
-    const items = await getStripeEvents(c.env.DB, { friendId, eventType, limit });
+    const scope = await resolveLineAccountScopeForRequest(c.env.DB, c);
+    const allowedLineAccountIds = scope.mode === 'restricted' ? [...scope.ids] : undefined;
+    const items = await getStripeEvents(c.env.DB, {
+      friendId,
+      eventType,
+      limit,
+      allowedLineAccountIds,
+    });
     return c.json({
       success: true,
       data: items.map((e) => ({
@@ -72,10 +80,7 @@ stripe.post('/api/integrations/stripe/webhook', async (c) => {
 
     const stripeSecret = c.env.STRIPE_WEBHOOK_SECRET?.trim();
     if (!stripeSecret) {
-      return c.json(
-        { success: false, error: 'Stripe webhook is not configured (set STRIPE_WEBHOOK_SECRET)' },
-        503,
-      );
+      return c.json({ success: false, error: 'Stripe webhook is not configured' }, 503);
     }
 
     let rawBody: string;

@@ -4,6 +4,7 @@ import {
   updateBroadcastStatus,
   getFriendsByTag,
   jstNow,
+  claimBroadcastForSending,
 } from '@line-crm/db';
 import type { Broadcast } from '@line-crm/db';
 import type { LineClient } from '@line-crm/line-sdk';
@@ -26,6 +27,7 @@ export async function processBroadcastSend(
   db: D1Database,
   lineClient: LineClient,
   broadcastId: string,
+  options?: { skipMarkSending?: boolean },
 ): Promise<Broadcast> {
   const broadcast = await getBroadcastById(db, broadcastId);
   if (!broadcast) {
@@ -49,8 +51,10 @@ export async function processBroadcastSend(
     return broadcast;
   }
 
-  // Mark as sending only after the delivery slot is reserved.
-  await updateBroadcastStatus(db, broadcastId, 'sending');
+  // Mark as sending only after the delivery slot is reserved (or caller already claimed via DB).
+  if (!options?.skipMarkSending) {
+    await updateBroadcastStatus(db, broadcastId, 'sending');
+  }
 
   const message = buildMessageFromStoredContent(broadcast.message_type, broadcast.message_content, {
     flexAltFallback: 'Message',
@@ -168,7 +172,11 @@ export async function processScheduledBroadcasts(
 
   for (const broadcast of scheduled) {
     try {
-      await processBroadcastSend(db, lineClient, broadcast.id);
+      const claimed = await claimBroadcastForSending(db, broadcast.id);
+      if (!claimed) {
+        continue;
+      }
+      await processBroadcastSend(db, lineClient, broadcast.id, { skipMarkSending: true });
     } catch (err) {
       console.error(`Failed to send scheduled broadcast ${broadcast.id}:`, err);
       // Continue with next broadcast

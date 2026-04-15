@@ -5,10 +5,12 @@ import { resetRequestRateLimits } from '../../src/services/request-rate-limit.js
 const dbMocks = vi.hoisted(() => ({
   getBroadcastById: vi.fn(),
   processBroadcastSend: vi.fn(),
+  claimBroadcastForSending: vi.fn(),
 }));
 
 vi.mock('@line-crm/db', () => ({
   getBroadcastById: dbMocks.getBroadcastById,
+  claimBroadcastForSending: dbMocks.claimBroadcastForSending,
 }));
 
 vi.mock('../../src/services/broadcast.js', () => ({
@@ -29,6 +31,8 @@ describe('broadcast send guard', () => {
     vi.resetModules();
     dbMocks.getBroadcastById.mockReset();
     dbMocks.processBroadcastSend.mockReset();
+    dbMocks.claimBroadcastForSending.mockReset();
+    dbMocks.claimBroadcastForSending.mockResolvedValue(true);
   });
 
   it('returns 503 when REQUIRE_BROADCAST_SEND_SECRET is on but BROADCAST_SEND_SECRET is unset', async () => {

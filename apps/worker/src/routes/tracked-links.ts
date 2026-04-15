@@ -17,6 +17,7 @@ import {
   verifyTrackedLinkFriendToken,
 } from '../services/tracking-friend-token.js';
 import { assertHttpsOutboundUrlResolvedSafe } from '../services/outbound-url-resolve.js';
+import { isSafeHttpsRedirectUrl } from '../services/safe-redirect-url.js';
 import {
   DEFAULT_ADMIN_JSON_BODY_LIMIT_BYTES,
   jsonBodyReadErrorResponse,
@@ -194,6 +195,13 @@ trackedLinks.get('/t/:linkId', async (c) => {
 
   if (!link || !link.is_active) {
     return c.json({ success: false, error: 'Link not found' }, 404);
+  }
+
+  if (!isSafeHttpsRedirectUrl(link.original_url)) {
+    return c.json(
+      { success: false, error: 'Tracked link destination is not an allowed https URL' },
+      400,
+    );
   }
 
   const outboundOk = await assertHttpsOutboundUrlResolvedSafe(link.original_url, fetch);

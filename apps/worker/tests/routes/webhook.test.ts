@@ -100,6 +100,20 @@ function createLineWebhookDedupDb() {
   } as unknown as D1Database;
 }
 
+/** Route `line_webhook_processed_events` to {@link createLineWebhookDedupDb} so replyToken/message-derived keys dedupe correctly. */
+function wrapDbWithLineWebhookDedup(inner: D1Database): D1Database {
+  const dedup = createLineWebhookDedupDb();
+  const innerPrepare = inner.prepare.bind(inner);
+  return {
+    prepare: (sql: string) => {
+      if (sql.includes('line_webhook_processed_events')) {
+        return dedup.prepare(sql);
+      }
+      return innerPrepare(sql);
+    },
+  } as unknown as D1Database;
+}
+
 /** Minimal D1 mock for text message path (incoming log + empty auto_replies). */
 function createMessageFlowDb() {
   const chain = {
@@ -491,7 +505,7 @@ describe('line webhook route', () => {
         body,
       }),
       {
-        DB: {} as D1Database,
+        DB: createLineWebhookDedupDb(),
         LINE_CHANNEL_SECRET: 'line-secret',
         LINE_CHANNEL_ACCESS_TOKEN: 'line-access-token',
         WORKER_URL: 'https://worker.example.com',
@@ -543,7 +557,7 @@ describe('line webhook route', () => {
     dbMocks.getScenarios.mockResolvedValue([]);
 
     const runMock = vi.fn().mockResolvedValue({});
-    const db = {
+    const inner = {
       prepare: vi.fn().mockReturnValue({
         bind: vi.fn().mockReturnValue({
           run: runMock,
@@ -552,6 +566,7 @@ describe('line webhook route', () => {
         }),
       }),
     } as unknown as D1Database;
+    const db = wrapDbWithLineWebhookDedup(inner);
 
     const { webhook } = await import('../../src/routes/webhook.js');
     const app = new Hono();
@@ -588,7 +603,7 @@ describe('line webhook route', () => {
 
     expect(response.status).toBe(200);
     await Promise.all(pending);
-    expect(db.prepare).toHaveBeenCalledWith(
+    expect(inner.prepare).toHaveBeenCalledWith(
       'UPDATE friends SET line_account_id = ? WHERE id = ? AND line_account_id IS NULL',
     );
     expect(runMock).toHaveBeenCalled();
@@ -605,7 +620,7 @@ describe('line webhook route', () => {
     const { pending, ctx } = executionCtxWithPending();
     const runMock = vi.fn().mockResolvedValue({});
     const firstMock = vi.fn().mockResolvedValueOnce({ metadata: '{}' }).mockResolvedValue(null);
-    const db = {
+    const inner = {
       prepare: vi.fn().mockReturnValue({
         bind: vi.fn().mockReturnValue({
           run: runMock,
@@ -617,6 +632,7 @@ describe('line webhook route', () => {
         all: vi.fn().mockResolvedValue({ results: [] }),
       }),
     } as unknown as D1Database;
+    const db = wrapDbWithLineWebhookDedup(inner);
 
     dbMocks.getFriendByLineUserId.mockResolvedValue({
       id: 'f-pb-1',
@@ -672,7 +688,7 @@ describe('line webhook route', () => {
     const { pending, ctx } = executionCtxWithPending();
     const runMock = vi.fn().mockResolvedValue({});
     const firstMock = vi.fn().mockResolvedValueOnce({ metadata: '{bad' }).mockResolvedValue(null);
-    const db = {
+    const inner = {
       prepare: vi.fn().mockReturnValue({
         bind: vi.fn().mockReturnValue({
           run: runMock,
@@ -684,6 +700,7 @@ describe('line webhook route', () => {
         all: vi.fn().mockResolvedValue({ results: [] }),
       }),
     } as unknown as D1Database;
+    const db = wrapDbWithLineWebhookDedup(inner);
 
     dbMocks.getFriendByLineUserId.mockResolvedValue({
       id: 'f-pb-2',
@@ -736,7 +753,8 @@ describe('line webhook route', () => {
 
   it('text message logs incoming, upserts chat, and fires message_received', async () => {
     const { pending, ctx } = executionCtxWithPending();
-    const db = createMessageFlowDb();
+    const messageFlowDb = createMessageFlowDb();
+    const db = wrapDbWithLineWebhookDedup(messageFlowDb);
     dbMocks.getFriendByLineUserId.mockResolvedValue({
       id: 'f-msg-1',
       line_user_id: 'Umsg1',
@@ -781,7 +799,9 @@ describe('line webhook route', () => {
     await Promise.all(pending);
     expect(dbMocks.getFriendByLineUserId).toHaveBeenCalledWith(db, 'Umsg1');
     expect(dbMocks.upsertChatOnMessage).toHaveBeenCalledWith(db, 'f-msg-1');
-    expect(db.prepare).toHaveBeenCalledWith(expect.stringContaining('INSERT INTO messages_log'));
+    expect(messageFlowDb.prepare).toHaveBeenCalledWith(
+      expect.stringContaining('INSERT INTO messages_log'),
+    );
     expect(eventBusMocks.fireEvent).toHaveBeenCalledWith(
       expect.anything(),
       'message_received',

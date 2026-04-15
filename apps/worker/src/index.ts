@@ -11,6 +11,7 @@ import { securityHeadersMiddleware } from './middleware/security-headers.js';
 import {
   ACCESS_CONTROL_ALLOW_HEADERS,
   buildAllowedOrigins,
+  filterStrictVercelPreviewOrigins,
   isAllowedSharedLineCorsPath,
   isAllowedOrigin,
   isSharedLineHostedOrigin,
@@ -85,6 +86,11 @@ export type Env = {
      * (no API_KEY fallback — mitigates token forgery if API_KEY leaks).
      */
     REQUIRE_TRACKING_LINK_SECRET?: string;
+    /**
+     * `1` / `true`: on non-local HTTPS `WORKER_URL`, allow `API_KEY` fallback for `?f=` when `TRACKING_LINK_SECRET` is unset.
+     * Default off — production should set `TRACKING_LINK_SECRET`.
+     */
+    ALLOW_TRACKING_LINK_API_KEY_FALLBACK?: string;
     /**
      * `1` / `true`: OAuth `state` must be signed with `LIFF_STATE_SECRET` only (no `API_KEY` fallback).
      * Use in production so a leaked API key cannot forge login state.
@@ -201,6 +207,11 @@ export type Env = {
      */
     REQUIRE_BROADCAST_SEND_SECRET?: string;
     /**
+     * `1` / `true`: allow POST `/api/broadcasts/:id/send` without `BROADCAST_SEND_SECRET` on non-local HTTPS Workers.
+     * Default off — use only for migration; prefer `BROADCAST_SEND_SECRET` + header.
+     */
+    ALLOW_BROADCAST_WITHOUT_SEND_SECRET?: string;
+    /**
      * Optional comma-separated host allowlist for automation `send_webhook` only.
      * Each entry: exact hostname (`hooks.slack.com`) or suffix (`.example.com`). When unset/empty, only SSRF/DNS checks apply.
      */
@@ -229,16 +240,34 @@ export type Env = {
      */
     REQUIRE_OWNER_DB_ROLE_FOR_LINE_CREDENTIALS?: string;
     /**
-     * Optional AES-GCM key material (any string; SHA-256 → 256-bit key) for encrypting Google Calendar
+     * `1` / `true`: POST `/api/auth/login` JSON includes `sessionToken` (for cross-origin admin UIs that cannot use credentialed cookies alone).
+     * When off (default), the session lives in the HttpOnly cookie only — call `GET /api/auth/session` with `credentials: include` after login.
+     */
+    INCLUDE_SESSION_TOKEN_IN_LOGIN_BODY?: string;
+    /**
+     * When set, `X-Line-Harness-Client` must equal this value (instead of the default `1`) for cookie-based CSRF protection.
+     * Align with the admin web `NEXT_PUBLIC_ADMIN_BROWSER_CLIENT_TOKEN` when using a custom token.
+     */
+    ADMIN_BROWSER_CLIENT_TOKEN?: string;
+    /**
+     * Optional AES-GCM key material (any string; HKDF-SHA256-derived key for new `enc2.` payloads; legacy `enc1.` still decrypts) for encrypting Google Calendar
      * `access_token`, `refresh_token`, and `api_key` in D1. When unset, tokens are stored as submitted (legacy).
      */
     CALENDAR_TOKEN_ENCRYPTION_SECRET?: string;
+    /**
+     * `1` / `true`: refuse to store Google Calendar OAuth/API secrets unless `CALENDAR_TOKEN_ENCRYPTION_SECRET` is set.
+     */
+    REQUIRE_CALENDAR_TOKEN_ENCRYPTION?: string;
     /**
      * `1` / `true` / `yes` / `on`: when Cloudflare Access is enforced, require a row in `admin_principal_roles`
      * for the JWT email (no row → 403). While the table is empty, only `/api/admin/principal-roles` is allowed
      * so the first admin can bootstrap. Recommended for production Zero Trust deployments.
      */
     REQUIRE_ADMIN_PRINCIPAL_ALLOWLIST?: string;
+    /**
+     * `1` / `true`: trim unrelated `*.vercel.app` entries from CORS (see `filterStrictVercelPreviewOrigins` in `@line-crm/shared`).
+     */
+    CORS_STRICT_VERCEL_ORIGINS?: string;
   } & LandingEnv;
 };
 
@@ -255,7 +284,9 @@ app.use('*', async (c, next) => {
     return next();
   }
 
-  const allowedOrigins = new Set(buildAllowedOrigins(c.env));
+  const allowedOrigins = new Set(
+    filterStrictVercelPreviewOrigins(buildAllowedOrigins(c.env), c.env),
+  );
   if (!isAllowedOrigin(origin, allowedOrigins)) {
     if (c.req.method === 'OPTIONS') {
       return c.json({ success: false, error: 'CORS origin denied' }, 403);

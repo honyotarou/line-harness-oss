@@ -19,10 +19,10 @@ export function wantsLineAccountCredentialRotation(body: Record<string, unknown>
  * Rotating `channel_access_token` / `channel_secret` requires `LINE_ACCOUNT_SECRETS_WRITE_SECRET`
  * and matching `X-Line-Account-Secrets-Write`, unless `ALLOW_LINE_ACCOUNT_CREDENTIAL_PUT_WITHOUT_EXTRA_SECRET=1` (insecure).
  */
-export function denyUnlessLineAccountSecretsWriteAllowed(
+export async function denyUnlessLineAccountSecretsWriteAllowed(
   c: Context<Env>,
   body: Record<string, unknown>,
-): Response | null {
+): Promise<Response | null> {
   if (!wantsLineAccountCredentialRotation(body)) {
     return null;
   }
@@ -41,7 +41,7 @@ export function denyUnlessLineAccountSecretsWriteAllowed(
     );
   }
   const provided = c.req.header('X-Line-Account-Secrets-Write')?.trim() ?? '';
-  if (!timingSafeEqualUtf8(provided, required)) {
+  if (!(await timingSafeEqualUtf8(provided, required))) {
     return c.json({ success: false, error: 'Forbidden' }, 403);
   }
   return null;

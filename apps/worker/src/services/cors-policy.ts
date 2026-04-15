@@ -1,6 +1,7 @@
 import { ADMIN_BROWSER_CLIENT_HEADER } from '@line-crm/shared';
 import {
   buildAllowedOrigins,
+  filterStrictVercelPreviewOrigins,
   isAllowedOrigin as isAllowedOriginShared,
   normalizeOrigin,
   type AllowedOriginsEnv,
@@ -23,7 +24,7 @@ export const ACCESS_CONTROL_ALLOW_HEADERS = [
   ADMIN_BROWSER_CLIENT_HEADER,
 ].join(', ');
 
-export { buildAllowedOrigins, normalizeOrigin };
+export { buildAllowedOrigins, filterStrictVercelPreviewOrigins, normalizeOrigin };
 
 export function isAllowedOrigin(
   origin: string | undefined | null,

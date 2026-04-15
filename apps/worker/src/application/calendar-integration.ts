@@ -24,6 +24,8 @@ import { tryParseJsonRecord } from '../services/safe-json.js';
 export type CalendarIntegrationDeps = {
   db: D1Database;
   calendarTokenEncryptionSecret?: string;
+  /** When true, storing OAuth/API secrets requires `CALENDAR_TOKEN_ENCRYPTION_SECRET` (see REQUIRE_CALENDAR_TOKEN_ENCRYPTION). */
+  requireCalendarTokenEncryption?: boolean;
 };
 
 export function mapCalendarConnectionListItem(conn: GoogleCalendarConnectionRow) {
@@ -50,9 +52,16 @@ export async function connectGoogleCalendar(
   input: CalendarConnectInput,
 ): Promise<GoogleCalendarConnectionRow> {
   const enc = deps.calendarTokenEncryptionSecret;
-  const accessToken = await encryptCalendarTokenAtRest(input.accessToken, enc);
-  const refreshToken = await encryptCalendarTokenAtRest(input.refreshToken, enc);
-  const apiKey = await encryptCalendarTokenAtRest(input.apiKey, enc);
+  const requireSecret = Boolean(deps.requireCalendarTokenEncryption);
+  const accessToken = await encryptCalendarTokenAtRest(input.accessToken, enc, {
+    requireSecret: requireSecret && Boolean(input.accessToken?.trim()),
+  });
+  const refreshToken = await encryptCalendarTokenAtRest(input.refreshToken, enc, {
+    requireSecret: requireSecret && Boolean(input.refreshToken?.trim()),
+  });
+  const apiKey = await encryptCalendarTokenAtRest(input.apiKey, enc, {
+    requireSecret: requireSecret && Boolean(input.apiKey?.trim()),
+  });
   return createCalendarConnection(deps.db, {
     calendarId: input.calendarId,
     authType: input.authType,

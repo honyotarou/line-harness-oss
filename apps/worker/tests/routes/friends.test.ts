@@ -147,6 +147,74 @@ describe('friends routes', () => {
     dbMocks.getTagsForFriends.mockResolvedValue(new Map());
   });
 
+  it('escapes HTML metacharacters in displayName, statusMessage, refCode, and metadata strings', async () => {
+    const dbXss = {
+      prepare(sql: string) {
+        return {
+          bind(...bindings: unknown[]) {
+            return {
+              async all<T>() {
+                if (sql.includes('SELECT f.* FROM friends f')) {
+                  const [lineAccountId] = bindings as [string, number, number];
+                  return {
+                    results: [
+                      {
+                        id: 'friend-1',
+                        line_user_id: 'U123',
+                        display_name: '<b>x</b>',
+                        picture_url: null,
+                        status_message: '<script>',
+                        is_following: 1,
+                        line_account_id: lineAccountId,
+                        metadata: '{"note":"<img src=x onerror=alert(1)>"}',
+                        ref_code: 'ref<script>',
+                        user_id: 'user-1',
+                        created_at: '2026-03-25T10:00:00+09:00',
+                        updated_at: '2026-03-25T10:00:00+09:00',
+                      },
+                    ] as T[],
+                  };
+                }
+                throw new Error(`Unexpected SQL: ${sql}`);
+              },
+              async first<T>() {
+                if (sql.includes('SELECT COUNT(*) as count FROM friends f')) {
+                  return { count: 1 } as T;
+                }
+                throw new Error(`Unexpected SQL: ${sql}`);
+              },
+            };
+          },
+        };
+      },
+    } as unknown as D1Database;
+
+    const { friends } = await import('../../src/routes/friends.js');
+    const app = new Hono();
+    app.route('/', friends);
+
+    const response = await app.fetch(
+      new Request('http://localhost/api/friends?lineAccountId=account-1&limit=10&offset=0'),
+      { DB: dbXss } as never,
+    );
+
+    expect(response.status).toBe(200);
+    const json = (await response.json()) as {
+      data: {
+        items: Array<{
+          displayName: string;
+          statusMessage: string;
+          refCode: string;
+          metadata: Record<string, string>;
+        }>;
+      };
+    };
+    expect(json.data.items[0].displayName).toBe('&lt;b&gt;x&lt;/b&gt;');
+    expect(json.data.items[0].statusMessage).toBe('&lt;script&gt;');
+    expect(json.data.items[0].refCode).toBe('ref&lt;script&gt;');
+    expect(json.data.items[0].metadata.note).toBe('&lt;img src=x onerror=alert(1)&gt;');
+  });
+
   it('returns account-scoped friends with lineAccountId, metadata, and refCode', async () => {
     const { friends } = await import('../../src/routes/friends.js');
     const app = new Hono();

@@ -145,6 +145,40 @@ describe('GET /api/forms/:id', () => {
     expect(json.data).not.toHaveProperty('submitCount');
   });
 
+  it('escapes HTML metacharacters in form name, description, and field JSON for LINE token reads', async () => {
+    vi.mocked(verifyLineIdToken).mockResolvedValue({ sub: 'Uxxx' });
+    dbMocks.getFormById.mockResolvedValue({
+      ...formRow,
+      name: 'T<form>',
+      description: '<p>x</p>',
+      fields: '[{"name":"q","label":"<img>","type":"text"}]',
+    });
+
+    const { forms } = await import('../../src/routes/forms.js');
+    const app = new Hono();
+    app.route('/', forms);
+
+    const res = await app.fetch(
+      new Request('http://localhost/api/forms/form-1', {
+        headers: { Authorization: 'Bearer line-id-token-jwt' },
+      }),
+      {
+        DB: {} as D1Database,
+        API_KEY: 'k',
+        LINE_LOGIN_CHANNEL_ID: 'login-channel',
+      } as never,
+    );
+
+    expect(res.status).toBe(200);
+    const json = (await res.json()) as {
+      success: boolean;
+      data: { name: string; description: string; fields: Array<{ label: string }> };
+    };
+    expect(json.data.name).toBe('T&lt;form&gt;');
+    expect(json.data.description).toBe('&lt;p&gt;x&lt;/p&gt;');
+    expect(json.data.fields[0].label).toBe('&lt;img&gt;');
+  });
+
   it('returns 404 for LINE ID token when the form is inactive (IDOR / draft hardening)', async () => {
     vi.mocked(verifyLineIdToken).mockResolvedValue({ sub: 'Uxxx' });
     dbMocks.getFormById.mockResolvedValue({ ...formRow, is_active: 0 });

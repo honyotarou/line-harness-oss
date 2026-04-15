@@ -115,4 +115,37 @@ describe('cors policy helpers', () => {
       false,
     );
   });
+
+  it('filterStrictVercelPreviewOrigins drops unrelated *.vercel.app when flag is on', async () => {
+    const { buildAllowedOrigins, filterStrictVercelPreviewOrigins } = await import(
+      '../../src/services/cors-policy.js'
+    );
+
+    const env = {
+      WEB_URL: 'https://my-app.vercel.app',
+      WORKER_URL: 'https://worker.example.com',
+      ALLOWED_ORIGINS: 'https://evil-preview.vercel.app, https://my-app.vercel.app',
+      CORS_STRICT_VERCEL_ORIGINS: '1',
+    };
+    const raw = buildAllowedOrigins(env);
+    expect(raw).toContain('https://evil-preview.vercel.app');
+
+    const filtered = filterStrictVercelPreviewOrigins(raw, env);
+    expect(filtered).toContain('https://my-app.vercel.app');
+    expect(filtered).not.toContain('https://evil-preview.vercel.app');
+    expect(filtered).toContain('https://worker.example.com');
+  });
+
+  it('filterStrictVercelPreviewOrigins is a no-op when flag is off', async () => {
+    const { buildAllowedOrigins, filterStrictVercelPreviewOrigins } = await import(
+      '../../src/services/cors-policy.js'
+    );
+
+    const env = {
+      WEB_URL: 'https://my-app.vercel.app',
+      ALLOWED_ORIGINS: 'https://other.vercel.app',
+    };
+    const raw = buildAllowedOrigins(env);
+    expect(filterStrictVercelPreviewOrigins(raw, env)).toEqual(raw);
+  });
 });

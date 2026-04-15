@@ -66,7 +66,7 @@ export async function cloudflareAccessMiddleware(
       {
         success: false,
         error: 'Cloudflare Access required',
-        ...(isDebug ? { reason: result.reason, teamDomain } : {}),
+        ...(isDebug ? { reason: result.reason } : {}),
       },
       403,
     );

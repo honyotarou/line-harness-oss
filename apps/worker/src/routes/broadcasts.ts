@@ -5,6 +5,7 @@ import {
   createBroadcast,
   updateBroadcast,
   deleteBroadcast,
+  claimBroadcastForSending,
 } from '@line-crm/db';
 import type {
   Broadcast as DbBroadcast,
@@ -249,7 +250,7 @@ broadcasts.delete('/api/broadcasts/:id', async (c) => {
 // POST /api/broadcasts/:id/send - send now
 broadcasts.post('/api/broadcasts/:id/send', async (c) => {
   try {
-    const denied = denyIfBroadcastSendSecretMissing(c);
+    const denied = await denyIfBroadcastSendSecretMissing(c);
     if (denied) {
       return denied;
     }
@@ -290,7 +291,8 @@ broadcasts.post('/api/broadcasts/:id/send', async (c) => {
       return c.json({ success: false, error: 'Broadcast not found' }, 404);
     }
 
-    if (existing.status === 'sending' || existing.status === 'sent') {
+    const claimedSend = await claimBroadcastForSending(c.env.DB, id);
+    if (!claimedSend) {
       return c.json({ success: false, error: 'Broadcast is already sent or sending' }, 400);
     }
 
@@ -301,7 +303,7 @@ broadcasts.post('/api/broadcasts/:id/send', async (c) => {
       lineAccountDbOptions(c.env),
     );
     const lineClient = new LineClient(accessToken);
-    await processBroadcastSend(c.env.DB, lineClient, id);
+    await processBroadcastSend(c.env.DB, lineClient, id, { skipMarkSending: true });
 
     const result = await getBroadcastById(c.env.DB, id);
     if (result && result.status !== 'sent') {
@@ -326,7 +328,7 @@ broadcasts.post('/api/broadcasts/:id/send', async (c) => {
 // POST /api/broadcasts/:id/send-segment - send to a filtered segment
 broadcasts.post('/api/broadcasts/:id/send-segment', async (c) => {
   try {
-    const deniedSeg = denyIfBroadcastSendSecretMissing(c);
+    const deniedSeg = await denyIfBroadcastSendSecretMissing(c);
     if (deniedSeg) {
       return deniedSeg;
     }
@@ -344,10 +346,6 @@ broadcasts.post('/api/broadcasts/:id/send-segment', async (c) => {
     const scopeSeg = await resolveLineAccountScopeForRequest(c.env.DB, c);
     if (!resourceLineAccountVisibleInScope(scopeSeg, existing.line_account_id)) {
       return c.json({ success: false, error: 'Broadcast not found' }, 404);
-    }
-
-    if (existing.status === 'sending' || existing.status === 'sent') {
-      return c.json({ success: false, error: 'Broadcast is already sent or sending' }, 400);
     }
 
     const body = await readJsonBodyWithLimit<{
@@ -372,6 +370,11 @@ broadcasts.post('/api/broadcasts/:id/send-segment', async (c) => {
       );
     }
 
+    const claimedSeg = await claimBroadcastForSending(c.env.DB, id);
+    if (!claimedSeg) {
+      return c.json({ success: false, error: 'Broadcast is already sent or sending' }, 400);
+    }
+
     const accessToken = await resolveLineAccessTokenForLineAccountId(
       c.env.DB,
       c.env.LINE_CHANNEL_ACCESS_TOKEN,
@@ -379,7 +382,7 @@ broadcasts.post('/api/broadcasts/:id/send-segment', async (c) => {
       lineAccountDbOptions(c.env),
     );
     const lineClient = new LineClient(accessToken);
-    await processSegmentSend(c.env.DB, lineClient, id, body.conditions);
+    await processSegmentSend(c.env.DB, lineClient, id, body.conditions, { skipMarkSending: true });
 
     const result = await getBroadcastById(c.env.DB, id);
     return c.json({ success: true, data: result ? serializeBroadcast(result) : null });

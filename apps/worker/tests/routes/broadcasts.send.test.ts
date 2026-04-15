@@ -9,6 +9,7 @@ const dbMocks = vi.hoisted(() => ({
   updateBroadcast: vi.fn(),
   deleteBroadcast: vi.fn(),
   getLineAccountById: vi.fn(),
+  claimBroadcastForSending: vi.fn(),
 }));
 
 vi.mock('@line-crm/db', () => dbMocks);
@@ -34,6 +35,7 @@ describe('broadcast send route', () => {
   beforeEach(() => {
     resetRequestRateLimits();
     Object.values(dbMocks).forEach((mockFn) => mockFn.mockReset());
+    dbMocks.claimBroadcastForSending.mockResolvedValue(true);
     serviceMocks.processBroadcastSend.mockClear();
     lineSdkMocks.lineClientCtor.mockClear();
   });
@@ -87,6 +89,7 @@ describe('broadcast send route', () => {
       expect.anything(),
       expect.objectContaining({ token: 'account-2-token' }),
       'broadcast-1',
+      { skipMarkSending: true },
     );
   });
 
