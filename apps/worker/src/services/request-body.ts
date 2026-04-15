@@ -15,6 +15,11 @@ export const RICH_MENU_IMAGE_JSON_BODY_LIMIT_BYTES = 2 * 1024 * 1024;
 /** Same cap for `Content-Type: image/*` uploads (binary path must match JSON path). */
 export const RICH_MENU_IMAGE_BINARY_MAX_BYTES = RICH_MENU_IMAGE_JSON_BODY_LIMIT_BYTES;
 
+export type BodyTooLargeErrorLike = Error & { readonly limitBytes: number };
+export function createBodyTooLargeError(limitBytes: number): BodyTooLargeErrorLike {
+  return new BodyTooLargeError(limitBytes);
+}
+
 export class BodyTooLargeError extends Error {
   constructor(public readonly limitBytes: number) {
     super(`Request body exceeds ${limitBytes} bytes`);
@@ -22,11 +27,28 @@ export class BodyTooLargeError extends Error {
   }
 }
 
+export type InvalidJsonBodyErrorLike = Error;
+export function createInvalidJsonBodyError(): InvalidJsonBodyErrorLike {
+  return new InvalidJsonBodyError();
+}
+
 export class InvalidJsonBodyError extends Error {
   constructor() {
     super('Invalid JSON body');
     this.name = 'InvalidJsonBodyError';
   }
+}
+
+function isBodyTooLargeError(err: unknown): err is BodyTooLargeErrorLike {
+  return (
+    err instanceof Error &&
+    err.name === 'BodyTooLargeError' &&
+    typeof (err as { limitBytes?: unknown }).limitBytes === 'number'
+  );
+}
+
+function isInvalidJsonBodyError(err: unknown): err is InvalidJsonBodyErrorLike {
+  return err instanceof Error && err.name === 'InvalidJsonBodyError';
 }
 
 function getContentLength(request: Request): number | null {
@@ -46,37 +68,40 @@ function getContentLength(request: Request): number | null {
 export function assertRequestContentLengthWithinLimit(request: Request, limitBytes: number): void {
   const cl = getContentLength(request);
   if (cl !== null && cl > limitBytes) {
-    throw new BodyTooLargeError(limitBytes);
+    throw createBodyTooLargeError(limitBytes);
   }
 }
 
 export function assertArrayBufferWithinLimit(buf: ArrayBuffer, limitBytes: number): void {
   if (buf.byteLength > limitBytes) {
-    throw new BodyTooLargeError(limitBytes);
+    throw createBodyTooLargeError(limitBytes);
   }
 }
 
 export async function readTextBodyWithLimit(request: Request, limitBytes: number): Promise<string> {
   const contentLength = getContentLength(request);
   if (contentLength !== null && contentLength > limitBytes) {
-    throw new BodyTooLargeError(limitBytes);
+    throw createBodyTooLargeError(limitBytes);
   }
 
   const text = await request.text();
   if (textEncoder.encode(text).byteLength > limitBytes) {
-    throw new BodyTooLargeError(limitBytes);
+    throw createBodyTooLargeError(limitBytes);
   }
 
   return text;
 }
 
-export async function readJsonBodyWithLimit<T>(request: Request, limitBytes: number): Promise<T> {
+export async function readJsonBodyWithLimit<T>(
+  request: Request,
+  limitBytes: number,
+): Promise<Readonly<T>> {
   const text = await readTextBodyWithLimit(request, limitBytes);
 
   try {
-    return JSON.parse(text) as T;
+    return JSON.parse(text) as Readonly<T>;
   } catch {
-    throw new InvalidJsonBodyError();
+    throw createInvalidJsonBodyError();
   }
 }
 
@@ -84,10 +109,10 @@ export async function readJsonBodyWithLimit<T>(request: Request, limitBytes: num
 export function jsonBodyReadErrorResponse(
   err: unknown,
 ): { status: 400 | 413; body: { success: false; error: string } } | null {
-  if (err instanceof BodyTooLargeError) {
+  if (isBodyTooLargeError(err)) {
     return { status: 413, body: { success: false, error: 'Request body too large' } };
   }
-  if (err instanceof InvalidJsonBodyError) {
+  if (isInvalidJsonBodyError(err)) {
     return { status: 400, body: { success: false, error: 'Invalid JSON body' } };
   }
   return null;

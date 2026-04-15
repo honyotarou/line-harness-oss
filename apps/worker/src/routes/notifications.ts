@@ -151,10 +151,12 @@ notifications.put('/api/notifications/rules/:id', async (c) => {
       return c.json({ success: false, error: 'Not found' }, 404);
     }
 
-    const body = await readJsonBodyWithLimit<Record<string, unknown>>(
-      c.req.raw,
-      DEFAULT_ADMIN_JSON_BODY_LIMIT_BYTES,
-    );
+    const body = {
+      ...(await readJsonBodyWithLimit<Record<string, unknown>>(
+        c.req.raw,
+        DEFAULT_ADMIN_JSON_BODY_LIMIT_BYTES,
+      )),
+    } as Record<string, unknown>;
     if (body.lineAccountId !== undefined || body.line_account_id !== undefined) {
       const rawLa = body.lineAccountId ?? body.line_account_id;
       const scopedLa = validateScopedLineAccountBody(

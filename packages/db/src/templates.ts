@@ -1,7 +1,7 @@
 import { jstNow } from './utils.js';
 // テンプレート管理クエリヘルパー
 
-export interface TemplateRow {
+export type TemplateRow = Readonly<{
   id: string;
   name: string;
   category: string;
@@ -9,7 +9,7 @@ export interface TemplateRow {
   message_content: string;
   created_at: string;
   updated_at: string;
-}
+}>;
 
 export async function getTemplates(db: D1Database, category?: string): Promise<TemplateRow[]> {
   if (category) {

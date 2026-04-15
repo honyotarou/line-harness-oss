@@ -89,55 +89,64 @@ export function jitterDeliveryTime(scheduledAt: Date): Date {
   return result;
 }
 
+export function createStealthRateLimiter(opts?: {
+  maxCallsPerWindow?: number;
+  windowMs?: number;
+  d1?: StealthRateLimiterD1Storage;
+}): { waitForSlot: () => Promise<void> } {
+  const maxCallsPerWindow = opts?.maxCallsPerWindow ?? 1000;
+  const windowMs = opts?.windowMs ?? 60_000;
+  const d1 = opts?.d1;
+
+  let callCount = 0;
+  let windowStart = Date.now();
+
+  return {
+    async waitForSlot(): Promise<void> {
+      if (d1) {
+        while (true) {
+          const decision = await consumeRateLimitSlotDb(d1.db, {
+            bucket: STEALTH_LINE_MULTICAST_RATE_BUCKET,
+            key: d1.subjectKey,
+            limit: maxCallsPerWindow,
+            windowMs,
+          });
+          if (decision.allowed) {
+            return;
+          }
+          await sleep(decision.retryAfterSeconds * 1_000 + addJitter(100, 500));
+        }
+      }
+
+      const now = Date.now();
+
+      if (now - windowStart >= windowMs) {
+        callCount = 0;
+        windowStart = now;
+      }
+
+      if (callCount >= maxCallsPerWindow) {
+        const waitTime = windowMs - (now - windowStart) + addJitter(100, 500);
+        await sleep(waitTime);
+        callCount = 0;
+        windowStart = Date.now();
+      }
+
+      callCount++;
+    },
+  };
+}
+
 /**
  * Rate limiter for LINE API calls.
  * LINE rate limit is 100,000 messages/min, but we stay well under.
  */
 export class StealthRateLimiter {
-  private callCount = 0;
-  private windowStart = Date.now();
-  private readonly maxCallsPerWindow: number;
-  private readonly windowMs: number;
-  private readonly d1?: StealthRateLimiterD1Storage;
-
+  private readonly api: ReturnType<typeof createStealthRateLimiter>;
   constructor(maxCallsPerWindow = 1000, windowMs = 60_000, d1?: StealthRateLimiterD1Storage) {
-    this.maxCallsPerWindow = maxCallsPerWindow;
-    this.windowMs = windowMs;
-    this.d1 = d1;
+    this.api = createStealthRateLimiter({ maxCallsPerWindow, windowMs, d1 });
   }
-
-  async waitForSlot(): Promise<void> {
-    if (this.d1) {
-      while (true) {
-        const decision = await consumeRateLimitSlotDb(this.d1.db, {
-          bucket: STEALTH_LINE_MULTICAST_RATE_BUCKET,
-          key: this.d1.subjectKey,
-          limit: this.maxCallsPerWindow,
-          windowMs: this.windowMs,
-        });
-        if (decision.allowed) {
-          return;
-        }
-        await sleep(decision.retryAfterSeconds * 1_000 + addJitter(100, 500));
-      }
-    }
-
-    const now = Date.now();
-
-    // Reset window if expired
-    if (now - this.windowStart >= this.windowMs) {
-      this.callCount = 0;
-      this.windowStart = now;
-    }
-
-    // If we've hit the limit, wait for the window to reset
-    if (this.callCount >= this.maxCallsPerWindow) {
-      const waitTime = this.windowMs - (now - this.windowStart) + addJitter(100, 500);
-      await sleep(waitTime);
-      this.callCount = 0;
-      this.windowStart = Date.now();
-    }
-
-    this.callCount++;
+  waitForSlot(): Promise<void> {
+    return this.api.waitForSlot();
   }
 }

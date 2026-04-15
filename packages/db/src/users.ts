@@ -3,7 +3,7 @@ import { jstNow } from './utils.js';
 // Users — Internal UUID Cross-Account System
 // =============================================================================
 
-export interface User {
+export type User = Readonly<{
   id: string;
   email: string | null;
   phone: string | null;
@@ -11,14 +11,14 @@ export interface User {
   display_name: string | null;
   created_at: string;
   updated_at: string;
-}
+}>;
 
-export interface CreateUserInput {
+export type CreateUserInput = Readonly<{
   email?: string | null;
   phone?: string | null;
   externalId?: string | null;
   displayName?: string | null;
-}
+}>;
 
 /**
  * Canonical `users.email` form: trim + lowercase ASCII.

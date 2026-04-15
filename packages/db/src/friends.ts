@@ -1,5 +1,5 @@
 import { jstNow } from './utils.js';
-export interface Friend {
+export type Friend = Readonly<{
   id: string;
   line_user_id: string;
   display_name: string | null;
@@ -11,13 +11,13 @@ export interface Friend {
   metadata: string;
   created_at: string;
   updated_at: string;
-}
+}>;
 
-export interface GetFriendsOptions {
+export type GetFriendsOptions = Readonly<{
   limit?: number;
   offset?: number;
   tagId?: string;
-}
+}>;
 
 export async function getFriends(db: D1Database, opts: GetFriendsOptions = {}): Promise<Friend[]> {
   const { limit = 50, offset = 0, tagId } = opts;
@@ -62,12 +62,12 @@ export async function getFriendById(db: D1Database, id: string): Promise<Friend 
   return db.prepare(`SELECT * FROM friends WHERE id = ?`).bind(id).first<Friend>();
 }
 
-export interface UpsertFriendInput {
+export type UpsertFriendInput = Readonly<{
   lineUserId: string;
   displayName?: string | null;
   pictureUrl?: string | null;
   statusMessage?: string | null;
-}
+}>;
 
 export async function upsertFriend(db: D1Database, input: UpsertFriendInput): Promise<Friend> {
   const now = jstNow();

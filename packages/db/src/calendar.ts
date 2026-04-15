@@ -1,7 +1,7 @@
 import { jstNow } from './utils.js';
 // Google Calendar 連携クエリヘルパー
 
-export interface GoogleCalendarConnectionRow {
+export type GoogleCalendarConnectionRow = Readonly<{
   id: string;
   calendar_id: string;
   access_token: string | null;
@@ -11,9 +11,9 @@ export interface GoogleCalendarConnectionRow {
   is_active: number;
   created_at: string;
   updated_at: string;
-}
+}>;
 
-export interface CalendarBookingRow {
+export type CalendarBookingRow = Readonly<{
   id: string;
   connection_id: string;
   friend_id: string | null;
@@ -25,7 +25,7 @@ export interface CalendarBookingRow {
   metadata: string | null;
   created_at: string;
   updated_at: string;
-}
+}>;
 
 // --- 接続管理 ---
 

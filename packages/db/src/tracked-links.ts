@@ -3,7 +3,7 @@ import { jstNow } from './utils.js';
 // Tracked Links — URL click tracking with automatic actions
 // =============================================================================
 
-export interface TrackedLink {
+export type TrackedLink = Readonly<{
   id: string;
   name: string;
   original_url: string;
@@ -13,14 +13,14 @@ export interface TrackedLink {
   click_count: number;
   created_at: string;
   updated_at: string;
-}
+}>;
 
-export interface LinkClick {
+export type LinkClick = Readonly<{
   id: string;
   tracked_link_id: string;
   friend_id: string | null;
   clicked_at: string;
-}
+}>;
 
 // ── CRUD ─────────────────────────────────────────────────────────────────────
 
@@ -35,12 +35,12 @@ export async function getTrackedLinkById(db: D1Database, id: string): Promise<Tr
   return db.prepare(`SELECT * FROM tracked_links WHERE id = ?`).bind(id).first<TrackedLink>();
 }
 
-export interface CreateTrackedLinkInput {
+export type CreateTrackedLinkInput = Readonly<{
   name: string;
   originalUrl: string;
   tagId?: string | null;
   scenarioId?: string | null;
-}
+}>;
 
 /** Reject non-http(s) schemes and userinfo (defense in depth vs javascript:/data: in stored URLs). */
 export function assertHttpOrHttpsTrackedOriginalUrl(url: string): void {
@@ -115,9 +115,7 @@ export async function recordLinkClick(
   return (await db.prepare(`SELECT * FROM link_clicks WHERE id = ?`).bind(id).first<LinkClick>())!;
 }
 
-export interface LinkClickWithFriend extends LinkClick {
-  friend_display_name: string | null;
-}
+export type LinkClickWithFriend = LinkClick & Readonly<{ friend_display_name: string | null }>;
 
 export async function getLinkClicks(
   db: D1Database,

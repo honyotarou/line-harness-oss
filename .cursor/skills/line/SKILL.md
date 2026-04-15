@@ -120,6 +120,17 @@ description: >-
 - Step 4〜5 のループの中で **`pnpm check:encapsulation`**（`ROUTE_LINE_CAPS` 忘れに注意）。
 - **P1〜P7** などコード検証済み論点は pentest 正本の表。**回帰は Vitest に残す**（`pnpm harness` が毎回実行）。
 
+### 5.4.1 TypeScript 設計（構造的部分型の落とし穴）
+
+- **クラスを使わない**（必要なら Error/SDK の薄いラッパ程度）。基本は **関数 + 依存注入（引数）**で `this` 依存を避ける。
+- **データ型は Readonly**: DTO は `readonly` / `Readonly<T>` を優先し、ミューテーションは境界（DB/write）に閉じ込める。
+- **データ型と振る舞いを分離**: 型注釈はトランスパイルで消えるため、実行時の分岐・検証は関数で行う（interface を runtime に期待しない）。
+- **Branded Type** で値オブジェクト（ID 等）を区別する（TS は構造的部分型なので、同じ shape は区別されない）。
+- **注意**:
+  - `this` は必ずしもクラスインスタンスを指さない（`bind` 忘れやコールバックで壊れる）→ 関数化 or 明示 bind。
+  - `private` は型検査のみで、実行時の秘匿にはならない。
+  - `interface` / 型エイリアスは実行時に消える（型情報で分岐しない）。
+
 ### 5.5 テスト階層
 
 - Playwright ＝ UI ＋ **モック API**。本物の Worker HTTP は **`pnpm test:api`**。

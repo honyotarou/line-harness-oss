@@ -1,7 +1,11 @@
 import { jstNow } from './utils.js';
+import {
+  sealLineAccountSecretField,
+  unsealLineAccountSecretField,
+} from '@line-crm/shared/line-account-at-rest';
 // Webhook IN/OUT クエリヘルパー
 
-export interface IncomingWebhookRow {
+export type IncomingWebhookRow = Readonly<{
   id: string;
   name: string;
   source_type: string;
@@ -10,9 +14,9 @@ export interface IncomingWebhookRow {
   is_active: number;
   created_at: string;
   updated_at: string;
-}
+}>;
 
-export interface OutgoingWebhookRow {
+export type OutgoingWebhookRow = Readonly<{
   id: string;
   name: string;
   url: string;
@@ -22,6 +26,38 @@ export interface OutgoingWebhookRow {
   is_active: number;
   created_at: string;
   updated_at: string;
+}>;
+
+export type WebhookSecretsDbOptions = Readonly<{
+  /** When set, webhook secrets use AES-GCM (`lh1:` prefix) at rest in D1. */
+  atRestKey?: Uint8Array;
+}>;
+
+async function maybeUnsealIncoming(
+  row: IncomingWebhookRow,
+  key: Uint8Array | undefined,
+): Promise<IncomingWebhookRow> {
+  if (!key) return row;
+  return {
+    ...row,
+    secret: await unsealLineAccountSecretField(row.secret, key),
+  };
+}
+
+async function maybeUnsealOutgoing(
+  row: OutgoingWebhookRow,
+  key: Uint8Array | undefined,
+): Promise<OutgoingWebhookRow> {
+  if (!key) return row;
+  return {
+    ...row,
+    secret: await unsealLineAccountSecretField(row.secret, key),
+  };
+}
+
+async function maybeSealSecret(secret: string, key: Uint8Array | undefined): Promise<string> {
+  if (!key) return secret;
+  return sealLineAccountSecretField(secret, key);
 }
 
 // --- 受信Webhook ---
@@ -29,6 +65,7 @@ export interface OutgoingWebhookRow {
 export async function getIncomingWebhooks(
   db: D1Database,
   opts: { lineAccountId?: string | null } = {},
+  options?: WebhookSecretsDbOptions,
 ): Promise<IncomingWebhookRow[]> {
   const id = opts.lineAccountId?.trim();
   const stmt = id
@@ -41,25 +78,31 @@ export async function getIncomingWebhooks(
         `SELECT * FROM incoming_webhooks WHERE line_account_id IS NULL ORDER BY created_at DESC`,
       );
   const result = await stmt.all<IncomingWebhookRow>();
-  return result.results;
+  const key = options?.atRestKey;
+  return await Promise.all(result.results.map((r) => maybeUnsealIncoming(r, key)));
 }
 
 export async function getIncomingWebhookById(
   db: D1Database,
   id: string,
+  options?: WebhookSecretsDbOptions,
 ): Promise<IncomingWebhookRow | null> {
-  return db
+  const row = await db
     .prepare(`SELECT * FROM incoming_webhooks WHERE id = ?`)
     .bind(id)
     .first<IncomingWebhookRow>();
+  if (!row) return null;
+  return await maybeUnsealIncoming(row, options?.atRestKey);
 }
 
 export async function createIncomingWebhook(
   db: D1Database,
   input: { name: string; sourceType?: string; secret: string; lineAccountId?: string | null },
+  options?: WebhookSecretsDbOptions,
 ): Promise<IncomingWebhookRow> {
   const id = crypto.randomUUID();
   const now = jstNow();
+  const sealedSecret = await maybeSealSecret(input.secret, options?.atRestKey);
   await db
     .prepare(
       `INSERT INTO incoming_webhooks (id, name, source_type, secret, line_account_id, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?)`,
@@ -68,13 +111,13 @@ export async function createIncomingWebhook(
       id,
       input.name,
       input.sourceType ?? 'custom',
-      input.secret,
+      sealedSecret,
       input.lineAccountId?.trim() || null,
       now,
       now,
     )
     .run();
-  return (await getIncomingWebhookById(db, id))!;
+  return (await getIncomingWebhookById(db, id, options))!;
 }
 
 export async function updateIncomingWebhook(
@@ -87,6 +130,7 @@ export async function updateIncomingWebhook(
     lineAccountId: string | null;
     isActive: boolean;
   }>,
+  options?: WebhookSecretsDbOptions,
 ): Promise<void> {
   const sets: string[] = [];
   const values: unknown[] = [];
@@ -100,7 +144,7 @@ export async function updateIncomingWebhook(
   }
   if (updates.secret !== undefined) {
     sets.push('secret = ?');
-    values.push(updates.secret);
+    values.push(await maybeSealSecret(updates.secret, options?.atRestKey));
   }
   if (updates.lineAccountId !== undefined) {
     sets.push('line_account_id = ?');
@@ -127,21 +171,28 @@ export async function deleteIncomingWebhook(db: D1Database, id: string): Promise
 
 // --- 送信Webhook ---
 
-export async function getOutgoingWebhooks(db: D1Database): Promise<OutgoingWebhookRow[]> {
+export async function getOutgoingWebhooks(
+  db: D1Database,
+  options?: WebhookSecretsDbOptions,
+): Promise<OutgoingWebhookRow[]> {
   const result = await db
     .prepare(`SELECT * FROM outgoing_webhooks ORDER BY created_at DESC`)
     .all<OutgoingWebhookRow>();
-  return result.results;
+  const key = options?.atRestKey;
+  return await Promise.all(result.results.map((r) => maybeUnsealOutgoing(r, key)));
 }
 
 export async function getOutgoingWebhookById(
   db: D1Database,
   id: string,
+  options?: WebhookSecretsDbOptions,
 ): Promise<OutgoingWebhookRow | null> {
-  return db
+  const row = await db
     .prepare(`SELECT * FROM outgoing_webhooks WHERE id = ?`)
     .bind(id)
     .first<OutgoingWebhookRow>();
+  if (!row) return null;
+  return await maybeUnsealOutgoing(row, options?.atRestKey);
 }
 
 export async function createOutgoingWebhook(
@@ -153,9 +204,11 @@ export async function createOutgoingWebhook(
     secret: string;
     lineAccountId?: string | null;
   },
+  options?: WebhookSecretsDbOptions,
 ): Promise<OutgoingWebhookRow> {
   const id = crypto.randomUUID();
   const now = jstNow();
+  const sealedSecret = await maybeSealSecret(input.secret, options?.atRestKey);
   await db
     .prepare(
       `INSERT INTO outgoing_webhooks (id, name, url, event_types, secret, line_account_id, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
@@ -165,13 +218,13 @@ export async function createOutgoingWebhook(
       input.name,
       input.url,
       JSON.stringify(input.eventTypes),
-      input.secret,
+      sealedSecret,
       input.lineAccountId?.trim() || null,
       now,
       now,
     )
     .run();
-  return (await getOutgoingWebhookById(db, id))!;
+  return (await getOutgoingWebhookById(db, id, options))!;
 }
 
 export async function updateOutgoingWebhook(
@@ -185,6 +238,7 @@ export async function updateOutgoingWebhook(
     lineAccountId: string | null;
     isActive: boolean;
   }>,
+  options?: WebhookSecretsDbOptions,
 ): Promise<void> {
   const sets: string[] = [];
   const values: unknown[] = [];
@@ -202,7 +256,7 @@ export async function updateOutgoingWebhook(
   }
   if (updates.secret !== undefined) {
     sets.push('secret = ?');
-    values.push(updates.secret);
+    values.push(await maybeSealSecret(updates.secret, options?.atRestKey));
   }
   if (updates.lineAccountId !== undefined) {
     sets.push('line_account_id = ?');

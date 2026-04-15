@@ -1,7 +1,7 @@
 import { jstNow } from './utils.js';
 // アクション自動化 (IF-THEN ルール) クエリヘルパー
 
-export interface AutomationRow {
+export type AutomationRow = Readonly<{
   id: string;
   name: string;
   description: string | null;
@@ -13,9 +13,9 @@ export interface AutomationRow {
   priority: number;
   created_at: string;
   updated_at: string;
-}
+}>;
 
-export interface AutomationLogRow {
+export type AutomationLogRow = Readonly<{
   id: string;
   automation_id: string;
   friend_id: string | null;
@@ -23,7 +23,7 @@ export interface AutomationLogRow {
   actions_result: string | null;
   status: string;
   created_at: string;
-}
+}>;
 
 // --- 自動化ルール ---
 

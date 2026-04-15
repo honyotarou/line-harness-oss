@@ -1,7 +1,7 @@
 import { jstNow } from './utils.js';
 // リマインダ配信クエリヘルパー
 
-export interface ReminderRow {
+export type ReminderRow = Readonly<{
   id: string;
   name: string;
   description: string | null;
@@ -9,18 +9,18 @@ export interface ReminderRow {
   line_account_id: string | null;
   created_at: string;
   updated_at: string;
-}
+}>;
 
-export interface ReminderStepRow {
+export type ReminderStepRow = Readonly<{
   id: string;
   reminder_id: string;
   offset_minutes: number;
   message_type: string;
   message_content: string;
   created_at: string;
-}
+}>;
 
-export interface FriendReminderRow {
+export type FriendReminderRow = Readonly<{
   id: string;
   friend_id: string;
   reminder_id: string;
@@ -28,7 +28,7 @@ export interface FriendReminderRow {
   status: string;
   created_at: string;
   updated_at: string;
-}
+}>;
 
 // --- リマインダCRUD ---
 

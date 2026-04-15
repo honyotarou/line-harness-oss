@@ -76,6 +76,11 @@ function bearerForRequest(path: string, method: string): Record<string, string> 
   return t ? { Authorization: `Bearer ${t}` } : {};
 }
 
+export type ApiErrorLike = Error & { readonly status: number; readonly body?: unknown };
+export function createApiError(message: string, status: number, body?: unknown): ApiErrorLike {
+  return new ApiError(message, status, body);
+}
+
 export class ApiError extends Error {
   constructor(
     message: string,
@@ -100,7 +105,7 @@ export async function fetchApiCore<T>(
 ): Promise<T> {
   const validated = validateAdminApiFetchBase(baseUrl, apiBaseUrlValidationOptions());
   if (!validated.ok) {
-    throw new ApiError(`Misconfigured API URL: ${validated.reason}`, 503);
+    throw createApiError(`Misconfigured API URL: ${validated.reason}`, 503);
   }
   const fetchBase = validated.fetchBase;
 
@@ -125,7 +130,7 @@ export async function fetchApiCore<T>(
     } catch {
       body = undefined;
     }
-    throw new ApiError(`API error: ${res.status}`, res.status, body);
+    throw createApiError(`API error: ${res.status}`, res.status, body);
   }
   return res.json() as Promise<T>;
 }

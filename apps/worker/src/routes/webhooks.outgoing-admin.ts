@@ -22,9 +22,9 @@ import {
   validateScopedLineAccountQueryParam,
 } from '../services/admin-line-account-scope.js';
 import { fireAdminAuditLog } from '../services/admin-audit-log.js';
-
+import { lineAccountDbOptions } from '../services/line-account-at-rest-key.js';
+import { denyUnlessWebhookSecretsAtRestKeyForWrites } from '../services/webhook-secret-at-rest-policy.js';
 const outgoingWebhooksAdmin = new Hono<Env>();
-
 outgoingWebhooksAdmin.get('/api/webhooks/outgoing', async (c) => {
   try {
     const scope = await resolveLineAccountScopeForRequest(c.env.DB, c);
@@ -33,8 +33,7 @@ outgoingWebhooksAdmin.get('/api/webhooks/outgoing', async (c) => {
     if (!q.ok) {
       return c.json({ success: false, error: q.error }, q.status);
     }
-
-    let items = await getOutgoingWebhooks(c.env.DB);
+    let items = await getOutgoingWebhooks(c.env.DB, lineAccountDbOptions(c.env));
     if (lineAccountId) {
       items = items.filter((w) => (w.line_account_id ?? null) === lineAccountId);
     }
@@ -61,6 +60,8 @@ outgoingWebhooksAdmin.get('/api/webhooks/outgoing', async (c) => {
 
 outgoingWebhooksAdmin.post('/api/webhooks/outgoing', async (c) => {
   try {
+    const deniedSecrets = denyUnlessWebhookSecretsAtRestKeyForWrites(c);
+    if (deniedSecrets) return deniedSecrets;
     const scope = await resolveLineAccountScopeForRequest(c.env.DB, c);
     const body = await readJsonBodyWithLimit<{
       name: string;
@@ -94,13 +95,17 @@ outgoingWebhooksAdmin.post('/api/webhooks/outgoing', async (c) => {
     if (!outboundOk.ok) {
       return c.json({ success: false, error: outboundOk.reason }, 400);
     }
-    const item = await createOutgoingWebhook(c.env.DB, {
-      name: body.name,
-      url: body.url,
-      eventTypes: body.eventTypes ?? [],
-      secret: body.secret,
-      lineAccountId: scoped.lineAccountId,
-    });
+    const item = await createOutgoingWebhook(
+      c.env.DB,
+      {
+        name: body.name,
+        url: body.url,
+        eventTypes: body.eventTypes ?? [],
+        secret: body.secret,
+        lineAccountId: scoped.lineAccountId,
+      },
+      lineAccountDbOptions(c.env),
+    );
     fireAdminAuditLog(c, {
       action: 'webhook.outgoing.create',
       resourceType: 'outgoing_webhook',
@@ -134,7 +139,7 @@ outgoingWebhooksAdmin.put('/api/webhooks/outgoing/:id', async (c) => {
   try {
     const id = c.req.param('id');
     const scopePut = await resolveLineAccountScopeForRequest(c.env.DB, c);
-    const existingWh = await getOutgoingWebhookById(c.env.DB, id);
+    const existingWh = await getOutgoingWebhookById(c.env.DB, id, lineAccountDbOptions(c.env));
     if (!existingWh) {
       return c.json({ success: false, error: 'Not found' }, 404);
     }
@@ -157,6 +162,10 @@ outgoingWebhooksAdmin.put('/api/webhooks/outgoing/:id', async (c) => {
           400,
         );
       }
+    }
+    if (body.secret !== undefined && body.secret !== null) {
+      const deniedSecrets = denyUnlessWebhookSecretsAtRestKeyForWrites(c);
+      if (deniedSecrets) return deniedSecrets;
     }
     if (body.url !== undefined && body.url !== null && String(body.url).trim() !== '') {
       const outboundOk = await assertHttpsOutboundUrlResolvedSafe(String(body.url), fetch);
@@ -186,8 +195,8 @@ outgoingWebhooksAdmin.put('/api/webhooks/outgoing/:id', async (c) => {
       updates.lineAccountId = scopedLa.lineAccountId;
     }
 
-    await updateOutgoingWebhook(c.env.DB, id, updates);
-    const updated = await getOutgoingWebhookById(c.env.DB, id);
+    await updateOutgoingWebhook(c.env.DB, id, updates, lineAccountDbOptions(c.env));
+    const updated = await getOutgoingWebhookById(c.env.DB, id, lineAccountDbOptions(c.env));
     if (!updated) return c.json({ success: false, error: 'Not found' }, 404);
     fireAdminAuditLog(c, {
       action: 'webhook.outgoing.update',
@@ -217,7 +226,11 @@ outgoingWebhooksAdmin.put('/api/webhooks/outgoing/:id', async (c) => {
 outgoingWebhooksAdmin.delete('/api/webhooks/outgoing/:id', async (c) => {
   try {
     const scopeDel = await resolveLineAccountScopeForRequest(c.env.DB, c);
-    const whDel = await getOutgoingWebhookById(c.env.DB, c.req.param('id'));
+    const whDel = await getOutgoingWebhookById(
+      c.env.DB,
+      c.req.param('id'),
+      lineAccountDbOptions(c.env),
+    );
     if (!whDel) {
       return c.json({ success: false, error: 'Not found' }, 404);
     }

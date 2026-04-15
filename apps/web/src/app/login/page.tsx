@@ -1,11 +1,13 @@
 'use client';
 import { useEffect, useState } from 'react';
-import { ApiError, api, setAdminSessionToken, useCloudflareAccessLoginMode } from '@/lib/api';
+import { api, setAdminSessionToken, useCloudflareAccessLoginMode } from '@/lib/api';
 import { Input } from '@/components/ui/field';
 
 function errorMessageFromApi(err: unknown): string | undefined {
-  if (err instanceof ApiError && err.body && typeof err.body === 'object' && err.body !== null) {
-    const e = (err.body as { error?: unknown }).error;
+  if (err instanceof Error && err.name === 'ApiError' && 'body' in err) {
+    const body = (err as { body?: unknown }).body;
+    if (!body || typeof body !== 'object') return undefined;
+    const e = (body as { error?: unknown }).error;
     return typeof e === 'string' && e.trim() ? e : undefined;
   }
   return undefined;
@@ -50,16 +52,30 @@ export default function LoginPage() {
       const fromBody = errorMessageFromApi(err);
       // Worker returns `{ error: 'Unauthorized' }` for bad API key; keep a friendly JP message for admins.
       const preferJp401 =
-        err instanceof ApiError && err.status === 401 && (!fromBody || fromBody === 'Unauthorized');
+        err instanceof Error &&
+        err.name === 'ApiError' &&
+        'status' in err &&
+        (err as { status?: unknown }).status === 401 &&
+        (!fromBody || fromBody === 'Unauthorized');
       if (fromBody && !preferJp401) {
         setError(fromBody);
-      } else if (err instanceof ApiError && err.status === 401) {
+      } else if (
+        err instanceof Error &&
+        err.name === 'ApiError' &&
+        'status' in err &&
+        (err as { status?: unknown }).status === 401
+      ) {
         setError(
           accessLogin
             ? 'Cloudflare Access のログインが必要です（JWT が Worker に届いているか確認してください）'
             : 'APIキーが正しくありません',
         );
-      } else if (err instanceof ApiError && err.status === 400) {
+      } else if (
+        err instanceof Error &&
+        err.name === 'ApiError' &&
+        'status' in err &&
+        (err as { status?: unknown }).status === 400
+      ) {
         setError(fromBody ?? 'リクエストが無効です');
       } else {
         setError('接続に失敗しました');

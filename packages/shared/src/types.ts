@@ -10,6 +10,15 @@
 // -----------------------------------------------------------------------------
 // 友だち (Friend)
 // -----------------------------------------------------------------------------
+export type FriendId = import('./brand').Branded<string, 'FriendId'>;
+export type TagId = import('./brand').Branded<string, 'TagId'>;
+export type ScenarioId = import('./brand').Branded<string, 'ScenarioId'>;
+export type ScenarioStepId = import('./brand').Branded<string, 'ScenarioStepId'>;
+export type FriendScenarioId = import('./brand').Branded<string, 'FriendScenarioId'>;
+export type BroadcastId = import('./brand').Branded<string, 'BroadcastId'>;
+export type MessageLogId = import('./brand').Branded<string, 'MessageLogId'>;
+export type LineAccountId = import('./brand').Branded<string, 'LineAccountId'>;
+
 export interface Friend {
   /** 主キー (UUIDv4) */
   id: string;

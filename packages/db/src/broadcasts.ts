@@ -3,7 +3,7 @@ export type BroadcastTargetType = 'all' | 'tag';
 export type BroadcastStatus = 'draft' | 'scheduled' | 'sending' | 'sent';
 export type BroadcastMessageType = 'text' | 'image' | 'flex';
 
-export interface Broadcast {
+export type Broadcast = Readonly<{
   id: string;
   title: string;
   message_type: BroadcastMessageType;
@@ -17,7 +17,7 @@ export interface Broadcast {
   total_count: number;
   success_count: number;
   created_at: string;
-}
+}>;
 
 export async function getBroadcasts(
   db: D1Database,
@@ -48,14 +48,14 @@ export async function getBroadcastById(db: D1Database, id: string): Promise<Broa
   return db.prepare(`SELECT * FROM broadcasts WHERE id = ?`).bind(id).first<Broadcast>();
 }
 
-export interface CreateBroadcastInput {
+export type CreateBroadcastInput = Readonly<{
   title: string;
   messageType: BroadcastMessageType;
   messageContent: string;
   targetType: BroadcastTargetType;
   targetTagId?: string | null;
   scheduledAt?: string | null;
-}
+}>;
 
 export async function createBroadcast(
   db: D1Database,
@@ -153,10 +153,10 @@ export async function deleteBroadcast(db: D1Database, id: string): Promise<void>
   await db.prepare(`DELETE FROM broadcasts WHERE id = ?`).bind(id).run();
 }
 
-export interface BroadcastStatusCounts {
+export type BroadcastStatusCounts = Readonly<{
   totalCount?: number;
   successCount?: number;
-}
+}>;
 
 /**
  * Atomically moves a broadcast from `draft` / `scheduled` to `sending` to close TOCTOU races on send.

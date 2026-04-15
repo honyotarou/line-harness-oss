@@ -1,4 +1,5 @@
 export * from './types';
+export * from './brand';
 export * from './safe-json';
 export * from './safe-api-base-url';
 export * from './admin-access-proxy-path';

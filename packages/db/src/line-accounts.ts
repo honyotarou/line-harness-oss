@@ -7,7 +7,7 @@ import { jstNow } from './utils.js';
 // LINE Accounts — Multi-Account Management
 // =============================================================================
 
-export interface LineAccount {
+export type LineAccount = Readonly<{
   id: string;
   channel_id: string;
   name: string;
@@ -19,22 +19,27 @@ export interface LineAccount {
   is_active: number;
   created_at: string;
   updated_at: string;
-}
+}>;
 
 /** When `atRestKey` is set, sensitive columns use AES-GCM (`lh1:` prefix) at rest in D1. */
-export type LineAccountDbOptions = {
+export type LineAccountDbOptions = Readonly<{
   atRestKey?: Uint8Array;
-};
+}>;
 
-export interface CreateLineAccountInput {
+export type CreateLineAccountInput = Readonly<{
   channelId: string;
   name: string;
   channelAccessToken: string;
   channelSecret: string;
-}
+}>;
 
-export type UpdateLineAccountInput = Partial<
-  Pick<LineAccount, 'name' | 'channel_access_token' | 'channel_secret' | 'is_active'>
+export type UpdateLineAccountInput = Readonly<
+  Partial<{
+    name: string;
+    channel_access_token: string;
+    channel_secret: string;
+    is_active: number;
+  }>
 >;
 
 async function mapLineAccountOut(
@@ -70,14 +75,17 @@ async function sealUpdateInput(
   key: Uint8Array | undefined,
 ): Promise<UpdateLineAccountInput> {
   if (!key) return updates;
-  const out: UpdateLineAccountInput = { ...updates };
-  if (updates.channel_access_token !== undefined) {
-    out.channel_access_token = await sealLineAccountSecretField(updates.channel_access_token, key);
-  }
-  if (updates.channel_secret !== undefined) {
-    out.channel_secret = await sealLineAccountSecretField(updates.channel_secret, key);
-  }
-  return out;
+  return {
+    ...updates,
+    ...(updates.channel_access_token !== undefined
+      ? {
+          channel_access_token: await sealLineAccountSecretField(updates.channel_access_token, key),
+        }
+      : {}),
+    ...(updates.channel_secret !== undefined
+      ? { channel_secret: await sealLineAccountSecretField(updates.channel_secret, key) }
+      : {}),
+  };
 }
 
 export async function createLineAccount(

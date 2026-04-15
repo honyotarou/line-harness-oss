@@ -122,6 +122,11 @@ export type Env = {
      * `LINE_ACCOUNT_SECRETS_KEY` (stores channel tokens as plaintext in D1). Default off — migration only.
      */
     ALLOW_LINE_ACCOUNT_SECRETS_PLAINTEXT_AT_REST?: string;
+    /**
+     * `1` / `true`: on non-local HTTPS `WORKER_URL`, allow creating/updating incoming/outgoing webhooks without
+     * `LINE_ACCOUNT_SECRETS_KEY` (stores webhook secrets as plaintext in D1). Default off — migration only.
+     */
+    ALLOW_WEBHOOK_SECRETS_PLAINTEXT_AT_REST?: string;
     /** `1` / `true`: on friend add, send welcome Flex (anxiety picker) once; skip DB scenario step-0 reply if delay=0. Postback `anxiety=*` always handled when user taps buttons. */
     WELCOME_ANXIETY_FLOW?: string;
     /** Optional LIFF URL for booking button in anxiety follow-up (defaults to `LIFF_URL`). */
