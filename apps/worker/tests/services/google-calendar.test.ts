@@ -8,9 +8,39 @@ describe('GoogleCalendarClient', () => {
 
   const client = () =>
     new GoogleCalendarClient({
-      calendarId: 'primary@group.calendar.google.com',
+      calendarId: 'abc123group@group.calendar.google.com',
       accessToken: 'test-token',
     });
+
+  it('constructor rejects calendar ids outside the allowed shapes', () => {
+    expect(
+      () =>
+        new GoogleCalendarClient({
+          calendarId: 'https://evil.example/cal',
+          accessToken: 't',
+        }),
+    ).toThrow(/Invalid Google Calendar id/);
+    expect(
+      () =>
+        new GoogleCalendarClient({
+          calendarId: ' primary ',
+          accessToken: 't',
+        }),
+    ).toThrow(/Invalid Google Calendar id/);
+  });
+
+  it('constructor accepts primary and group-calendar ids (URL path segment hygiene)', () => {
+    expect(
+      () => new GoogleCalendarClient({ calendarId: 'primary', accessToken: 't' }),
+    ).not.toThrow();
+    expect(
+      () =>
+        new GoogleCalendarClient({
+          calendarId: 'abc123group@group.calendar.google.com',
+          accessToken: 't',
+        }),
+    ).not.toThrow();
+  });
 
   it('getFreeBusy returns busy intervals from the matching calendar', async () => {
     vi.stubGlobal(
@@ -19,7 +49,7 @@ describe('GoogleCalendarClient', () => {
         new Response(
           JSON.stringify({
             calendars: {
-              'primary@group.calendar.google.com': {
+              'abc123group@group.calendar.google.com': {
                 busy: [{ start: '2026-03-01T10:00:00Z', end: '2026-03-01T11:00:00Z' }],
               },
             },
@@ -43,7 +73,7 @@ describe('GoogleCalendarClient', () => {
       vi.fn().mockResolvedValue(
         new Response(
           JSON.stringify({
-            calendars: { 'primary@group.calendar.google.com': {} },
+            calendars: { 'abc123group@group.calendar.google.com': {} },
           }),
           { status: 200 },
         ),

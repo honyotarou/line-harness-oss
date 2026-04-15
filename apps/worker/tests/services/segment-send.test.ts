@@ -15,7 +15,15 @@ const stealthMocks = vi.hoisted(() => ({
   addMessageVariation: vi.fn((text: string, index: number) => `${text}[${index}]`),
 }));
 
-vi.mock('../../src/services/stealth.js', () => stealthMocks);
+vi.mock('../../src/services/stealth.js', async (importOriginal) => {
+  const mod = await importOriginal<typeof import('../../src/services/stealth.js')>();
+  return {
+    ...mod,
+    calculateStaggerDelay: stealthMocks.calculateStaggerDelay,
+    sleep: stealthMocks.sleep,
+    addMessageVariation: stealthMocks.addMessageVariation,
+  };
+});
 
 const deliveryMocks = vi.hoisted(() => ({
   beginDeliveryAttempt: vi.fn(),
@@ -26,17 +34,38 @@ const deliveryMocks = vi.hoisted(() => ({
 vi.mock('../../src/services/delivery-reliability.js', () => deliveryMocks);
 
 function createMockDb(friends: { id: string; line_user_id: string }[]) {
+  const rateRows = new Map<string, number>();
+
   return {
-    prepare: vi.fn().mockImplementation(() => {
-      const chain = {
-        all: vi.fn().mockResolvedValue({ results: friends }),
-        run: vi.fn().mockResolvedValue({}),
-        first: vi.fn(),
-      };
-      return {
-        bind: vi.fn().mockReturnValue(chain),
-      };
-    }),
+    prepare: vi.fn((sql: string) => ({
+      bind: vi.fn((...bindings: unknown[]) => {
+        const chain = {
+          all: vi.fn().mockResolvedValue({ results: friends }),
+          run: vi.fn().mockImplementation(async () => {
+            const norm = sql.toLowerCase();
+            if (norm.includes('request_rate_limits') && norm.includes('on conflict')) {
+              const limit = bindings[4] as number;
+              const key = `${bindings[0]}:${bindings[1]}:${bindings[2]}`;
+              const cur = rateRows.get(key) ?? 0;
+              if (cur >= limit) {
+                return { meta: { changes: 0 }, success: true };
+              }
+              rateRows.set(key, cur + 1);
+              return { meta: { changes: 1 }, success: true };
+            }
+            return { meta: { changes: 1 }, success: true };
+          }),
+          first: vi.fn().mockImplementation(async () => {
+            if (sql.includes('SELECT count FROM request_rate_limits')) {
+              const key = `${bindings[0]}:${bindings[1]}:${bindings[2]}`;
+              return { count: rateRows.get(key) ?? 0 };
+            }
+            return null;
+          }),
+        };
+        return chain;
+      }),
+    })),
   } as unknown as D1Database;
 }
 
@@ -76,7 +105,7 @@ describe('processSegmentSend', () => {
     dbMocks.getBroadcastById.mockResolvedValue(null);
     const { processSegmentSend } = await import('../../src/services/segment-send.js');
     const db = createMockDb([]);
-    const lineClient = { multicast: vi.fn().mockResolvedValue(undefined) };
+    const lineClient = { multicast: vi.fn().mockResolvedValue({}) };
 
     await expect(
       processSegmentSend(db, lineClient as never, 'missing-id', {
@@ -93,7 +122,7 @@ describe('processSegmentSend', () => {
     deliveryMocks.beginDeliveryAttempt.mockResolvedValue(false);
     const { processSegmentSend } = await import('../../src/services/segment-send.js');
     const db = createMockDb([{ id: 'f1', line_user_id: 'U1' }]);
-    const lineClient = { multicast: vi.fn().mockResolvedValue(undefined) };
+    const lineClient = { multicast: vi.fn().mockResolvedValue({}) };
 
     const out = await processSegmentSend(db, lineClient as never, 'b0', {
       operator: 'AND',
@@ -111,7 +140,7 @@ describe('processSegmentSend', () => {
     deliveryMocks.beginDeliveryAttempt.mockResolvedValue(true);
     const { processSegmentSend } = await import('../../src/services/segment-send.js');
     const db = createMockDb([]);
-    const lineClient = { multicast: vi.fn().mockResolvedValue(undefined) };
+    const lineClient = { multicast: vi.fn().mockResolvedValue({}) };
 
     await processSegmentSend(db, lineClient as never, 'b-same', {
       operator: 'AND',
@@ -143,7 +172,7 @@ describe('processSegmentSend', () => {
       });
     const { processSegmentSend } = await import('../../src/services/segment-send.js');
     const db = createMockDb([]);
-    const lineClient = { multicast: vi.fn().mockResolvedValue(undefined) };
+    const lineClient = { multicast: vi.fn().mockResolvedValue({}) };
 
     const out = await processSegmentSend(db, lineClient as never, 'b1', {
       operator: 'AND',
@@ -176,7 +205,7 @@ describe('processSegmentSend', () => {
       });
     const { processSegmentSend } = await import('../../src/services/segment-send.js');
     const db = createMockDb(friends);
-    const lineClient = { multicast: vi.fn().mockResolvedValue(undefined) };
+    const lineClient = { multicast: vi.fn().mockResolvedValue({}) };
 
     await processSegmentSend(db, lineClient as never, 'b2', {
       operator: 'AND',
@@ -214,7 +243,7 @@ describe('processSegmentSend', () => {
     stealthMocks.calculateStaggerDelay.mockReturnValue(12);
     const { processSegmentSend } = await import('../../src/services/segment-send.js');
     const db = createMockDb(friends);
-    const lineClient = { multicast: vi.fn().mockResolvedValue(undefined) };
+    const lineClient = { multicast: vi.fn().mockResolvedValue({}) };
 
     await processSegmentSend(db, lineClient as never, 'b3', {
       operator: 'AND',
@@ -276,7 +305,7 @@ describe('processSegmentSend', () => {
     const { processSegmentSend } = await import('../../src/services/segment-send.js');
     const db = createMockDb(friends);
     const lineClient = {
-      multicast: vi.fn().mockRejectedValueOnce(new Error('LINE down')).mockResolvedValue(undefined),
+      multicast: vi.fn().mockRejectedValueOnce(new Error('LINE down')).mockResolvedValue({}),
     };
 
     await processSegmentSend(db, lineClient as never, 'b5', {
@@ -316,7 +345,7 @@ describe('processSegmentSend', () => {
       });
     const { processSegmentSend } = await import('../../src/services/segment-send.js');
     const db = createMockDb([{ id: 'f1', line_user_id: 'U1' }]);
-    const lineClient = { multicast: vi.fn().mockResolvedValue(undefined) };
+    const lineClient = { multicast: vi.fn().mockResolvedValue({}) };
 
     await processSegmentSend(db, lineClient as never, 'b6', {
       operator: 'AND',
@@ -354,7 +383,7 @@ describe('processSegmentSend', () => {
       });
     const { processSegmentSend } = await import('../../src/services/segment-send.js');
     const db = createMockDb([{ id: 'f1', line_user_id: 'U1' }]);
-    const lineClient = { multicast: vi.fn().mockResolvedValue(undefined) };
+    const lineClient = { multicast: vi.fn().mockResolvedValue({}) };
 
     await processSegmentSend(db, lineClient as never, 'b7', {
       operator: 'AND',
@@ -387,7 +416,7 @@ describe('processSegmentSend', () => {
       });
     const { processSegmentSend } = await import('../../src/services/segment-send.js');
     const db = createMockDb([{ id: 'f1', line_user_id: 'U1' }]);
-    const lineClient = { multicast: vi.fn().mockResolvedValue(undefined) };
+    const lineClient = { multicast: vi.fn().mockResolvedValue({}) };
 
     await processSegmentSend(db, lineClient as never, 'b8', {
       operator: 'AND',
@@ -424,7 +453,7 @@ describe('processSegmentSend', () => {
       });
     const { processSegmentSend } = await import('../../src/services/segment-send.js');
     const db = createMockDb([{ id: 'f1', line_user_id: 'U1' }]);
-    const lineClient = { multicast: vi.fn().mockResolvedValue(undefined) };
+    const lineClient = { multicast: vi.fn().mockResolvedValue({}) };
 
     await processSegmentSend(db, lineClient as never, 'b9', {
       operator: 'AND',
@@ -449,7 +478,7 @@ describe('processSegmentSend', () => {
       .mockResolvedValueOnce({ ...row, status: 'sent' as const, total_count: 1, success_count: 1 });
     const { processSegmentSend } = await import('../../src/services/segment-send.js');
     const db = createMockDb([{ id: 'f1', line_user_id: 'U1' }]);
-    const lineClient = { multicast: vi.fn().mockResolvedValue(undefined) };
+    const lineClient = { multicast: vi.fn().mockResolvedValue({}) };
 
     await processSegmentSend(db, lineClient as never, 'b10', {
       operator: 'AND',

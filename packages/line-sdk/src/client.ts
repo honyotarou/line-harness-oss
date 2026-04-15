@@ -64,9 +64,49 @@ export class LineClient {
     await this.request('/message/push', body);
   }
 
-  async multicast(to: string[], messages: Message[]): Promise<void> {
+  /**
+   * Sends a multicast message. When LINE returns JSON with `invalidUserIds`, those user IDs did not
+   * receive the message; callers should not treat the batch as fully delivered.
+   */
+  async multicast(to: string[], messages: Message[]): Promise<{ invalidUserIds?: string[] }> {
+    const url = `${LINE_API_BASE}/message/multicast`;
     const body: MulticastRequest = { to, messages };
-    await this.request('/message/multicast', body);
+    const res = await fetch(url, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${this.channelAccessToken}`,
+      },
+      body: JSON.stringify(body),
+    });
+
+    if (!res.ok) {
+      const text = await res.text().catch(() => '');
+      throw new Error(`LINE API error: ${res.status} ${res.statusText} — ${text}`);
+    }
+
+    const contentType = res.headers.get('content-type') ?? '';
+    if (!contentType.includes('application/json')) {
+      return {};
+    }
+
+    const raw = await res.text();
+    if (!raw.trim()) {
+      return {};
+    }
+
+    try {
+      const parsed = JSON.parse(raw) as { invalidUserIds?: unknown };
+      if (
+        Array.isArray(parsed.invalidUserIds) &&
+        parsed.invalidUserIds.every((id) => typeof id === 'string')
+      ) {
+        return { invalidUserIds: parsed.invalidUserIds };
+      }
+    } catch {
+      /* ignore malformed body */
+    }
+    return {};
   }
 
   async broadcast(messages: Message[]): Promise<void> {

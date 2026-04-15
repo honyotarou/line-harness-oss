@@ -7,7 +7,12 @@ import {
   markDeliveryAttemptSucceeded,
 } from './delivery-reliability.js';
 import { buildMessageFromStoredContent } from './stored-line-message.js';
-import { calculateStaggerDelay, sleep, addMessageVariation } from './stealth.js';
+import {
+  calculateStaggerDelay,
+  sleep,
+  addMessageVariation,
+  StealthRateLimiter,
+} from './stealth.js';
 import { buildSegmentQuery } from './segment-query.js';
 import type { SegmentCondition } from './segment-query.js';
 
@@ -89,6 +94,10 @@ export async function processSegmentSend(
 
     const now = jstNow();
     const totalBatches = Math.ceil(friends.length / MULTICAST_BATCH_SIZE);
+    const stealthLimiter = new StealthRateLimiter(1000, 60_000, {
+      db,
+      subjectKey: `line:${broadcast.line_account_id ?? 'default'}`,
+    });
 
     for (let i = 0; i < friends.length; i += MULTICAST_BATCH_SIZE) {
       const batchIndex = Math.floor(i / MULTICAST_BATCH_SIZE);
@@ -108,11 +117,14 @@ export async function processSegmentSend(
       }
 
       try {
-        await lineClient.multicast(lineUserIds, [batchMessage]);
-        successCount += batch.length;
+        await stealthLimiter.waitForSlot();
+        const multicastResult = await lineClient.multicast(lineUserIds, [batchMessage]);
+        const invalid = new Set(multicastResult?.invalidUserIds ?? []);
+        const delivered = batch.filter((f) => !invalid.has(f.line_user_id));
+        successCount += delivered.length;
 
         // Log successfully sent messages
-        for (const friend of batch) {
+        for (const friend of delivered) {
           const logId = crypto.randomUUID();
           await db
             .prepare(

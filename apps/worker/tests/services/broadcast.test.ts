@@ -19,10 +19,32 @@ const reliabilityMocks = vi.hoisted(() => ({
 vi.mock('../../src/services/delivery-reliability.js', () => reliabilityMocks);
 
 function createDb() {
+  const rateRows = new Map<string, number>();
+
   return {
-    prepare: vi.fn(() => ({
-      bind: vi.fn(() => ({
-        run: vi.fn().mockResolvedValue(undefined),
+    prepare: vi.fn((sql: string) => ({
+      bind: vi.fn((...bindings: unknown[]) => ({
+        run: vi.fn().mockImplementation(async () => {
+          const norm = sql.toLowerCase();
+          if (norm.includes('request_rate_limits') && norm.includes('on conflict')) {
+            const limit = bindings[4] as number;
+            const key = `${bindings[0]}:${bindings[1]}:${bindings[2]}`;
+            const cur = rateRows.get(key) ?? 0;
+            if (cur >= limit) {
+              return { meta: { changes: 0 }, success: true };
+            }
+            rateRows.set(key, cur + 1);
+            return { meta: { changes: 1 }, success: true };
+          }
+          return { meta: { changes: 1 }, success: true };
+        }),
+        first: vi.fn().mockImplementation(async () => {
+          if (sql.includes('SELECT count FROM request_rate_limits')) {
+            const key = `${bindings[0]}:${bindings[1]}:${bindings[2]}`;
+            return { count: rateRows.get(key) ?? 0 };
+          }
+          return null;
+        }),
       })),
     })),
   } as unknown as D1Database;
@@ -57,7 +79,7 @@ describe('broadcast delivery', () => {
     const db = createDb();
     const lineClient = {
       broadcast: vi.fn(),
-      multicast: vi.fn().mockResolvedValue(undefined),
+      multicast: vi.fn().mockResolvedValue({}),
     };
 
     const result = await processBroadcastSend(db, lineClient as never, 'broadcast-1');

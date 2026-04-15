@@ -3,6 +3,28 @@
 const GCAL_BASE = 'https://www.googleapis.com/calendar/v3';
 const TIMEZONE = 'Asia/Tokyo';
 
+/** Reject calendar ids that are not primary, group calendar, UUID, or email-shaped (pentest / URL segment hygiene). */
+export function assertValidGoogleCalendarId(calendarId: string): void {
+  const id = calendarId.trim();
+  if (id.length === 0 || id.length > 1024 || id !== calendarId) {
+    throw new Error('Invalid Google Calendar id');
+  }
+  const lower = id.toLowerCase();
+  if (lower === 'primary') {
+    return;
+  }
+  if (/^[\w.-]+@group\.calendar\.google\.com$/i.test(id)) {
+    return;
+  }
+  if (/^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(id)) {
+    return;
+  }
+  if (/^[^\s#/?<>"']+@[^\s#/?<>"']+\.[^\s#/?<>"']+$/i.test(id)) {
+    return;
+  }
+  throw new Error('Invalid Google Calendar id');
+}
+
 export interface GoogleCalendarConfig {
   calendarId: string;
   accessToken: string;
@@ -21,7 +43,9 @@ export interface CreateEventInput {
 }
 
 export class GoogleCalendarClient {
-  constructor(private config: GoogleCalendarConfig) {}
+  constructor(private config: GoogleCalendarConfig) {
+    assertValidGoogleCalendarId(config.calendarId);
+  }
 
   /**
    * Get busy time intervals from Google Calendar FreeBusy API.

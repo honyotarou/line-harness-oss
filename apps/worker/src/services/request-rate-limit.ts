@@ -124,6 +124,62 @@ export function checkRateLimit(options: RateLimitOptions): RateLimitDecision {
   };
 }
 
+/**
+ * Atomically consumes one slot in the D1-backed window if under the limit.
+ * Unlike {@link checkRateLimitWithDb}, failed attempts do not inflate `count` past the cap
+ * (needed for wait/retry loops such as stealth LINE multicast pacing).
+ */
+export async function consumeRateLimitSlotDb(
+  db: D1Database,
+  options: RateLimitOptions,
+): Promise<RateLimitDecision> {
+  const now = options.now ?? Date.now();
+  const windowStartedAt = Math.floor(now / options.windowMs) * options.windowMs;
+  const resetAt = windowStartedAt + options.windowMs;
+  const nowIso = new Date(now).toISOString();
+
+  const result = await db
+    .prepare(
+      `INSERT INTO request_rate_limits (bucket, subject_key, window_started_at, count, updated_at)
+       VALUES (?, ?, ?, 1, ?)
+       ON CONFLICT(bucket, subject_key, window_started_at) DO UPDATE SET
+         count = request_rate_limits.count + 1,
+         updated_at = excluded.updated_at
+       WHERE request_rate_limits.count < ?`,
+    )
+    .bind(options.bucket, options.key, windowStartedAt, nowIso, options.limit)
+    .run();
+
+  const changes = result.meta?.changes ?? 0;
+  const allowed = changes > 0;
+
+  if (now % 64 === 0) {
+    const staleBefore = windowStartedAt - options.windowMs * 2;
+    await db
+      .prepare(`DELETE FROM request_rate_limits WHERE window_started_at < ?`)
+      .bind(staleBefore)
+      .run();
+  }
+
+  const row = await db
+    .prepare(
+      `SELECT count FROM request_rate_limits
+       WHERE bucket = ? AND subject_key = ? AND window_started_at = ?`,
+    )
+    .bind(options.bucket, options.key, windowStartedAt)
+    .first<{ count: number }>();
+
+  const count = row?.count ?? 0;
+  const remaining = Math.max(options.limit - count, 0);
+
+  return {
+    allowed,
+    remaining,
+    resetAt,
+    retryAfterSeconds: Math.max(1, Math.ceil((resetAt - now) / 1_000)),
+  };
+}
+
 export async function checkRateLimitWithDb(
   db: D1Database,
   options: RateLimitOptions,

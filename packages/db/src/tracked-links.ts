@@ -42,10 +42,27 @@ export interface CreateTrackedLinkInput {
   scenarioId?: string | null;
 }
 
+/** Reject non-http(s) schemes and userinfo (defense in depth vs javascript:/data: in stored URLs). */
+export function assertHttpOrHttpsTrackedOriginalUrl(url: string): void {
+  let u: URL;
+  try {
+    u = new URL(url);
+  } catch {
+    throw new Error('original_url must be a valid URL');
+  }
+  if (u.protocol !== 'http:' && u.protocol !== 'https:') {
+    throw new Error('original_url must use http or https');
+  }
+  if (u.username || u.password) {
+    throw new Error('original_url must not include credentials');
+  }
+}
+
 export async function createTrackedLink(
   db: D1Database,
   input: CreateTrackedLinkInput,
 ): Promise<TrackedLink> {
+  assertHttpOrHttpsTrackedOriginalUrl(input.originalUrl);
   const id = crypto.randomUUID();
   const now = jstNow();
 
