@@ -28,7 +28,7 @@ CLOUDFLARE_ACCESS_TRUSTED_SERVICE_CLIENT_IDS = ""
 # CLOUDFLARE_ACCESS_ALLOWED_EMAILS = "you@company.com,coworker@company.com"
 # CLOUDFLARE_ACCESS_AUDIENCE = "<Access application audience UUID or tag from JWT aud claim>"
 #
-# Optional: HMAC secret for admin session cookies (defaults to API_KEY if unset)
+# Optional: HMAC secret for admin session cookies (local/dev may fall back to API_KEY; non-local HTTPS refuses API_KEY signing by default)
 # ADMIN_SESSION_SECRET = "use wrangler secret put ADMIN_SESSION_SECRET in production"
 #
 # Optional: Host header allowlist (comma-separated). When set, requests with other Host values get 403.
@@ -64,6 +64,9 @@ CLOUDFLARE_ACCESS_TRUSTED_SERVICE_CLIENT_IDS = ""
 # LINE_ACCOUNT_SECRETS_WRITE_SECRET = "<long random>"   plus X-Line-Account-Secrets-Write to rotate channel token/secret (PUT /api/line-accounts/:id)
 # ALLOW_LINE_ACCOUNT_CREDENTIAL_PUT_WITHOUT_EXTRA_SECRET = "1"   dev-only: skip the above guard (insecure)
 # REQUIRE_OWNER_DB_ROLE_FOR_LINE_CREDENTIALS = "1"   with Access JWT: explicit admin_principal_roles row must be role owner to create accounts or rotate credentials (no row = legacy full admin)
+#
+# Webhook secrets at rest: uses the same LINE_ACCOUNT_SECRETS_KEY envelope (`lh1:`) when configured.
+# ALLOW_WEBHOOK_SECRETS_PLAINTEXT_AT_REST = "1"   migration only (stores webhook secrets as plaintext in D1)
 #
 # Optional: comma-separated host allowlist for automation action send_webhook only (exact host or `.suffix`).
 # AUTOMATION_SEND_WEBHOOK_ALLOWED_HOSTS = "hooks.slack.com,.mycompany.com"

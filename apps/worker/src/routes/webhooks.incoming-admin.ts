@@ -20,6 +20,8 @@ import {
   validateScopedLineAccountQueryParam,
 } from '../services/admin-line-account-scope.js';
 import { fireAdminAuditLog } from '../services/admin-audit-log.js';
+import { lineAccountDbOptions } from '../services/line-account-at-rest-key.js';
+import { denyUnlessWebhookSecretsAtRestKeyForWrites } from '../services/webhook-secret-at-rest-policy.js';
 
 function buildIncomingWebhookUpdates(body: Record<string, unknown>): Partial<{
   name: string;
@@ -60,7 +62,11 @@ incomingWebhooksAdmin.get('/api/webhooks/incoming', async (c) => {
     if (!q.ok) {
       return c.json({ success: false, error: q.error }, q.status);
     }
-    const items = await getIncomingWebhooks(c.env.DB, { lineAccountId });
+    const items = await getIncomingWebhooks(
+      c.env.DB,
+      { lineAccountId },
+      lineAccountDbOptions(c.env),
+    );
     return c.json({
       success: true,
       data: items.map((w) => ({
@@ -82,6 +88,8 @@ incomingWebhooksAdmin.get('/api/webhooks/incoming', async (c) => {
 
 incomingWebhooksAdmin.post('/api/webhooks/incoming', async (c) => {
   try {
+    const deniedSecrets = denyUnlessWebhookSecretsAtRestKeyForWrites(c);
+    if (deniedSecrets) return deniedSecrets;
     const scope = await resolveLineAccountScopeForRequest(c.env.DB, c);
     const body = await readJsonBodyWithLimit<{
       name: string;
@@ -105,12 +113,16 @@ incomingWebhooksAdmin.post('/api/webhooks/incoming', async (c) => {
       return c.json({ success: false, error: scoped.error }, scoped.status);
     }
 
-    const item = await createIncomingWebhook(c.env.DB, {
-      name: body.name,
-      sourceType: body.sourceType,
-      secret: body.secret,
-      lineAccountId: scoped.lineAccountId,
-    });
+    const item = await createIncomingWebhook(
+      c.env.DB,
+      {
+        name: body.name,
+        sourceType: body.sourceType,
+        secret: body.secret,
+        lineAccountId: scoped.lineAccountId,
+      },
+      lineAccountDbOptions(c.env),
+    );
     fireAdminAuditLog(c, {
       action: 'webhook.incoming.create',
       resourceType: 'incoming_webhook',
@@ -160,13 +172,17 @@ incomingWebhooksAdmin.put('/api/webhooks/incoming/:id', async (c) => {
       }
     }
 
-    const existing = await getIncomingWebhookById(c.env.DB, id);
+    const existing = await getIncomingWebhookById(c.env.DB, id, lineAccountDbOptions(c.env));
     if (!existing) return c.json({ success: false, error: 'Not found' }, 404);
     if (!resourceLineAccountVisibleInScope(scopePut, existing.line_account_id ?? null)) {
       return c.json({ success: false, error: 'Not found' }, 404);
     }
 
     const updates = buildIncomingWebhookUpdates(body);
+    if (updates.secret !== undefined) {
+      const deniedSecrets = denyUnlessWebhookSecretsAtRestKeyForWrites(c);
+      if (deniedSecrets) return deniedSecrets;
+    }
     if (updates.lineAccountId !== undefined) {
       const scoped = validateScopedLineAccountBody(scopePut, updates.lineAccountId);
       if (!scoped.ok) {
@@ -175,8 +191,8 @@ incomingWebhooksAdmin.put('/api/webhooks/incoming/:id', async (c) => {
       updates.lineAccountId = scoped.lineAccountId;
     }
 
-    await updateIncomingWebhook(c.env.DB, id, updates);
-    const updated = await getIncomingWebhookById(c.env.DB, id);
+    await updateIncomingWebhook(c.env.DB, id, updates, lineAccountDbOptions(c.env));
+    const updated = await getIncomingWebhookById(c.env.DB, id, lineAccountDbOptions(c.env));
     if (!updated) return c.json({ success: false, error: 'Not found' }, 404);
     fireAdminAuditLog(c, {
       action: 'webhook.incoming.update',
@@ -206,7 +222,7 @@ incomingWebhooksAdmin.delete('/api/webhooks/incoming/:id', async (c) => {
   try {
     const scopeDel = await resolveLineAccountScopeForRequest(c.env.DB, c);
     const id = c.req.param('id');
-    const existing = await getIncomingWebhookById(c.env.DB, id);
+    const existing = await getIncomingWebhookById(c.env.DB, id, lineAccountDbOptions(c.env));
     if (!existing) return c.json({ success: true, data: null });
     if (!resourceLineAccountVisibleInScope(scopeDel, existing.line_account_id ?? null)) {
       return c.json({ success: true, data: null });
