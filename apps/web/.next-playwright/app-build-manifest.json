@@ -46,35 +46,25 @@
       "static/chunks/main-app.js",
       "static/chunks/app/broadcasts/page.js"
     ],
-    "/automations/page": [
-      "static/chunks/webpack.js",
-      "static/chunks/main-app.js",
-      "static/chunks/app/automations/page.js"
-    ],
     "/scoring/page": [
       "static/chunks/webpack.js",
       "static/chunks/main-app.js",
       "static/chunks/app/scoring/page.js"
     ],
-    "/reminders/page": [
+    "/automations/page": [
       "static/chunks/webpack.js",
       "static/chunks/main-app.js",
-      "static/chunks/app/reminders/page.js"
+      "static/chunks/app/automations/page.js"
     ],
     "/chats/page": [
       "static/chunks/webpack.js",
       "static/chunks/main-app.js",
       "static/chunks/app/chats/page.js"
     ],
-    "/affiliates/page": [
+    "/reminders/page": [
       "static/chunks/webpack.js",
       "static/chunks/main-app.js",
-      "static/chunks/app/affiliates/page.js"
-    ],
-    "/webhooks/page": [
-      "static/chunks/webpack.js",
-      "static/chunks/main-app.js",
-      "static/chunks/app/webhooks/page.js"
+      "static/chunks/app/reminders/page.js"
     ],
     "/conversions/page": [
       "static/chunks/webpack.js",
@@ -86,15 +76,25 @@
       "static/chunks/main-app.js",
       "static/chunks/app/health/page.js"
     ],
-    "/emergency/page": [
+    "/affiliates/page": [
       "static/chunks/webpack.js",
       "static/chunks/main-app.js",
-      "static/chunks/app/emergency/page.js"
+      "static/chunks/app/affiliates/page.js"
+    ],
+    "/webhooks/page": [
+      "static/chunks/webpack.js",
+      "static/chunks/main-app.js",
+      "static/chunks/app/webhooks/page.js"
     ],
     "/accounts/page": [
       "static/chunks/webpack.js",
       "static/chunks/main-app.js",
       "static/chunks/app/accounts/page.js"
+    ],
+    "/emergency/page": [
+      "static/chunks/webpack.js",
+      "static/chunks/main-app.js",
+      "static/chunks/app/emergency/page.js"
     ]
   }
 }

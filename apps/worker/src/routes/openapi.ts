@@ -39,6 +39,24 @@ openapi.get('/docs', async (c) => {
   if (limited) {
     return limited;
   }
+  const nonce = (c.get('cspNonce') as string | undefined) ?? undefined;
+  if (nonce) {
+    c.header(
+      'Content-Security-Policy',
+      [
+        "default-src 'self'",
+        "base-uri 'self'",
+        "frame-ancestors 'none'",
+        "object-src 'none'",
+        `script-src 'self' 'nonce-${nonce}' https://cdn.jsdelivr.net`,
+        `style-src 'self' 'nonce-${nonce}' https://cdn.jsdelivr.net`,
+        "img-src 'self' data: https:",
+        "font-src 'self' https://cdn.jsdelivr.net",
+        "connect-src 'self' https:",
+        'upgrade-insecure-requests',
+      ].join('; '),
+    );
+  }
   const html = `<!DOCTYPE html>
 <html lang="ja">
 <head>
@@ -50,7 +68,7 @@ openapi.get('/docs', async (c) => {
 <body>
   <div id="swagger-ui"></div>
   <script src="https://cdn.jsdelivr.net/npm/swagger-ui-dist@5/swagger-ui-bundle.js"></script>
-  <script>
+  <script${nonce ? ` nonce="${nonce}"` : ''}>
     SwaggerUIBundle({
       url: '/openapi.json',
       dom_id: '#swagger-ui',

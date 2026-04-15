@@ -1,13 +1,12 @@
 import { Hono } from 'hono';
 import { verifySignature, LineClient } from '@line-crm/line-sdk';
 import type { WebhookRequestBody } from '@line-crm/line-sdk';
-import { getLineAccounts } from '@line-crm/db';
 import type { Env } from '../index.js';
-import { lineAccountDbOptions } from '../services/line-account-at-rest-key.js';
 import { BodyTooLargeError, readTextBodyWithLimit } from '../services/request-body.js';
 import { handleLineWebhookEvent } from '../application/line-webhook-handlers.js';
 import { enforceRateLimit } from '../services/request-rate-limit.js';
 import { prioritizeLineWebhookEvents } from '../services/line-webhook-event-order.js';
+import { resolveLineWebhookCredentials } from '../services/line-webhook-multi-account.js';
 
 const webhook = new Hono<Env>();
 const LINE_WEBHOOK_LIMIT_BYTES = 256 * 1024;
@@ -49,23 +48,16 @@ webhook.post('/webhook', async (c) => {
 
   // Multi-account: resolve credentials from DB by destination (channel user ID)
   // or fall back to environment variables (default account)
-  let channelSecret = c.env.LINE_CHANNEL_SECRET;
-  let channelAccessToken = c.env.LINE_CHANNEL_ACCESS_TOKEN;
-  let matchedAccountId: string | null = null;
-
-  if ((body as { destination?: string }).destination) {
-    const accounts = await getLineAccounts(db, lineAccountDbOptions(c.env));
-    for (const account of accounts) {
-      if (!account.is_active) continue;
-      const isValid = await verifySignature(account.channel_secret, rawBody, signature);
-      if (isValid) {
-        channelSecret = account.channel_secret;
-        channelAccessToken = account.channel_access_token;
-        matchedAccountId = account.id;
-        break;
-      }
-    }
-  }
+  const creds = await resolveLineWebhookCredentials({
+    db,
+    env: c.env,
+    destination: (body as { destination?: string }).destination,
+    rawBody,
+    signature,
+  });
+  const channelSecret = creds.channelSecret;
+  const channelAccessToken = creds.channelAccessToken;
+  const matchedAccountId = creds.matchedAccountId;
 
   // Verify with resolved secret
   const valid = await verifySignature(channelSecret, rawBody, signature);

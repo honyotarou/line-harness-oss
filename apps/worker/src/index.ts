@@ -57,6 +57,8 @@ export type Env = {
     cfAccessJwtPayload?: Record<string, unknown>;
     /** Service-token Access JWT (BFF / same-origin proxy); skips email-based RBAC when true. */
     cfAccessServiceAuth?: boolean;
+    /** CSP nonce for Worker-rendered HTML (set by securityHeadersMiddleware). */
+    cspNonce?: string;
   };
   Bindings: {
     DB: D1Database;
@@ -421,13 +423,15 @@ app.get('/r/:ref', async (c) => {
   const ref = c.req.param('ref');
   const liffUrl = (c.env.LIFF_URL ?? '').trim();
   if (!liffUrl || liffUrl.includes('YOUR_LIFF_ID')) {
+    const nonce = (c.get('cspNonce') as string | undefined) ?? undefined;
     return c.html(
-      `<!DOCTYPE html><html lang="ja"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>設定エラー</title><body style="font-family:system-ui,-apple-system; padding:24px; line-height:1.6"><h1>設定エラー</h1><p>LIFF_URL が未設定です。Cloudflare Worker の Variables に <code>https://liff.line.me/&lt;LIFF_ID&gt;</code> を設定してください。</p></body></html>`,
+      `<!DOCTYPE html><html lang="ja"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>設定エラー</title><style${nonce ? ` nonce="${nonce}"` : ''}>body{font-family:system-ui,-apple-system;padding:24px;line-height:1.6}code{background:#f5f5f5;padding:2px 6px;border-radius:6px}</style><body><h1>設定エラー</h1><p>LIFF_URL が未設定です。Cloudflare Worker の Variables に <code>https://liff.line.me/&lt;LIFF_ID&gt;</code> を設定してください。</p></body></html>`,
     );
   }
   const target = `${liffUrl}?ref=${encodeURIComponent(ref)}`;
 
-  return c.html(renderShortLinkLanding(c.env, target));
+  const nonce = (c.get('cspNonce') as string | undefined) ?? undefined;
+  return c.html(renderShortLinkLanding(c.env, target, nonce));
 });
 
 // 404 fallback

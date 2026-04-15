@@ -1,6 +1,9 @@
 import type { Context, Next } from 'hono';
 import { canonicalRequestPathname } from '../services/auth-paths.js';
-import { LIFF_WORKER_HTML_CONTENT_SECURITY_POLICY } from '../services/liff-html-csp.js';
+import {
+  buildWorkerHtmlContentSecurityPolicy,
+  createWorkerHtmlCspNonce,
+} from '../services/liff-html-csp.js';
 
 function isHttpsRequest(c: Context): boolean {
   const url = new URL(c.req.url);
@@ -16,6 +19,12 @@ function isHttpsRequest(c: Context): boolean {
  * HSTS only on HTTPS (including behind TLS-terminating proxies that set X-Forwarded-Proto).
  */
 export async function securityHeadersMiddleware(c: Context, next: Next): Promise<void> {
+  const nonce = createWorkerHtmlCspNonce();
+  try {
+    c.set('cspNonce', nonce as never);
+  } catch {
+    /* ignore */
+  }
   try {
     await next();
   } finally {
@@ -32,7 +41,9 @@ export async function securityHeadersMiddleware(c: Context, next: Next): Promise
     }
     const ct = c.res?.headers?.get('content-type') ?? '';
     if (ct.includes('text/html')) {
-      c.header('Content-Security-Policy', LIFF_WORKER_HTML_CONTENT_SECURITY_POLICY);
+      if (!c.res?.headers?.get('content-security-policy')) {
+        c.header('Content-Security-Policy', buildWorkerHtmlContentSecurityPolicy(nonce));
+      }
     }
   }
 }

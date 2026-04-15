@@ -76,7 +76,7 @@ describe('securityHeadersMiddleware', () => {
     const res = await app.fetch(new Request('http://localhost/p/lp'));
     const csp = res.headers.get('Content-Security-Policy');
     expect(csp).toBeTruthy();
-    expect(csp).toContain("script-src 'self' 'unsafe-inline'");
+    expect(csp).toContain("script-src 'self' 'nonce-");
     expect(csp).toContain("frame-ancestors 'none'");
   });
 

@@ -32,6 +32,7 @@ export type LiffOAuthCallbackInput = {
   stateParam: string;
   oauthError: string | undefined;
   fetchImpl: typeof fetch;
+  cspNonce?: string;
 };
 
 export type LiffOAuthCallbackResult =
@@ -41,24 +42,24 @@ export type LiffOAuthCallbackResult =
 export async function runLiffOAuthCallback(
   input: LiffOAuthCallbackInput,
 ): Promise<LiffOAuthCallbackResult> {
-  const { db, bindings, origin, code, stateParam, oauthError, fetchImpl } = input;
+  const { db, bindings, origin, code, stateParam, oauthError, fetchImpl, cspNonce } = input;
   const laOpts = lineAccountDbOptions(bindings);
 
   if (oauthError || !code) {
-    return { kind: 'html', html: errorPage(oauthError || 'Authorization failed') };
+    return { kind: 'html', html: errorPage(oauthError || 'Authorization failed', cspNonce) };
   }
 
   const stateSecret = resolveLiffOAuthStateSecret(bindings);
   if (!stateSecret) {
     return {
       kind: 'html',
-      html: errorPage('OAuth state signing is not configured on this server'),
+      html: errorPage('OAuth state signing is not configured on this server', cspNonce),
     };
   }
 
   const parsedState = await verifyLiffOAuthState(stateParam, stateSecret);
   if (!parsedState) {
-    return { kind: 'html', html: errorPage('Invalid or expired login state') };
+    return { kind: 'html', html: errorPage('Invalid or expired login state', cspNonce) };
   }
 
   const {
@@ -104,7 +105,7 @@ export async function runLiffOAuthCallback(
     if (!tokenRes.ok) {
       const errText = await tokenRes.text();
       console.error('Token exchange failed:', errText);
-      return { kind: 'html', html: errorPage('Token exchange failed') };
+      return { kind: 'html', html: errorPage('Token exchange failed', cspNonce) };
     }
 
     const tokens = await tokenRes.json<{
@@ -123,7 +124,7 @@ export async function runLiffOAuthCallback(
     });
 
     if (!verifyRes.ok) {
-      return { kind: 'html', html: errorPage('ID token verification failed') };
+      return { kind: 'html', html: errorPage('ID token verification failed', cspNonce) };
     }
 
     const verified = await verifyRes.json<{
@@ -311,9 +312,9 @@ export async function runLiffOAuthCallback(
       }
     }
 
-    return { kind: 'html', html: completionPage(displayName, pictureUrl, ref) };
+    return { kind: 'html', html: completionPage(displayName, pictureUrl, ref, cspNonce) };
   } catch (err) {
     console.error('Auth callback error:', err);
-    return { kind: 'html', html: errorPage('Internal error') };
+    return { kind: 'html', html: errorPage('Internal error', cspNonce) };
   }
 }
