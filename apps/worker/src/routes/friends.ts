@@ -24,7 +24,12 @@ import {
   jsonBodyReadErrorResponse,
   readJsonBodyWithLimit,
 } from '../services/request-body.js';
+import {
+  deepEscapeHtmlStringLeaves,
+  escapeHtmlTextForJsonApi,
+} from '../services/api-json-sanitizer.js';
 import { mergeFriendMetadataPatch } from '../services/friend-metadata-merge.js';
+import { sanitizeLineProfilePictureUrlForHtml } from '../services/safe-line-picture-url.js';
 import { clampListLimit, clampOffset } from '../services/query-limits.js';
 import {
   resolveLineAccountScopeForRequest,
@@ -63,16 +68,20 @@ const FRIEND_METADATA_PATCH_LIMIT_BYTES = 64 * 1024;
 
 /** Convert a D1 snake_case Friend row to the shared camelCase shape */
 function serializeFriend(row: DbFriend) {
+  const metaRaw = tryParseJsonRecord(row.metadata || '{}') ?? {};
+  const refRaw = (row as unknown as Record<string, unknown>).ref_code;
+  const refCode =
+    typeof refRaw === 'string' && refRaw.length > 0 ? escapeHtmlTextForJsonApi(refRaw) : null;
   return {
     id: row.id,
     lineUserId: row.line_user_id,
-    displayName: row.display_name,
-    pictureUrl: row.picture_url,
-    statusMessage: row.status_message,
+    displayName: row.display_name ? escapeHtmlTextForJsonApi(row.display_name) : null,
+    pictureUrl: sanitizeLineProfilePictureUrlForHtml(row.picture_url),
+    statusMessage: row.status_message ? escapeHtmlTextForJsonApi(row.status_message) : null,
     isFollowing: Boolean(row.is_following),
     lineAccountId: row.line_account_id,
-    metadata: tryParseJsonRecord(row.metadata || '{}') ?? {},
-    refCode: (row as unknown as Record<string, unknown>).ref_code as string | null,
+    metadata: deepEscapeHtmlStringLeaves(metaRaw) as Record<string, unknown>,
+    refCode,
     userId: row.user_id,
     createdAt: row.created_at,
     updatedAt: row.updated_at,

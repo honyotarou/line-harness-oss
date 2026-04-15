@@ -1,3 +1,17 @@
+/** Drop prototype-pollution keys from user-controlled form payloads. */
+export function stripPrototypePollutionKeys(
+  data: Record<string, unknown>,
+): Record<string, unknown> {
+  const out: Record<string, unknown> = {};
+  for (const k of Object.keys(data)) {
+    if (k === '__proto__' || k === 'prototype' || k === 'constructor') {
+      continue;
+    }
+    out[k] = data[k];
+  }
+  return out;
+}
+
 /**
  * When merging form answers into friend.metadata, only allow keys that correspond
  * to defined form fields (prevents arbitrary metadata injection via crafted POST bodies).

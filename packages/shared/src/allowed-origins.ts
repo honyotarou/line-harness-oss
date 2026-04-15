@@ -7,6 +7,11 @@ export type AllowedOriginsEnv = {
   WORKER_URL?: string;
   LIFF_URL?: string;
   ALLOWED_ORIGINS?: string;
+  /**
+   * `1` / `true`: drop `*.vercel.app` entries from the computed allow-list unless the hostname
+   * exactly matches `WEB_URL` (mitigates unrelated preview/staging origins in `ALLOWED_ORIGINS`).
+   */
+  CORS_STRICT_VERCEL_ORIGINS?: string;
 };
 
 export function normalizeOrigin(value: string | undefined | null): string | null {
@@ -44,6 +49,45 @@ export function buildAllowedOrigins(env: AllowedOriginsEnv): string[] {
   }
 
   return [...origins];
+}
+
+function isTruthyEnvFlag(raw: string | undefined): boolean {
+  const v = raw?.trim().toLowerCase();
+  return v === '1' || v === 'true' || v === 'yes' || v === 'on';
+}
+
+/**
+ * When {@link AllowedOriginsEnv.CORS_STRICT_VERCEL_ORIGINS} is on, removes any `https://*.vercel.app`
+ * origin whose hostname does not match `WEB_URL`'s hostname (exact match only for Vercel hosts).
+ */
+export function filterStrictVercelPreviewOrigins(
+  origins: string[],
+  env: Pick<AllowedOriginsEnv, 'WEB_URL' | 'CORS_STRICT_VERCEL_ORIGINS'>,
+): string[] {
+  if (!isTruthyEnvFlag(env.CORS_STRICT_VERCEL_ORIGINS)) {
+    return origins;
+  }
+  const web = normalizeOrigin(env.WEB_URL);
+  if (!web) {
+    return origins;
+  }
+  let webHost: string;
+  try {
+    webHost = new URL(web).hostname.toLowerCase();
+  } catch {
+    return origins;
+  }
+  return origins.filter((o) => {
+    try {
+      const host = new URL(o).hostname.toLowerCase();
+      if (host.endsWith('.vercel.app') && host !== webHost) {
+        return false;
+      }
+      return true;
+    } catch {
+      return false;
+    }
+  });
 }
 
 export function isAllowedOrigin(

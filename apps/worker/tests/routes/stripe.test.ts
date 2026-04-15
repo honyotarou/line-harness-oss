@@ -178,7 +178,7 @@ describe('stripe routes', () => {
     expect(response.status).toBe(503);
     await expect(response.json()).resolves.toMatchObject({
       success: false,
-      error: expect.stringContaining('STRIPE_WEBHOOK_SECRET'),
+      error: 'Stripe webhook is not configured',
     });
     expect(dbMocks.createStripeEvent).not.toHaveBeenCalled();
   });

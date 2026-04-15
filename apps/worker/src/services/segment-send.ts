@@ -47,6 +47,7 @@ export async function processSegmentSend(
   lineClient: LineClient,
   broadcastId: string,
   condition: SegmentCondition,
+  options?: { skipMarkSending?: boolean },
 ): Promise<Broadcast> {
   const broadcast = await getBroadcastById(db, broadcastId);
   if (!broadcast) {
@@ -71,8 +72,9 @@ export async function processSegmentSend(
     return broadcast;
   }
 
-  // Mark as sending only after the delivery slot is reserved.
-  await updateBroadcastStatus(db, broadcastId, 'sending');
+  if (!options?.skipMarkSending) {
+    await updateBroadcastStatus(db, broadcastId, 'sending');
+  }
 
   const message = buildMessageFromStoredContent(broadcast.message_type, broadcast.message_content, {
     flexAltFallback: 'Message',

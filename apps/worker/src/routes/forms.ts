@@ -32,7 +32,14 @@ import {
   readJsonBodyWithLimit,
 } from '../services/request-body.js';
 import { enforceRateLimit } from '../services/request-rate-limit.js';
-import { pickFormFieldValuesForMetadataMerge } from '../services/form-metadata-filter.js';
+import {
+  deepEscapeHtmlStringLeaves,
+  escapeHtmlTextForJsonApi,
+} from '../services/api-json-sanitizer.js';
+import {
+  pickFormFieldValuesForMetadataMerge,
+  stripPrototypePollutionKeys,
+} from '../services/form-metadata-filter.js';
 import { tryParseJsonArray, tryParseJsonRecord } from '../services/safe-json.js';
 
 const forms = new Hono<Env>();
@@ -49,11 +56,12 @@ export function resolveFormSubmitFlexFooterText(env: { FORM_SUBMIT_FLEX_FOOTER?:
 }
 
 function serializeForm(row: DbForm) {
+  const fieldsRaw = tryParseJsonArray(row.fields || '[]');
   return {
     id: row.id,
-    name: row.name,
-    description: row.description,
-    fields: tryParseJsonArray(row.fields || '[]'),
+    name: escapeHtmlTextForJsonApi(row.name),
+    description: row.description ? escapeHtmlTextForJsonApi(row.description) : null,
+    fields: deepEscapeHtmlStringLeaves(fieldsRaw),
     onSubmitTagId: row.on_submit_tag_id,
     onSubmitScenarioId: row.on_submit_scenario_id,
     saveToMetadata: Boolean(row.save_to_metadata),
@@ -66,11 +74,12 @@ function serializeForm(row: DbForm) {
 
 /** LIFF-facing shape: no internal automation IDs or metrics. */
 function serializeFormPublic(row: DbForm) {
+  const fieldsRaw = tryParseJsonArray(row.fields || '[]');
   return {
     id: row.id,
-    name: row.name,
-    description: row.description,
-    fields: tryParseJsonArray(row.fields || '[]'),
+    name: escapeHtmlTextForJsonApi(row.name),
+    description: row.description ? escapeHtmlTextForJsonApi(row.description) : null,
+    fields: deepEscapeHtmlStringLeaves(fieldsRaw),
     isActive: Boolean(row.is_active),
   };
 }
@@ -92,11 +101,12 @@ async function resolveFormDefinitionReader(c: Context<Env>): Promise<'admin' | '
 }
 
 function serializeSubmission(row: DbFormSubmission) {
+  const dataRaw = tryParseJsonRecord(row.data || '{}') ?? {};
   return {
     id: row.id,
     formId: row.form_id,
     friendId: row.friend_id,
-    data: tryParseJsonRecord(row.data || '{}') ?? {},
+    data: deepEscapeHtmlStringLeaves(dataRaw) as Record<string, unknown>,
     createdAt: row.created_at,
   };
 }
@@ -271,7 +281,9 @@ forms.post('/api/forms/:id/submit', async (c) => {
       return c.json({ success: false, error: 'This form is no longer accepting responses' }, 400);
     }
 
-    const submissionData = body.data ?? {};
+    const submissionData = stripPrototypePollutionKeys(
+      (body.data ?? {}) as Record<string, unknown>,
+    );
 
     if (!body.idToken) {
       return c.json({ success: false, error: 'idToken is required' }, 401);

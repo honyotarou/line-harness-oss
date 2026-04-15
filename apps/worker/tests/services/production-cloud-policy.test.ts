@@ -117,4 +117,17 @@ describe('production-cloud-policy', () => {
     });
     expect(w.some((x) => x.includes('ALLOW_LEGACY_API_KEY_SESSION_SIGNER'))).toBe(true);
   });
+
+  it('warns when permissive tracking or LIFF OAuth fallback flags are on', () => {
+    const w = getProductionCloudSurfaceWarnings({
+      API_KEY: 'x'.repeat(40),
+      WORKER_URL: 'https://api.example.com',
+      ALLOW_TRACKING_LINK_API_KEY_FALLBACK: '1',
+      ALLOW_LIFF_OAUTH_API_KEY_FALLBACK: '1',
+      ALLOW_BROADCAST_WITHOUT_SEND_SECRET: '1',
+    });
+    expect(w.some((x) => x.includes('ALLOW_TRACKING_LINK_API_KEY_FALLBACK'))).toBe(true);
+    expect(w.some((x) => x.includes('ALLOW_LIFF_OAUTH_API_KEY_FALLBACK'))).toBe(true);
+    expect(w.some((x) => x.includes('ALLOW_BROADCAST_WITHOUT_SEND_SECRET'))).toBe(true);
+  });
 });

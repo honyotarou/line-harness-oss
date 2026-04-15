@@ -158,6 +158,21 @@ export interface BroadcastStatusCounts {
   successCount?: number;
 }
 
+/**
+ * Atomically moves a broadcast from `draft` / `scheduled` to `sending` to close TOCTOU races on send.
+ * Returns true when this caller won the transition (exactly one row updated).
+ */
+export async function claimBroadcastForSending(db: D1Database, id: string): Promise<boolean> {
+  const now = jstNow();
+  const result = await db
+    .prepare(
+      `UPDATE broadcasts SET status = 'sending', updated_at = ? WHERE id = ? AND status IN ('draft', 'scheduled')`,
+    )
+    .bind(now, id)
+    .run();
+  return (result.meta?.changes ?? 0) > 0;
+}
+
 export async function updateBroadcastStatus(
   db: D1Database,
   id: string,

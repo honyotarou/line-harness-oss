@@ -2,6 +2,7 @@ import type { Context } from 'hono';
 import { getCookie, setCookie } from 'hono/cookie';
 import { isAdminSessionJtiRevoked } from '@line-crm/db';
 import { isNonLocalHttpsWorkerUrl } from './production-cloud-policy.js';
+import { timingSafeEqualUtf8 } from './timing-safe-equal.js';
 
 const DEFAULT_SESSION_TTL_SECONDS = 60 * 60 * 12;
 /** Upper bound on `exp - iat` at verification (signer compromise / forged long-lived tokens). Small slack for clock skew. */
@@ -142,15 +143,6 @@ async function signPayload(secret: string, payload: string): Promise<string> {
   return btoa(binary).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/g, '');
 }
 
-function constantTimeEqual(left: string, right: string): boolean {
-  if (left.length !== right.length) return false;
-  let diff = 0;
-  for (let i = 0; i < left.length; i++) {
-    diff |= left.charCodeAt(i) ^ right.charCodeAt(i);
-  }
-  return diff === 0;
-}
-
 export async function issueAdminSessionToken(
   secret: string,
   options?: {
@@ -185,7 +177,7 @@ export async function verifyAdminSessionToken(
   }
 
   const expectedSignature = await signPayload(secret, encodedPayload);
-  if (!constantTimeEqual(expectedSignature, providedSignature)) {
+  if (!(await timingSafeEqualUtf8(expectedSignature, providedSignature))) {
     return null;
   }
 

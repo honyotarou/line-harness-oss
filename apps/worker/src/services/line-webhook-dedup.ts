@@ -1,6 +1,6 @@
 /**
  * Mitigate LINE webhook replay: same `webhookEventId` (incl. LINE redelivery) is processed once.
- * Payloads without `webhookEventId` are still processed (legacy / tests).
+ * When `webhookEventId` is absent, a stable synthetic key is derived (message id, replyToken, etc.).
  */
 
 export const LINE_WEBHOOK_EVENT_DEDUP_RETENTION_MS = 14 * 24 * 60 * 60 * 1000;
@@ -12,6 +12,38 @@ function parseWebhookEventId(event: { webhookEventId?: unknown }): string | null
   if (typeof raw !== 'string') return null;
   const t = raw.trim();
   return t.length > 0 ? t : null;
+}
+
+/**
+ * Stable storage key for `line_webhook_processed_events.webhook_event_id` (TEXT PRIMARY KEY).
+ * Prefer LINE's `webhookEventId`; otherwise derive from message id / replyToken / timestamp.
+ */
+export function deriveLineWebhookDedupStorageKey(event: Record<string, unknown>): string | null {
+  const wid = parseWebhookEventId(event);
+  if (wid) {
+    return wid;
+  }
+
+  const src = event.source as Record<string, unknown> | undefined;
+  const userId = typeof src?.userId === 'string' ? src.userId : null;
+  const type = typeof event.type === 'string' ? event.type : null;
+
+  const message = event.message as Record<string, unknown> | undefined;
+  if (type === 'message' && userId && message && typeof message.id === 'string' && message.id) {
+    return `line:msg:${userId}:${message.id}`;
+  }
+
+  const replyToken = typeof event.replyToken === 'string' ? event.replyToken : null;
+  if (replyToken) {
+    return `line:rt:${replyToken}`;
+  }
+
+  const ts = typeof event.timestamp === 'number' ? event.timestamp : null;
+  if (userId && type && ts !== null) {
+    return `line:ts:${type}:${userId}:${ts}`;
+  }
+
+  return null;
 }
 
 async function pruneOldDedupRows(db: D1Database): Promise<void> {
@@ -27,10 +59,10 @@ async function pruneOldDedupRows(db: D1Database): Promise<void> {
  */
 export async function tryConsumeLineWebhookEvent(
   db: D1Database,
-  event: { webhookEventId?: unknown },
+  event: Record<string, unknown>,
 ): Promise<boolean> {
-  const wid = parseWebhookEventId(event);
-  if (!wid) {
+  const key = deriveLineWebhookDedupStorageKey(event);
+  if (!key) {
     return true;
   }
 
@@ -40,7 +72,7 @@ export async function tryConsumeLineWebhookEvent(
       `INSERT OR IGNORE INTO line_webhook_processed_events (webhook_event_id, received_at_ms)
        VALUES (?, ?)`,
     )
-    .bind(wid, receivedAtMs)
+    .bind(key, receivedAtMs)
     .run()) as D1RunResult;
 
   const changes = result.meta?.changes ?? 0;

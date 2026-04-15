@@ -41,7 +41,10 @@ export async function handleLineWebhookEvent(
   bindings?: Env['Bindings'],
 ): Promise<void> {
   const lineAccOpts = bindings ? lineAccountDbOptions(bindings) : undefined;
-  const shouldRun = await tryConsumeLineWebhookEvent(db, event);
+  const shouldRun = await tryConsumeLineWebhookEvent(
+    db,
+    event as unknown as Record<string, unknown>,
+  );
   if (!shouldRun) {
     return;
   }

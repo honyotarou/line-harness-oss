@@ -78,6 +78,38 @@ describe('tracked link routes', () => {
     expect(dbMocks.enrollFriendInScenario).not.toHaveBeenCalled();
   });
 
+  it('returns 400 when original_url is not https (open-redirect hardening)', async () => {
+    dbMocks.getTrackedLinkById.mockResolvedValue({
+      id: 'link-http',
+      name: 'Bad',
+      original_url: 'http://insecure.example/offer',
+      tag_id: null,
+      scenario_id: null,
+      is_active: 1,
+      click_count: 0,
+      created_at: '2026-03-26T10:00:00+09:00',
+      updated_at: '2026-03-26T10:00:00+09:00',
+    });
+    dbMocks.recordLinkClick.mockResolvedValue({
+      id: 'click-1',
+      tracked_link_id: 'link-http',
+      friend_id: null,
+      clicked_at: '2026-03-26T10:00:00+09:00',
+    });
+
+    const { trackedLinks } = await import('../../src/routes/tracked-links.js');
+    const app = new Hono();
+    app.route('/', trackedLinks);
+
+    const response = await app.fetch(new Request('http://localhost/t/link-http'), {
+      DB: {} as D1Database,
+      API_KEY,
+    } as never);
+
+    expect(response.status).toBe(400);
+    expect(dbMocks.recordLinkClick).not.toHaveBeenCalled();
+  });
+
   it('rejects f= token bound to a different linkId (no tag/scenario; anonymous click only)', async () => {
     dbMocks.getTrackedLinkById.mockResolvedValue({
       id: 'link-2',
@@ -343,7 +375,7 @@ describe('tracked link routes', () => {
     });
   });
 
-  it('GET /t/:id returns 404 when stored original_url is not a safe https target', async () => {
+  it('GET /t/:id returns 400 when stored original_url is not a safe https target', async () => {
     dbMocks.getTrackedLinkById.mockResolvedValue({
       id: 'link-1',
       name: 'Legacy',
@@ -365,7 +397,7 @@ describe('tracked link routes', () => {
       API_KEY,
     } as never);
 
-    expect(response.status).toBe(404);
+    expect(response.status).toBe(400);
     expect(dbMocks.recordLinkClick).not.toHaveBeenCalled();
   });
 

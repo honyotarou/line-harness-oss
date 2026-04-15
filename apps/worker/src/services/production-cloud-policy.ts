@@ -19,6 +19,9 @@ export type ProductionCloudPolicyEnv = {
   ADMIN_SESSION_SECRET?: string;
   ALLOW_LEGACY_API_KEY_SESSION_SIGNER?: string;
   BROADCAST_SEND_SECRET?: string;
+  ALLOW_BROADCAST_WITHOUT_SEND_SECRET?: string;
+  ALLOW_TRACKING_LINK_API_KEY_FALLBACK?: string;
+  ALLOW_LIFF_OAUTH_API_KEY_FALLBACK?: string;
   LINE_ACCOUNT_SECRETS_WRITE_SECRET?: string;
   MULTI_LINE_ACCOUNT_QUERY_REQUIRES_LINE_ACCOUNT_ID?: string;
 };
@@ -99,6 +102,21 @@ export function getProductionCloudSurfaceWarnings(env: ProductionCloudPolicyEnv)
     if (!env.BROADCAST_SEND_SECRET?.trim()) {
       warnings.push(
         'BROADCAST_SEND_SECRET is unset; set a secret and require X-Broadcast-Send-Secret on /api/broadcasts/:id/send to add a second factor for mass sends.',
+      );
+    }
+    if (isTruthyEnvFlag(env.ALLOW_BROADCAST_WITHOUT_SEND_SECRET)) {
+      warnings.push(
+        'ALLOW_BROADCAST_WITHOUT_SEND_SECRET is on: mass-send works without BROADCAST_SEND_SECRET on HTTPS; remove after configuring the send secret.',
+      );
+    }
+    if (isTruthyEnvFlag(env.ALLOW_TRACKING_LINK_API_KEY_FALLBACK)) {
+      warnings.push(
+        'ALLOW_TRACKING_LINK_API_KEY_FALLBACK is on: tracked-link ?f= tokens may use API_KEY when TRACKING_LINK_SECRET is unset; prefer a dedicated TRACKING_LINK_SECRET.',
+      );
+    }
+    if (isTruthyEnvFlag(env.ALLOW_LIFF_OAUTH_API_KEY_FALLBACK)) {
+      warnings.push(
+        'ALLOW_LIFF_OAUTH_API_KEY_FALLBACK is on: LIFF OAuth state may be signed with API_KEY; use LIFF_STATE_SECRET in production.',
       );
     }
     if (!env.LINE_ACCOUNT_SECRETS_WRITE_SECRET?.trim()) {

@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
   issueTrackedLinkFriendToken,
+  trackingLinkHmacSecret,
   verifyTrackedLinkFriendToken,
 } from '../../src/services/tracking-friend-token.js';
 
@@ -56,5 +57,21 @@ describe('tracking-friend-token', () => {
   it('verify returns null for garbage input', async () => {
     expect(await verifyTrackedLinkFriendToken(SECRET, 'link-a', 'not-a-token')).toBeNull();
     expect(await verifyTrackedLinkFriendToken(SECRET, 'link-a', '')).toBeNull();
+  });
+
+  it('refuses API_KEY fallback on HTTPS Worker URL unless explicitly allowed', () => {
+    expect(
+      trackingLinkHmacSecret({
+        API_KEY: 'k',
+        WORKER_URL: 'https://x.workers.dev',
+      }),
+    ).toBeNull();
+    expect(
+      trackingLinkHmacSecret({
+        API_KEY: 'k',
+        WORKER_URL: 'https://x.workers.dev',
+        ALLOW_TRACKING_LINK_API_KEY_FALLBACK: '1',
+      }),
+    ).toBe('k');
   });
 });

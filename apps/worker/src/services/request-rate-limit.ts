@@ -239,6 +239,9 @@ export async function checkRateLimitWithStorage(
 /** Brute-force sensitive paths must not rely on per-isolate memory (see pentest / rate-limit note). */
 const RATE_LIMIT_BUCKETS_REQUIRING_D1 = new Set(['auth-login', 'auth-session']);
 
+/** Do not expose remaining budget in headers for auth endpoints (information leak). */
+const RATE_LIMIT_OMIT_HEADER_BUCKETS = new Set(['auth-login', 'auth-session']);
+
 export type EnforceRateLimitOptions = Omit<RateLimitStorageOptions, 'key' | 'now'> & {
   /** When set, replaces client-IP keying (e.g. per Bearer session for mass-send endpoints). */
   resolveKey?: (req: Request) => Promise<string> | string;
@@ -284,9 +287,11 @@ export async function enforceRateLimit(
     key,
   });
 
-  c.header('X-RateLimit-Limit', String(options.limit));
-  c.header('X-RateLimit-Remaining', String(decision.remaining));
-  c.header('X-RateLimit-Reset', String(Math.ceil(decision.resetAt / 1_000)));
+  if (!RATE_LIMIT_OMIT_HEADER_BUCKETS.has(options.bucket)) {
+    c.header('X-RateLimit-Limit', String(options.limit));
+    c.header('X-RateLimit-Remaining', String(decision.remaining));
+    c.header('X-RateLimit-Reset', String(Math.ceil(decision.resetAt / 1_000)));
+  }
 
   if (decision.allowed) {
     return null;

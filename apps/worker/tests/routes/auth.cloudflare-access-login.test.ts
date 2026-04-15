@@ -53,6 +53,7 @@ function cfAccessEnv(overrides: Partial<Env['Bindings']> = {}): Env['Bindings'] 
     LINE_LOGIN_CHANNEL_SECRET: 'x',
     WORKER_URL: 'https://example.workers.dev',
     ADMIN_SESSION_SECRET: 'cf-access-test-session-secret',
+    INCLUDE_SESSION_TOKEN_IN_LOGIN_BODY: '1',
     REQUIRE_CLOUDFLARE_ACCESS_JWT: '1',
     CLOUDFLARE_ACCESS_TEAM_DOMAIN: teamDomain,
     ...overrides,

@@ -22,13 +22,34 @@ import {
   readJsonBodyWithLimit,
 } from '../services/request-body.js';
 import { clampIntInRange } from '../services/query-limits.js';
+import { enforceRateLimit } from '../services/request-rate-limit.js';
 
 const calendar = new Hono<Env>();
+const CALENDAR_API_RATE_LIMIT = { limit: 120, windowMs: 60_000 };
+
+calendar.use('*', async (c, next) => {
+  const limited = await enforceRateLimit(c, {
+    bucket: 'google-calendar-integration',
+    db: c.env.DB,
+    limit: CALENDAR_API_RATE_LIMIT.limit,
+    windowMs: CALENDAR_API_RATE_LIMIT.windowMs,
+  });
+  if (limited) {
+    return limited;
+  }
+  return next();
+});
+
+function isTruthyEnvFlag(raw: string | undefined): boolean {
+  const v = raw?.trim().toLowerCase();
+  return v === '1' || v === 'true' || v === 'yes' || v === 'on';
+}
 
 function calendarDeps(c: { env: Env['Bindings'] }) {
   return {
     db: c.env.DB,
     calendarTokenEncryptionSecret: c.env.CALENDAR_TOKEN_ENCRYPTION_SECRET,
+    requireCalendarTokenEncryption: isTruthyEnvFlag(c.env.REQUIRE_CALENDAR_TOKEN_ENCRYPTION),
   };
 }
 

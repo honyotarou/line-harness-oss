@@ -4,10 +4,12 @@ import { resetRequestRateLimits } from '../../src/services/request-rate-limit.js
 
 const dbMocks = vi.hoisted(() => ({
   getBroadcastById: vi.fn(),
+  claimBroadcastForSending: vi.fn(),
 }));
 
 vi.mock('@line-crm/db', () => ({
   getBroadcastById: dbMocks.getBroadcastById,
+  claimBroadcastForSending: dbMocks.claimBroadcastForSending,
 }));
 
 vi.mock('../../src/services/broadcast.js', () => ({
@@ -42,6 +44,8 @@ describe('broadcast send rate limit', () => {
     resetRequestRateLimits();
     vi.resetModules();
     dbMocks.getBroadcastById.mockReset();
+    dbMocks.claimBroadcastForSending.mockReset();
+    dbMocks.claimBroadcastForSending.mockResolvedValue(true);
     let getCalls = 0;
     dbMocks.getBroadcastById.mockImplementation(async () => {
       getCalls += 1;

@@ -1,5 +1,8 @@
 import { describe, expect, it } from 'vitest';
-import { pickFormFieldValuesForMetadataMerge } from '../../src/services/form-metadata-filter.js';
+import {
+  pickFormFieldValuesForMetadataMerge,
+  stripPrototypePollutionKeys,
+} from '../../src/services/form-metadata-filter.js';
 
 describe('pickFormFieldValuesForMetadataMerge', () => {
   it('keeps only keys that match form field names', () => {
@@ -23,5 +26,13 @@ describe('pickFormFieldValuesForMetadataMerge', () => {
     expect(
       pickFormFieldValuesForMetadataMerge({ evil: 1 }, [{ name: 'q', label: 'Q', type: 'text' }]),
     ).toEqual({});
+  });
+});
+
+describe('stripPrototypePollutionKeys', () => {
+  it('drops dangerous keys from user payloads', () => {
+    const data: Record<string, unknown> = { name: 'ok', prototype: 1, constructor: 'x' };
+    data['__proto__'] = { polluted: true };
+    expect(stripPrototypePollutionKeys(data)).toEqual({ name: 'ok' });
   });
 });

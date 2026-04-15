@@ -24,6 +24,10 @@ export async function fetchHttpsUrlAfterDnsAssertion(
   if (!check2.ok) {
     return check2;
   }
+  const check3 = await assertHttpsOutboundUrlResolvedSafe(urlString, fetchFn);
+  if (!check3.ok) {
+    return check3;
+  }
 
   const response = await fetchFn(urlString, {
     ...init,

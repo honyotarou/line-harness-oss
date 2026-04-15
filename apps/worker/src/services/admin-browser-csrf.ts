@@ -1,5 +1,6 @@
 import { ADMIN_BROWSER_CLIENT_HEADER, ADMIN_BROWSER_CLIENT_HEADER_VALUE } from '@line-crm/shared';
 import { parseBearerAuthorization } from './bearer-authorization.js';
+import { timingSafeEqualUtf8 } from './timing-safe-equal.js';
 
 export const adminBrowserClientHeaderName = ADMIN_BROWSER_CLIENT_HEADER;
 export const adminBrowserClientHeaderValue = ADMIN_BROWSER_CLIENT_HEADER_VALUE;
@@ -31,9 +32,16 @@ export function shouldRequireAdminBrowserClientHeader(
   return true;
 }
 
-export function hasValidAdminBrowserClientHeader(req: {
-  header: (n: string) => string | undefined;
-}): boolean {
-  const v = req.header(adminBrowserClientHeaderName)?.trim();
+export async function hasValidAdminBrowserClientHeader(
+  req: {
+    header: (n: string) => string | undefined;
+  },
+  env?: { ADMIN_BROWSER_CLIENT_TOKEN?: string },
+): Promise<boolean> {
+  const v = req.header(adminBrowserClientHeaderName)?.trim() ?? '';
+  const expected = env?.ADMIN_BROWSER_CLIENT_TOKEN?.trim();
+  if (expected && expected.length > 0) {
+    return timingSafeEqualUtf8(v, expected);
+  }
   return v === adminBrowserClientHeaderValue;
 }

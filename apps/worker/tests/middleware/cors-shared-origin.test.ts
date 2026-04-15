@@ -87,4 +87,48 @@ describe('shared-origin CORS hardening', () => {
     expect(response.headers.get('Access-Control-Allow-Origin')).toBe('https://admin.example.com');
     expect(response.headers.get('Access-Control-Allow-Credentials')).toBe('true');
   });
+
+  it('with CORS_STRICT_VERCEL_ORIGINS, denies unrelated *.vercel.app that were listed in ALLOWED_ORIGINS', async () => {
+    const response = await worker.fetch(
+      new Request('https://worker.example.com/api/tags', {
+        method: 'OPTIONS',
+        headers: {
+          Origin: 'https://unrelated-preview.vercel.app',
+          'Access-Control-Request-Method': 'GET',
+        },
+      }),
+      env({
+        WEB_URL: 'https://my-staging.vercel.app',
+        ALLOWED_ORIGINS: 'https://unrelated-preview.vercel.app',
+        CORS_STRICT_VERCEL_ORIGINS: '1',
+      }),
+      {} as ExecutionContext,
+    );
+
+    expect(response.status).toBe(403);
+    expect(response.headers.get('Access-Control-Allow-Origin')).toBeNull();
+  });
+
+  it('with CORS_STRICT_VERCEL_ORIGINS, still allows the WEB_URL *.vercel.app host', async () => {
+    const response = await worker.fetch(
+      new Request('https://worker.example.com/api/tags', {
+        method: 'OPTIONS',
+        headers: {
+          Origin: 'https://my-staging.vercel.app',
+          'Access-Control-Request-Method': 'GET',
+        },
+      }),
+      env({
+        WEB_URL: 'https://my-staging.vercel.app',
+        ALLOWED_ORIGINS: 'https://unrelated-preview.vercel.app',
+        CORS_STRICT_VERCEL_ORIGINS: '1',
+      }),
+      {} as ExecutionContext,
+    );
+
+    expect(response.status).toBe(204);
+    expect(response.headers.get('Access-Control-Allow-Origin')).toBe(
+      'https://my-staging.vercel.app',
+    );
+  });
 });

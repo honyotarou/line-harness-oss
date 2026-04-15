@@ -29,14 +29,23 @@ export default function LoginPage() {
 
     try {
       const res = await api.auth.login(accessLogin ? undefined : apiKey);
-      if (res.success && res.data?.sessionToken) {
+      if (!res.success || !res.data?.expiresAt) {
+        setError(accessLogin ? 'セッションの開始に失敗しました' : 'APIキーが正しくありません');
+        return;
+      }
+      const sess = await api.auth.session();
+      if (sess.success && sess.data?.authenticated) {
+        window.location.assign('/');
+        return;
+      }
+      if (res.data.sessionToken) {
         setAdminSessionToken(res.data.sessionToken);
         window.location.assign('/');
-      } else if (res.success) {
-        window.location.assign('/');
-      } else {
-        setError(accessLogin ? 'セッションの開始に失敗しました' : 'APIキーが正しくありません');
+        return;
       }
+      setError(
+        'セッションを開始できませんでした。クロスオリジンでは Worker に INCLUDE_SESSION_TOKEN_IN_LOGIN_BODY=1 を設定するか、同一サイトで Cookie を使える構成にしてください。',
+      );
     } catch (err) {
       const fromBody = errorMessageFromApi(err);
       // Worker returns `{ error: 'Unauthorized' }` for bad API key; keep a friendly JP message for admins.

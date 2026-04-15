@@ -3,6 +3,9 @@
  * so anonymous clients cannot trigger tag/scenario side effects for arbitrary friends.
  */
 
+import { isNonLocalHttpsWorkerUrl } from './production-cloud-policy.js';
+import { timingSafeEqualUtf8 } from './timing-safe-equal.js';
+
 /** Default validity for signed tracking URLs (personalized links). */
 export const DEFAULT_TRACKED_LINK_TTL_SECONDS = 90 * 24 * 60 * 60;
 
@@ -51,15 +54,6 @@ async function signPayload(secret: string, payload: string): Promise<string> {
   return btoa(binary).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/g, '');
 }
 
-function constantTimeEqual(left: string, right: string): boolean {
-  if (left.length !== right.length) return false;
-  let diff = 0;
-  for (let i = 0; i < left.length; i++) {
-    diff |= left.charCodeAt(i) ^ right.charCodeAt(i);
-  }
-  return diff === 0;
-}
-
 function isTruthyEnvFlag(raw: string | undefined): boolean {
   const v = raw?.trim().toLowerCase();
   return v === '1' || v === 'true' || v === 'yes' || v === 'on';
@@ -73,12 +67,19 @@ export function trackingLinkHmacSecret(env: {
   TRACKING_LINK_SECRET?: string;
   API_KEY: string;
   REQUIRE_TRACKING_LINK_SECRET?: string;
+  WORKER_URL?: string;
+  /** `1`: allow `API_KEY` fallback for `?f=` signing on non-local HTTPS (insecure; dev migration only). */
+  ALLOW_TRACKING_LINK_API_KEY_FALLBACK?: string;
 }): string | null {
   const dedicated = env.TRACKING_LINK_SECRET?.trim();
   if (dedicated) {
     return dedicated;
   }
   if (isTruthyEnvFlag(env.REQUIRE_TRACKING_LINK_SECRET)) {
+    return null;
+  }
+  const deployedHttps = isNonLocalHttpsWorkerUrl(env.WORKER_URL ?? '');
+  if (deployedHttps && !isTruthyEnvFlag(env.ALLOW_TRACKING_LINK_API_KEY_FALLBACK)) {
     return null;
   }
   return env.API_KEY;
@@ -89,6 +90,8 @@ export function trackingLinkSigningSecret(env: {
   TRACKING_LINK_SECRET?: string;
   API_KEY: string;
   REQUIRE_TRACKING_LINK_SECRET?: string;
+  WORKER_URL?: string;
+  ALLOW_TRACKING_LINK_API_KEY_FALLBACK?: string;
 }): string {
   return trackingLinkHmacSecret(env) ?? env.API_KEY;
 }
@@ -132,7 +135,7 @@ export async function verifyTrackedLinkFriendToken(
   }
 
   const expectedSignature = await signPayload(secret, encodedPayload);
-  if (!constantTimeEqual(expectedSignature, providedSignature)) {
+  if (!(await timingSafeEqualUtf8(expectedSignature, providedSignature))) {
     return null;
   }
 

@@ -45,6 +45,14 @@ function allowLegacyApiKeyBearerSession(env: {
   return v === '1' || v === 'true' || v === 'yes' || v === 'on';
 }
 
+/** When true, login JSON includes `sessionToken` for cross-origin admins that cannot use HttpOnly cookies (Bearer). Default off — prefer cookie + `/api/auth/session`. */
+function includeSessionTokenInLoginBody(env: {
+  INCLUDE_SESSION_TOKEN_IN_LOGIN_BODY?: string;
+}): boolean {
+  const v = env.INCLUDE_SESSION_TOKEN_IN_LOGIN_BODY?.trim().toLowerCase();
+  return v === '1' || v === 'true' || v === 'yes' || v === 'on';
+}
+
 function getBearerToken(header: string | undefined): string | null {
   return parseBearerAuthorization(header);
 }
@@ -101,7 +109,7 @@ authRoutes.post('/api/auth/login', async (c) => {
       }
     } else {
       const apiKey = typeof body.apiKey === 'string' ? body.apiKey : '';
-      if (!apiKey || !timingSafeEqualUtf8(apiKey, c.env.API_KEY)) {
+      if (!apiKey || !(await timingSafeEqualUtf8(apiKey, c.env.API_KEY))) {
         return c.json({ success: false, error: 'Unauthorized' }, 401);
       }
     }
@@ -138,14 +146,22 @@ authRoutes.post('/api/auth/login', async (c) => {
     const cfPayload = isCloudflareAccessEnforced(c.env) ? c.get('cfAccessJwtPayload') : undefined;
     const emailFromAccess = getValidatedAccessEmailFromPayload(cfPayload);
 
+    const data: {
+      expiresAt: string;
+      sessionToken?: string;
+      email?: string;
+    } = {
+      expiresAt,
+      ...(emailFromAccess ? { email: emailFromAccess } : {}),
+    };
+    if (includeSessionTokenInLoginBody(c.env)) {
+      /** Same value as HttpOnly cookie; enable INCLUDE_SESSION_TOKEN_IN_LOGIN_BODY when the admin UI cannot rely on credentialed cookies alone. */
+      data.sessionToken = token;
+    }
+
     return c.json({
       success: true,
-      data: {
-        expiresAt,
-        /** Same value as HttpOnly cookie; use when the admin UI and API are on different sites (cross-origin cookies blocked). */
-        sessionToken: token,
-        ...(emailFromAccess ? { email: emailFromAccess } : {}),
-      },
+      data,
     });
   } catch (err) {
     if (err instanceof BodyTooLargeError) {
@@ -176,7 +192,8 @@ authRoutes.get('/api/auth/session', async (c) => {
       return c.json({ success: false, error: 'Unauthorized' }, 401);
     }
 
-    if (token === c.env.API_KEY) {
+    const apiKey = c.env.API_KEY ?? '';
+    if (await timingSafeEqualUtf8(token, apiKey)) {
       if (!allowLegacyApiKeyBearerSession(c.env)) {
         return c.json({ success: false, error: 'Unauthorized' }, 401);
       }
@@ -204,7 +221,7 @@ authRoutes.post('/api/auth/logout', async (c) => {
   const cookieTok = readAdminSessionCookie(c);
   if (
     shouldRequireAdminBrowserClientHeader(c.req.method, authz, cookieTok) &&
-    !hasValidAdminBrowserClientHeader(c.req)
+    !(await hasValidAdminBrowserClientHeader(c.req, c.env))
   ) {
     return c.json({ success: false, error: 'Forbidden' }, 403);
   }
