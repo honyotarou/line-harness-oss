@@ -18,6 +18,16 @@ describe('assertHttpsOutboundUrlResolvedSafe', () => {
     expect(fetchFn).not.toHaveBeenCalled();
   });
 
+  it('rejects IPv6-mapped IPv4 loopback hosts (::ffff:127.0.0.1)', async () => {
+    const fetchFn = vi.fn();
+    const { assertHttpsOutboundUrlResolvedSafe } = await import(
+      '../../src/services/outbound-url-resolve.js'
+    );
+    const r = await assertHttpsOutboundUrlResolvedSafe('https://[::ffff:127.0.0.1]/hook', fetchFn);
+    expect(r.ok).toBe(false);
+    expect(fetchFn).not.toHaveBeenCalled();
+  });
+
   it('rejects when sync URL policy fails', async () => {
     const fetchFn = vi.fn();
     const { assertHttpsOutboundUrlResolvedSafe } = await import(
