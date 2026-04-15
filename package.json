@@ -15,7 +15,7 @@
     "test:api": "bash scripts/api-integration.sh",
     "format": "biome format --write .",
     "format:check": "biome format .",
-    "audit:ci": "pnpm audit --audit-level=high",
+    "audit:ci": "node scripts/npm-bulk-audit-ci.mjs --audit-level=high",
     "check:encapsulation": "node scripts/check-encapsulation.mjs",
     "harness": "bash scripts/harness-check.sh",
     "harness:ci": "bash scripts/harness-ci-parity.sh",
@@ -56,6 +56,7 @@
     "@biomejs/biome": "^1.9.4",
     "@playwright/test": "^1.51.1",
     "lefthook": "^1.11.14",
+    "semver": "^7.7.2",
     "typescript": "^5.9.3"
   }
 }

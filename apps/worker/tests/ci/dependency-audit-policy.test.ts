@@ -6,11 +6,12 @@ import { describe, expect, it } from 'vitest';
 const repoRoot = join(dirname(fileURLToPath(import.meta.url)), '../../../..');
 
 describe('dependency audit policy', () => {
-  it('root package.json defines audit:ci using pnpm audit', () => {
+  it('root package.json defines audit:ci (npm bulk advisory; pnpm audit 410 — pnpm/pnpm#11265)', () => {
     const pkg = JSON.parse(readFileSync(join(repoRoot, 'package.json'), 'utf8')) as {
       scripts?: Record<string, string>;
     };
     expect(pkg.scripts?.['audit:ci']).toBeDefined();
-    expect(pkg.scripts?.['audit:ci']).toContain('pnpm audit');
+    expect(pkg.scripts?.['audit:ci']).toContain('npm-bulk-audit-ci.mjs');
+    expect(pkg.scripts?.['audit:ci']).toContain('--audit-level=high');
   });
 });
