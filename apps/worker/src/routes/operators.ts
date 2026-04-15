@@ -100,10 +100,12 @@ operators.put('/api/operators/:id', async (c) => {
   try {
     const scopePut = await resolveLineAccountScopeForRequest(c.env.DB, c);
     const id = c.req.param('id');
-    const body = await readJsonBodyWithLimit<Record<string, unknown>>(
-      c.req.raw,
-      DEFAULT_ADMIN_JSON_BODY_LIMIT_BYTES,
-    );
+    const body = {
+      ...(await readJsonBodyWithLimit<Record<string, unknown>>(
+        c.req.raw,
+        DEFAULT_ADMIN_JSON_BODY_LIMIT_BYTES,
+      )),
+    } as Record<string, unknown>;
     const existing = await getOperatorById(c.env.DB, id);
     if (!existing) return c.json({ success: false, error: 'Not found' }, 404);
     if (!resourceLineAccountVisibleInScope(scopePut, existing.line_account_id ?? null)) {

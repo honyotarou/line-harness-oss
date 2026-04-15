@@ -3,22 +3,22 @@ import { jstNow } from './utils.js';
 // Affiliates — Affiliate & Tracking System
 // =============================================================================
 
-export interface Affiliate {
+export type Affiliate = Readonly<{
   id: string;
   name: string;
   code: string;
   commission_rate: number;
   is_active: number;
   created_at: string;
-}
+}>;
 
-export interface AffiliateClick {
+export type AffiliateClick = Readonly<{
   id: string;
   affiliate_id: string;
   url: string | null;
   ip_address: string | null;
   created_at: string;
-}
+}>;
 
 // ── Affiliate CRUD ──────────────────────────────────────────────────────────
 
@@ -37,11 +37,11 @@ export async function getAffiliateByCode(db: D1Database, code: string): Promise<
   return db.prepare(`SELECT * FROM affiliates WHERE code = ?`).bind(code).first<Affiliate>();
 }
 
-export interface CreateAffiliateInput {
+export type CreateAffiliateInput = Readonly<{
   name: string;
   code: string;
   commissionRate?: number;
-}
+}>;
 
 export async function createAffiliate(
   db: D1Database,
@@ -128,7 +128,7 @@ export async function recordAffiliateClick(
 
 // ── Affiliate Report ────────────────────────────────────────────────────────
 
-export interface AffiliateReport {
+export type AffiliateReport = Readonly<{
   affiliateId: string;
   affiliateName: string;
   code: string;
@@ -136,7 +136,7 @@ export interface AffiliateReport {
   totalClicks: number;
   totalConversions: number;
   totalRevenue: number;
-}
+}>;
 
 export async function getAffiliateReport(
   db: D1Database,

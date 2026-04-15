@@ -1,8 +1,8 @@
 import { describe, expect, it, vi } from 'vitest';
 import { runScheduledJobs, runWithConcurrencyLimit } from '../../src/services/scheduler.js';
 
-class FakeLineClient {
-  constructor(public readonly token: string) {}
+function createFakeLineClient(token: string): { readonly token: string } {
+  return { token };
 }
 
 describe('runScheduledJobs', () => {
@@ -24,7 +24,9 @@ describe('runScheduledJobs', () => {
         ],
       },
       {
-        LineClient: FakeLineClient,
+        LineClient: createFakeLineClient as unknown as new (
+          token: string,
+        ) => { readonly token: string },
         processStepDeliveries,
         processScheduledBroadcasts,
         processReminderDeliveries,
@@ -84,7 +86,9 @@ describe('runScheduledJobs', () => {
         dbAccounts: [{ id: 'account-1', is_active: 1, channel_access_token: 'account-1-token' }],
       },
       {
-        LineClient: FakeLineClient,
+        LineClient: createFakeLineClient as unknown as new (
+          token: string,
+        ) => { readonly token: string },
         processStepDeliveries,
         processScheduledBroadcasts,
         processReminderDeliveries,

@@ -1,7 +1,7 @@
 import { jstNow } from './utils.js';
 // スコアリング（Lead Scoring）クエリヘルパー
 
-export interface ScoringRuleRow {
+export type ScoringRuleRow = Readonly<{
   id: string;
   name: string;
   event_type: string;
@@ -9,16 +9,16 @@ export interface ScoringRuleRow {
   is_active: number;
   created_at: string;
   updated_at: string;
-}
+}>;
 
-export interface FriendScoreRow {
+export type FriendScoreRow = Readonly<{
   id: string;
   friend_id: string;
   scoring_rule_id: string | null;
   score_change: number;
   reason: string | null;
   created_at: string;
-}
+}>;
 
 // --- スコアリングルール ---
 

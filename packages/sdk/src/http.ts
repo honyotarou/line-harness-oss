@@ -6,44 +6,27 @@ interface HttpClientConfig {
   timeout: number;
 }
 
-export class HttpClient {
-  private readonly baseUrl: string;
-  private readonly apiKey: string;
-  private readonly timeout: number;
+export function createHttpClient(config: HttpClientConfig): {
+  get: <T = unknown>(path: string) => Promise<T>;
+  post: <T = unknown>(path: string, body?: unknown) => Promise<T>;
+  put: <T = unknown>(path: string, body?: unknown) => Promise<T>;
+  delete: <T = unknown>(path: string) => Promise<T>;
+} {
+  const baseUrl = config.baseUrl.replace(/\/$/, '');
+  const apiKey = config.apiKey;
+  const timeout = config.timeout;
 
-  constructor(config: HttpClientConfig) {
-    this.baseUrl = config.baseUrl.replace(/\/$/, '');
-    this.apiKey = config.apiKey;
-    this.timeout = config.timeout;
-  }
-
-  async get<T = unknown>(path: string): Promise<T> {
-    return this.request<T>('GET', path);
-  }
-
-  async post<T = unknown>(path: string, body?: unknown): Promise<T> {
-    return this.request<T>('POST', path, body);
-  }
-
-  async put<T = unknown>(path: string, body?: unknown): Promise<T> {
-    return this.request<T>('PUT', path, body);
-  }
-
-  async delete<T = unknown>(path: string): Promise<T> {
-    return this.request<T>('DELETE', path);
-  }
-
-  private async request<T>(method: string, path: string, body?: unknown): Promise<T> {
-    const url = `${this.baseUrl}${path}`;
+  async function request<T>(method: string, path: string, body?: unknown): Promise<T> {
+    const url = `${baseUrl}${path}`;
     const headers: Record<string, string> = {
-      Authorization: `Bearer ${this.apiKey}`,
+      Authorization: `Bearer ${apiKey}`,
       'Content-Type': 'application/json',
     };
 
     const options: RequestInit = {
       method,
       headers,
-      signal: AbortSignal.timeout(this.timeout),
+      signal: AbortSignal.timeout(timeout),
     };
 
     if (body !== undefined) {
@@ -64,5 +47,43 @@ export class HttpClient {
     }
 
     return res.json() as Promise<T>;
+  }
+
+  return {
+    get<T = unknown>(path: string) {
+      return request<T>('GET', path);
+    },
+    post<T = unknown>(path: string, body?: unknown) {
+      return request<T>('POST', path, body);
+    },
+    put<T = unknown>(path: string, body?: unknown) {
+      return request<T>('PUT', path, body);
+    },
+    delete<T = unknown>(path: string) {
+      return request<T>('DELETE', path);
+    },
+  };
+}
+
+export class HttpClient {
+  private readonly api: ReturnType<typeof createHttpClient>;
+  constructor(config: HttpClientConfig) {
+    this.api = createHttpClient(config);
+  }
+
+  async get<T = unknown>(path: string): Promise<T> {
+    return this.api.get<T>(path);
+  }
+
+  async post<T = unknown>(path: string, body?: unknown): Promise<T> {
+    return this.api.post<T>(path, body);
+  }
+
+  async put<T = unknown>(path: string, body?: unknown): Promise<T> {
+    return this.api.put<T>(path, body);
+  }
+
+  async delete<T = unknown>(path: string): Promise<T> {
+    return this.api.delete<T>(path);
   }
 }

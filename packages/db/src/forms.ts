@@ -3,7 +3,7 @@ import { jstNow } from './utils.js';
 // Forms — Survey / questionnaire system (L社 回答フォーム equivalent)
 // =============================================================================
 
-export interface Form {
+export type Form = Readonly<{
   id: string;
   name: string;
   description: string | null;
@@ -15,15 +15,15 @@ export interface Form {
   submit_count: number;
   created_at: string;
   updated_at: string;
-}
+}>;
 
-export interface FormSubmission {
+export type FormSubmission = Readonly<{
   id: string;
   form_id: string;
   friend_id: string | null;
   data: string; // JSON string
   created_at: string;
-}
+}>;
 
 // ── CRUD ─────────────────────────────────────────────────────────────────────
 
@@ -36,14 +36,14 @@ export async function getFormById(db: D1Database, id: string): Promise<Form | nu
   return db.prepare(`SELECT * FROM forms WHERE id = ?`).bind(id).first<Form>();
 }
 
-export interface CreateFormInput {
+export type CreateFormInput = Readonly<{
   name: string;
   description?: string | null;
   fields: string; // JSON string
   onSubmitTagId?: string | null;
   onSubmitScenarioId?: string | null;
   saveToMetadata?: boolean;
-}
+}>;
 
 export async function createForm(db: D1Database, input: CreateFormInput): Promise<Form> {
   const id = crypto.randomUUID();
@@ -72,7 +72,7 @@ export async function createForm(db: D1Database, input: CreateFormInput): Promis
   return (await getFormById(db, id))!;
 }
 
-export interface UpdateFormInput {
+export type UpdateFormInput = Readonly<{
   name?: string;
   description?: string | null;
   fields?: string;
@@ -80,7 +80,7 @@ export interface UpdateFormInput {
   onSubmitScenarioId?: string | null;
   saveToMetadata?: boolean;
   isActive?: boolean;
-}
+}>;
 
 export async function updateForm(
   db: D1Database,
@@ -144,11 +144,11 @@ export async function getFormSubmissions(
   return result.results;
 }
 
-export interface CreateFormSubmissionInput {
+export type CreateFormSubmissionInput = Readonly<{
   formId: string;
   friendId?: string | null;
   data: string; // JSON string
-}
+}>;
 
 export async function createFormSubmission(
   db: D1Database,

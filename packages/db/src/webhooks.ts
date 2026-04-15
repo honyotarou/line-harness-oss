@@ -1,7 +1,7 @@
 import { jstNow } from './utils.js';
 // Webhook IN/OUT クエリヘルパー
 
-export interface IncomingWebhookRow {
+export type IncomingWebhookRow = Readonly<{
   id: string;
   name: string;
   source_type: string;
@@ -10,9 +10,9 @@ export interface IncomingWebhookRow {
   is_active: number;
   created_at: string;
   updated_at: string;
-}
+}>;
 
-export interface OutgoingWebhookRow {
+export type OutgoingWebhookRow = Readonly<{
   id: string;
   name: string;
   url: string;
@@ -22,7 +22,7 @@ export interface OutgoingWebhookRow {
   is_active: number;
   created_at: string;
   updated_at: string;
-}
+}>;
 
 // --- 受信Webhook ---
 

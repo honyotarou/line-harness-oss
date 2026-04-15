@@ -1,7 +1,7 @@
 import { jstNow } from './utils.js';
 // オペレーター＆チャット管理クエリヘルパー
 
-export interface OperatorRow {
+export type OperatorRow = Readonly<{
   id: string;
   name: string;
   email: string;
@@ -10,9 +10,9 @@ export interface OperatorRow {
   is_active: number;
   created_at: string;
   updated_at: string;
-}
+}>;
 
-export interface ChatRow {
+export type ChatRow = Readonly<{
   id: string;
   friend_id: string;
   operator_id: string | null;
@@ -22,7 +22,7 @@ export interface ChatRow {
   line_account_id: string | null;
   created_at: string;
   updated_at: string;
-}
+}>;
 
 // --- オペレーター ---
 

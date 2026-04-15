@@ -29,7 +29,7 @@ webhook.post('/webhook', async (c) => {
   try {
     rawBody = await readTextBodyWithLimit(c.req.raw, LINE_WEBHOOK_LIMIT_BYTES);
   } catch (err) {
-    if (err instanceof BodyTooLargeError) {
+    if (err instanceof Error && err.name === 'BodyTooLargeError') {
       return c.json({ status: 'payload_too_large' }, 413);
     }
     console.error('Failed to read webhook body', err);
@@ -81,16 +81,19 @@ webhook.post('/webhook', async (c) => {
     return c.json({ status: 'ok' }, 200);
   }
 
+  const events =
+    body.events.length > LINE_WEBHOOK_MAX_EVENTS
+      ? body.events.slice(0, LINE_WEBHOOK_MAX_EVENTS)
+      : body.events;
   if (body.events.length > LINE_WEBHOOK_MAX_EVENTS) {
     console.warn(
       `LINE webhook truncated: ${body.events.length} events, processing first ${LINE_WEBHOOK_MAX_EVENTS}`,
     );
-    body.events = body.events.slice(0, LINE_WEBHOOK_MAX_EVENTS);
   }
 
   // 非同期処理 — LINE は ~1s 以内のレスポンスを要求
   const processingPromise = (async () => {
-    for (const event of prioritizeLineWebhookEvents(body.events)) {
+    for (const event of prioritizeLineWebhookEvents(events)) {
       try {
         await handleLineWebhookEvent(
           db,

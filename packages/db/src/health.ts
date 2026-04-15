@@ -1,7 +1,7 @@
 import { jstNow } from './utils.js';
 // BAN検知 & リカバリ クエリヘルパー
 
-export interface AccountHealthLogRow {
+export type AccountHealthLogRow = Readonly<{
   id: string;
   line_account_id: string;
   error_code: number | null;
@@ -9,9 +9,9 @@ export interface AccountHealthLogRow {
   check_period: string;
   risk_level: string;
   created_at: string;
-}
+}>;
 
-export interface AccountMigrationRow {
+export type AccountMigrationRow = Readonly<{
   id: string;
   from_account_id: string;
   to_account_id: string;
@@ -20,7 +20,7 @@ export interface AccountMigrationRow {
   total_count: number;
   created_at: string;
   completed_at: string | null;
-}
+}>;
 
 // --- ヘルスログ ---
 

@@ -209,6 +209,23 @@ Claude Code: `.claude/hooks/pre-protect-config.sh` が `lefthook.yml` / `biome.j
 
 同じミスを二度やったら **Vitest / Playwright / ADR / CI コマンド** のいずれかを足す。長い README で代替しない。
 
+## 6.1 構造の“悪魔”チェック（ハーネスを通すための整形外科）
+
+`pnpm harness` は「動くか」だけでなく「壊れやすい構造」を早めに炙り出す。特に **`check:encapsulation` / `ROUTE_LINE_CAPS`** に引っかかるときは、単に cap を上げる前に次を疑う:
+
+- **薄いルート違反**: `routes/*.ts` に入力検証・認可・永続化・ビジネス判断が同居している  
+  - **対処**: 判断を `application/` / `services/` に抽出し、ルートは配線に戻す（cap は最後の手段）
+- **関心の混線**: “やること”が 1 関数に増え続け、テストの観点が増殖している  
+  - **対処**: ポリシー関数に切り分け、呼び出し順序は `application/` で固定する
+- **前提が暗黙**: `null` / 空文字 / 型の穴を後段で拾い続け、if/else が肥大化している  
+  - **対処**: 関数境界でバリデーションし、成立条件を早期 return で分離（落とすなら早く落とす）
+- **分岐の迷宮化**: 条件分岐が深い（3 段以上）・同じ条件式が散らばる  
+  - **対処**: 条件に名前を付ける、policy 関数化、union + switch へ寄せる
+- **名前が嘘をつく**: `data` / `info` / `manage` / `util` のような曖昧語で責務が分からない  
+  - **対処**: “何を守る/拒否するポリシーか”が分かる名前にする（テスト名もそれに揃える）
+
+このチェックは **Step 6 Refactor** の作法と同じで、**既存のテストを緑のまま**小さく直す（大改造しない）。
+
 ## 7. 参照リンク
 
 - [Harness Engineering（2026）](https://nyosegawa.com/posts/harness-engineering-best-practices-2026/)

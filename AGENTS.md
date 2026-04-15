@@ -97,3 +97,12 @@ pnpm exec lefthook install
 1. 品質は **型・テスト・CI** で強制する（プロンプトだけに頼らない）。
 2. E2E と言う場合は **UI モック E2E と API 統合テスト** を混同しない（スキル参照）。
 3. 同じミスが二度出たら **テストか ADR** を追加する。
+
+## TypeScript 設計（短い要約）
+
+- **クラスを使わない**（必要なら Error/SDK の薄い互換ラッパ程度）。基本は **関数 + 依存注入**。
+- **DTO は Readonly**（ミューテーションは境界に閉じ込める）。例: Worker の `readJsonBodyWithLimit<T>` は `Promise<Readonly<T>>`。
+- **データ型と振る舞いを分離**し、実行時の検証は関数で行う（型は消える）。
+- **Branded Type** で ID 等の値オブジェクトを区別する（構造的部分型の罠に注意）。
+
+詳細・チェックリストは `/.cursor/skills/line/SKILL.md` の **「5.4.1 TypeScript 設計」** を正本とする。

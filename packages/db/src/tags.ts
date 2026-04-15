@@ -1,26 +1,26 @@
 import { jstNow } from './utils.js';
-export interface Tag {
+export type Tag = Readonly<{
   id: string;
   name: string;
   color: string;
   created_at: string;
-}
+}>;
 
-export interface FriendTag {
+export type FriendTag = Readonly<{
   friend_id: string;
   tag_id: string;
   assigned_at: string;
-}
+}>;
 
 export async function getTags(db: D1Database): Promise<Tag[]> {
   const result = await db.prepare(`SELECT * FROM tags ORDER BY name ASC`).all<Tag>();
   return result.results;
 }
 
-export interface CreateTagInput {
+export type CreateTagInput = Readonly<{
   name: string;
   color?: string;
-}
+}>;
 
 export async function createTag(db: D1Database, input: CreateTagInput): Promise<Tag> {
   const id = crypto.randomUUID();

@@ -234,7 +234,7 @@ export async function createBookingWithOptionalGoogleEvent(
         description: body.description,
       });
       await updateCalendarBookingEventId(deps.db, booking.id, eventId);
-      booking.event_id = eventId;
+      return { ...booking, event_id: eventId };
     } catch (err) {
       console.warn('Google Calendar createEvent error (booking still created in D1):', err);
     }

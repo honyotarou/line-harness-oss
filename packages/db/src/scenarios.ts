@@ -3,7 +3,7 @@ export type ScenarioTriggerType = 'friend_add' | 'tag_added' | 'manual';
 export type MessageType = 'text' | 'image' | 'flex';
 export type FriendScenarioStatus = 'active' | 'paused' | 'completed';
 
-export interface Scenario {
+export type Scenario = Readonly<{
   id: string;
   name: string;
   description: string | null;
@@ -13,9 +13,9 @@ export interface Scenario {
   is_active: number;
   created_at: string;
   updated_at: string;
-}
+}>;
 
-export interface ScenarioStep {
+export type ScenarioStep = Readonly<{
   id: string;
   scenario_id: string;
   step_order: number;
@@ -26,13 +26,11 @@ export interface ScenarioStep {
   condition_value: string | null;
   next_step_on_false: number | null;
   created_at: string;
-}
+}>;
 
-export interface ScenarioWithSteps extends Scenario {
-  steps: ScenarioStep[];
-}
+export type ScenarioWithSteps = Scenario & Readonly<{ steps: readonly ScenarioStep[] }>;
 
-export interface FriendScenario {
+export type FriendScenario = Readonly<{
   id: string;
   friend_id: string;
   scenario_id: string;
@@ -41,7 +39,7 @@ export interface FriendScenario {
   started_at: string;
   next_delivery_at: string | null;
   updated_at: string;
-}
+}>;
 
 // ============================================================
 // Scenario CRUD
@@ -81,12 +79,12 @@ export async function getScenarioById(
   return { ...scenario, steps: stepsResult.results };
 }
 
-export interface CreateScenarioInput {
+export type CreateScenarioInput = Readonly<{
   name: string;
   description?: string | null;
   triggerType: ScenarioTriggerType;
   triggerTagId?: string | null;
-}
+}>;
 
 export async function createScenario(
   db: D1Database,
@@ -172,7 +170,7 @@ export async function deleteScenario(db: D1Database, id: string): Promise<void> 
 // Scenario Steps
 // ============================================================
 
-export interface CreateScenarioStepInput {
+export type CreateScenarioStepInput = Readonly<{
   scenarioId: string;
   stepOrder: number;
   delayMinutes?: number;
@@ -181,7 +179,7 @@ export interface CreateScenarioStepInput {
   conditionType?: string | null;
   conditionValue?: string | null;
   nextStepOnFalse?: number | null;
-}
+}>;
 
 export async function createScenarioStep(
   db: D1Database,

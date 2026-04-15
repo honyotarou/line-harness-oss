@@ -1,7 +1,7 @@
 import { jstNow } from './utils.js';
 // Stripe決済連携クエリヘルパー
 
-export interface StripeEventRow {
+export type StripeEventRow = Readonly<{
   id: string;
   stripe_event_id: string;
   event_type: string;
@@ -10,7 +10,7 @@ export interface StripeEventRow {
   currency: string | null;
   metadata: string | null;
   processed_at: string;
-}
+}>;
 
 export async function getStripeEvents(
   db: D1Database,

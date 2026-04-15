@@ -1,7 +1,7 @@
 import { jstNow } from './utils.js';
 // 通知機能クエリヘルパー
 
-export interface NotificationRuleRow {
+export type NotificationRuleRow = Readonly<{
   id: string;
   name: string;
   event_type: string;
@@ -11,9 +11,9 @@ export interface NotificationRuleRow {
   is_active: number;
   created_at: string;
   updated_at: string;
-}
+}>;
 
-export interface NotificationRow {
+export type NotificationRow = Readonly<{
   id: string;
   rule_id: string | null;
   event_type: string;
@@ -24,7 +24,7 @@ export interface NotificationRow {
   line_account_id: string | null;
   metadata: string | null;
   created_at: string;
-}
+}>;
 
 // --- 通知ルール ---
 

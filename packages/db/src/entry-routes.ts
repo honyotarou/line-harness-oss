@@ -1,5 +1,5 @@
 import { jstNow } from './utils.js';
-export interface EntryRoute {
+export type EntryRoute = Readonly<{
   id: string;
   ref_code: string;
   name: string;
@@ -9,25 +9,25 @@ export interface EntryRoute {
   is_active: number;
   created_at: string;
   updated_at: string;
-}
+}>;
 
-export interface RefTracking {
+export type RefTracking = Readonly<{
   id: string;
   ref_code: string;
   friend_id: string | null;
   entry_route_id: string | null;
   source_url: string | null;
   created_at: string;
-}
+}>;
 
-export interface CreateEntryRouteInput {
+export type CreateEntryRouteInput = Readonly<{
   refCode: string;
   name: string;
   tagId?: string | null;
   scenarioId?: string | null;
   redirectUrl?: string | null;
   isActive?: boolean;
-}
+}>;
 
 export function assertValidEntryRouteRefCode(refCode: string): void {
   if (refCode !== refCode.trim()) {

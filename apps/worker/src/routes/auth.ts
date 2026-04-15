@@ -164,10 +164,10 @@ authRoutes.post('/api/auth/login', async (c) => {
       data,
     });
   } catch (err) {
-    if (err instanceof BodyTooLargeError) {
+    if (err instanceof Error && err.name === 'BodyTooLargeError') {
       return c.json({ success: false, error: 'Request body too large' }, 413);
     }
-    if (err instanceof InvalidJsonBodyError) {
+    if (err instanceof Error && err.name === 'InvalidJsonBodyError') {
       return c.json({ success: false, error: 'Invalid JSON body' }, 400);
     }
     console.error('POST /api/auth/login error:', err);

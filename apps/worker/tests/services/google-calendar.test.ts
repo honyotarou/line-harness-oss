@@ -1,5 +1,8 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { GoogleCalendarClient } from '../../src/services/google-calendar.js';
+import {
+  createGoogleCalendarClient,
+  GoogleCalendarClient,
+} from '../../src/services/google-calendar.js';
 
 describe('GoogleCalendarClient', () => {
   afterEach(() => {
@@ -65,6 +68,29 @@ describe('GoogleCalendarClient', () => {
     expect(vi.mocked(fetch).mock.calls[0]?.[0]).toBe(
       'https://www.googleapis.com/calendar/v3/freeBusy',
     );
+  });
+
+  it('createGoogleCalendarClient supports getFreeBusy without relying on this', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockResolvedValue(
+        new Response(
+          JSON.stringify({
+            calendars: {
+              'abc123group@group.calendar.google.com': {
+                busy: [{ start: '2026-03-01T10:00:00Z', end: '2026-03-01T11:00:00Z' }],
+              },
+            },
+          }),
+          { status: 200 },
+        ),
+      ),
+    );
+    const api = createGoogleCalendarClient({
+      calendarId: 'abc123group@group.calendar.google.com',
+      accessToken: 't',
+    });
+    await expect(api.getFreeBusy('a', 'b')).resolves.toHaveLength(1);
   });
 
   it('getFreeBusy returns empty array when calendar has no busy slots', async () => {

@@ -3,16 +3,16 @@ import { jstNow } from './utils.js';
 // Conversion Points & Events — CV Tracking
 // =============================================================================
 
-export interface ConversionPoint {
+export type ConversionPoint = Readonly<{
   id: string;
   name: string;
   event_type: string;
   line_account_id: string | null;
   value: number | null;
   created_at: string;
-}
+}>;
 
-export interface ConversionEvent {
+export type ConversionEvent = Readonly<{
   id: string;
   conversion_point_id: string;
   friend_id: string;
@@ -21,7 +21,7 @@ export interface ConversionEvent {
   metadata: string | null;
   line_account_id: string | null;
   created_at: string;
-}
+}>;
 
 // ── Conversion Points CRUD ──────────────────────────────────────────────────
 
@@ -53,12 +53,12 @@ export async function getConversionPointById(
     .first<ConversionPoint>();
 }
 
-export interface CreateConversionPointInput {
+export type CreateConversionPointInput = Readonly<{
   name: string;
   eventType: string;
   lineAccountId?: string | null;
   value?: number | null;
-}
+}>;
 
 export async function createConversionPoint(
   db: D1Database,
@@ -91,14 +91,14 @@ export async function deleteConversionPoint(db: D1Database, id: string): Promise
 
 // ── Conversion Events ───────────────────────────────────────────────────────
 
-export interface TrackConversionInput {
+export type TrackConversionInput = Readonly<{
   conversionPointId: string;
   friendId: string;
   lineAccountId?: string | null;
   userId?: string | null;
   affiliateCode?: string | null;
   metadata?: string | null;
-}
+}>;
 
 export async function trackConversion(
   db: D1Database,
@@ -186,13 +186,13 @@ export async function getConversionEvents(
   return result.results;
 }
 
-export interface ConversionReport {
+export type ConversionReport = Readonly<{
   conversionPointId: string;
   conversionPointName: string;
   eventType: string;
   totalCount: number;
   totalValue: number;
-}
+}>;
 
 export async function getConversionReport(
   db: D1Database,

@@ -189,10 +189,12 @@ automations.put('/api/automations/:id', async (c) => {
       return c.json({ success: false, error: 'Not found' }, 404);
     }
 
-    const body = await readJsonBodyWithLimit<Record<string, unknown>>(
-      c.req.raw,
-      DEFAULT_ADMIN_JSON_BODY_LIMIT_BYTES,
-    );
+    const body = {
+      ...(await readJsonBodyWithLimit<Record<string, unknown>>(
+        c.req.raw,
+        DEFAULT_ADMIN_JSON_BODY_LIMIT_BYTES,
+      )),
+    } as Record<string, unknown>;
     if (body.actions !== undefined) {
       const actionsValidPut = validateAutomationActions(body.actions);
       if (!actionsValidPut.ok) {

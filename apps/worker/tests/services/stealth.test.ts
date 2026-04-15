@@ -3,6 +3,7 @@ import {
   addJitter,
   addMessageVariation,
   calculateStaggerDelay,
+  createStealthRateLimiter,
   jitterDeliveryTime,
   StealthRateLimiter,
   sleep,
@@ -72,6 +73,12 @@ describe('stealth helpers', () => {
     await limiter.waitForSlot();
   });
 
+  it('createStealthRateLimiter allows calls under the per-window cap', async () => {
+    const limiter = createStealthRateLimiter({ maxCallsPerWindow: 10, windowMs: 60_000 });
+    await limiter.waitForSlot();
+    await limiter.waitForSlot();
+  });
+
   /**
    * Pentest: multicast pacing must not rely on per-isolate memory alone.
    * Production paths (`broadcast`, `segment-send`) pass D1; this locks that contract.
@@ -89,6 +96,36 @@ describe('stealth helpers', () => {
     );
     const db = {} as D1Database;
     const limiter = new StealthRateLimiter(1000, 60_000, { db, subjectKey: 'line:test-acct' });
+    await limiter.waitForSlot();
+    expect(spy).toHaveBeenCalledTimes(1);
+    expect(spy).toHaveBeenCalledWith(
+      db,
+      expect.objectContaining({
+        bucket: STEALTH_LINE_MULTICAST_RATE_BUCKET,
+        key: 'line:test-acct',
+        limit: 1000,
+        windowMs: 60_000,
+      }),
+    );
+  });
+
+  it('createStealthRateLimiter with db delegates to consumeRateLimitSlotDb for shared caps', async () => {
+    const rr = await import('../../src/services/request-rate-limit.js');
+    const spy = vi.spyOn(rr, 'consumeRateLimitSlotDb').mockResolvedValue({
+      allowed: true,
+      remaining: 999,
+      resetAt: Date.now() + 60_000,
+      retryAfterSeconds: 60,
+    });
+    const { createStealthRateLimiter, STEALTH_LINE_MULTICAST_RATE_BUCKET } = await import(
+      '../../src/services/stealth.js'
+    );
+    const db = {} as D1Database;
+    const limiter = createStealthRateLimiter({
+      maxCallsPerWindow: 1000,
+      windowMs: 60_000,
+      d1: { db, subjectKey: 'line:test-acct' },
+    });
     await limiter.waitForSlot();
     expect(spy).toHaveBeenCalledTimes(1);
     expect(spy).toHaveBeenCalledWith(
