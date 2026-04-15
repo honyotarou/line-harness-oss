@@ -5,6 +5,7 @@ import {
   getCloudflareAccessEmailFromContext,
   isCloudflareAccessEnforced,
 } from './cloudflare-access-principal.js';
+import { effectiveMultiLineAccountQueryRequiresLineAccountId } from './deployed-security-defaults.js';
 import { lineAccountDbOptions } from './line-account-at-rest-key.js';
 
 export type LineAccountScope = { mode: 'all' } | { mode: 'restricted'; ids: Set<string> };
@@ -34,9 +35,9 @@ export async function resolveLineAccountScopeForRequest(
     }
   }
 
-  if (isTruthyEnvFlag(c.env.MULTI_LINE_ACCOUNT_QUERY_REQUIRES_LINE_ACCOUNT_ID)) {
+  if (effectiveMultiLineAccountQueryRequiresLineAccountId(c.env)) {
     const accounts = await getLineAccounts(db, lineAccountDbOptions(c.env));
-    const activeIds = accounts.filter((a) => Boolean(a.is_active)).map((a) => a.id);
+    const activeIds = (accounts ?? []).filter((a) => Boolean(a.is_active)).map((a) => a.id);
     if (activeIds.length > 1) {
       return { mode: 'restricted', ids: new Set(activeIds) };
     }

@@ -64,6 +64,26 @@ describe('resolveLiffOAuthStateSecret', () => {
     expect(resolveLiffOAuthStateSecret({ API_KEY: 'api' } as never)).toBeNull();
   });
 
+  it('returns null on non-local HTTPS when LIFF is unset and fallback is not allowed', () => {
+    expect(
+      resolveLiffOAuthStateSecret({
+        API_KEY: 'api',
+        WORKER_URL: 'https://api.example.com',
+      } as never),
+    ).toBeNull();
+  });
+
+  it('returns null when REQUIRE_LIFF overrides ALLOW_LIFF without LIFF_STATE_SECRET', () => {
+    expect(
+      resolveLiffOAuthStateSecret({
+        API_KEY: 'api',
+        WORKER_URL: 'https://api.example.com',
+        REQUIRE_LIFF_STATE_SECRET: '1',
+        ALLOW_LIFF_OAUTH_API_KEY_FALLBACK: '1',
+      } as never),
+    ).toBeNull();
+  });
+
   it('falls back to API_KEY when ALLOW_LIFF_OAUTH_API_KEY_FALLBACK is on', () => {
     expect(
       resolveLiffOAuthStateSecret({

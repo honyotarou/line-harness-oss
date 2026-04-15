@@ -314,7 +314,7 @@ describe('liff auth routes', () => {
     expect(response.status).toBe(200);
     const html = await response.text();
     expect(html).toContain('LIFF_STATE_SECRET');
-    expect(html).toContain('REQUIRE_LIFF_STATE_SECRET');
+    expect(html).toMatch(/本番|HTTPS/);
   });
 
   it('uses OAuth for cross-account mobile links and preserves signed attribution state', async () => {

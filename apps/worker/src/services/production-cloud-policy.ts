@@ -1,3 +1,9 @@
+import {
+  effectiveRequireDedicatedAdminSessionSecret,
+  formatDeployedSecurityRelaxPairHint,
+  isIncompleteGlobalRelaxOnHttps,
+  isRelaxedDeployedSecurityDefaults,
+} from './deployed-security-defaults.js';
 import { parseMinCfBotScore } from './cf-bot-guard.js';
 
 function isTruthyEnvFlag(raw: string | undefined): boolean {
@@ -24,6 +30,11 @@ export type ProductionCloudPolicyEnv = {
   ALLOW_LIFF_OAUTH_API_KEY_FALLBACK?: string;
   LINE_ACCOUNT_SECRETS_WRITE_SECRET?: string;
   MULTI_LINE_ACCOUNT_QUERY_REQUIRES_LINE_ACCOUNT_ID?: string;
+  ADMIN_BROWSER_CLIENT_TOKEN?: string;
+  ALLOW_DEFAULT_ADMIN_BROWSER_CLIENT?: string;
+  ALLOW_LINE_ACCOUNT_SECRETS_PLAINTEXT_AT_REST?: string;
+  RELAX_DEPLOYED_SECURITY_DEFAULTS?: string;
+  RELAX_DEPLOYED_SECURITY_CONFIRM?: string;
 };
 
 /** True when WORKER_URL is a non-local `https:` origin (deployed Worker surface). */
@@ -79,6 +90,11 @@ export function getProductionCloudSurfaceWarnings(env: ProductionCloudPolicyEnv)
 
   const workerUrl = env.WORKER_URL?.trim() ?? '';
   if (isNonLocalHttpsWorkerUrl(workerUrl)) {
+    if (isIncompleteGlobalRelaxOnHttps(env)) {
+      warnings.push(
+        `RELAX_DEPLOYED_SECURITY_DEFAULTS is on but HTTPS relax is incomplete; strict defaults still apply. Complete staging relax with: ${formatDeployedSecurityRelaxPairHint()}.`,
+      );
+    }
     if (workerUrl.includes('workers.dev') && !isTruthyEnvFlag(env.REQUIRE_CLOUDFLARE_ACCESS_JWT)) {
       warnings.push(
         'WORKER_URL is on workers.dev but REQUIRE_CLOUDFLARE_ACCESS_JWT is off; restrict with Cloudflare Access or custom domain + allowlist.',
@@ -94,9 +110,9 @@ export function getProductionCloudSurfaceWarnings(env: ProductionCloudPolicyEnv)
         'MIN_CF_BOT_SCORE is unset; with Cloudflare Bot Management, set e.g. 30 for POST /api/auth/login to throttle obvious bots.',
       );
     }
-    if (!isTruthyEnvFlag(env.REQUIRE_ADMIN_SESSION_SECRET) || !env.ADMIN_SESSION_SECRET?.trim()) {
+    if (effectiveRequireDedicatedAdminSessionSecret(env) && !env.ADMIN_SESSION_SECRET?.trim()) {
       warnings.push(
-        'Set REQUIRE_ADMIN_SESSION_SECRET=1 and ADMIN_SESSION_SECRET (wrangler secret) so admin sessions are not signed with API_KEY.',
+        `ADMIN_SESSION_SECRET is required on non-local HTTPS (default) or when REQUIRE_ADMIN_SESSION_SECRET=1; set wrangler secret, or ${formatDeployedSecurityRelaxPairHint()}, or ALLOW_LEGACY_API_KEY_SESSION_SIGNER=1 only for migration.`,
       );
     }
     if (!env.BROADCAST_SEND_SECRET?.trim()) {
@@ -124,9 +140,25 @@ export function getProductionCloudSurfaceWarnings(env: ProductionCloudPolicyEnv)
         'LINE_ACCOUNT_SECRETS_WRITE_SECRET is unset; set it and require X-Line-Account-Secrets-Write to rotate Messaging API tokens via PUT /api/line-accounts/:id.',
       );
     }
-    if (!isTruthyEnvFlag(env.MULTI_LINE_ACCOUNT_QUERY_REQUIRES_LINE_ACCOUNT_ID)) {
+    if (
+      isRelaxedDeployedSecurityDefaults(env) &&
+      !isTruthyEnvFlag(env.MULTI_LINE_ACCOUNT_QUERY_REQUIRES_LINE_ACCOUNT_ID)
+    ) {
       warnings.push(
-        'MULTI_LINE_ACCOUNT_QUERY_REQUIRES_LINE_ACCOUNT_ID is unset; enable when multiple LINE accounts share one Worker to require explicit lineAccountId on list APIs.',
+        'Global HTTPS security relax is active: consider MULTI_LINE_ACCOUNT_QUERY_REQUIRES_LINE_ACCOUNT_ID=1 when multiple LINE accounts share one Worker.',
+      );
+    }
+    if (
+      !env.ADMIN_BROWSER_CLIENT_TOKEN?.trim() &&
+      !isTruthyEnvFlag(env.ALLOW_DEFAULT_ADMIN_BROWSER_CLIENT)
+    ) {
+      warnings.push(
+        'ADMIN_BROWSER_CLIENT_TOKEN is unset on a non-local HTTPS Worker; cookie-based admin POSTs require a shared random token (set Worker + web NEXT_PUBLIC_ADMIN_BROWSER_CLIENT_TOKEN) or opt into ALLOW_DEFAULT_ADMIN_BROWSER_CLIENT=1 only for migration.',
+      );
+    }
+    if (isTruthyEnvFlag(env.ALLOW_LINE_ACCOUNT_SECRETS_PLAINTEXT_AT_REST)) {
+      warnings.push(
+        'ALLOW_LINE_ACCOUNT_SECRETS_PLAINTEXT_AT_REST is on: new LINE accounts may store channel secrets in plaintext without LINE_ACCOUNT_SECRETS_KEY; remove after configuring at-rest encryption.',
       );
     }
   }

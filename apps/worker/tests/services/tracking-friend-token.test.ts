@@ -74,4 +74,15 @@ describe('tracking-friend-token', () => {
       }),
     ).toBe('k');
   });
+
+  it('allows API_KEY fallback on HTTPS when full RELAX pair is set', () => {
+    expect(
+      trackingLinkHmacSecret({
+        API_KEY: 'k',
+        WORKER_URL: 'https://x.workers.dev',
+        RELAX_DEPLOYED_SECURITY_DEFAULTS: '1',
+        RELAX_DEPLOYED_SECURITY_CONFIRM: 'YES_I_ACCEPT_REDUCED_SECURITY',
+      }),
+    ).toBe('k');
+  });
 });

@@ -1,6 +1,10 @@
 import type { Context } from 'hono';
 import { getCookie, setCookie } from 'hono/cookie';
 import { isAdminSessionJtiRevoked } from '@line-crm/db';
+import {
+  effectiveRequireDedicatedAdminSessionSecret,
+  isRelaxedDeployedSecurityDefaults,
+} from './deployed-security-defaults.js';
 import { isNonLocalHttpsWorkerUrl } from './production-cloud-policy.js';
 import { timingSafeEqualUtf8 } from './timing-safe-equal.js';
 
@@ -17,8 +21,13 @@ function isTruthyEnvFlag(raw: string | undefined): boolean {
 function allowsApiKeyAsAdminSessionSigner(env: {
   WORKER_URL?: string;
   ALLOW_LEGACY_API_KEY_SESSION_SIGNER?: string;
+  RELAX_DEPLOYED_SECURITY_DEFAULTS?: string;
+  RELAX_DEPLOYED_SECURITY_CONFIRM?: string;
 }): boolean {
   if (isTruthyEnvFlag(env.ALLOW_LEGACY_API_KEY_SESSION_SIGNER)) {
+    return true;
+  }
+  if (isRelaxedDeployedSecurityDefaults(env) && isNonLocalHttpsWorkerUrl(env.WORKER_URL ?? '')) {
     return true;
   }
   return !isNonLocalHttpsWorkerUrl(env.WORKER_URL ?? '');
@@ -35,6 +44,8 @@ export function resolveAdminSessionSecret(env: {
   ADMIN_SESSION_SECRET?: string;
   WORKER_URL?: string;
   ALLOW_LEGACY_API_KEY_SESSION_SIGNER?: string;
+  RELAX_DEPLOYED_SECURITY_DEFAULTS?: string;
+  RELAX_DEPLOYED_SECURITY_CONFIRM?: string;
 }): string | null {
   const dedicated = env.ADMIN_SESSION_SECRET?.trim();
   if (dedicated) return dedicated;
@@ -51,11 +62,15 @@ export function isDedicatedAdminSessionSecretConfigured(env: {
   return s !== undefined && s.length > 0;
 }
 
-/** When enabled, login must not issue HMAC sessions signed with `API_KEY`. */
+/** When true, login must not issue HMAC sessions signed with `API_KEY` (dedicated secret required). */
 export function isAdminSessionSecretRequired(env: {
   REQUIRE_ADMIN_SESSION_SECRET?: string;
+  WORKER_URL?: string;
+  ALLOW_LEGACY_API_KEY_SESSION_SIGNER?: string;
+  RELAX_DEPLOYED_SECURITY_DEFAULTS?: string;
+  RELAX_DEPLOYED_SECURITY_CONFIRM?: string;
 }): boolean {
-  return isTruthyEnvFlag(env.REQUIRE_ADMIN_SESSION_SECRET);
+  return effectiveRequireDedicatedAdminSessionSecret(env);
 }
 
 export interface AdminSessionPayload {

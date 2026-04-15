@@ -18,6 +18,13 @@ describe('resolveAdminSessionSecret', () => {
     expect(resolveAdminSessionSecret({ ...base, ALLOW_LEGACY_API_KEY_SESSION_SIGNER: '1' })).toBe(
       'k',
     );
+    expect(
+      resolveAdminSessionSecret({
+        ...base,
+        RELAX_DEPLOYED_SECURITY_DEFAULTS: '1',
+        RELAX_DEPLOYED_SECURITY_CONFIRM: 'YES_I_ACCEPT_REDUCED_SECURITY',
+      }),
+    ).toBe('k');
   });
 
   it('uses trimmed ADMIN_SESSION_SECRET when non-empty', async () => {

@@ -40,20 +40,72 @@ describe('admin-browser-csrf', () => {
 });
 
 describe('hasValidAdminBrowserClientHeader', () => {
-  it('accepts default header value when ADMIN_BROWSER_CLIENT_TOKEN is unset', async () => {
+  it('accepts default header value when ADMIN_BROWSER_CLIENT_TOKEN is unset on non-HTTPS Worker URL', async () => {
     const { hasValidAdminBrowserClientHeader } = await import(
       '../../src/services/admin-browser-csrf.js'
     );
     await expect(
-      hasValidAdminBrowserClientHeader({
-        header: (n: string) => (n === ADMIN_BROWSER_CLIENT_HEADER ? '1' : undefined),
-      }),
+      hasValidAdminBrowserClientHeader(
+        {
+          header: (n: string) => (n === ADMIN_BROWSER_CLIENT_HEADER ? '1' : undefined),
+        },
+        { WORKER_URL: 'http://127.0.0.1:8787' },
+      ),
     ).resolves.toBe(true);
     await expect(
       hasValidAdminBrowserClientHeader({
         header: () => undefined,
       }),
     ).resolves.toBe(false);
+  });
+
+  it('rejects default header value on non-local HTTPS when ADMIN_BROWSER_CLIENT_TOKEN is unset', async () => {
+    const { hasValidAdminBrowserClientHeader } = await import(
+      '../../src/services/admin-browser-csrf.js'
+    );
+    await expect(
+      hasValidAdminBrowserClientHeader(
+        {
+          header: (n: string) => (n === ADMIN_BROWSER_CLIENT_HEADER ? '1' : undefined),
+        },
+        { WORKER_URL: 'https://api.example.com' },
+      ),
+    ).resolves.toBe(false);
+  });
+
+  it('accepts default header on HTTPS when full RELAX pair is set', async () => {
+    const { hasValidAdminBrowserClientHeader } = await import(
+      '../../src/services/admin-browser-csrf.js'
+    );
+    await expect(
+      hasValidAdminBrowserClientHeader(
+        {
+          header: (n: string) => (n === ADMIN_BROWSER_CLIENT_HEADER ? '1' : undefined),
+        },
+        {
+          WORKER_URL: 'https://api.example.com',
+          RELAX_DEPLOYED_SECURITY_DEFAULTS: '1',
+          RELAX_DEPLOYED_SECURITY_CONFIRM: 'YES_I_ACCEPT_REDUCED_SECURITY',
+        },
+      ),
+    ).resolves.toBe(true);
+  });
+
+  it('accepts default header on HTTPS when ALLOW_DEFAULT_ADMIN_BROWSER_CLIENT is on', async () => {
+    const { hasValidAdminBrowserClientHeader } = await import(
+      '../../src/services/admin-browser-csrf.js'
+    );
+    await expect(
+      hasValidAdminBrowserClientHeader(
+        {
+          header: (n: string) => (n === ADMIN_BROWSER_CLIENT_HEADER ? '1' : undefined),
+        },
+        {
+          WORKER_URL: 'https://api.example.com',
+          ALLOW_DEFAULT_ADMIN_BROWSER_CLIENT: '1',
+        },
+      ),
+    ).resolves.toBe(true);
   });
 
   it('requires timing-safe match when ADMIN_BROWSER_CLIENT_TOKEN is set', async () => {
@@ -65,7 +117,7 @@ describe('hasValidAdminBrowserClientHeader', () => {
         {
           header: (n: string) => (n === ADMIN_BROWSER_CLIENT_HEADER ? 'secret-token' : undefined),
         },
-        { ADMIN_BROWSER_CLIENT_TOKEN: 'secret-token' },
+        { ADMIN_BROWSER_CLIENT_TOKEN: 'secret-token', WORKER_URL: 'https://api.example.com' },
       ),
     ).resolves.toBe(true);
     await expect(
@@ -73,7 +125,7 @@ describe('hasValidAdminBrowserClientHeader', () => {
         {
           header: (n: string) => (n === ADMIN_BROWSER_CLIENT_HEADER ? 'wrong' : undefined),
         },
-        { ADMIN_BROWSER_CLIENT_TOKEN: 'secret-token' },
+        { ADMIN_BROWSER_CLIENT_TOKEN: 'secret-token', WORKER_URL: 'https://api.example.com' },
       ),
     ).resolves.toBe(false);
   });

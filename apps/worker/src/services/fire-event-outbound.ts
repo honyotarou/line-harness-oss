@@ -1,12 +1,20 @@
 import type { Env } from '../index.js';
+import { effectiveRequireAutomationSendWebhookHostAllowlist } from './deployed-security-defaults.js';
 import { fireEvent, type EventPayload } from './event-bus.js';
 import { shouldSuppressAutomationSendWebhook } from './fire-event-automation-policy.js';
 
-type AutomationWebhookBindings = Pick<
-  Env['Bindings'],
-  | 'AUTOMATION_SEND_WEBHOOK_ALLOWED_HOSTS'
-  | 'REQUIRE_AUTOMATION_SEND_WEBHOOK_ALLOWED_HOSTS'
-  | 'ALLOW_AUTOMATION_SEND_WEBHOOK_FROM_INCOMING_WEBHOOK'
+/** Partial: callers may pass `bindings ?? {}` from optional Worker env slices. */
+export type AutomationWebhookBindings = Partial<
+  Pick<
+    Env['Bindings'],
+    | 'AUTOMATION_SEND_WEBHOOK_ALLOWED_HOSTS'
+    | 'REQUIRE_AUTOMATION_SEND_WEBHOOK_ALLOWED_HOSTS'
+    | 'ALLOW_AUTOMATION_SEND_WEBHOOK_FROM_INCOMING_WEBHOOK'
+    | 'WORKER_URL'
+    | 'RELAX_DEPLOYED_SECURITY_DEFAULTS'
+    | 'RELAX_DEPLOYED_SECURITY_CONFIRM'
+    | 'ALLOW_AUTOMATION_SEND_WEBHOOK_WITHOUT_HOST_ALLOWLIST'
+  >
 >;
 
 /** Optional caller context (e.g. incoming webhook handler). */
@@ -35,7 +43,7 @@ export async function fireEventRespectingAutomationWebhookHosts(
       bindings.ALLOW_AUTOMATION_SEND_WEBHOOK_FROM_INCOMING_WEBHOOK,
     ),
   });
-  const requireHosts = isTruthyEnvFlag(bindings.REQUIRE_AUTOMATION_SEND_WEBHOOK_ALLOWED_HOSTS);
+  const requireHosts = effectiveRequireAutomationSendWebhookHostAllowlist(bindings);
   const hostsRaw = bindings.AUTOMATION_SEND_WEBHOOK_ALLOWED_HOSTS;
   if (hostsRaw?.trim() || requireHosts || suppressAutomationSendWebhook) {
     await fireEvent(db, eventType, payload, lineAccessToken, lineAccountId, {

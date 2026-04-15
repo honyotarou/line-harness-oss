@@ -1,5 +1,6 @@
 import type { Context } from 'hono';
 import type { Env } from '../index.js';
+import { isStrictDeployedHttpsSurface } from './deployed-security-defaults.js';
 import { isNonLocalHttpsWorkerUrl } from './production-cloud-policy.js';
 import { timingSafeEqualUtf8 } from './timing-safe-equal.js';
 
@@ -18,7 +19,8 @@ function isTruthyEnvFlag(raw: string | undefined): boolean {
  * `ALLOW_BROADCAST_WITHOUT_SEND_SECRET=1` (migration / dev only).
  */
 export async function denyIfBroadcastSendSecretMissing(c: Context<Env>): Promise<Response | null> {
-  const requireConfigured = isTruthyEnvFlag(c.env.REQUIRE_BROADCAST_SEND_SECRET);
+  const requireConfigured =
+    isTruthyEnvFlag(c.env.REQUIRE_BROADCAST_SEND_SECRET) || isStrictDeployedHttpsSurface(c.env);
   const required = c.env.BROADCAST_SEND_SECRET?.trim();
   const deployedHttps = isNonLocalHttpsWorkerUrl(c.env.WORKER_URL ?? '');
   if (requireConfigured && !required) {

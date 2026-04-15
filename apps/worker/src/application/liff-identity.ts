@@ -1,15 +1,14 @@
 import type { LineAccountDbOptions } from '@line-crm/db';
 import { getFriendByLineUserId } from '@line-crm/db';
 import type { Env } from '../index.js';
+import {
+  effectiveRequireLiffStateSecret,
+  explicitLiffOAuthApiKeyFallbackEnabled,
+} from '../services/deployed-security-defaults.js';
 import { verifyLineLoginIdToken } from '../services/line-login-id-token.js';
 
-function isTruthyEnvFlag(raw: string | undefined): boolean {
-  const v = raw?.trim().toLowerCase();
-  return v === '1' || v === 'true' || v === 'yes' || v === 'on';
-}
-
 export function isRequireLiffStateSecretEnabled(env: Env['Bindings']): boolean {
-  return isTruthyEnvFlag(env.REQUIRE_LIFF_STATE_SECRET);
+  return effectiveRequireLiffStateSecret(env);
 }
 
 /**
@@ -19,17 +18,17 @@ export function isRequireLiffStateSecretEnabled(env: Env['Bindings']): boolean {
 export function liffStateSecret(env: Env['Bindings']): string {
   const dedicated = env.LIFF_STATE_SECRET?.trim();
   if (dedicated) return dedicated;
-  if (isTruthyEnvFlag(env.ALLOW_LIFF_OAUTH_API_KEY_FALLBACK)) {
+  if (explicitLiffOAuthApiKeyFallbackEnabled(env)) {
     return env.API_KEY?.trim() ?? '';
   }
   return '';
 }
 
 /**
- * Secret for LINE Login OAuth `state` sign/verify. When `REQUIRE_LIFF_STATE_SECRET` is set,
- * only a non-empty `LIFF_STATE_SECRET` is allowed (no `API_KEY` fallback).
- * Otherwise `LIFF_STATE_SECRET` is preferred; `API_KEY` is used only when
- * `ALLOW_LIFF_OAUTH_API_KEY_FALLBACK` is enabled (local/dev convenience).
+ * Secret for LINE Login OAuth `state` sign/verify. When dedicated state is required
+ * (`REQUIRE_LIFF_STATE_SECRET` or non-local HTTPS defaults), only a non-empty `LIFF_STATE_SECRET`
+ * is allowed (no `API_KEY` fallback). Otherwise `LIFF_STATE_SECRET` is preferred; `API_KEY` is
+ * used only when `ALLOW_LIFF_OAUTH_API_KEY_FALLBACK` is enabled (local/dev convenience).
  */
 export function resolveLiffOAuthStateSecret(env: Env['Bindings']): string | null {
   if (isRequireLiffStateSecretEnabled(env)) {
@@ -38,7 +37,7 @@ export function resolveLiffOAuthStateSecret(env: Env['Bindings']): string | null
   }
   const dedicated = env.LIFF_STATE_SECRET?.trim();
   if (dedicated) return dedicated;
-  if (isTruthyEnvFlag(env.ALLOW_LIFF_OAUTH_API_KEY_FALLBACK)) {
+  if (explicitLiffOAuthApiKeyFallbackEnabled(env)) {
     const api = env.API_KEY?.trim();
     return api && api.length > 0 ? api : null;
   }
