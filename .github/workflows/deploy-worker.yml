@@ -44,6 +44,29 @@ jobs:
       - run: pnpm install --frozen-lockfile
       - run: pnpm --filter @line-crm/shared --filter @line-crm/line-sdk --filter @line-crm/db build
 
+      # Fail fast on missing production-critical secrets.
+      # Note: Worker "wrangler secret put" values are managed outside git; this checks only GitHub-injected vars.
+      - name: Fail on missing required deploy secrets
+        working-directory: apps/worker
+        env:
+          WORKER_URL: ${{ secrets.WORKER_URL }}
+          # These two are injected into wrangler.toml to enforce Cloudflare Access on deploy.
+          REQUIRE_CLOUDFLARE_ACCESS_JWT: ${{ secrets.REQUIRE_CLOUDFLARE_ACCESS_JWT }}
+          CLOUDFLARE_ACCESS_TEAM_DOMAIN: ${{ secrets.CLOUDFLARE_ACCESS_TEAM_DOMAIN }}
+        run: |
+          fail=0
+          if [ -z "$WORKER_URL" ]; then
+            echo "Missing GitHub Secret: WORKER_URL" >&2
+            fail=1
+          fi
+          if echo "$WORKER_URL" | grep -qE '^https://'; then
+            if [ -z "$REQUIRE_CLOUDFLARE_ACCESS_JWT" ] || [ -z "$CLOUDFLARE_ACCESS_TEAM_DOMAIN" ]; then
+              echo "Missing GitHub Secrets for HTTPS deploy: REQUIRE_CLOUDFLARE_ACCESS_JWT and/or CLOUDFLARE_ACCESS_TEAM_DOMAIN" >&2
+              fail=1
+            fi
+          fi
+          exit $fail
+
       - name: Inject D1 database id (optional; when wrangler.toml uses YOUR_D1_DATABASE_ID)
         working-directory: apps/worker
         env:

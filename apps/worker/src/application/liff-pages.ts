@@ -8,14 +8,18 @@ export function escapeHtml(str: string): string {
     .replace(/"/g, '&quot;');
 }
 
-export function errorPage(message: string): string {
+function nonceAttr(nonce: string | undefined): string {
+  return nonce ? ` nonce="${escapeHtml(nonce)}"` : '';
+}
+
+export function errorPage(message: string, cspNonce?: string): string {
   return `<!DOCTYPE html>
 <html lang="ja">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>エラー</title>
-  <style>
+  <style${nonceAttr(cspNonce)}>
     * { margin: 0; padding: 0; box-sizing: border-box; }
     body { font-family: 'Hiragino Sans', system-ui, sans-serif; background: #f5f5f5; display: flex; justify-content: center; align-items: center; min-height: 100vh; }
     .card { background: #fff; border-radius: 16px; padding: 40px 24px; box-shadow: 0 2px 8px rgba(0,0,0,0.08); text-align: center; max-width: 400px; width: 90%; }
@@ -33,7 +37,7 @@ export function errorPage(message: string): string {
 }
 
 /** PC fallback landing (currently unused by routes; kept for LP / future wiring). */
-export function authLandingPage(liffUrl: string, oauthUrl: string): string {
+export function authLandingPage(liffUrl: string, oauthUrl: string, cspNonce?: string): string {
   const liffIdMatch = liffUrl.match(/liff\.line\.me\/([^?]+)/);
   const liffId = liffIdMatch ? liffIdMatch[1] : '';
   const qsIndex = liffUrl.indexOf('?');
@@ -46,7 +50,7 @@ export function authLandingPage(liffUrl: string, oauthUrl: string): string {
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>LINE で開く</title>
-  <style>
+  <style${nonceAttr(cspNonce)}>
     * { margin: 0; padding: 0; box-sizing: border-box; }
     body { font-family: 'Hiragino Sans', system-ui, sans-serif; background: #06C755; display: flex; justify-content: center; align-items: center; min-height: 100vh; }
     .card { background: #fff; border-radius: 16px; padding: 40px 24px; box-shadow: 0 4px 16px rgba(0,0,0,0.15); text-align: center; max-width: 400px; width: 90%; }
@@ -70,7 +74,7 @@ export function authLandingPage(liffUrl: string, oauthUrl: string): string {
     <a href="${escapeHtml(oauthUrl)}" class="btn btn-web" id="pcBtn">PCの方・LINEが開かない方</a>
     <p class="loading hidden" id="loading">LINEアプリを起動中...</p>
   </div>
-  <script>
+  <script${nonceAttr(cspNonce)}>
     var lineUrl = '${escapeHtml(lineSchemeUrl)}';
     var ua = navigator.userAgent.toLowerCase();
     var isMobile = /iphone|ipad|android/.test(ua);
@@ -101,6 +105,7 @@ export function completionPage(
   displayName: string,
   pictureUrl: string | null,
   ref: string,
+  cspNonce?: string,
 ): string {
   const safePictureUrl = sanitizeLineProfilePictureUrlForHtml(pictureUrl);
   return `<!DOCTYPE html>
@@ -109,7 +114,7 @@ export function completionPage(
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>登録完了</title>
-  <style>
+  <style${nonceAttr(cspNonce)}>
     * { margin: 0; padding: 0; box-sizing: border-box; }
     body { font-family: 'Hiragino Sans', system-ui, sans-serif; background: #f5f5f5; display: flex; justify-content: center; align-items: center; min-height: 100vh; }
     .card { background: #fff; border-radius: 16px; padding: 40px 24px; box-shadow: 0 2px 8px rgba(0,0,0,0.08); text-align: center; max-width: 400px; width: 90%; }

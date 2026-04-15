@@ -1,5 +1,6 @@
 import { Hono } from 'hono';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+import { securityHeadersMiddleware } from '../../src/middleware/security-headers.js';
 import { resetRequestRateLimits } from '../../src/services/request-rate-limit.js';
 
 const enabledEnv = { DB: {} as D1Database, ENABLE_PUBLIC_OPENAPI: '1' } as const;
@@ -49,6 +50,7 @@ describe('openapi routes', () => {
   it('serves Swagger UI HTML when enabled', async () => {
     const { openapi } = await import('../../src/routes/openapi.js');
     const app = new Hono();
+    app.use('*', securityHeadersMiddleware);
     app.route('/', openapi);
 
     const response = await app.fetch(new Request('http://localhost/docs'), enabledEnv as never);
@@ -57,6 +59,11 @@ describe('openapi routes', () => {
     const html = await response.text();
     expect(html).toContain('SwaggerUIBundle');
     expect(html).toContain('/openapi.json');
+    expect(html).toContain(' nonce="');
+    const csp = response.headers.get('Content-Security-Policy');
+    expect(csp).toBeTruthy();
+    expect(csp).toContain("script-src 'self' 'nonce-");
+    expect(csp).toContain('https://cdn.jsdelivr.net');
   });
 
   it('returns 404 for openapi.json when DISABLE_PUBLIC_OPENAPI is enabled', async () => {

@@ -34,7 +34,11 @@ function allowSimpleHtml(value: string | undefined, fallback: string): string {
   return v === '' ? fallback : v;
 }
 
-export function renderShortLinkLanding(env: LandingEnv, target: string): string {
+function nonceAttr(nonce: string | undefined): string {
+  return nonce ? ` nonce="${escapeHtml(nonce)}"` : '';
+}
+
+export function renderShortLinkLanding(env: LandingEnv, target: string, cspNonce?: string): string {
   const variant = resolveVariant(env);
   if (variant === 'default') {
     // Preserve current OSS default as-is.
@@ -44,7 +48,7 @@ export function renderShortLinkLanding(env: LandingEnv, target: string): string 
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>LINE Harness</title>
-<style>
+<style${nonceAttr(cspNonce)}>
 *{margin:0;padding:0;box-sizing:border-box}
 body{font-family:'Hiragino Sans',system-ui,sans-serif;background:#0d1117;color:#fff;display:flex;justify-content:center;align-items:center;min-height:100vh}
 .card{text-align:center;max-width:400px;width:90%;padding:48px 24px}
@@ -80,7 +84,7 @@ h1{font-size:28px;font-weight:800;margin-bottom:8px}
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>${title}</title>
-<style>
+<style${nonceAttr(cspNonce)}>
 *{margin:0;padding:0;box-sizing:border-box}
 body{font-family:'Hiragino Sans',system-ui,sans-serif;background:#0d1117;color:#fff;display:flex;justify-content:center;align-items:center;min-height:100vh}
 .card{text-align:center;max-width:420px;width:92%;padding:52px 24px}
@@ -102,7 +106,7 @@ h1{font-size:30px;font-weight:900;margin-bottom:10px;letter-spacing:.01em}
 </html>`;
 }
 
-export function renderAuthQrPage(env: LandingEnv, scanTarget: string): string {
+export function renderAuthQrPage(env: LandingEnv, scanTarget: string, cspNonce?: string): string {
   const variant = resolveVariant(env);
   if (variant === 'default') {
     // Preserve current OSS default as-is.
@@ -112,7 +116,7 @@ export function renderAuthQrPage(env: LandingEnv, scanTarget: string): string {
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>LINE で友だち追加</title>
-  <style>
+  <style${nonceAttr(cspNonce)}>
     * { margin: 0; padding: 0; box-sizing: border-box; }
     body { font-family: 'Hiragino Sans', system-ui, sans-serif; background: #0d1117; color: #fff; display: flex; justify-content: center; align-items: center; min-height: 100vh; }
     .card { background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); border-radius: 24px; padding: 48px; text-align: center; max-width: 480px; width: 90%; }
@@ -154,7 +158,7 @@ export function renderAuthQrPage(env: LandingEnv, scanTarget: string): string {
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>${qrTitle}</title>
-  <style>
+  <style${nonceAttr(cspNonce)}>
     * { margin: 0; padding: 0; box-sizing: border-box; }
     body { font-family: 'Hiragino Sans', system-ui, sans-serif; background: #0d1117; color: #fff; display: flex; justify-content: center; align-items: center; min-height: 100vh; }
     .card { background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.12); border-radius: 24px; padding: 52px; text-align: center; max-width: 520px; width: 92%; }

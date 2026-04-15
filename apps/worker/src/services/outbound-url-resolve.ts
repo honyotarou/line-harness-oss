@@ -22,6 +22,11 @@ function parseIpv4Literal(host: string): boolean {
   return /^(\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(\d{1,3})$/.test(host);
 }
 
+function isIpv6MappedIpv4(host: string): boolean {
+  // URL.hostname for `https://[::ffff:127.0.0.1]/` becomes `::ffff:127.0.0.1` in most runtimes.
+  return host.toLowerCase().startsWith('::ffff:');
+}
+
 async function dnsJsonQuery(
   hostname: string,
   recordType: number,
@@ -153,6 +158,13 @@ export async function assertHttpsOutboundUrlResolvedSafe(
   }
 
   if (parseIpv4Literal(host) || host.includes(':')) {
+    if (isIpv6MappedIpv4(host)) {
+      return {
+        ok: false,
+        reason:
+          'url must be a public https URL (private IPs, localhost, and metadata endpoints are not allowed)',
+      };
+    }
     return { ok: true };
   }
 

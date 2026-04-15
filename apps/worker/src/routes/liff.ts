@@ -27,6 +27,7 @@ const liffRoutes = new Hono<Env>();
  * GET /auth/line — redirect to LINE Login with bot_prompt=aggressive
  */
 liffRoutes.get('/auth/line', async (c) => {
+  const nonce = (c.get('cspNonce') as string | undefined) ?? undefined;
   const r = await runAuthLineStart({
     db: c.env.DB,
     bindings: c.env,
@@ -47,21 +48,22 @@ liffRoutes.get('/auth/line', async (c) => {
 
   if (r.kind === 'log_error') {
     console.error(r.message);
-    return c.html(errorPage(r.userHtmlMessage));
+    return c.html(errorPage(r.userHtmlMessage, nonce));
   }
   if (r.kind === 'generic_error') {
-    return c.html(errorPage(r.userHtmlMessage));
+    return c.html(errorPage(r.userHtmlMessage, nonce));
   }
   if (r.kind === 'redirect') {
     return c.redirect(r.location);
   }
-  return c.html(renderAuthQrPage(c.env, r.scanTarget));
+  return c.html(renderAuthQrPage(c.env, r.scanTarget, nonce));
 });
 
 /**
  * GET /auth/callback — LINE Login callback
  */
 liffRoutes.get('/auth/callback', async (c) => {
+  const nonce = (c.get('cspNonce') as string | undefined) ?? undefined;
   const result = await runLiffOAuthCallback({
     db: c.env.DB,
     bindings: c.env,
@@ -70,6 +72,7 @@ liffRoutes.get('/auth/callback', async (c) => {
     stateParam: c.req.query('state') || '',
     oauthError: c.req.query('error'),
     fetchImpl: fetch,
+    cspNonce: nonce,
   });
   if (result.kind === 'redirect') {
     return c.redirect(result.location);
