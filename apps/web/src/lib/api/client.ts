@@ -76,8 +76,8 @@ function bearerForRequest(path: string, method: string): Record<string, string> 
   return t ? { Authorization: `Bearer ${t}` } : {};
 }
 
-export type ApiError = Error & { readonly status: number; readonly body?: unknown };
-export function createApiError(message: string, status: number, body?: unknown): ApiError {
+export type ApiErrorLike = Error & { readonly status: number; readonly body?: unknown };
+export function createApiError(message: string, status: number, body?: unknown): ApiErrorLike {
   return new ApiError(message, status, body);
 }
 

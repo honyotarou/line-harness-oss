@@ -183,8 +183,10 @@ export function createLineClient(channelAccessToken: string): {
 }
 
 export class LineClient {
-  constructor(private readonly channelAccessToken: string) {}
-  private readonly api = createLineClient(this.channelAccessToken);
+  private readonly api: ReturnType<typeof createLineClient>;
+  constructor(private readonly channelAccessToken: string) {
+    this.api = createLineClient(channelAccessToken);
+  }
 
   // ─── Core request helper ──────────────────────────────────────────────────
 
