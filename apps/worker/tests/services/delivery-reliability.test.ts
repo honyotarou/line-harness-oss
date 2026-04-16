@@ -269,4 +269,40 @@ describe('delivery reliability helpers', () => {
       }),
     );
   });
+
+  it('does not persist error stack traces into delivery metadata (info leak guard)', async () => {
+    const { beginDeliveryAttempt, markDeliveryAttemptFailed } = await import(
+      '../../src/services/delivery-reliability.js'
+    );
+    const { db, operations } = createDeliveryDb();
+
+    await expect(
+      beginDeliveryAttempt(db, {
+        idempotencyKey: 'fail:1',
+        jobName: 'step_deliveries',
+        sourceType: 'friend_scenario',
+        sourceId: 'friend-scenario-1',
+        friendId: 'friend-1',
+        lineAccountId: 'account-1',
+      }),
+    ).resolves.toBe(true);
+
+    const err = new Error('LINE down');
+    err.stack = 'Error: LINE down\n    at /internal/path/file.ts:1:2';
+
+    await markDeliveryAttemptFailed(db, {
+      idempotencyKey: 'fail:1',
+      jobName: 'step_deliveries',
+      sourceType: 'friend_scenario',
+      sourceId: 'friend-scenario-1',
+      friendId: 'friend-1',
+      lineAccountId: 'account-1',
+      error: err,
+    });
+
+    const row = operations.get('fail:1');
+    expect(row?.metadata).toBeTruthy();
+    expect(row?.metadata).not.toContain('errorStack');
+    expect(row?.metadata).not.toContain('/internal/path');
+  });
 });

@@ -28,6 +28,7 @@ import {
   deepEscapeHtmlStringLeaves,
   escapeHtmlTextForJsonApi,
 } from '../services/api-json-sanitizer.js';
+import { sanitizeMessageLogListForJsonApi } from '../services/message-log-sanitizer.js';
 import { mergeFriendMetadataPatch } from '../services/friend-metadata-merge.js';
 import { sanitizeLineProfilePictureUrlForHtml } from '../services/safe-line-picture-url.js';
 import { clampListLimit, clampOffset } from '../services/query-limits.js';
@@ -431,7 +432,7 @@ friends.get('/api/friends/:id/messages', async (c) => {
         content: string;
         createdAt: string;
       }>();
-    return c.json({ success: true, data: result.results });
+    return c.json({ success: true, data: sanitizeMessageLogListForJsonApi(result.results) });
   } catch (err) {
     console.error('GET /api/friends/:id/messages error:', err);
     return c.json({ success: false, error: 'Internal server error' }, 500);

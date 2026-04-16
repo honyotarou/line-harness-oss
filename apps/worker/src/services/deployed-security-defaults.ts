@@ -186,6 +186,11 @@ export function effectiveRequireDedicatedAdminSessionSecret(
   if (isTruthyEnvFlag(env.REQUIRE_ADMIN_SESSION_SECRET)) {
     return true;
   }
+  // On strict public HTTPS surfaces, always require a dedicated session signer
+  // (do not allow API_KEY to double as a session signing secret).
+  if (isStrictDeployedHttpsSurface(env)) {
+    return true;
+  }
   if (isTruthyEnvFlag(env.ALLOW_LEGACY_API_KEY_SESSION_SIGNER)) {
     return false;
   }

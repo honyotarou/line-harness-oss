@@ -24,6 +24,11 @@ function allowsApiKeyAsAdminSessionSigner(env: {
   RELAX_DEPLOYED_SECURITY_DEFAULTS?: string;
   RELAX_DEPLOYED_SECURITY_CONFIRM?: string;
 }): boolean {
+  // Never allow signing admin sessions with API_KEY on strict public HTTPS surfaces.
+  // To migrate a deployed Worker before setting ADMIN_SESSION_SECRET, use the global relax pair.
+  if (isNonLocalHttpsWorkerUrl(env.WORKER_URL ?? '') && !isRelaxedDeployedSecurityDefaults(env)) {
+    return false;
+  }
   if (isTruthyEnvFlag(env.ALLOW_LEGACY_API_KEY_SESSION_SIGNER)) {
     return true;
   }

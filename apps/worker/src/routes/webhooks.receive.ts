@@ -5,6 +5,7 @@ import { tryConsumeIncomingWebhookPayload } from '../services/incoming-webhook-d
 import { verifySignedPayload } from '../services/signed-payload.js';
 import { jsonBodyReadErrorResponse, readTextBodyWithLimit } from '../services/request-body.js';
 import { enforceRateLimit } from '../services/request-rate-limit.js';
+import { sanitizeIncomingWebhookPayload } from '../services/incoming-webhook-payload-sanitizer.js';
 
 const INCOMING_WEBHOOK_LIMIT_BYTES = 64 * 1024;
 const INCOMING_WEBHOOK_PER_ID_RATE_LIMIT = { limit: 20, windowMs: 60_000 };
@@ -79,11 +80,12 @@ incomingWebhookReceive.post('/api/webhooks/incoming/:id/receive', async (c) => {
     const { fireEventRespectingAutomationWebhookHosts } = await import(
       '../services/fire-event-outbound.js'
     );
+    const safePayload = sanitizeIncomingWebhookPayload(body);
     await fireEventRespectingAutomationWebhookHosts(
       c.env.DB,
       eventType,
       {
-        eventData: { webhookId: wh.id, source: wh.source_type, payload: body },
+        eventData: { webhookId: wh.id, source: wh.source_type, payload: safePayload },
       },
       c.env,
       undefined,

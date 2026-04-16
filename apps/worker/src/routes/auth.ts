@@ -33,43 +33,31 @@ import {
 } from '../services/cloudflare-access-principal.js';
 import { formatDeployedSecurityRelaxPairHint } from '../services/deployed-security-defaults.js';
 import { timingSafeEqualUtf8 } from '../services/timing-safe-equal.js';
+import {
+  allowLegacyApiKeyBearerSession,
+  getAdminAuthToken,
+  includeSessionTokenInLoginBody,
+  strictHttpsCloudflareAccessRequiredError,
+} from '../services/auth-route-helpers.js';
 
 const authRoutes = new Hono<Env>();
 const LOGIN_BODY_LIMIT_BYTES = 8 * 1024;
 const LOGIN_RATE_LIMIT = { limit: 5, windowMs: 60_000 };
 const SESSION_CHECK_RATE_LIMIT = { limit: 120, windowMs: 60_000 };
 
-function allowLegacyApiKeyBearerSession(env: {
-  ALLOW_LEGACY_API_KEY_BEARER_SESSION?: string;
-}): boolean {
-  const v = env.ALLOW_LEGACY_API_KEY_BEARER_SESSION?.trim().toLowerCase();
-  return v === '1' || v === 'true' || v === 'yes' || v === 'on';
-}
-
-/** When true, login JSON includes `sessionToken` for cross-origin admins that cannot use HttpOnly cookies (Bearer). Default off — prefer cookie + `/api/auth/session`. */
-function includeSessionTokenInLoginBody(env: {
-  INCLUDE_SESSION_TOKEN_IN_LOGIN_BODY?: string;
-}): boolean {
-  const v = env.INCLUDE_SESSION_TOKEN_IN_LOGIN_BODY?.trim().toLowerCase();
-  return v === '1' || v === 'true' || v === 'yes' || v === 'on';
-}
-
-function getBearerToken(header: string | undefined): string | null {
-  return parseBearerAuthorization(header);
-}
-
-function getAdminAuthToken(c: { req: { header: (name: string) => string | undefined } }):
-  | string
-  | null {
-  const bearer = getBearerToken(c.req.header('Authorization'));
-  if (bearer) {
-    return bearer;
-  }
-  return readAdminSessionCookie(c as never);
-}
-
 authRoutes.post('/api/auth/login', async (c) => {
   try {
+    const strictErr = strictHttpsCloudflareAccessRequiredError(c.env, 'login');
+    if (strictErr) {
+      return c.json(
+        {
+          success: false,
+          error: strictErr,
+        },
+        503,
+      );
+    }
+
     const limited = await enforceRateLimit(c, {
       bucket: 'auth-login',
       db: c.env.DB,
@@ -177,6 +165,17 @@ authRoutes.post('/api/auth/login', async (c) => {
 
 authRoutes.get('/api/auth/session', async (c) => {
   try {
+    const strictErr = strictHttpsCloudflareAccessRequiredError(c.env, 'session');
+    if (strictErr) {
+      return c.json(
+        {
+          success: false,
+          error: strictErr,
+        },
+        503,
+      );
+    }
+
     const limited = await enforceRateLimit(c, {
       bucket: 'auth-session',
       db: c.env.DB,
@@ -226,7 +225,7 @@ authRoutes.post('/api/auth/logout', async (c) => {
     return c.json({ success: false, error: 'Forbidden' }, 403);
   }
 
-  const bearer = getBearerToken(authz);
+  const bearer = parseBearerAuthorization(authz);
   const sessionToken = bearer ?? cookieTok;
   const logoutSecret = resolveAdminSessionSecret(c.env);
   if (sessionToken && c.env.DB && logoutSecret) {

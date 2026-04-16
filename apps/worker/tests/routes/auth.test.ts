@@ -78,13 +78,14 @@ describe('auth routes', () => {
       } as never,
     );
 
+    // Strict HTTPS requires Cloudflare Access; the missing ADMIN_SESSION_SECRET is a secondary concern.
     expect(response.status).toBe(503);
     const json = (await response.json()) as { success: boolean; error?: string };
     expect(json.success).toBe(false);
-    expect(json.error).toMatch(/ADMIN_SESSION_SECRET/i);
+    expect(json.error).toMatch(/Cloudflare Access/i);
   });
 
-  it('allows login on public HTTPS Worker when ALLOW_LEGACY_API_KEY_SESSION_SIGNER is on', async () => {
+  it('returns 503 on strict HTTPS when Cloudflare Access is not configured (even if apiKey is correct)', async () => {
     const { authRoutes } = await import('../../src/routes/auth.js');
     const app = new Hono();
     app.route('/', authRoutes);
@@ -98,11 +99,38 @@ describe('auth routes', () => {
       {
         API_KEY: 'root-api-key',
         WORKER_URL: 'https://deployed.workers.dev',
+        DB: createAuthIntegrationDb(),
+      } as never,
+    );
+
+    expect(response.status).toBe(503);
+    const json = (await response.json()) as { success: boolean; error?: string };
+    expect(json.success).toBe(false);
+    expect(json.error).toMatch(/Cloudflare Access/i);
+  });
+
+  it('allows login on public HTTPS Worker when the global relax pair is set (migration only)', async () => {
+    const { authRoutes } = await import('../../src/routes/auth.js');
+    const app = new Hono();
+    app.route('/', authRoutes);
+
+    const response = await app.fetch(
+      new Request('http://localhost/api/auth/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ apiKey: 'root-api-key' }),
+      }),
+      {
+        API_KEY: 'root-api-key',
+        WORKER_URL: 'https://deployed.workers.dev',
+        RELAX_DEPLOYED_SECURITY_DEFAULTS: '1',
+        RELAX_DEPLOYED_SECURITY_CONFIRM: 'YES_I_ACCEPT_REDUCED_SECURITY',
         ALLOW_LEGACY_API_KEY_SESSION_SIGNER: '1',
         DB: createAuthIntegrationDb(),
       } as never,
     );
 
+    // With relax on HTTPS, this route stays usable for migration, but production should use Access + ADMIN_SESSION_SECRET.
     expect(response.status).toBe(200);
   });
 
