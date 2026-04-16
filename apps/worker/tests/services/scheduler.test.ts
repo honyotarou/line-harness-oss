@@ -112,6 +112,51 @@ describe('runScheduledJobs', () => {
 
     errorSpy.mockRestore();
   });
+
+  it('logs when admin_session_revocations table is missing', async () => {
+    const processStepDeliveries = vi.fn().mockResolvedValue(undefined);
+    const processScheduledBroadcasts = vi.fn().mockResolvedValue(undefined);
+    const processReminderDeliveries = vi.fn().mockResolvedValue(undefined);
+    const checkAccountHealth = vi.fn().mockResolvedValue(undefined);
+    const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+
+    const db = {
+      prepare(sql: string) {
+        if (sql.includes('sqlite_master') && sql.includes('admin_session_revocations')) {
+          return { first: async () => null };
+        }
+        return {
+          bind: () => ({
+            first: async () => null,
+            run: async () => ({ success: true }),
+          }),
+        };
+      },
+    } as unknown as D1Database;
+
+    await runScheduledJobs(
+      {
+        db,
+        defaultAccessToken: 'shared-token',
+        workerUrl: 'https://worker.example.com',
+        dbAccounts: [],
+      },
+      {
+        LineClient: createFakeLineClient as unknown as new (
+          token: string,
+        ) => { readonly token: string },
+        processStepDeliveries,
+        processScheduledBroadcasts,
+        processReminderDeliveries,
+        checkAccountHealth,
+      },
+    );
+
+    expect(errorSpy).toHaveBeenCalledWith(
+      expect.stringMatching(/admin_session_revocations is missing/),
+    );
+    errorSpy.mockRestore();
+  });
 });
 
 describe('runWithConcurrencyLimit', () => {

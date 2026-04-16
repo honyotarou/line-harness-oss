@@ -6,7 +6,10 @@ import {
   readAdminSessionCookie,
   resolveAdminSessionSecret,
 } from './admin-session.js';
-import { effectiveRequireDedicatedAdminSessionSecret } from './deployed-security-defaults.js';
+import {
+  effectiveRequireDedicatedAdminSessionSecret,
+  isStrictDeployedHttpsSurface,
+} from './deployed-security-defaults.js';
 
 function truthyEnv(raw: string | undefined): boolean {
   const v = raw?.trim().toLowerCase();
@@ -15,6 +18,11 @@ function truthyEnv(raw: string | undefined): boolean {
 
 /** Troubleshooting only: never returns secret values; requires admin session (Bearer or cookie). */
 export async function handleEnvProbeGet(c: Context<Env>): Promise<Response> {
+  // Never expose env reconnaissance on strict production HTTPS (even if ALLOW_WORKER_ENV_PROBE is mis-set).
+  if (isStrictDeployedHttpsSurface(c.env)) {
+    return c.json({ success: false, error: 'Not found' }, 404);
+  }
+
   if (!truthyEnv(c.env.ALLOW_WORKER_ENV_PROBE)) {
     return c.json({ success: false, error: 'Not found' }, 404);
   }

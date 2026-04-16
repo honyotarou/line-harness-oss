@@ -1,4 +1,5 @@
 import type { LineAccountDbOptions } from '@line-crm/db';
+import { hasAdminSessionRevocationsTable } from '@line-crm/db';
 import { LineClient } from '@line-crm/line-sdk';
 import { processStepDeliveries } from './step-delivery.js';
 import { processScheduledBroadcasts } from './broadcast.js';
@@ -130,6 +131,18 @@ export async function runScheduledJobs(
   params: SchedulerParams,
   deps: SchedulerDeps = defaultDeps,
 ): Promise<void> {
+  if (params.db && typeof params.db.prepare === 'function') {
+    try {
+      if (!(await hasAdminSessionRevocationsTable(params.db))) {
+        console.error(
+          'D1 schema: table admin_session_revocations is missing; apply packages/db/migrations/015_admin_session_revocations.sql (e.g. pnpm db:apply-015:local or pnpm db:apply-015:remote). Until then, admin logout/session revocation may not work as intended.',
+        );
+      }
+    } catch (err) {
+      console.error('D1 admin_session_revocations table check failed:', err);
+    }
+  }
+
   const targets = buildScheduledAccountTargets(params.defaultAccessToken, params.dbAccounts);
   const targetTasks = targets.map((target) => () => runJobsForTarget(params, deps, target));
 
