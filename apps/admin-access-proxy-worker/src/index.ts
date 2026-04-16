@@ -83,8 +83,8 @@ export default {
         );
       }
     }
-    const out = new Response(res.body, res);
-    out.headers.delete('set-cookie');
-    return out;
+    // Forward upstream `Set-Cookie` so the browser can store `lh_admin_session` on this origin.
+    // Stripping it breaks POST /api/auth/login through the proxy (session checks then 401).
+    return new Response(res.body, res);
   },
 };
