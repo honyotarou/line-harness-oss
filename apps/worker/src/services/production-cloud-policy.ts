@@ -48,6 +48,10 @@ export function isNonLocalHttpsWorkerUrl(url: string): boolean {
       return false;
     }
     const h = u.hostname;
+    // Placeholder templates are not real deployed surfaces; treat them as non-production for local/CI.
+    if (/^(your_subdomain|your-subdomain|YOUR_SUBDOMAIN)\.workers\.dev$/i.test(h)) {
+      return false;
+    }
     return h !== 'localhost' && h !== '127.0.0.1' && h !== '::1';
   } catch {
     return false;

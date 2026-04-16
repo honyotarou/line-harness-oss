@@ -1,7 +1,15 @@
 import { describe, expect, it } from 'vitest';
-import { getProductionCloudSurfaceWarnings } from '../../src/services/production-cloud-policy.js';
+import {
+  getProductionCloudSurfaceWarnings,
+  isNonLocalHttpsWorkerUrl,
+} from '../../src/services/production-cloud-policy.js';
 
 describe('production-cloud-policy', () => {
+  it('does not treat placeholder WORKER_URL as a deployed public HTTPS surface', () => {
+    expect(isNonLocalHttpsWorkerUrl('https://YOUR_SUBDOMAIN.workers.dev')).toBe(false);
+    expect(isNonLocalHttpsWorkerUrl('https://your_subdomain.workers.dev')).toBe(false);
+  });
+
   it('warns on short or placeholder-like API_KEY', () => {
     const a = getProductionCloudSurfaceWarnings({ API_KEY: 'short' });
     expect(a.some((x) => x.includes('API_KEY') && x.includes('24'))).toBe(true);
