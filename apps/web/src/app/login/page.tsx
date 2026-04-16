@@ -35,13 +35,11 @@ export default function LoginPage() {
         setError(accessLogin ? 'セッションの開始に失敗しました' : 'APIキーが正しくありません');
         return;
       }
-      const sess = await api.auth.session();
-      if (sess.success && sess.data?.authenticated) {
-        window.location.assign('/');
-        return;
-      }
       if (res.data.sessionToken) {
         setAdminSessionToken(res.data.sessionToken);
+      }
+      const sess = await api.auth.session();
+      if (sess.success && sess.data?.authenticated) {
         window.location.assign('/');
         return;
       }
