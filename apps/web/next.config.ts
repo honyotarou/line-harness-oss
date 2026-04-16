@@ -27,9 +27,15 @@ const ADMIN_SECURITY_HEADERS = [
       ] as const)),
   { key: 'X-Content-Type-Options', value: 'nosniff' },
   { key: 'Referrer-Policy', value: 'strict-origin-when-cross-origin' },
+  {
+    key: 'Permissions-Policy',
+    value: 'camera=(), microphone=(), geolocation=()',
+  },
 ] as const;
 
 const nextConfig: NextConfig = {
+  /** @see https://nextjs.org/docs/app/api-reference/next-config-js/poweredByHeader */
+  poweredByHeader: false,
   distDir: process.env.NEXT_DIST_DIR || '.next',
   output: 'export',
   transpilePackages: ['@line-crm/shared'],

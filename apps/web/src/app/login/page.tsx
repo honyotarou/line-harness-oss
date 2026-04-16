@@ -1,6 +1,12 @@
 'use client';
 import { useEffect, useState } from 'react';
-import { ApiError, api, setAdminSessionToken, useCloudflareAccessLoginMode } from '@/lib/api';
+import {
+  ApiError,
+  AUTH_API_REDIRECT_NOT_FOLLOWED_CODE,
+  api,
+  setAdminSessionToken,
+  useCloudflareAccessLoginMode,
+} from '@/lib/api';
 import { Input } from '@/components/ui/field';
 
 function errorMessageFromApi(err: unknown): string | undefined {
@@ -43,6 +49,15 @@ export default function LoginPage() {
         sess = await api.auth.session();
       } catch (sessionErr) {
         if (sessionErr instanceof ApiError && sessionErr.status === 401) {
+          const b = sessionErr.body;
+          if (
+            b &&
+            typeof b === 'object' &&
+            (b as { code?: unknown }).code === AUTH_API_REDIRECT_NOT_FOLLOWED_CODE
+          ) {
+            setError(errorMessageFromApi(sessionErr) ?? 'セッション確認に失敗しました');
+            return;
+          }
           setError(
             'ログインは成功しましたが、管理セッションを確認できませんでした。`lh_admin_session` がブラウザに保存されていない可能性があります。`admin-access-proxy-worker` を最新版で再デプロイするか、API Worker に INCLUDE_SESSION_TOKEN_IN_LOGIN_BODY=1 を設定してください。',
           );

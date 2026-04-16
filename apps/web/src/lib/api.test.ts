@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { ApiError, fetchApiCore } from './api';
+import { ApiError, AUTH_API_REDIRECT_NOT_FOLLOWED_CODE, fetchApiCore } from './api';
 
 describe('api object (integration via global fetch)', () => {
   it('setAdminSessionToken and clearAdminSessionToken no-op when window is undefined (SSR/Node)', async () => {
@@ -861,8 +861,18 @@ describe('fetchApiCore', () => {
     ).rejects.toMatchObject({
       name: 'ApiError',
       status: 401,
-      body: expect.objectContaining({ error: expect.stringContaining('Cloudflare Access') }),
+      body: expect.objectContaining({
+        code: AUTH_API_REDIRECT_NOT_FOLLOWED_CODE,
+        error: expect.stringMatching(/リダイレクト/),
+      }),
     });
+  });
+
+  it('rethrows non-TypeError failures on /api/auth/* unchanged', async () => {
+    const fetchMock = vi.fn().mockRejectedValue(new Error('custom'));
+    await expect(
+      fetchApiCore('https://api.example', fetchMock as typeof fetch, '/api/auth/session'),
+    ).rejects.toThrow('custom');
   });
 
   it('merges caller headers over defaults', async () => {

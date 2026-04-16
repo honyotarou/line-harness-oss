@@ -11,6 +11,11 @@ import {
   getAdminWorkerApiOrigin,
   isAdminCloudflareAccessLoginEnabled,
 } from '../admin-public-config.js';
+import {
+  adminAuthFetchFailureBody,
+  resolveBrowserFetchRedirectPolicy,
+  shouldNormalizeAuthFetchNetworkFailure,
+} from './admin-auth-fetch-policy.js';
 
 /** Broadcast type from API (now camelCase after worker serialization) */
 export type ApiBroadcast = Broadcast;
@@ -96,15 +101,6 @@ function apiBaseUrlValidationOptions(): { allowPlaceholderTemplate?: boolean } {
   return { allowPlaceholderTemplate: allowAdminApiUrlPlaceholderTemplate() };
 }
 
-function adminAuthApiRedirectMode(path: string, options?: RequestInit): RequestRedirect {
-  // Cloudflare Access often answers unauthenticated API calls with 302 to *.cloudflareaccess.com.
-  // Default fetch "follow" then hits cross-origin CORS (OPTIONS 403 / no ACAO). Auth paths must not follow.
-  if (path.startsWith('/api/auth/')) {
-    return 'error';
-  }
-  return (options?.redirect as RequestRedirect | undefined) ?? 'follow';
-}
-
 /** Testable HTTP helper: all browser `fetchApi` calls go through here. */
 export async function fetchApiCore<T>(
   baseUrl: string,
@@ -127,7 +123,7 @@ export async function fetchApiCore<T>(
     'Content-Type': 'application/json',
     [ADMIN_BROWSER_CLIENT_HEADER]: browserClientValue,
   };
-  const redirect = adminAuthApiRedirectMode(path, options);
+  const redirect = resolveBrowserFetchRedirectPolicy(path, options);
   let res: Response;
   try {
     res = await fetchImpl(`${fetchBase}${path}`, {
@@ -137,11 +133,12 @@ export async function fetchApiCore<T>(
       redirect,
     });
   } catch (e) {
-    if (path.startsWith('/api/auth/')) {
-      throw createApiError('Admin auth request failed at redirect (e.g. Cloudflare Access).', 401, {
-        error:
-          'API が Cloudflare Access のログイン URL へリダイレクトしています。ブラウザの fetch が追従すると別オリジンで CORS になります。admin-access-proxy のサービストークンと line-crm Worker の CLOUDFLARE_ACCESS_TRUSTED_SERVICE_CLIENT_IDS を確認するか、Cloudflare Access の CORS 設定（公式ドキュメント）を確認してください。',
-      });
+    if (shouldNormalizeAuthFetchNetworkFailure(path, e)) {
+      throw createApiError(
+        'Admin auth API blocked fetch redirect (SSO edge).',
+        401,
+        adminAuthFetchFailureBody(),
+      );
     }
     throw e;
   }
