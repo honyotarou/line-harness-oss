@@ -6,18 +6,31 @@ import { buildAdminContentSecurityPolicy } from './security/csp-policy';
 
 const webRoot = join(dirname(fileURLToPath(import.meta.url)), '..');
 
+function cspDirectiveSet(value: string): Set<string> {
+  return new Set(
+    value
+      .split(';')
+      .map((s) => s.trim())
+      .filter(Boolean),
+  );
+}
+
 describe('security headers for static admin (Vercel)', () => {
-  it('vercel.json CSP matches production policy helper (no drift)', () => {
+  it('vercel.json CSP matches production policy helper (directive set; no drift)', () => {
     const raw = readFileSync(join(webRoot, 'vercel.json'), 'utf8');
     const j = JSON.parse(raw) as {
       headers: Array<{ headers: Array<{ key: string; value: string }> }>;
     };
     const list = j.headers[0]?.headers ?? [];
     const csp = list.find((h) => h.key === 'Content-Security-Policy')?.value ?? '';
-    expect(csp).toBe(buildAdminContentSecurityPolicy({ allowUnsafeEval: false }));
+    const built = buildAdminContentSecurityPolicy({ allowUnsafeEval: false });
+    expect(cspDirectiveSet(csp)).toEqual(cspDirectiveSet(built));
     expect(list.find((h) => h.key === 'X-Content-Type-Options')?.value).toBe('nosniff');
     expect(list.find((h) => h.key === 'Strict-Transport-Security')?.value).toMatch(/max-age=/);
     expect(list.find((h) => h.key === 'X-Frame-Options')?.value).toBe('DENY');
+    expect(list.find((h) => h.key === 'Permissions-Policy')?.value).toBe(
+      'camera=(), microphone=(), geolocation=()',
+    );
   });
 
   it('dev policy allows unsafe-eval for Next.js tooling', () => {

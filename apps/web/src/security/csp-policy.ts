@@ -2,6 +2,9 @@ import { validateAdminApiFetchBase } from '@line-crm/shared';
 
 /**
  * CSP for the exported admin static app (see `vercel.json`) and for `next dev` / Playwright.
+ * Production `vercel.json` must stay aligned with {@link buildAdminContentSecurityPolicy} — enforced by
+ * `security-headers.policy.test.ts`. See Next.js CSP guidance: https://nextjs.org/docs/app/building-your-application/configuring/content-security-policy
+ *
  * - `unsafe-eval` is required for Next.js dev tooling; production export omits it.
  * - `script-src 'unsafe-inline'` is still required for Next.js App Router flight payload (`self.__next_f`)
  *   in static export; removing it breaks the admin UI.
