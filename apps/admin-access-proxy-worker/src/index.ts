@@ -1,4 +1,5 @@
 import {
+  isCloudflareAccessApplicationLoginRedirect,
   isEligibleWorkerAdminProxyTargetPath,
   stripAdminAccessProxyPrefix,
 } from '@line-crm/shared';
@@ -69,10 +70,10 @@ export default {
     }
 
     const res = await fetch(upstreamUrl, init);
-    // Upstream Access login redirects break browser fetch (cross-origin redirect + no CORS).
+    // Upstream Access login redirects break browser fetch (cross-origin redirect + no CORS on Access host).
     if (res.status >= 300 && res.status < 400) {
-      const loc = res.headers.get('Location') ?? '';
-      if (loc.includes('cloudflareaccess.com') && loc.includes('access/login')) {
+      const loc = res.headers.get('Location');
+      if (isCloudflareAccessApplicationLoginRedirect(loc, upstreamUrl)) {
         return new Response(
           JSON.stringify({
             success: false,
