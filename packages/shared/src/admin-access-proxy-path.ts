@@ -40,3 +40,28 @@ export function isEligibleWorkerAdminProxyTargetPath(pathname: string): boolean 
   }
   return normalized.startsWith('/api/') || normalized === '/api';
 }
+
+/**
+ * True when `Location` points at Cloudflare Access's interactive login (`/cdn-cgi/access/login/...`).
+ * That redirect must not be forwarded to browser `fetch()` callers: the browser will follow it
+ * cross-origin and fail CORS (OPTIONS to `*.cloudflareaccess.com` often returns 403 without ACAO).
+ *
+ * @param locationHeader raw `Location` header from the upstream response
+ * @param resolveAgainstBaseUrl upstream request URL (used to resolve relative `Location` values)
+ */
+export function isCloudflareAccessApplicationLoginRedirect(
+  locationHeader: string | null | undefined,
+  resolveAgainstBaseUrl: string,
+): boolean {
+  const raw = locationHeader?.trim();
+  if (!raw) {
+    return false;
+  }
+  let resolved: URL;
+  try {
+    resolved = new URL(raw, resolveAgainstBaseUrl);
+  } catch {
+    return false;
+  }
+  return resolved.pathname.toLowerCase().includes('/cdn-cgi/access/login');
+}
