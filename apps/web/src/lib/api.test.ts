@@ -70,7 +70,7 @@ describe('api object (integration via global fetch)', () => {
       expect.objectContaining({
         method: 'POST',
         body: JSON.stringify({ apiKey: 'secret-key' }),
-        redirect: 'error',
+        redirect: 'manual',
       }),
     );
   });
@@ -84,7 +84,7 @@ describe('api object (integration via global fetch)', () => {
       expect.objectContaining({
         method: 'POST',
         body: JSON.stringify({}),
-        redirect: 'error',
+        redirect: 'manual',
       }),
     );
     delete process.env.NEXT_PUBLIC_USE_CLOUDFLARE_ACCESS_LOGIN;
@@ -252,12 +252,12 @@ describe('api object (integration via global fetch)', () => {
     await api.auth.session();
     expect(globalThis.fetch).toHaveBeenCalledWith(
       'https://worker.test/api/auth/session',
-      expect.objectContaining({ credentials: 'include', redirect: 'error' }),
+      expect.objectContaining({ credentials: 'include', redirect: 'manual' }),
     );
     await api.auth.logout();
     expect(globalThis.fetch).toHaveBeenCalledWith(
       'https://worker.test/api/auth/logout',
-      expect.objectContaining({ method: 'POST', redirect: 'error' }),
+      expect.objectContaining({ method: 'POST', redirect: 'manual' }),
     );
   });
 
@@ -842,7 +842,7 @@ describe('fetchApiCore', () => {
     );
   });
 
-  it('uses redirect error for /api/auth/* so Access login redirects are not followed (CORS)', async () => {
+  it('uses redirect manual for /api/auth/* so redirects are not auto-followed', async () => {
     const fetchMock = vi.fn().mockResolvedValue({
       ok: true,
       json: async () => ({ success: true }),
@@ -850,12 +850,16 @@ describe('fetchApiCore', () => {
     await fetchApiCore('https://api.example', fetchMock as typeof fetch, '/api/auth/session');
     expect(fetchMock).toHaveBeenCalledWith(
       'https://api.example/api/auth/session',
-      expect.objectContaining({ redirect: 'error' }),
+      expect.objectContaining({ redirect: 'manual' }),
     );
   });
 
-  it('maps fetch failure on /api/auth/* to ApiError 401 with operator hint', async () => {
-    const fetchMock = vi.fn().mockRejectedValue(new TypeError('Failed to fetch'));
+  it('maps 302 on /api/auth/* to ApiError 401 with operator hint (SSO redirect without follow)', async () => {
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: false,
+      status: 302,
+      type: 'basic',
+    });
     await expect(
       fetchApiCore('https://api.example', fetchMock as typeof fetch, '/api/auth/session'),
     ).rejects.toMatchObject({
@@ -868,11 +872,11 @@ describe('fetchApiCore', () => {
     });
   });
 
-  it('rethrows non-TypeError failures on /api/auth/* unchanged', async () => {
-    const fetchMock = vi.fn().mockRejectedValue(new Error('custom'));
+  it('rethrows TypeError from fetch on /api/auth/* unchanged (e.g. CORS; not mislabeled as redirect)', async () => {
+    const fetchMock = vi.fn().mockRejectedValue(new TypeError('Failed to fetch'));
     await expect(
       fetchApiCore('https://api.example', fetchMock as typeof fetch, '/api/auth/session'),
-    ).rejects.toThrow('custom');
+    ).rejects.toBeInstanceOf(TypeError);
   });
 
   it('merges caller headers over defaults', async () => {
