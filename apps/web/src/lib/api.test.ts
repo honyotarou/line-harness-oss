@@ -70,6 +70,7 @@ describe('api object (integration via global fetch)', () => {
       expect.objectContaining({
         method: 'POST',
         body: JSON.stringify({ apiKey: 'secret-key' }),
+        redirect: 'error',
       }),
     );
   });
@@ -83,6 +84,7 @@ describe('api object (integration via global fetch)', () => {
       expect.objectContaining({
         method: 'POST',
         body: JSON.stringify({}),
+        redirect: 'error',
       }),
     );
     delete process.env.NEXT_PUBLIC_USE_CLOUDFLARE_ACCESS_LOGIN;
@@ -250,12 +252,12 @@ describe('api object (integration via global fetch)', () => {
     await api.auth.session();
     expect(globalThis.fetch).toHaveBeenCalledWith(
       'https://worker.test/api/auth/session',
-      expect.objectContaining({ credentials: 'include' }),
+      expect.objectContaining({ credentials: 'include', redirect: 'error' }),
     );
     await api.auth.logout();
     expect(globalThis.fetch).toHaveBeenCalledWith(
       'https://worker.test/api/auth/logout',
-      expect.objectContaining({ method: 'POST' }),
+      expect.objectContaining({ method: 'POST', redirect: 'error' }),
     );
   });
 
@@ -831,12 +833,36 @@ describe('fetchApiCore', () => {
         method: 'POST',
         body: '{}',
         credentials: 'include',
+        redirect: 'follow',
         headers: expect.objectContaining({
           'Content-Type': 'application/json',
           'X-Line-Harness-Client': '1',
         }),
       }),
     );
+  });
+
+  it('uses redirect error for /api/auth/* so Access login redirects are not followed (CORS)', async () => {
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({ success: true }),
+    });
+    await fetchApiCore('https://api.example', fetchMock as typeof fetch, '/api/auth/session');
+    expect(fetchMock).toHaveBeenCalledWith(
+      'https://api.example/api/auth/session',
+      expect.objectContaining({ redirect: 'error' }),
+    );
+  });
+
+  it('maps fetch failure on /api/auth/* to ApiError 401 with operator hint', async () => {
+    const fetchMock = vi.fn().mockRejectedValue(new TypeError('Failed to fetch'));
+    await expect(
+      fetchApiCore('https://api.example', fetchMock as typeof fetch, '/api/auth/session'),
+    ).rejects.toMatchObject({
+      name: 'ApiError',
+      status: 401,
+      body: expect.objectContaining({ error: expect.stringContaining('Cloudflare Access') }),
+    });
   });
 
   it('merges caller headers over defaults', async () => {
