@@ -219,6 +219,56 @@ describe('notifications routes', () => {
     });
   });
 
+  it('escapes title/body and deep-escapes metadata leaves in GET /api/notifications (stored XSS defense)', async () => {
+    const { notifications } = await import('../../src/routes/notifications.js');
+    const app = new Hono();
+    app.route('/', notifications);
+
+    const db = {
+      prepare(sql: string) {
+        return {
+          bind(...bindings: unknown[]) {
+            return {
+              async all<T>() {
+                if (sql.includes('FROM notifications WHERE line_account_id = ? AND status = ?')) {
+                  const [lineAccountId, status] = bindings as [string, string];
+                  return {
+                    results: [
+                      {
+                        id: 'notification-xss',
+                        rule_id: 'rule-1',
+                        event_type: 'delivery_failure',
+                        title: '<b>bad</b>',
+                        body: '{"display_name":"<img src=x onerror=1>"}',
+                        channel: 'dashboard',
+                        status,
+                        line_account_id: lineAccountId,
+                        metadata: '{"payload":{"display_name":"<svg onload=1>"}}',
+                        created_at: '2026-03-25T10:00:00+09:00',
+                      },
+                    ] as T[],
+                  };
+                }
+                throw new Error(`Unexpected SQL: ${sql}`);
+              },
+            };
+          },
+        };
+      },
+    } as unknown as D1Database;
+
+    const response = await app.fetch(
+      new Request('http://localhost/api/notifications?lineAccountId=account-1&status=unread'),
+      { DB: db } as never,
+    );
+    expect(response.status).toBe(200);
+    const json = (await response.json()) as any;
+    expect(json.success).toBe(true);
+    expect(json.data[0].title).toBe('&lt;b&gt;bad&lt;/b&gt;');
+    expect(json.data[0].body).toContain('&lt;img');
+    expect(json.data[0].metadata.payload.display_name).toBe('&lt;svg onload=1&gt;');
+  });
+
   it('V-5 / P6: returns 404 for GET /api/notifications/rules/:id when rule line account is outside scope', async () => {
     dbMocks.listPrincipalLineAccountIdsForEmail.mockResolvedValue(['allowed-account']);
     dbMocks.getNotificationRuleById.mockResolvedValue({

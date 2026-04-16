@@ -140,6 +140,55 @@ describe('chats routes', () => {
     });
   });
 
+  it('escapes friend display_name and sanitizes picture_url in GET /api/chats list (stored XSS defense)', async () => {
+    const { chats } = await import('../../src/routes/chats.js');
+    const app = new Hono();
+    app.route('', chats);
+
+    const db = {
+      prepare(sql: string) {
+        return {
+          bind(..._bindings: unknown[]) {
+            return {
+              async all() {
+                if (sql.includes('FROM chats c')) {
+                  return {
+                    results: [
+                      {
+                        id: 'chat-xss',
+                        friend_id: 'friend-xss',
+                        display_name: '<img src=x onerror=alert(1)>',
+                        picture_url: 'javascript:alert(1)',
+                        line_user_id: 'U123',
+                        operator_id: null,
+                        status: 'unread',
+                        notes: null,
+                        last_message_at: '2026-03-26T09:00:00+09:00',
+                        line_account_id: null,
+                        created_at: '2026-03-26T08:00:00+09:00',
+                        updated_at: '2026-03-26T09:00:00+09:00',
+                      },
+                    ],
+                  };
+                }
+                throw new Error(`Unexpected SQL: ${sql}`);
+              },
+            };
+          },
+        };
+      },
+    } as unknown as D1Database;
+
+    const response = await app.fetch(new Request('http://localhost/api/chats'), {
+      DB: db,
+    } as never);
+    expect(response.status).toBe(200);
+    const json = (await response.json()) as any;
+    expect(json.success).toBe(true);
+    expect(json.data[0].friendName).toBe('&lt;img src=x onerror=alert(1)&gt;');
+    expect(json.data[0].friendPictureUrl).toBeNull();
+  });
+
   it('GET /api/operators returns lineAccountId field', async () => {
     dbMocks.getOperators.mockResolvedValue([
       {

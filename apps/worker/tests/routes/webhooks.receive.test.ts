@@ -239,6 +239,50 @@ describe('incoming webhook receive route', () => {
     expect(eventBusMocks.fireEvent).toHaveBeenCalledOnce();
   });
 
+  it('sanitizes the incoming JSON payload before passing to the event bus (poisoning guard)', async () => {
+    dbMocks.getIncomingWebhookById.mockResolvedValue({
+      id: 'incoming-1',
+      source_type: 'custom',
+      secret: 'top-secret',
+      line_account_id: null,
+      is_active: 1,
+    });
+
+    const { webhooks } = await import('../../src/routes/webhooks.js');
+    const app = new Hono();
+    app.route('/', webhooks);
+
+    const bodyObj = {
+      ok: true,
+      __proto__: { polluted: true },
+      nested: { a: '<script>', constructor: 'x' },
+      huge: 'x'.repeat(3000),
+    };
+    const body = JSON.stringify(bodyObj);
+    const response = await app.fetch(
+      new Request('http://localhost/api/webhooks/incoming/incoming-1/receive', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-Webhook-Signature': sign('top-secret', body),
+        },
+        body,
+      }),
+      { DB: createReceiveTestDb() } as never,
+    );
+
+    expect(response.status).toBe(200);
+    const call = eventBusMocks.fireEvent.mock.calls[0];
+    const input = call?.[2] as { eventData?: any } | undefined;
+    expect(input?.eventData?.payload).toMatchObject({
+      ok: true,
+      nested: { a: '<script>' },
+    });
+    expect(JSON.stringify(input?.eventData?.payload)).not.toContain('__proto__');
+    expect(JSON.stringify(input?.eventData?.payload)).not.toContain('constructor');
+    expect(String(input?.eventData?.payload?.huge)).toContain('[truncated]');
+  });
+
   it('accepts replayed identical payload with 200 but does not dispatch twice', async () => {
     dbMocks.getIncomingWebhookById.mockResolvedValue({
       id: 'incoming-1',

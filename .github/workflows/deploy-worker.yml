@@ -14,6 +14,7 @@ name: Deploy Worker
 # - Multi LINE accounts on one Worker: MULTI_LINE_ACCOUNT_QUERY_REQUIRES_LINE_ACCOUNT_ID=1
 # - REQUIRE_ADMIN_SESSION_SECRET=1 + ADMIN_SESSION_SECRET (wrangler secret) so sessions are not signed with API_KEY
 # - BROADCAST_SEND_SECRET + X-Broadcast-Send-Secret header for /api/broadcasts/:id/send (second factor for mass send)
+# - AUTOMATION_SEND_WEBHOOK_ALLOWED_HOSTS: GitHub Secret (comma-separated hostnames) required for HTTPS deploy unless SKIP_CI_AUTOMATION_WEBHOOK_ALLOWLIST_CHECK=1
 #
 # After schema changes (e.g. admin_principal_roles), run D1 migrations against remote before relying on new features.
 
@@ -53,6 +54,8 @@ jobs:
           # These two are injected into wrangler.toml to enforce Cloudflare Access on deploy.
           REQUIRE_CLOUDFLARE_ACCESS_JWT: ${{ secrets.REQUIRE_CLOUDFLARE_ACCESS_JWT }}
           CLOUDFLARE_ACCESS_TEAM_DOMAIN: ${{ secrets.CLOUDFLARE_ACCESS_TEAM_DOMAIN }}
+          AUTOMATION_SEND_WEBHOOK_ALLOWED_HOSTS: ${{ secrets.AUTOMATION_SEND_WEBHOOK_ALLOWED_HOSTS }}
+          SKIP_CI_AUTOMATION_WEBHOOK_ALLOWLIST_CHECK: ${{ secrets.SKIP_CI_AUTOMATION_WEBHOOK_ALLOWLIST_CHECK }}
         run: |
           fail=0
           if [ -z "$WORKER_URL" ]; then
@@ -63,6 +66,12 @@ jobs:
             if [ -z "$REQUIRE_CLOUDFLARE_ACCESS_JWT" ] || [ -z "$CLOUDFLARE_ACCESS_TEAM_DOMAIN" ]; then
               echo "Missing GitHub Secrets for HTTPS deploy: REQUIRE_CLOUDFLARE_ACCESS_JWT and/or CLOUDFLARE_ACCESS_TEAM_DOMAIN" >&2
               fail=1
+            fi
+            if [ "${SKIP_CI_AUTOMATION_WEBHOOK_ALLOWLIST_CHECK:-}" != "1" ]; then
+              if [ -z "${AUTOMATION_SEND_WEBHOOK_ALLOWED_HOSTS:-}" ]; then
+                echo "Missing GitHub Secret: AUTOMATION_SEND_WEBHOOK_ALLOWED_HOSTS (comma-separated hostnames for automation send_webhook allowlist). Set SKIP_CI_AUTOMATION_WEBHOOK_ALLOWLIST_CHECK=1 only for exceptional staging." >&2
+                fail=1
+              fi
             fi
           fi
           exit $fail

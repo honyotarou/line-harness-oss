@@ -56,9 +56,6 @@ function normalizeMetadata(
   if (error instanceof Error) {
     payload.errorName = error.name;
     payload.errorMessage = error.message;
-    if (error.stack) {
-      payload.errorStack = error.stack;
-    }
   } else if (error !== undefined) {
     payload.errorMessage = normalizeErrorMessage(error);
   }

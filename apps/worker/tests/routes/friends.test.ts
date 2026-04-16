@@ -464,3 +464,49 @@ describe('friends routes', () => {
     expect(json.error).toMatch(/metadata|JSON/i);
   });
 });
+
+describe('GET /api/friends/:id/messages', () => {
+  it('escapes message content in the response (stored XSS defense)', async () => {
+    const { friends } = await import('../../src/routes/friends.js');
+    const app = new Hono();
+    app.route('/', friends);
+
+    dbMocks.getFriendById.mockResolvedValue({
+      id: 'friend-1',
+      line_user_id: 'U1',
+      line_account_id: null,
+    });
+
+    const db = {
+      prepare(_sql: string) {
+        return {
+          bind(..._bindings: unknown[]) {
+            return {
+              async all() {
+                return {
+                  results: [
+                    {
+                      id: 'm-1',
+                      direction: 'incoming',
+                      messageType: 'text',
+                      content: '<script>alert(1)</script>',
+                      createdAt: '2026-03-25T10:00:00+09:00',
+                    },
+                  ],
+                };
+              },
+            };
+          },
+        };
+      },
+    } as unknown as D1Database;
+
+    const res = await app.fetch(new Request('http://localhost/api/friends/friend-1/messages'), {
+      DB: db,
+    } as never);
+    expect(res.status).toBe(200);
+    const json = (await res.json()) as any;
+    expect(json.success).toBe(true);
+    expect(json.data[0].content).toBe('&lt;script&gt;alert(1)&lt;/script&gt;');
+  });
+});

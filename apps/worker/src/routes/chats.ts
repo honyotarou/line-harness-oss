@@ -15,6 +15,8 @@ import {
   validateScopedLineAccountBody,
   validateScopedLineAccountQueryParam,
 } from '../services/admin-line-account-scope.js';
+import { escapeHtmlTextForJsonApi } from '../services/api-json-sanitizer.js';
+import { sanitizeLineProfilePictureUrlForHtml } from '../services/safe-line-picture-url.js';
 
 const chats = new Hono<Env>();
 
@@ -67,8 +69,12 @@ chats.get('/api/chats', async (c) => {
       data: result.results.map((ch: Record<string, unknown>) => ({
         id: ch.id,
         friendId: ch.friend_id,
-        friendName: ch.display_name || '名前なし',
-        friendPictureUrl: ch.picture_url || null,
+        friendName: ch.display_name
+          ? escapeHtmlTextForJsonApi(String(ch.display_name))
+          : '名前なし',
+        friendPictureUrl: sanitizeLineProfilePictureUrlForHtml(
+          typeof ch.picture_url === 'string' ? ch.picture_url : null,
+        ),
         operatorId: ch.operator_id,
         status: ch.status,
         notes: ch.notes,
@@ -115,8 +121,10 @@ chats.get('/api/chats/:id', async (c) => {
       data: {
         id: item.id,
         friendId: item.friend_id,
-        friendName: friend?.display_name || '名前なし',
-        friendPictureUrl: friend?.picture_url || null,
+        friendName: friend?.display_name
+          ? escapeHtmlTextForJsonApi(friend.display_name)
+          : '名前なし',
+        friendPictureUrl: sanitizeLineProfilePictureUrlForHtml(friend?.picture_url),
         operatorId: item.operator_id,
         status: item.status,
         notes: item.notes,
@@ -128,7 +136,7 @@ chats.get('/api/chats/:id', async (c) => {
           id: m.id,
           direction: m.direction,
           messageType: m.message_type,
-          content: m.content,
+          content: escapeHtmlTextForJsonApi(String(m.content ?? '')),
           createdAt: m.created_at,
         })),
       },

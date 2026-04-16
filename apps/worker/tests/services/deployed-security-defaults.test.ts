@@ -249,13 +249,13 @@ describe('deployed-security-defaults', () => {
       expect(effectiveRequireDedicatedAdminSessionSecret(httpsWorker)).toBe(true);
     });
 
-    it('is false when ALLOW_LEGACY_API_KEY_SESSION_SIGNER is set', () => {
+    it('stays true on strict HTTPS even when ALLOW_LEGACY_API_KEY_SESSION_SIGNER is set', () => {
       expect(
         effectiveRequireDedicatedAdminSessionSecret({
           ...httpsWorker,
           ALLOW_LEGACY_API_KEY_SESSION_SIGNER: '1',
         }),
-      ).toBe(false);
+      ).toBe(true);
     });
 
     it('is true when REQUIRE overrides ALLOW_LEGACY', () => {

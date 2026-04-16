@@ -258,7 +258,9 @@ describe('fireEvent', () => {
   it('caps the number of automations executed per event (DoS guard)', async () => {
     const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
     try {
-      const { MAX_AUTOMATIONS_PER_EVENT } = await import('../../src/services/event-bus.js');
+      const { MAX_AUTOMATIONS_PER_EVENT, MAX_AUTOMATION_TOTAL_ACTIONS_PER_EVENT } = await import(
+        '../../src/services/event-bus.js'
+      );
       const overCap = MAX_AUTOMATIONS_PER_EVENT + 5;
       dbMocks.getActiveAutomationsByEvent.mockResolvedValue(
         Array.from({ length: overCap }, (_, i) => automationRow({ id: `auto-${i}`, priority: i })),
@@ -268,7 +270,8 @@ describe('fireEvent', () => {
       await fireEvent(emptyDb, 'friend_add', { friendId: 'f1' }, 'line-token', 'acc-1');
 
       // add_tag is executed at most MAX_AUTOMATIONS_PER_EVENT times
-      expect(dbMocks.addTagToFriend).toHaveBeenCalledTimes(MAX_AUTOMATIONS_PER_EVENT);
+      const expected = Math.min(MAX_AUTOMATIONS_PER_EVENT, MAX_AUTOMATION_TOTAL_ACTIONS_PER_EVENT);
+      expect(dbMocks.addTagToFriend).toHaveBeenCalledTimes(expected);
       expect(dbMocks.createAutomationLog).toHaveBeenCalledTimes(MAX_AUTOMATIONS_PER_EVENT);
 
       expect(warnSpy).toHaveBeenCalledTimes(1);
@@ -280,6 +283,22 @@ describe('fireEvent', () => {
     } finally {
       warnSpy.mockRestore();
     }
+  });
+
+  it('caps total executed automation actions per event (excessive-agency guard)', async () => {
+    const { MAX_AUTOMATION_TOTAL_ACTIONS_PER_EVENT } = await import(
+      '../../src/services/event-bus.js'
+    );
+    dbMocks.getActiveAutomationsByEvent.mockResolvedValue(
+      Array.from({ length: MAX_AUTOMATION_TOTAL_ACTIONS_PER_EVENT + 20 }, (_, i) =>
+        automationRow({ id: `auto-${i}`, priority: i }),
+      ),
+    );
+
+    const { fireEvent } = await import('../../src/services/event-bus.js');
+    await fireEvent(emptyDb, 'friend_add', { friendId: 'f1' }, 'line-token', 'acc-1');
+
+    expect(dbMocks.addTagToFriend).toHaveBeenCalledTimes(MAX_AUTOMATION_TOTAL_ACTIONS_PER_EVENT);
   });
 
   it('does not warn when automation count is at the per-event cap', async () => {

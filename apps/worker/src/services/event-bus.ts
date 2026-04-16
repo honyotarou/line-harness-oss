@@ -37,6 +37,8 @@ export interface EventPayload {
 
 export const MAX_AUTOMATIONS_PER_EVENT = 200;
 export const MAX_AUTOMATION_ACTIONS_PER_RULE = 50;
+/** Hard cap on total executed actions per event (mitigates excessive-agency / DoS style automations). */
+export const MAX_AUTOMATION_TOTAL_ACTIONS_PER_EVENT = 100;
 
 /**
  * Automation `conditions` JSON must be explicit: empty `{}` does not match (prevents “always on” backdoors).
@@ -241,6 +243,7 @@ async function processAutomations(
     }
     const automations = filtered.slice(0, MAX_AUTOMATIONS_PER_EVENT);
 
+    let executedActions = 0;
     for (const automation of automations) {
       let conditionsParsed: unknown;
       let actionsParsed: unknown;
@@ -311,6 +314,14 @@ async function processAutomations(
       const results: Array<{ action: string; success: boolean; error?: string }> = [];
 
       for (const action of actions) {
+        if (executedActions >= MAX_AUTOMATION_TOTAL_ACTIONS_PER_EVENT) {
+          results.push({
+            action: '_guard',
+            success: false,
+            error: `Automation total actions per event must be <= ${MAX_AUTOMATION_TOTAL_ACTIONS_PER_EVENT}`,
+          });
+          break;
+        }
         try {
           await executeAction(
             db,
@@ -322,9 +333,11 @@ async function processAutomations(
             suppressAutomationSendWebhook,
           );
           results.push({ action: action.type, success: true });
+          executedActions += 1;
         } catch (err) {
           const errorMsg = err instanceof Error ? err.message : String(err);
           results.push({ action: action.type, success: false, error: errorMsg });
+          executedActions += 1;
         }
       }
 

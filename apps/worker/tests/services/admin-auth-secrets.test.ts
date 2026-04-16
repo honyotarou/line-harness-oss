@@ -11,13 +11,13 @@ describe('resolveAdminSessionSecret', () => {
     );
   });
 
-  it('returns null for non-local HTTPS WORKER_URL without ADMIN_SESSION_SECRET unless legacy flag is set', async () => {
+  it('returns null for non-local HTTPS WORKER_URL without ADMIN_SESSION_SECRET (legacy flag does not override strict HTTPS)', async () => {
     const { resolveAdminSessionSecret } = await import('../../src/services/admin-session.js');
     const base = { API_KEY: 'k', WORKER_URL: 'https://line-crm.example.workers.dev' };
     expect(resolveAdminSessionSecret(base)).toBeNull();
-    expect(resolveAdminSessionSecret({ ...base, ALLOW_LEGACY_API_KEY_SESSION_SIGNER: '1' })).toBe(
-      'k',
-    );
+    expect(
+      resolveAdminSessionSecret({ ...base, ALLOW_LEGACY_API_KEY_SESSION_SIGNER: '1' }),
+    ).toBeNull();
     expect(
       resolveAdminSessionSecret({
         ...base,

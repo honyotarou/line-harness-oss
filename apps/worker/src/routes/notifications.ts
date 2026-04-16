@@ -21,6 +21,10 @@ import {
   validateScopedLineAccountBody,
   validateScopedLineAccountQueryParam,
 } from '../services/admin-line-account-scope.js';
+import {
+  deepEscapeHtmlStringLeaves,
+  escapeHtmlTextForJsonApi,
+} from '../services/api-json-sanitizer.js';
 
 const notifications = new Hono<Env>();
 
@@ -244,12 +248,12 @@ notifications.get('/api/notifications', async (c) => {
         id: n.id,
         ruleId: n.rule_id,
         eventType: n.event_type,
-        title: n.title,
-        body: n.body,
+        title: escapeHtmlTextForJsonApi(String(n.title ?? '')),
+        body: escapeHtmlTextForJsonApi(String(n.body ?? '')),
         channel: n.channel,
         status: n.status,
         lineAccountId: n.line_account_id,
-        metadata: n.metadata ? tryParseJsonRecord(n.metadata) : null,
+        metadata: n.metadata ? deepEscapeHtmlStringLeaves(tryParseJsonRecord(n.metadata)) : null,
         createdAt: n.created_at,
       })),
     });
