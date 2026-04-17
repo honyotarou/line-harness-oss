@@ -102,6 +102,19 @@ function apiBaseUrlValidationOptions(): { allowPlaceholderTemplate?: boolean } {
   return { allowPlaceholderTemplate: allowAdminApiUrlPlaceholderTemplate() };
 }
 
+/** One edge-SSO reload per tab; avoids infinite reload when `/` keeps returning 302 without a session. */
+const EDGE_AUTH_RELOAD_FLAG = 'lh_edge_auth_sso_reload';
+
+function clearEdgeAuthReloadFlag(): void {
+  try {
+    if (typeof globalThis !== 'undefined' && 'sessionStorage' in globalThis) {
+      globalThis.sessionStorage.removeItem(EDGE_AUTH_RELOAD_FLAG);
+    }
+  } catch {
+    /* private mode / denied */
+  }
+}
+
 /** Testable HTTP helper: all browser `fetchApi` calls go through here. */
 export async function fetchApiCore<T>(
   baseUrl: string,
@@ -132,6 +145,34 @@ export async function fetchApiCore<T>(
     redirect,
   });
   if (isBrowserAdminAuthApiPath(path) && shouldTreatBrowserAuthResponseAsSsoRedirect(res)) {
+    if (typeof globalThis !== 'undefined' && 'location' in globalThis) {
+      const loc = (globalThis as { location?: { reload?: () => void } }).location;
+      if (loc && typeof loc.reload === 'function') {
+        try {
+          if (
+            'sessionStorage' in globalThis &&
+            globalThis.sessionStorage.getItem(EDGE_AUTH_RELOAD_FLAG) === '1'
+          ) {
+            globalThis.sessionStorage.removeItem(EDGE_AUTH_RELOAD_FLAG);
+          } else if ('sessionStorage' in globalThis) {
+            globalThis.sessionStorage.setItem(EDGE_AUTH_RELOAD_FLAG, '1');
+            loc.reload();
+            return new Promise(() => {
+              /* never resolves — page is unloading */
+            });
+          }
+        } catch {
+          /* sessionStorage unavailable — fall through to throw */
+        }
+        if ('sessionStorage' in globalThis) {
+          try {
+            globalThis.sessionStorage.removeItem(EDGE_AUTH_RELOAD_FLAG);
+          } catch {
+            /* ignore */
+          }
+        }
+      }
+    }
     throw createApiError(
       'Admin auth API returned redirect (SSO edge).',
       401,
@@ -147,6 +188,7 @@ export async function fetchApiCore<T>(
     }
     throw createApiError(`API error: ${res.status}`, res.status, body);
   }
+  clearEdgeAuthReloadFlag();
   return res.json() as Promise<T>;
 }
 
