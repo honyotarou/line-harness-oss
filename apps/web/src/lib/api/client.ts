@@ -14,7 +14,9 @@ import {
 import {
   adminAuthFetchFailureBody,
   isBrowserAdminAuthApiPath,
+  isBrowserAdminManagedApiPath,
   resolveBrowserFetchRedirectPolicy,
+  shouldTreatBrowserAdminApiResponseAsAccessEdgeRedirect,
   shouldTreatBrowserAuthResponseAsSsoRedirect,
 } from './admin-auth-fetch-policy.js';
 
@@ -153,7 +155,27 @@ export async function fetchApiCore<T>(
     headers,
     redirect,
   });
-  if (isBrowserAdminAuthApiPath(path) && shouldTreatBrowserAuthResponseAsSsoRedirect(res)) {
+  const treatAsSsoRedirect = isBrowserAdminAuthApiPath(path)
+    ? shouldTreatBrowserAuthResponseAsSsoRedirect(res)
+    : shouldTreatBrowserAdminApiResponseAsAccessEdgeRedirect(res);
+
+  if (isBrowserAdminManagedApiPath(path) && treatAsSsoRedirect) {
+    if (!isBrowserAdminAuthApiPath(path)) {
+      if (typeof globalThis !== 'undefined' && 'location' in globalThis) {
+        const loc = (globalThis as { location?: { replace?: (url: string) => void } }).location;
+        if (loc && typeof loc.replace === 'function') {
+          loc.replace('/');
+          return new Promise(() => {
+            /* never resolves — top-level navigation for Access document login */
+          });
+        }
+      }
+      throw createApiError(
+        'Admin API returned Access login redirect (no window.location.replace).',
+        401,
+        adminAuthFetchFailureBody(),
+      );
+    }
     const flagKey = edgeAuthReloadFlagKey(path, method);
     if (typeof globalThis !== 'undefined' && 'location' in globalThis) {
       type EdgeAuthLocation = {

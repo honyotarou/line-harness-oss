@@ -271,14 +271,29 @@ if (fs.existsSync(liffSrcDir)) {
 const agentsMd = path.join(ROOT, 'AGENTS.md');
 if (fs.existsSync(agentsMd)) {
   const agents = readUtf8(agentsMd);
-  if (!agents.includes('OPTIONS（プリフライト）中心')) {
-    errors.push(
-      'AGENTS.md: must document Access Bypass leaning on OPTIONS preflight (search: OPTIONS（プリフライト）中心).',
-    );
-  }
   if (!agents.includes('shouldBypassCloudflareAccessJwtForCorsPreflight')) {
     errors.push(
       'AGENTS.md: must reference shouldBypassCloudflareAccessJwtForCorsPreflight (Worker CORS/Access contract).',
+    );
+  }
+  if (!agents.includes('allow-preflighted-requests')) {
+    errors.push(
+      'AGENTS.md: must link to Cloudflare Allow preflighted requests (#allow-preflighted-requests).',
+    );
+  }
+  if (!agents.includes('configure-response-to-preflight-requests')) {
+    errors.push(
+      'AGENTS.md: must link to Configure response to preflight requests (official Option 2).',
+    );
+  }
+  if (!agents.includes('bypass-options-requests-to-origin')) {
+    errors.push(
+      'AGENTS.md: must still reference official Bypass options anchor (repo policy: do not use it).',
+    );
+  }
+  if (!agents.includes('本リポジトリでは CORS の「Bypass options requests to origin」')) {
+    errors.push(
+      'AGENTS.md: must state repo policy — do not use Access CORS "Bypass options requests to origin" (Option 1).',
     );
   }
 }
