@@ -4,8 +4,12 @@
  * **302 to an IdP login host**. Following that redirect from `fetch` breaks JSON clients
  * (cross-origin CORS, wrong MIME for `<script>`-like expectations in debugging).
  *
- * Use `redirect: 'manual'` (WHATWG Fetch) so we can detect redirects without following them;
- * do **not** map every `TypeError` to an auth error — CORS and DNS failures also throw `TypeError`.
+ * Use `redirect: 'manual'` (WHATWG Fetch) so we can detect redirects without following them.
+ * In the browser, `fetchApiCore` then triggers **`window.location.reload()`** so the next
+ * request is a top-level navigation the edge can complete (same pattern as forward-auth SPAs).
+ * When `window` is unavailable (e.g. Vitest node), callers still get a synthetic `ApiError`.
+ *
+ * Do **not** map every `TypeError` to an auth error — CORS and DNS failures also throw `TypeError`.
  */
 
 const ADMIN_AUTH_PATH_PREFIX = '/api/auth/';
