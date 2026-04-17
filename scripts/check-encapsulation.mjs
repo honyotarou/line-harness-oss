@@ -312,6 +312,27 @@ if (fs.existsSync(cfAccessMw)) {
   }
 }
 
+// ── Admin Access proxy Worker (browser same-origin BFF + service token) ───
+const adminAccessProxyIndex = path.join(ROOT, 'apps/admin-access-proxy-worker/src/index.ts');
+if (fs.existsSync(adminAccessProxyIndex)) {
+  const src = readUtf8(adminAccessProxyIndex);
+  if (!src.includes("redirect: 'manual'")) {
+    errors.push(
+      "apps/admin-access-proxy-worker/src/index.ts: upstream fetch must use redirect: 'manual' so Access login redirects are not auto-followed in the Worker.",
+    );
+  }
+  if (!src.includes('isCloudflareAccessApplicationLoginRedirect')) {
+    errors.push(
+      'apps/admin-access-proxy-worker/src/index.ts: must use isCloudflareAccessApplicationLoginRedirect from @line-crm/shared (do not inline Access URL heuristics).',
+    );
+  }
+  if (!src.includes('API Access did not accept the service token')) {
+    errors.push(
+      'apps/admin-access-proxy-worker/src/index.ts: must return the documented 502 JSON when upstream sends an Access interactive login redirect (browser must not see that Location).',
+    );
+  }
+}
+
 // ── Report ─────────────────────────────────────────────────────────────────
 if (errors.length) {
   console.error('== harness: encapsulation check FAILED ==\n');
