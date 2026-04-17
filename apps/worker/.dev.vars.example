@@ -14,6 +14,8 @@
 # Worker のコードが読むのは下記のキーだけです。
 
 API_KEY=local-dev-api-key-change-me
+# Same-site `/api/lh-upstream` (admin-access-proxy) or cross-origin admin: set so login JSON includes sessionToken (Bearer path).
+# INCLUDE_SESSION_TOKEN_IN_LOGIN_BODY=1
 # OpenAPI (/openapi.json, /docs) is disabled unless explicitly enabled. Set for local docs and scripts/api-integration.sh.
 ENABLE_PUBLIC_OPENAPI=1
 # Optional; defaults to API_KEY. HMAC secret for LINE Login OAuth `state` (use a long random value in production).
