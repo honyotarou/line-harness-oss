@@ -156,8 +156,34 @@ export async function fetchApiCore<T>(
   if (isBrowserAdminAuthApiPath(path) && shouldTreatBrowserAuthResponseAsSsoRedirect(res)) {
     const flagKey = edgeAuthReloadFlagKey(path, method);
     if (typeof globalThis !== 'undefined' && 'location' in globalThis) {
-      const loc = (globalThis as { location?: { reload?: () => void } }).location;
-      if (flagKey && loc && typeof loc.reload === 'function') {
+      type EdgeAuthLocation = {
+        readonly href?: string;
+        pathname?: string;
+        search?: string;
+        hash?: string;
+        replace?: (url: string) => void;
+        reload?: () => void;
+      };
+      const loc = (globalThis as { location?: EdgeAuthLocation }).location;
+      const hardReloadCurrentDocument = (): void => {
+        if (!loc) {
+          return;
+        }
+        const href =
+          typeof loc.href === 'string' && loc.href.length > 0
+            ? loc.href
+            : `${loc.pathname ?? ''}${loc.search ?? ''}${loc.hash ?? ''}` || '/';
+        if (typeof loc.replace === 'function') {
+          loc.replace(href);
+        } else if (typeof loc.reload === 'function') {
+          loc.reload();
+        }
+      };
+      if (
+        flagKey &&
+        loc &&
+        (typeof loc.replace === 'function' || typeof loc.reload === 'function')
+      ) {
         try {
           if (
             'sessionStorage' in globalThis &&
@@ -166,7 +192,7 @@ export async function fetchApiCore<T>(
             globalThis.sessionStorage.removeItem(flagKey);
           } else if ('sessionStorage' in globalThis) {
             globalThis.sessionStorage.setItem(flagKey, '1');
-            loc.reload();
+            hardReloadCurrentDocument();
             return new Promise(() => {
               /* never resolves — page is unloading */
             });

@@ -42,6 +42,10 @@ export default function LoginPage() {
       let sess: Awaited<ReturnType<typeof api.auth.session>>;
       try {
         sess = await api.auth.session();
+        if (res.data.sessionToken && sess.success && sess.data && !sess.data.authenticated) {
+          await new Promise((r) => setTimeout(r, 120));
+          sess = await api.auth.session();
+        }
       } catch (sessionErr) {
         if (sessionErr instanceof ApiError && sessionErr.status === 401) {
           const msg = errorMessageFromApi(sessionErr);
@@ -58,7 +62,7 @@ export default function LoginPage() {
       }
       if (sess.success && sess.data?.authenticated) {
         skipLoadingReset = true;
-        window.location.assign('/');
+        window.location.replace('/');
         return;
       }
       setError(

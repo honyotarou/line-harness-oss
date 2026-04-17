@@ -803,6 +803,10 @@ describe('api default base URL', () => {
 });
 
 describe('fetchApiCore', () => {
+  afterEach(() => {
+    vi.unstubAllGlobals();
+  });
+
   it('throws ApiError when the API base URL is not allowed (e.g. remote http)', async () => {
     const fetchMock = vi.fn();
     await expect(
@@ -870,6 +874,61 @@ describe('fetchApiCore', () => {
         error: expect.stringMatching(/リダイレクト/),
       }),
     });
+  });
+
+  it('first 302 on /api/auth/session calls location.replace when sessionStorage + location exist', async () => {
+    const replace = vi.fn();
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: false,
+      status: 302,
+      type: 'basic',
+    });
+    vi.stubGlobal('sessionStorage', {
+      getItem: vi.fn(() => null),
+      setItem: vi.fn(),
+      removeItem: vi.fn(),
+    });
+    vi.stubGlobal('location', {
+      href: 'https://admin.example/login',
+      pathname: '/login',
+      search: '',
+      hash: '',
+      replace,
+      reload: vi.fn(),
+    });
+    void fetchApiCore('https://api.example', fetchMock as typeof fetch, '/api/auth/session');
+    await vi.waitFor(() => {
+      expect(replace).toHaveBeenCalledWith('https://admin.example/login');
+    });
+  });
+
+  it('second 302 on /api/auth/session after SSO gate throws without calling replace', async () => {
+    const replace = vi.fn();
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: false,
+      status: 302,
+      type: 'basic',
+    });
+    vi.stubGlobal('sessionStorage', {
+      getItem: vi.fn(() => '1'),
+      setItem: vi.fn(),
+      removeItem: vi.fn(),
+    });
+    vi.stubGlobal('location', {
+      href: 'https://admin.example/login',
+      replace,
+      reload: vi.fn(),
+    });
+    await expect(
+      fetchApiCore('https://api.example', fetchMock as typeof fetch, '/api/auth/session'),
+    ).rejects.toMatchObject({
+      name: 'ApiError',
+      status: 401,
+      body: expect.objectContaining({
+        code: AUTH_API_REDIRECT_NOT_FOLLOWED_CODE,
+      }),
+    });
+    expect(replace).not.toHaveBeenCalled();
   });
 
   it('rethrows TypeError from fetch on /api/auth/* unchanged (e.g. CORS; not mislabeled as redirect)', async () => {
