@@ -6,7 +6,8 @@ import { describe, expect, it } from 'vitest';
 /**
  * Deploy contract: admin UI behind same-site `/api/lh-upstream` (admin-access-proxy) often cannot
  * persist `lh_admin_session` Set-Cookie from the upstream API host — POST /api/auth/login must be
- * able to return `sessionToken` in JSON when operators set INCLUDE_SESSION_TOKEN_IN_LOGIN_BODY=1.
+ * able to return `sessionToken` in JSON when operators set Worker var INCLUDE_SESSION_TOKEN_IN_LOGIN_BODY=1
+ * (GitHub Actions: Repository Secret `LH_SESSION_TOKEN_IN_LOGIN_BODY` with value `1`).
  */
 const repoRoot = join(dirname(fileURLToPath(import.meta.url)), '../../../..');
 const wrangler = readFileSync(join(repoRoot, 'apps/worker/wrangler.toml'), 'utf8');

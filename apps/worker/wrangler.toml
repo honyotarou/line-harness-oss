@@ -25,7 +25,7 @@ CLOUDFLARE_ACCESS_TRUSTED_SERVICE_CLIENT_IDS = ""
 # Same-site admin BFF (`/api/lh-upstream` → admin-access-proxy Worker → upstream API): the browser may
 # not persist `lh_admin_session` from the API host's Set-Cookie. Set to "1" so POST /api/auth/login
 # JSON includes `sessionToken` for Authorization: Bearer + sessionStorage (see auth-route-helpers).
-# CI: optional GitHub Secret INCLUDE_SESSION_TOKEN_IN_LOGIN_BODY (see deploy-worker.yml).
+# CI: optional GitHub Repository Secret LH_SESSION_TOKEN_IN_LOGIN_BODY → this var (see deploy-worker.yml).
 INCLUDE_SESSION_TOKEN_IN_LOGIN_BODY = "0"
 # ALLOWED_ORIGINS = "https://admin.example.com,https://preview.example.com"
 #

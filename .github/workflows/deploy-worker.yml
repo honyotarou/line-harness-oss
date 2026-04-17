@@ -10,7 +10,7 @@ name: Deploy Worker
 # - ALLOWED_HOSTNAMES for your API hostname(s).
 # - REQUIRE_CLOUDFLARE_ACCESS_JWT + CLOUDFLARE_ACCESS_TEAM_DOMAIN: set as GitHub Secrets; CI injects into wrangler.toml before deploy (dashboard-only edits are overwritten every deploy).
 # - CLOUDFLARE_ACCESS_TRUSTED_SERVICE_CLIENT_IDS: optional; GitHub Secret → wrangler.toml (admin-access-proxy service token client id(s), *.access).
-# - INCLUDE_SESSION_TOKEN_IN_LOGIN_BODY: optional; GitHub Secret → wrangler.toml (set "1" when admin UI uses /api/lh-upstream BFF and browsers cannot persist lh_admin_session cookie).
+# - LH_SESSION_TOKEN_IN_LOGIN_BODY: optional GitHub Repository Secret (name is [A-Za-z0-9_] only). CI injects Worker var INCLUDE_SESSION_TOKEN_IN_LOGIN_BODY in wrangler.toml — set secret value "1" when admin UI uses /api/lh-upstream BFF and browsers cannot persist lh_admin_session cookie.
 # - Optional WAF/Bot: enable Cloudflare Bot Management on the zone, then MIN_CF_BOT_SCORE (e.g. 30) on the Worker.
 # - Multi LINE accounts on one Worker: MULTI_LINE_ACCOUNT_QUERY_REQUIRES_LINE_ACCOUNT_ID=1
 # - REQUIRE_ADMIN_SESSION_SECRET=1 + ADMIN_SESSION_SECRET (wrangler secret) so sessions are not signed with API_KEY
@@ -127,10 +127,10 @@ jobs:
             rm -f wrangler.toml.bak
           fi
 
-      - name: Inject INCLUDE_SESSION_TOKEN_IN_LOGIN_BODY (optional; GitHub Secret)
+      - name: Inject INCLUDE_SESSION_TOKEN_IN_LOGIN_BODY (optional; GitHub Secret LH_SESSION_TOKEN_IN_LOGIN_BODY)
         working-directory: apps/worker
         env:
-          INJECT_SESSION_TOKEN_BODY: ${{ secrets.INCLUDE_SESSION_TOKEN_IN_LOGIN_BODY }}
+          INJECT_SESSION_TOKEN_BODY: ${{ secrets.LH_SESSION_TOKEN_IN_LOGIN_BODY }}
         run: |
           if [ -n "$INJECT_SESSION_TOKEN_BODY" ]; then
             sed -i.bak "s|^INCLUDE_SESSION_TOKEN_IN_LOGIN_BODY = .*|INCLUDE_SESSION_TOKEN_IN_LOGIN_BODY = \"${INJECT_SESSION_TOKEN_BODY}\"|" wrangler.toml
