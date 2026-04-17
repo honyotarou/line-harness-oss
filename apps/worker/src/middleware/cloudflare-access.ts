@@ -1,6 +1,7 @@
 import type { Context, Next } from 'hono';
 import type { Env } from '../index.js';
 import { isCloudflareAccessExemptPath } from '../services/auth-paths.js';
+import { shouldBypassCloudflareAccessJwtForCorsPreflight } from '../services/cloudflare-access-preflight-policy.js';
 import {
   CF_ACCESS_JWT_HEADER,
   CLOUDFLARE_ACCESS_EMAIL_CLAIM_ERROR,
@@ -15,6 +16,9 @@ import { isTrustedCloudflareAccessServiceTokenPayload } from '../services/cloudf
  * protected routes must present a valid Cf Access JWT (see {@link CF_ACCESS_JWT_HEADER}).
  * Public paths match {@link isCloudflareAccessExemptPath} (webhook, LIFF, form submit, etc.;
  * `/api/auth/*` is not exempt so Access JWT is still required there when enforcement is on).
+ *
+ * CORS preflight: {@link shouldBypassCloudflareAccessJwtForCorsPreflight} skips this gate for
+ * `OPTIONS` so browsers never need `CF_Authorization` on preflight (AGENTS.md Zero Trust + CORS).
  */
 export async function cloudflareAccessMiddleware(
   c: Context<Env>,
@@ -25,7 +29,7 @@ export async function cloudflareAccessMiddleware(
   }
 
   // CORS preflight never sends Cf-Access-Jwt-Assertion; let prior CORS middleware answer OPTIONS.
-  if (c.req.method === 'OPTIONS') {
+  if (shouldBypassCloudflareAccessJwtForCorsPreflight(c.req.method)) {
     return next();
   }
 

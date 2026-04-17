@@ -267,6 +267,36 @@ if (fs.existsSync(liffSrcDir)) {
   }
 }
 
+// ── Docs + Worker: Cloudflare Access preflight contract (AGENTS.md ↔ middleware) ─────────────
+const agentsMd = path.join(ROOT, 'AGENTS.md');
+if (fs.existsSync(agentsMd)) {
+  const agents = readUtf8(agentsMd);
+  if (!agents.includes('OPTIONS（プリフライト）中心')) {
+    errors.push(
+      'AGENTS.md: must document Access Bypass leaning on OPTIONS preflight (search: OPTIONS（プリフライト）中心).',
+    );
+  }
+  if (!agents.includes('shouldBypassCloudflareAccessJwtForCorsPreflight')) {
+    errors.push(
+      'AGENTS.md: must reference shouldBypassCloudflareAccessJwtForCorsPreflight (Worker CORS/Access contract).',
+    );
+  }
+}
+const cfAccessMw = path.join(ROOT, 'apps/worker/src/middleware/cloudflare-access.ts');
+if (fs.existsSync(cfAccessMw)) {
+  const src = readUtf8(cfAccessMw);
+  if (!src.includes('cloudflare-access-preflight-policy')) {
+    errors.push(
+      'apps/worker/src/middleware/cloudflare-access.ts: must import cloudflare-access-preflight-policy (Access JWT skip for OPTIONS).',
+    );
+  }
+  if (!src.includes('shouldBypassCloudflareAccessJwtForCorsPreflight')) {
+    errors.push(
+      'apps/worker/src/middleware/cloudflare-access.ts: must call shouldBypassCloudflareAccessJwtForCorsPreflight (no inline OPTIONS-only check).',
+    );
+  }
+}
+
 // ── Report ─────────────────────────────────────────────────────────────────
 if (errors.length) {
   console.error('== harness: encapsulation check FAILED ==\n');

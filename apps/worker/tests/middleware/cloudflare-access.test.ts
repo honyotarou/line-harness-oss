@@ -107,6 +107,27 @@ describe('cloudflareAccessMiddleware', () => {
     expect(res.status).toBe(204);
   });
 
+  it('allows OPTIONS without JWT even on paths that are not Access-exempt for non-OPTIONS', async () => {
+    const app = new Hono<{ Bindings: Env['Bindings'] }>();
+    app.use('*', cloudflareAccessMiddleware);
+    app.options('/api/auth/session', (c) => c.body(null, 204));
+
+    const res = await app.fetch(
+      new Request('http://localhost/api/auth/session', {
+        method: 'OPTIONS',
+        headers: {
+          Origin: 'https://admin.example.com',
+          'Access-Control-Request-Method': 'GET',
+        },
+      }),
+      env({
+        REQUIRE_CLOUDFLARE_ACCESS_JWT: '1',
+        CLOUDFLARE_ACCESS_TEAM_DOMAIN: 'team.cloudflareaccess.com',
+      }),
+    );
+    expect(res.status).toBe(204);
+  });
+
   it('returns 403 for POST /api/auth/login when enforcement is on and JWT is missing', async () => {
     const app = new Hono<{ Bindings: Env['Bindings'] }>();
     app.use('*', cloudflareAccessMiddleware);
