@@ -5,8 +5,9 @@
  * (cross-origin CORS, wrong MIME for `<script>`-like expectations in debugging).
  *
  * Use `redirect: 'manual'` (WHATWG Fetch) so we can detect redirects without following them.
- * In the browser, `fetchApiCore` then triggers **`window.location.reload()`** so the next
- * request is a top-level navigation the edge can complete (same pattern as forward-auth SPAs).
+ * In the browser, `fetchApiCore` then triggers **`location.replace(href)`** (or `reload()` as
+ * fallback) so the next request is a top-level navigation the edge can complete (same pattern
+ * as forward-auth SPAs).
  * When `window` is unavailable (e.g. Vitest node), callers still get a synthetic `ApiError`.
  *
  * Do **not** map every `TypeError` to an auth error — CORS and DNS failures also throw `TypeError`.
