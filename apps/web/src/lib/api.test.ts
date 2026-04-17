@@ -837,7 +837,7 @@ describe('fetchApiCore', () => {
         method: 'POST',
         body: '{}',
         credentials: 'include',
-        redirect: 'follow',
+        redirect: 'manual',
         headers: expect.objectContaining({
           'Content-Type': 'application/json',
           'X-Line-Harness-Client': '1',
@@ -900,6 +900,39 @@ describe('fetchApiCore', () => {
     await vi.waitFor(() => {
       expect(replace).toHaveBeenCalledWith('https://admin.example/login');
     });
+  });
+
+  it('302 on non-auth /api/* with Access Location calls location.replace("/")', async () => {
+    const replace = vi.fn();
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: false,
+      status: 302,
+      type: 'basic',
+      headers: new Headers({
+        Location:
+          'https://honyonn.cloudflareaccess.com/cdn-cgi/access/login/familybondnet.tokyo?redirect=/api/x',
+      }),
+    });
+    vi.stubGlobal('location', { replace: replace });
+    void fetchApiCore('https://api.example', fetchMock as typeof fetch, '/api/broadcasts');
+    await vi.waitFor(() => {
+      expect(replace).toHaveBeenCalledWith('/');
+    });
+  });
+
+  it('302 on non-auth /api/* without Access Location falls through to error handling', async () => {
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: false,
+      status: 302,
+      type: 'basic',
+      headers: new Headers({ Location: '/internal-redirect' }),
+      json: async () => {
+        throw new SyntaxError('not json');
+      },
+    });
+    await expect(
+      fetchApiCore('https://api.example', fetchMock as typeof fetch, '/api/broadcasts'),
+    ).rejects.toBeInstanceOf(ApiError);
   });
 
   it('second 302 on /api/auth/session after SSO gate throws without calling replace', async () => {

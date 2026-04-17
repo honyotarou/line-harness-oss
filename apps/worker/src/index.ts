@@ -324,9 +324,10 @@ app.use('*', cfBotGuardMiddleware);
 app.use('*', securityHeadersMiddleware);
 app.use('*', apiWriteContentTypeMiddleware);
 
-// CORS: when Cloudflare Access uses "Configure response to preflight requests", `OPTIONS` may never
-// reach this Worker; this middleware still applies to real methods and to `OPTIONS` when Access uses
-// "Bypass options requests to origin". Keep Access CORS UI (preflight) aligned with these headers.
+// CORS: with Access "Configure response to preflight requests" (repo policy: do not use "Bypass
+// options requests to origin"), `OPTIONS` usually never reaches this Worker; this middleware still
+// applies to real methods and to stray `OPTIONS` (local dev / probes). Keep Access CORS UI aligned
+// with these response headers.
 app.use('*', async (c, next) => {
   const origin = c.req.header('Origin');
   if (!shouldApplyCorsForOriginHeader(origin)) {

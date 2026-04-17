@@ -3,7 +3,9 @@ import {
   AUTH_API_REDIRECT_NOT_FOLLOWED_CODE,
   adminAuthFetchFailureBody,
   isBrowserAdminAuthApiPath,
+  isBrowserAdminManagedApiPath,
   resolveBrowserFetchRedirectPolicy,
+  shouldTreatBrowserAdminApiResponseAsAccessEdgeRedirect,
   shouldTreatBrowserAuthResponseAsSsoRedirect,
 } from './admin-auth-fetch-policy';
 
@@ -16,17 +18,62 @@ describe('isBrowserAdminAuthApiPath', () => {
   });
 });
 
+describe('isBrowserAdminManagedApiPath', () => {
+  it('is true for any /api/* path', () => {
+    expect(isBrowserAdminManagedApiPath('/api/auth/session')).toBe(true);
+    expect(isBrowserAdminManagedApiPath('/api/friends')).toBe(true);
+    expect(isBrowserAdminManagedApiPath('/api/')).toBe(true);
+    expect(isBrowserAdminManagedApiPath('/api')).toBe(false);
+    expect(isBrowserAdminManagedApiPath('/v1/api/foo')).toBe(false);
+  });
+});
+
 describe('resolveBrowserFetchRedirectPolicy', () => {
-  it('uses redirect manual for /api/auth/* so redirects are not auto-followed', () => {
+  it('uses redirect manual for all /api/* so edge login redirects are not auto-followed', () => {
     expect(resolveBrowserFetchRedirectPolicy('/api/auth/session')).toBe('manual');
     expect(resolveBrowserFetchRedirectPolicy('/api/auth/login', { redirect: 'follow' })).toBe(
       'manual',
     );
+    expect(resolveBrowserFetchRedirectPolicy('/api/friends')).toBe('manual');
+    expect(resolveBrowserFetchRedirectPolicy('/api/tags', { redirect: 'follow' })).toBe('manual');
   });
 
-  it('honors caller redirect for non-auth paths', () => {
-    expect(resolveBrowserFetchRedirectPolicy('/api/friends')).toBe('follow');
-    expect(resolveBrowserFetchRedirectPolicy('/api/tags', { redirect: 'manual' })).toBe('manual');
+  it('honors caller redirect only for non-/api paths', () => {
+    expect(resolveBrowserFetchRedirectPolicy('/p')).toBe('follow');
+    expect(resolveBrowserFetchRedirectPolicy('/p', { redirect: 'manual' })).toBe('manual');
+  });
+});
+
+describe('shouldTreatBrowserAdminApiResponseAsAccessEdgeRedirect', () => {
+  it('is true for opaqueredirect', () => {
+    expect(
+      shouldTreatBrowserAdminApiResponseAsAccessEdgeRedirect({
+        type: 'opaqueredirect',
+        status: 0,
+      } as Response),
+    ).toBe(true);
+  });
+
+  it('is true when Location targets Cloudflare Access login', () => {
+    expect(
+      shouldTreatBrowserAdminApiResponseAsAccessEdgeRedirect(
+        new Response(null, {
+          status: 302,
+          headers: {
+            Location:
+              'https://team.cloudflareaccess.com/cdn-cgi/access/login/example.com?redirect=/api/x',
+          },
+        }),
+      ),
+    ).toBe(true);
+  });
+
+  it('is false for 302 without Access-shaped Location', () => {
+    expect(
+      shouldTreatBrowserAdminApiResponseAsAccessEdgeRedirect(
+        new Response(null, { status: 302, headers: { Location: '/somewhere' } }),
+      ),
+    ).toBe(false);
   });
 });
 

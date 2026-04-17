@@ -271,14 +271,29 @@ if (fs.existsSync(liffSrcDir)) {
 const agentsMd = path.join(ROOT, 'AGENTS.md');
 if (fs.existsSync(agentsMd)) {
   const agents = readUtf8(agentsMd);
-  if (!agents.includes('OPTIONS（プリフライト）中心')) {
-    errors.push(
-      'AGENTS.md: must document Access Bypass leaning on OPTIONS preflight (search: OPTIONS（プリフライト）中心).',
-    );
-  }
   if (!agents.includes('shouldBypassCloudflareAccessJwtForCorsPreflight')) {
     errors.push(
       'AGENTS.md: must reference shouldBypassCloudflareAccessJwtForCorsPreflight (Worker CORS/Access contract).',
+    );
+  }
+  if (!agents.includes('allow-preflighted-requests')) {
+    errors.push(
+      'AGENTS.md: must link to Cloudflare Allow preflighted requests (#allow-preflighted-requests).',
+    );
+  }
+  if (!agents.includes('configure-response-to-preflight-requests')) {
+    errors.push(
+      'AGENTS.md: must link to Configure response to preflight requests (official Option 2).',
+    );
+  }
+  if (!agents.includes('bypass-options-requests-to-origin')) {
+    errors.push(
+      'AGENTS.md: must still reference official Bypass options anchor (repo policy: do not use it).',
+    );
+  }
+  if (!agents.includes('本リポジトリでは CORS の「Bypass options requests to origin」')) {
+    errors.push(
+      'AGENTS.md: must state repo policy — do not use Access CORS "Bypass options requests to origin" (Option 1).',
     );
   }
 }
@@ -293,6 +308,27 @@ if (fs.existsSync(cfAccessMw)) {
   if (!src.includes('shouldBypassCloudflareAccessJwtForCorsPreflight')) {
     errors.push(
       'apps/worker/src/middleware/cloudflare-access.ts: must call shouldBypassCloudflareAccessJwtForCorsPreflight (no inline OPTIONS-only check).',
+    );
+  }
+}
+
+// ── Admin Access proxy Worker (browser same-origin BFF + service token) ───
+const adminAccessProxyIndex = path.join(ROOT, 'apps/admin-access-proxy-worker/src/index.ts');
+if (fs.existsSync(adminAccessProxyIndex)) {
+  const src = readUtf8(adminAccessProxyIndex);
+  if (!src.includes("redirect: 'manual'")) {
+    errors.push(
+      "apps/admin-access-proxy-worker/src/index.ts: upstream fetch must use redirect: 'manual' so Access login redirects are not auto-followed in the Worker.",
+    );
+  }
+  if (!src.includes('isCloudflareAccessApplicationLoginRedirect')) {
+    errors.push(
+      'apps/admin-access-proxy-worker/src/index.ts: must use isCloudflareAccessApplicationLoginRedirect from @line-crm/shared (do not inline Access URL heuristics).',
+    );
+  }
+  if (!src.includes('API Access did not accept the service token')) {
+    errors.push(
+      'apps/admin-access-proxy-worker/src/index.ts: must return the documented 502 JSON when upstream sends an Access interactive login redirect (browser must not see that Location).',
     );
   }
 }
