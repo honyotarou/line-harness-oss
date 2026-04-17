@@ -1,10 +1,9 @@
 'use client';
 import { useEffect, useState } from 'react';
-import { useRouter, usePathname } from 'next/navigation';
+import { usePathname } from 'next/navigation';
 import { api, clearAdminSessionToken } from '@/lib/api';
 
 export default function AuthGuard({ children }: { children: React.ReactNode }) {
-  const router = useRouter();
   const pathname = usePathname();
   const [checked, setChecked] = useState(false);
 
@@ -29,7 +28,9 @@ export default function AuthGuard({ children }: { children: React.ReactNode }) {
 
       if (!cancelled) {
         clearAdminSessionToken();
-        router.replace('/login');
+        // Full navigation: client `router.replace('/login')` triggers RSC `login.txt` fetch
+        // which can redirect to Cloudflare Access on another origin and fail CORS preflight.
+        window.location.replace('/login');
       }
     };
 
@@ -39,7 +40,7 @@ export default function AuthGuard({ children }: { children: React.ReactNode }) {
     return () => {
       cancelled = true;
     };
-  }, [pathname, router]);
+  }, [pathname]);
 
   if (!checked) {
     return (
