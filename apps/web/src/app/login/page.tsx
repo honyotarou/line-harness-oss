@@ -29,6 +29,7 @@ export default function LoginPage() {
     setLoading(true);
     setError('');
 
+    let skipLoadingReset = false;
     try {
       const res = await api.auth.login(accessLogin ? undefined : apiKey);
       if (!res.success || !res.data?.expiresAt) {
@@ -56,6 +57,7 @@ export default function LoginPage() {
         throw sessionErr;
       }
       if (sess.success && sess.data?.authenticated) {
+        skipLoadingReset = true;
         window.location.assign('/');
         return;
       }
@@ -95,7 +97,9 @@ export default function LoginPage() {
         setError('接続に失敗しました');
       }
     } finally {
-      setLoading(false);
+      if (!skipLoadingReset) {
+        setLoading(false);
+      }
     }
   };
 

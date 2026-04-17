@@ -102,13 +102,21 @@ function apiBaseUrlValidationOptions(): { allowPlaceholderTemplate?: boolean } {
   return { allowPlaceholderTemplate: allowAdminApiUrlPlaceholderTemplate() };
 }
 
-/** One edge-SSO reload per tab; avoids infinite reload when `/` keeps returning 302 without a session. */
-const EDGE_AUTH_RELOAD_FLAG = 'lh_edge_auth_sso_reload';
+/** Separate gates: POST login reload must not consume the session GET gate (otherwise 2nd click throws immediately). */
+const EDGE_AUTH_RELOAD_SESSION = 'lh_edge_auth_sso_reload_session';
+const EDGE_AUTH_RELOAD_LOGIN = 'lh_edge_auth_sso_reload_login';
 
-function clearEdgeAuthReloadFlag(): void {
+function edgeAuthReloadFlagKey(path: string, method: string): string | null {
+  if (path === '/api/auth/session' && method === 'GET') return EDGE_AUTH_RELOAD_SESSION;
+  if (path === '/api/auth/login' && method === 'POST') return EDGE_AUTH_RELOAD_LOGIN;
+  return null;
+}
+
+function clearEdgeAuthReloadFlags(): void {
   try {
     if (typeof globalThis !== 'undefined' && 'sessionStorage' in globalThis) {
-      globalThis.sessionStorage.removeItem(EDGE_AUTH_RELOAD_FLAG);
+      globalThis.sessionStorage.removeItem(EDGE_AUTH_RELOAD_SESSION);
+      globalThis.sessionStorage.removeItem(EDGE_AUTH_RELOAD_LOGIN);
     }
   } catch {
     /* private mode / denied */
@@ -137,6 +145,7 @@ export async function fetchApiCore<T>(
     'Content-Type': 'application/json',
     [ADMIN_BROWSER_CLIENT_HEADER]: browserClientValue,
   };
+  const method = (options?.method ?? 'GET').toUpperCase();
   const redirect = resolveBrowserFetchRedirectPolicy(path, options);
   const res = await fetchImpl(`${fetchBase}${path}`, {
     ...options,
@@ -145,17 +154,18 @@ export async function fetchApiCore<T>(
     redirect,
   });
   if (isBrowserAdminAuthApiPath(path) && shouldTreatBrowserAuthResponseAsSsoRedirect(res)) {
+    const flagKey = edgeAuthReloadFlagKey(path, method);
     if (typeof globalThis !== 'undefined' && 'location' in globalThis) {
       const loc = (globalThis as { location?: { reload?: () => void } }).location;
-      if (loc && typeof loc.reload === 'function') {
+      if (flagKey && loc && typeof loc.reload === 'function') {
         try {
           if (
             'sessionStorage' in globalThis &&
-            globalThis.sessionStorage.getItem(EDGE_AUTH_RELOAD_FLAG) === '1'
+            globalThis.sessionStorage.getItem(flagKey) === '1'
           ) {
-            globalThis.sessionStorage.removeItem(EDGE_AUTH_RELOAD_FLAG);
+            globalThis.sessionStorage.removeItem(flagKey);
           } else if ('sessionStorage' in globalThis) {
-            globalThis.sessionStorage.setItem(EDGE_AUTH_RELOAD_FLAG, '1');
+            globalThis.sessionStorage.setItem(flagKey, '1');
             loc.reload();
             return new Promise(() => {
               /* never resolves — page is unloading */
@@ -166,7 +176,7 @@ export async function fetchApiCore<T>(
         }
         if ('sessionStorage' in globalThis) {
           try {
-            globalThis.sessionStorage.removeItem(EDGE_AUTH_RELOAD_FLAG);
+            globalThis.sessionStorage.removeItem(flagKey);
           } catch {
             /* ignore */
           }
@@ -188,7 +198,7 @@ export async function fetchApiCore<T>(
     }
     throw createApiError(`API error: ${res.status}`, res.status, body);
   }
-  clearEdgeAuthReloadFlag();
+  clearEdgeAuthReloadFlags();
   return res.json() as Promise<T>;
 }
 
