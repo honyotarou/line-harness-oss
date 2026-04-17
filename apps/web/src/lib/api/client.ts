@@ -13,8 +13,9 @@ import {
 } from '../admin-public-config.js';
 import {
   adminAuthFetchFailureBody,
+  isBrowserAdminAuthApiPath,
   resolveBrowserFetchRedirectPolicy,
-  shouldNormalizeAuthFetchNetworkFailure,
+  shouldTreatBrowserAuthResponseAsSsoRedirect,
 } from './admin-auth-fetch-policy.js';
 
 /** Broadcast type from API (now camelCase after worker serialization) */
@@ -124,23 +125,18 @@ export async function fetchApiCore<T>(
     [ADMIN_BROWSER_CLIENT_HEADER]: browserClientValue,
   };
   const redirect = resolveBrowserFetchRedirectPolicy(path, options);
-  let res: Response;
-  try {
-    res = await fetchImpl(`${fetchBase}${path}`, {
-      ...options,
-      credentials: 'include',
-      headers,
-      redirect,
-    });
-  } catch (e) {
-    if (shouldNormalizeAuthFetchNetworkFailure(path, e)) {
-      throw createApiError(
-        'Admin auth API blocked fetch redirect (SSO edge).',
-        401,
-        adminAuthFetchFailureBody(),
-      );
-    }
-    throw e;
+  const res = await fetchImpl(`${fetchBase}${path}`, {
+    ...options,
+    credentials: 'include',
+    headers,
+    redirect,
+  });
+  if (isBrowserAdminAuthApiPath(path) && shouldTreatBrowserAuthResponseAsSsoRedirect(res)) {
+    throw createApiError(
+      'Admin auth API returned redirect (SSO edge).',
+      401,
+      adminAuthFetchFailureBody(),
+    );
   }
   if (!res.ok) {
     let body: unknown;

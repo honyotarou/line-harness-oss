@@ -4,7 +4,7 @@ import {
   adminAuthFetchFailureBody,
   isBrowserAdminAuthApiPath,
   resolveBrowserFetchRedirectPolicy,
-  shouldNormalizeAuthFetchNetworkFailure,
+  shouldTreatBrowserAuthResponseAsSsoRedirect,
 } from './admin-auth-fetch-policy';
 
 describe('isBrowserAdminAuthApiPath', () => {
@@ -17,10 +17,10 @@ describe('isBrowserAdminAuthApiPath', () => {
 });
 
 describe('resolveBrowserFetchRedirectPolicy', () => {
-  it('uses redirect error for /api/auth/* so SSO login redirects are not followed', () => {
-    expect(resolveBrowserFetchRedirectPolicy('/api/auth/session')).toBe('error');
+  it('uses redirect manual for /api/auth/* so redirects are not auto-followed', () => {
+    expect(resolveBrowserFetchRedirectPolicy('/api/auth/session')).toBe('manual');
     expect(resolveBrowserFetchRedirectPolicy('/api/auth/login', { redirect: 'follow' })).toBe(
-      'error',
+      'manual',
     );
   });
 
@@ -30,15 +30,27 @@ describe('resolveBrowserFetchRedirectPolicy', () => {
   });
 });
 
-describe('shouldNormalizeAuthFetchNetworkFailure', () => {
-  it('normalizes TypeError on auth paths only', () => {
-    expect(shouldNormalizeAuthFetchNetworkFailure('/api/auth/session', new TypeError('fail'))).toBe(
+describe('shouldTreatBrowserAuthResponseAsSsoRedirect', () => {
+  it('is true for opaqueredirect', () => {
+    expect(
+      shouldTreatBrowserAuthResponseAsSsoRedirect({
+        type: 'opaqueredirect',
+        status: 0,
+      } as Response),
+    ).toBe(true);
+  });
+
+  it('is true for 3xx', () => {
+    expect(shouldTreatBrowserAuthResponseAsSsoRedirect(new Response(null, { status: 302 }))).toBe(
       true,
     );
-    expect(shouldNormalizeAuthFetchNetworkFailure('/api/friends', new TypeError('fail'))).toBe(
+  });
+
+  it('is false for 401 and 200', () => {
+    expect(shouldTreatBrowserAuthResponseAsSsoRedirect(new Response('{}', { status: 401 }))).toBe(
       false,
     );
-    expect(shouldNormalizeAuthFetchNetworkFailure('/api/auth/session', new Error('other'))).toBe(
+    expect(shouldTreatBrowserAuthResponseAsSsoRedirect(new Response('{}', { status: 200 }))).toBe(
       false,
     );
   });

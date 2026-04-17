@@ -42,6 +42,7 @@ export default function ScenarioList({
           <div className="flex items-start justify-between gap-2">
             <Link
               href={`/scenarios/detail?id=${scenario.id}`}
+              prefetch={false}
               className="text-sm font-semibold text-gray-900 hover:text-[var(--color-primary)] transition-colors leading-tight"
             >
               {scenario.name}
@@ -92,6 +93,7 @@ export default function ScenarioList({
           <div className="flex items-center gap-2 pt-1 border-t border-gray-100">
             <Link
               href={`/scenarios/detail?id=${scenario.id}`}
+              prefetch={false}
               className="flex-1 text-center text-xs font-medium text-[var(--color-primary)] hover:text-[var(--color-primary-hover)] py-1 min-h-[44px] flex items-center justify-center rounded-md hover:bg-[var(--color-primary-muted)] transition-colors"
             >
               編集

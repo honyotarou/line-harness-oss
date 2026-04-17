@@ -298,6 +298,7 @@ export default function ScenarioDetailClient({ scenarioId }: { scenarioId: strin
           <p className="text-gray-500">{error || 'シナリオが見つかりません'}</p>
           <Link
             href="/scenarios"
+            prefetch={false}
             className="text-sm text-[var(--color-primary)] hover:text-[var(--color-primary-hover)] mt-4 inline-block"
           >
             ← シナリオ一覧に戻る
@@ -314,6 +315,7 @@ export default function ScenarioDetailClient({ scenarioId }: { scenarioId: strin
         action={
           <Link
             href="/scenarios"
+            prefetch={false}
             className="px-4 py-2 min-h-[44px] text-sm font-medium text-gray-600 bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors inline-flex items-center"
           >
             ← シナリオ一覧
