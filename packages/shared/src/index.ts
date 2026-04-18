@@ -3,6 +3,7 @@ export * from './brand';
 export * from './safe-json';
 export * from './safe-api-base-url';
 export * from './admin-access-proxy-path';
+export * from './admin-proxy-set-cookie';
 export * from './admin-api-fetch-base';
 export * from './admin-browser-client';
 export * from './allowed-origins';

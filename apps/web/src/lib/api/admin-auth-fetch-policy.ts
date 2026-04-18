@@ -6,8 +6,10 @@
  * error. Use `redirect: 'manual'` for **all** `/api/*` so we can detect redirects.
  *
  * `/api/auth/*`: `fetchApiCore` uses **`location.replace(href)`** / reload gate (see client).
- * Other `/api/*`: on **Access-shaped** redirects only, **`location.replace('/')`** so a full
- * document load can complete Access login (`redirect_url` matches the app root).
+ * Other `/api/*`: on **Access-shaped** redirects only (readable `Location` to Access), use
+ * **`location.replace('/')`** so a full document load can complete Access login. **`opaqueredirect`**
+ * is **not** treated as Access (no `Location`); callers surface a normal fetch error instead of a
+ * top-level reload loop.
  *
  * When `window` is unavailable (e.g. Vitest node), callers still get a synthetic `ApiError`.
  *
@@ -56,7 +58,7 @@ export function shouldTreatBrowserAuthResponseAsSsoRedirect(res: Response): bool
  */
 export function shouldTreatBrowserAdminApiResponseAsAccessEdgeRedirect(res: Response): boolean {
   if (res.type === 'opaqueredirect') {
-    return true;
+    return false;
   }
   if (res.status < 300 || res.status >= 400) {
     return false;

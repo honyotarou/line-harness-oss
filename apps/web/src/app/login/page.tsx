@@ -42,10 +42,6 @@ export default function LoginPage() {
       let sess: Awaited<ReturnType<typeof api.auth.session>>;
       try {
         sess = await api.auth.session();
-        if (res.data.sessionToken && sess.success && sess.data && !sess.data.authenticated) {
-          await new Promise((r) => setTimeout(r, 120));
-          sess = await api.auth.session();
-        }
       } catch (sessionErr) {
         if (sessionErr instanceof ApiError && sessionErr.status === 401) {
           const msg = errorMessageFromApi(sessionErr);
@@ -97,6 +93,16 @@ export default function LoginPage() {
         (err as { status?: unknown }).status === 400
       ) {
         setError(fromBody ?? 'リクエストが無効です');
+      } else if (
+        err instanceof Error &&
+        err.name === 'ApiError' &&
+        'status' in err &&
+        (err as { status?: unknown }).status === 429
+      ) {
+        setError(
+          fromBody ??
+            '短時間にリクエストが多すぎます。しばらく待ってから再度お試しください（レート制限）。',
+        );
       } else {
         setError('接続に失敗しました');
       }

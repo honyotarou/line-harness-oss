@@ -19,6 +19,12 @@ import {
   shouldTreatBrowserAdminApiResponseAsAccessEdgeRedirect,
   shouldTreatBrowserAuthResponseAsSsoRedirect,
 } from './admin-auth-fetch-policy.js';
+import {
+  clearAllEdgeAuthSsoReloadPersistence,
+  consumeBrowserEdgeAuthSsoReloadSlot,
+  EDGE_AUTH_RELOAD_LOGIN_KEY,
+  EDGE_AUTH_RELOAD_SESSION_KEY,
+} from './edge-auth-sso-reload-gate.js';
 
 /** Broadcast type from API (now camelCase after worker serialization) */
 export type ApiBroadcast = Broadcast;
@@ -104,25 +110,18 @@ function apiBaseUrlValidationOptions(): { allowPlaceholderTemplate?: boolean } {
   return { allowPlaceholderTemplate: allowAdminApiUrlPlaceholderTemplate() };
 }
 
-/** Separate gates: POST login reload must not consume the session GET gate (otherwise 2nd click throws immediately). */
-const EDGE_AUTH_RELOAD_SESSION = 'lh_edge_auth_sso_reload_session';
-const EDGE_AUTH_RELOAD_LOGIN = 'lh_edge_auth_sso_reload_login';
-
 function edgeAuthReloadFlagKey(path: string, method: string): string | null {
-  if (path === '/api/auth/session' && method === 'GET') return EDGE_AUTH_RELOAD_SESSION;
-  if (path === '/api/auth/login' && method === 'POST') return EDGE_AUTH_RELOAD_LOGIN;
+  if (path === '/api/auth/session' && method === 'GET') {
+    return EDGE_AUTH_RELOAD_SESSION_KEY;
+  }
+  if (path === '/api/auth/login' && method === 'POST') {
+    return EDGE_AUTH_RELOAD_LOGIN_KEY;
+  }
   return null;
 }
 
 function clearEdgeAuthReloadFlags(): void {
-  try {
-    if (typeof globalThis !== 'undefined' && 'sessionStorage' in globalThis) {
-      globalThis.sessionStorage.removeItem(EDGE_AUTH_RELOAD_SESSION);
-      globalThis.sessionStorage.removeItem(EDGE_AUTH_RELOAD_LOGIN);
-    }
-  } catch {
-    /* private mode / denied */
-  }
+  clearAllEdgeAuthSsoReloadPersistence();
 }
 
 /** Testable HTTP helper: all browser `fetchApi` calls go through here. */
@@ -206,28 +205,12 @@ export async function fetchApiCore<T>(
         loc &&
         (typeof loc.replace === 'function' || typeof loc.reload === 'function')
       ) {
-        try {
-          if (
-            'sessionStorage' in globalThis &&
-            globalThis.sessionStorage.getItem(flagKey) === '1'
-          ) {
-            globalThis.sessionStorage.removeItem(flagKey);
-          } else if ('sessionStorage' in globalThis) {
-            globalThis.sessionStorage.setItem(flagKey, '1');
-            hardReloadCurrentDocument();
-            return new Promise(() => {
-              /* never resolves — page is unloading */
-            });
-          }
-        } catch {
-          /* sessionStorage unavailable — fall through to throw */
-        }
-        if ('sessionStorage' in globalThis) {
-          try {
-            globalThis.sessionStorage.removeItem(flagKey);
-          } catch {
-            /* ignore */
-          }
+        const slot = consumeBrowserEdgeAuthSsoReloadSlot(flagKey);
+        if (slot === 'reload') {
+          hardReloadCurrentDocument();
+          return new Promise(() => {
+            /* never resolves — page is unloading */
+          });
         }
       }
     }

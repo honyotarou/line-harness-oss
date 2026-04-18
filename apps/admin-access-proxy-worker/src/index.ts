@@ -1,6 +1,7 @@
 import {
   isCloudflareAccessApplicationLoginRedirect,
   isEligibleWorkerAdminProxyTargetPath,
+  rewriteSetCookieLineForAdminBrowserOrigin,
   stripAdminAccessProxyPrefix,
 } from '@line-crm/shared';
 import { STRIP_REQUEST_HOP_BY_HOP_HEADERS } from './hop-headers.js';
@@ -13,6 +14,32 @@ export interface Env {
 }
 
 export { STRIP_REQUEST_HOP_BY_HOP_HEADERS } from './hop-headers.js';
+
+function forwardedUpstreamResponse(res: Response): Response {
+  const out = new Headers();
+  res.headers.forEach((value, key) => {
+    if (key.toLowerCase() === 'set-cookie') {
+      return;
+    }
+    out.append(key, value);
+  });
+  const hdrs = res.headers as Headers & { getSetCookie?: () => string[] };
+  const setLines =
+    typeof hdrs.getSetCookie === 'function' && hdrs.getSetCookie().length > 0
+      ? hdrs.getSetCookie()
+      : (() => {
+          const one = res.headers.get('Set-Cookie');
+          return one ? [one] : [];
+        })();
+  for (const line of setLines) {
+    out.append('Set-Cookie', rewriteSetCookieLineForAdminBrowserOrigin(line));
+  }
+  return new Response(res.body, {
+    status: res.status,
+    statusText: res.statusText,
+    headers: out,
+  });
+}
 
 export default {
   async fetch(request: Request, env: Env): Promise<Response> {
@@ -85,7 +112,7 @@ export default {
       }
     }
     // Forward upstream `Set-Cookie` so the browser can store `lh_admin_session` on this origin.
-    // Stripping it breaks POST /api/auth/login through the proxy (session checks then 401).
-    return new Response(res.body, res);
+    // Rewrite Domain/Path so cookies are not scoped to the upstream Worker hostname.
+    return forwardedUpstreamResponse(res);
   },
 };

@@ -42,8 +42,9 @@ import {
 
 const authRoutes = new Hono<Env>();
 const LOGIN_BODY_LIMIT_BYTES = 8 * 1024;
-const LOGIN_RATE_LIMIT = { limit: 5, windowMs: 60_000 };
-const SESSION_CHECK_RATE_LIMIT = { limit: 120, windowMs: 60_000 };
+/** Tight bucket encourages API key brute-force resistance; raised above naive "5" to tolerate SSO edge reload loops. */
+const LOGIN_RATE_LIMIT = { limit: 24, windowMs: 60_000 };
+const SESSION_CHECK_RATE_LIMIT = { limit: 300, windowMs: 60_000 };
 
 authRoutes.post('/api/auth/login', async (c) => {
   try {
