@@ -218,6 +218,16 @@ if (fs.existsSync(clientTs)) {
       'apps/web/src/lib/api/client.ts: must not import catalog/ (base layer vs resource API).',
     );
   }
+  if (!src.includes("loc.replace('/login')")) {
+    errors.push(
+      "apps/web/src/lib/api/client.ts: non-auth Access edge redirect must use location.replace('/login') (avoid reloading the dashboard and re-firing parallel /api/*).",
+    );
+  }
+  if (!src.includes('tryClaimAdminAccessDocumentRedirect')) {
+    errors.push(
+      'apps/web/src/lib/api/client.ts: must call tryClaimAdminAccessDocumentRedirect before document navigation on Access-shaped non-auth redirects (parallel fetch storm guard).',
+    );
+  }
 }
 
 // ── Web: catalog/*.ts fragments — only shared + ../client.js ─────────────

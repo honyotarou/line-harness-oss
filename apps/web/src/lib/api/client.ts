@@ -12,6 +12,7 @@ import {
   isAdminCloudflareAccessLoginEnabled,
 } from '../admin-public-config.js';
 import {
+  adminAccessDocumentRedirectAlreadyHandledBody,
   adminAuthFetchFailureBody,
   isBrowserAdminAuthApiPath,
   isBrowserAdminManagedApiPath,
@@ -19,6 +20,7 @@ import {
   shouldTreatBrowserAdminApiResponseAsAccessEdgeRedirect,
   shouldTreatBrowserAuthResponseAsSsoRedirect,
 } from './admin-auth-fetch-policy.js';
+import { tryClaimAdminAccessDocumentRedirect } from './admin-access-document-redirect-mutex.js';
 import {
   clearAllEdgeAuthSsoReloadPersistence,
   consumeBrowserEdgeAuthSsoReloadSlot,
@@ -160,10 +162,18 @@ export async function fetchApiCore<T>(
 
   if (isBrowserAdminManagedApiPath(path) && treatAsSsoRedirect) {
     if (!isBrowserAdminAuthApiPath(path)) {
+      if (!tryClaimAdminAccessDocumentRedirect()) {
+        throw createApiError(
+          'Admin API Access document redirect already claimed by a parallel request.',
+          401,
+          adminAccessDocumentRedirectAlreadyHandledBody(),
+        );
+      }
       if (typeof globalThis !== 'undefined' && 'location' in globalThis) {
         const loc = (globalThis as { location?: { replace?: (url: string) => void } }).location;
         if (loc && typeof loc.replace === 'function') {
-          loc.replace('/');
+          // `/` would re-mount the dashboard and re-fire parallel `/api/*`; `/login` is the terminal UX for Access.
+          loc.replace('/login');
           return new Promise(() => {
             /* never resolves — top-level navigation for Access document login */
           });

@@ -1,5 +1,11 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { ApiError, AUTH_API_REDIRECT_NOT_FOLLOWED_CODE, fetchApiCore } from './api';
+import {
+  ADMIN_ACCESS_DOCUMENT_REDIRECT_ALREADY_HANDLED_CODE,
+  ApiError,
+  AUTH_API_REDIRECT_NOT_FOLLOWED_CODE,
+  fetchApiCore,
+} from './api';
+import { resetAdminAccessDocumentRedirectClaimForTests } from './api/admin-access-document-redirect-mutex.js';
 
 describe('api object (integration via global fetch)', () => {
   it('setAdminSessionToken and clearAdminSessionToken no-op when window is undefined (SSR/Node)', async () => {
@@ -10,6 +16,7 @@ describe('api object (integration via global fetch)', () => {
   });
 
   beforeEach(() => {
+    resetAdminAccessDocumentRedirectClaimForTests();
     process.env.NEXT_PUBLIC_API_URL = 'https://worker.test';
     vi.stubGlobal(
       'fetch',
@@ -24,6 +31,7 @@ describe('api object (integration via global fetch)', () => {
   });
 
   afterEach(() => {
+    resetAdminAccessDocumentRedirectClaimForTests();
     vi.unstubAllGlobals();
     delete process.env.NEXT_PUBLIC_ADMIN_BROWSER_API_BASE;
     vi.resetModules();
@@ -902,7 +910,7 @@ describe('fetchApiCore', () => {
     });
   });
 
-  it('302 on non-auth /api/* with Access Location calls location.replace("/")', async () => {
+  it('302 on non-auth /api/* with Access Location calls location.replace("/login") (not dashboard /)', async () => {
     const replace = vi.fn();
     const fetchMock = vi.fn().mockResolvedValue({
       ok: false,
@@ -916,8 +924,38 @@ describe('fetchApiCore', () => {
     vi.stubGlobal('location', { replace: replace });
     void fetchApiCore('https://api.example', fetchMock as typeof fetch, '/api/broadcasts');
     await vi.waitFor(() => {
-      expect(replace).toHaveBeenCalledWith('/');
+      expect(replace).toHaveBeenCalledWith('/login');
     });
+    resetAdminAccessDocumentRedirectClaimForTests();
+  });
+
+  it('second non-auth Access 302 after the first claimed redirect throws 401 (parallel storm guard)', async () => {
+    const replace = vi.fn();
+    const access302 = {
+      ok: false,
+      status: 302,
+      type: 'basic',
+      headers: new Headers({
+        Location: 'https://team.cloudflareaccess.com/cdn-cgi/access/login/example.com',
+      }),
+    };
+    const fetchMock = vi.fn().mockResolvedValue(access302);
+    vi.stubGlobal('location', { replace: replace });
+    void fetchApiCore('https://api.example', fetchMock as typeof fetch, '/api/scenarios');
+    await vi.waitFor(() => {
+      expect(replace).toHaveBeenCalledTimes(1);
+    });
+    expect(replace).toHaveBeenCalledWith('/login');
+    await expect(
+      fetchApiCore('https://api.example', fetchMock as typeof fetch, '/api/templates'),
+    ).rejects.toMatchObject({
+      name: 'ApiError',
+      status: 401,
+      body: expect.objectContaining({
+        code: ADMIN_ACCESS_DOCUMENT_REDIRECT_ALREADY_HANDLED_CODE,
+      }),
+    });
+    resetAdminAccessDocumentRedirectClaimForTests();
   });
 
   it('opaqueredirect on non-auth /api/* does not call location.replace("/") (falls through to ApiError)', async () => {
