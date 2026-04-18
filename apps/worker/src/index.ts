@@ -6,6 +6,7 @@ import { authMiddleware } from './middleware/auth.js';
 import { cloudflareAccessMiddleware } from './middleware/cloudflare-access.js';
 import { cfBotGuardMiddleware } from './middleware/cf-bot-guard.js';
 import { hostHeaderMiddleware } from './middleware/host-header.js';
+import { requestCorrelationMiddleware } from './middleware/request-correlation.js';
 import { apiWriteContentTypeMiddleware } from './middleware/api-write-content-type.js';
 import { securityHeadersMiddleware } from './middleware/security-headers.js';
 import {
@@ -53,6 +54,8 @@ import { adminAudit } from './routes/admin-audit.js';
 
 export type Env = {
   Variables: {
+    /** Stable id for logs and 500 JSON; set by {@link requestCorrelationMiddleware}. */
+    requestCorrelationId?: string;
     /** Set by {@link cloudflareAccessMiddleware} after JWT verification. */
     cfAccessJwtPayload?: Record<string, unknown>;
     /** Service-token Access JWT (BFF / same-origin proxy); skips email-based RBAC when true. */
@@ -320,6 +323,7 @@ export type Env = {
 const app = new Hono<Env>();
 
 app.use('*', hostHeaderMiddleware);
+app.use('*', requestCorrelationMiddleware);
 app.use('*', cfBotGuardMiddleware);
 app.use('*', securityHeadersMiddleware);
 app.use('*', apiWriteContentTypeMiddleware);
