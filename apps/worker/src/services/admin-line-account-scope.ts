@@ -1,5 +1,9 @@
 import type { Context } from 'hono';
-import { getLineAccounts, listPrincipalLineAccountIdsForEmail } from '@line-crm/db';
+import {
+  getLineAccounts,
+  isD1NoSuchTableError,
+  listPrincipalLineAccountIdsForEmail,
+} from '@line-crm/db';
 import type { Env } from '../index.js';
 import {
   getCloudflareAccessEmailFromContext,
@@ -7,6 +11,7 @@ import {
 } from './cloudflare-access-principal.js';
 import { effectiveMultiLineAccountQueryRequiresLineAccountId } from './deployed-security-defaults.js';
 import { lineAccountDbOptions } from './line-account-at-rest-key.js';
+import { AdminPrincipalLineAccountsSchemaUnavailableError } from './admin-principal-line-accounts-schema-error.js';
 
 export type LineAccountScope = { mode: 'all' } | { mode: 'restricted'; ids: Set<string> };
 
@@ -28,9 +33,16 @@ export async function resolveLineAccountScopeForRequest(
   if (isCloudflareAccessEnforced(c.env)) {
     const email = getCloudflareAccessEmailFromContext(c);
     if (email) {
-      const ids = await listPrincipalLineAccountIdsForEmail(db, email);
-      if (ids.length > 0) {
-        return { mode: 'restricted', ids: new Set(ids) };
+      try {
+        const ids = await listPrincipalLineAccountIdsForEmail(db, email);
+        if (ids.length > 0) {
+          return { mode: 'restricted', ids: new Set(ids) };
+        }
+      } catch (err) {
+        if (isD1NoSuchTableError(err, 'admin_principal_line_accounts')) {
+          throw new AdminPrincipalLineAccountsSchemaUnavailableError();
+        }
+        throw err;
       }
     }
   }

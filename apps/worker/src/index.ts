@@ -19,6 +19,11 @@ import {
   shouldApplyCorsForOriginHeader,
 } from './services/cors-policy.js';
 import { enforceRateLimit } from './services/request-rate-limit.js';
+import {
+  jsonAdminPrincipalLineAccountsSchemaUnavailable,
+  jsonInternalServerError,
+} from './services/admin-internal-error.js';
+import { AdminPrincipalLineAccountsSchemaUnavailableError } from './services/admin-principal-line-accounts-schema-error.js';
 import { runScheduledJobs } from './services/scheduler.js';
 import { renderShortLinkLanding, type LandingEnv } from './ui/landing.js';
 import { authRoutes } from './routes/auth.js';
@@ -444,6 +449,13 @@ app.get('/r/:ref', async (c) => {
 
 // 404 fallback
 app.notFound((c) => c.json({ success: false, error: 'Not found' }, 404));
+
+app.onError((err, c) => {
+  if (err instanceof AdminPrincipalLineAccountsSchemaUnavailableError) {
+    return jsonAdminPrincipalLineAccountsSchemaUnavailable(c, err, 'Worker onError:');
+  }
+  return jsonInternalServerError(c, 'Worker onError:', err);
+});
 
 // Scheduled handler for cron triggers — runs for all active LINE accounts
 async function scheduled(

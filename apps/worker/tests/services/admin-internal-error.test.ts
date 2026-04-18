@@ -4,7 +4,9 @@ import type { Env } from '../../src/index.js';
 import {
   getRequestCorrelationId,
   jsonInternalServerError,
+  respondToAdminRouteCaughtError,
 } from '../../src/services/admin-internal-error.js';
+import { AdminPrincipalLineAccountsSchemaUnavailableError } from '../../src/services/admin-principal-line-accounts-schema-error.js';
 import { requestCorrelationMiddleware } from '../../src/middleware/request-correlation.js';
 
 describe('admin-internal-error', () => {
@@ -32,6 +34,25 @@ describe('admin-internal-error', () => {
     expect(body.requestId).toBe('edge-123');
     expect(res.headers.get('X-Request-Correlation-Id')).toBe('edge-123');
     expect(log).toHaveBeenCalled();
+    log.mockRestore();
+  });
+
+  it('respondToAdminRouteCaughtError maps schema-unavailable to 503 with code', async () => {
+    const log = vi.spyOn(console, 'error').mockImplementation(() => {});
+    const app = new Hono<Env>();
+    app.use('*', requestCorrelationMiddleware);
+    app.get('/x', (c) =>
+      respondToAdminRouteCaughtError(
+        c,
+        new AdminPrincipalLineAccountsSchemaUnavailableError(),
+        'label',
+      ),
+    );
+    const res = await app.fetch(new Request('http://localhost/x', { headers: { 'CF-Ray': 'r2' } }));
+    expect(res.status).toBe(503);
+    const body = (await res.json()) as { code: string; requestId: string };
+    expect(body.code).toBe('ADMIN_PRINCIPAL_LINE_ACCOUNTS_SCHEMA');
+    expect(body.requestId).toBe('r2');
     log.mockRestore();
   });
 });

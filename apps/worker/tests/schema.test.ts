@@ -91,6 +91,7 @@ describe('schema.sql', () => {
     expect(schema).toContain('CREATE TABLE IF NOT EXISTS delivery_operations');
     expect(schema).toContain('CREATE TABLE IF NOT EXISTS delivery_dead_letters');
     expect(schema).toContain('CREATE TABLE IF NOT EXISTS admin_principal_roles');
+    expect(schema).toContain('CREATE TABLE IF NOT EXISTS admin_principal_line_accounts');
     expect(schema).toContain('CREATE TABLE IF NOT EXISTS line_webhook_processed_events');
     expect(schema).toContain('CREATE TABLE IF NOT EXISTS incoming_webhook_processed_payloads');
     expect(schema).toContain('CREATE TABLE IF NOT EXISTS admin_session_revocations');

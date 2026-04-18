@@ -31,7 +31,7 @@ import {
   validateScopedLineAccountBody,
   validateScopedLineAccountQueryParam,
 } from '../services/admin-line-account-scope.js';
-import { jsonInternalServerError } from '../services/admin-internal-error.js';
+import { respondToAdminRouteCaughtError } from '../services/admin-internal-error.js';
 
 const scenarios = new Hono<Env>();
 
@@ -114,7 +114,7 @@ scenarios.get('/api/scenarios', async (c) => {
       })),
     });
   } catch (err) {
-    return jsonInternalServerError(c, 'GET /api/scenarios error:', err);
+    return respondToAdminRouteCaughtError(c, err, 'GET /api/scenarios error:');
   }
 });
 
@@ -141,7 +141,7 @@ scenarios.get('/api/scenarios/:id', async (c) => {
       },
     });
   } catch (err) {
-    return jsonInternalServerError(c, 'GET /api/scenarios/:id error:', err);
+    return respondToAdminRouteCaughtError(c, err, 'GET /api/scenarios/:id error:');
   }
 });
 
@@ -200,7 +200,7 @@ scenarios.post('/api/scenarios', async (c) => {
   } catch (err) {
     const jr = jsonBodyReadErrorResponse(err);
     if (jr) return c.json(jr.body, jr.status);
-    return jsonInternalServerError(c, 'POST /api/scenarios error:', err);
+    return respondToAdminRouteCaughtError(c, err, 'POST /api/scenarios error:');
   }
 });
 
@@ -241,7 +241,7 @@ scenarios.put('/api/scenarios/:id', async (c) => {
   } catch (err) {
     const jr = jsonBodyReadErrorResponse(err);
     if (jr) return c.json(jr.body, jr.status);
-    return jsonInternalServerError(c, 'PUT /api/scenarios/:id error:', err);
+    return respondToAdminRouteCaughtError(c, err, 'PUT /api/scenarios/:id error:');
   }
 });
 
@@ -260,7 +260,7 @@ scenarios.delete('/api/scenarios/:id', async (c) => {
     await deleteScenario(c.env.DB, id);
     return c.json({ success: true, data: null });
   } catch (err) {
-    return jsonInternalServerError(c, 'DELETE /api/scenarios/:id error:', err);
+    return respondToAdminRouteCaughtError(c, err, 'DELETE /api/scenarios/:id error:');
   }
 });
 
@@ -309,7 +309,7 @@ scenarios.post('/api/scenarios/:id/steps', async (c) => {
   } catch (err) {
     const jr = jsonBodyReadErrorResponse(err);
     if (jr) return c.json(jr.body, jr.status);
-    return jsonInternalServerError(c, 'POST /api/scenarios/:id/steps error:', err);
+    return respondToAdminRouteCaughtError(c, err, 'POST /api/scenarios/:id/steps error:');
   }
 });
 
@@ -358,7 +358,7 @@ scenarios.put('/api/scenarios/:id/steps/:stepId', async (c) => {
   } catch (err) {
     const jr = jsonBodyReadErrorResponse(err);
     if (jr) return c.json(jr.body, jr.status);
-    return jsonInternalServerError(c, 'PUT /api/scenarios/:id/steps/:stepId error:', err);
+    return respondToAdminRouteCaughtError(c, err, 'PUT /api/scenarios/:id/steps/:stepId error:');
   }
 });
 
@@ -379,7 +379,7 @@ scenarios.delete('/api/scenarios/:id/steps/:stepId', async (c) => {
     await deleteScenarioStep(c.env.DB, stepId);
     return c.json({ success: true, data: null });
   } catch (err) {
-    return jsonInternalServerError(c, 'DELETE /api/scenarios/:id/steps/:stepId error:', err);
+    return respondToAdminRouteCaughtError(c, err, 'DELETE /api/scenarios/:id/steps/:stepId error:');
   }
 });
 
@@ -422,7 +422,11 @@ scenarios.post('/api/scenarios/:id/enroll/:friendId', async (c) => {
     const enrollment = await enrollFriendInScenario(db, friendId, scenarioId);
     return c.json({ success: true, data: serializeFriendScenario(enrollment) }, 201);
   } catch (err) {
-    return jsonInternalServerError(c, 'POST /api/scenarios/:id/enroll/:friendId error:', err);
+    return respondToAdminRouteCaughtError(
+      c,
+      err,
+      'POST /api/scenarios/:id/enroll/:friendId error:',
+    );
   }
 });
 

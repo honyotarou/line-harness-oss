@@ -1,4 +1,5 @@
 export { jstNow, toJstString, isTimeBefore } from './utils';
+export { isD1NoSuchTableError } from './d1-sqlite-errors';
 export * from './friends';
 export * from './tags';
 export * from './scenarios';
