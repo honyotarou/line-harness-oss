@@ -1,5 +1,6 @@
 import { Hono } from 'hono';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { requestCorrelationMiddleware } from '../../src/middleware/request-correlation.js';
 
 const dbMocks = vi.hoisted(() => ({
   getScenarios: vi.fn(),
@@ -135,5 +136,32 @@ describe('scenarios routes', () => {
         updatedAt: '2026-03-25T10:00:00+09:00',
       },
     });
+  });
+
+  it('GET /api/scenarios returns 500 with requestId when getScenarios throws', async () => {
+    const log = vi.spyOn(console, 'error').mockImplementation(() => {});
+    dbMocks.getScenarios.mockRejectedValueOnce(new Error('D1 schema mismatch'));
+
+    const { scenarios } = await import('../../src/routes/scenarios.js');
+    const app = new Hono();
+    app.use('*', requestCorrelationMiddleware);
+    app.route('/', scenarios);
+
+    const response = await app.fetch(
+      new Request('http://localhost/api/scenarios', { headers: { 'CF-Ray': 'test-ray-99' } }),
+      { DB: createDb() } as never,
+    );
+
+    expect(response.status).toBe(500);
+    const body = (await response.json()) as {
+      success: boolean;
+      error: string;
+      requestId: string;
+    };
+    expect(body.success).toBe(false);
+    expect(body.error).toBe('Internal server error');
+    expect(body.requestId).toBe('test-ray-99');
+    expect(response.headers.get('X-Request-Correlation-Id')).toBe('test-ray-99');
+    log.mockRestore();
   });
 });
