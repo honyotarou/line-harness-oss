@@ -88,4 +88,29 @@ describe('admin-access-proxy-worker fetch (upstream Access login → 502 JSON)',
     expect(res.status).toBe(200);
     expect(await res.json()).toEqual({ ok: true });
   });
+
+  it('rewrites Set-Cookie Domain/Path for browser admin origin', async () => {
+    globalThis.fetch = vi.fn(async () => {
+      const h = new Headers({ 'Content-Type': 'application/json' });
+      h.append(
+        'Set-Cookie',
+        'lh_admin_session=x.y; HttpOnly; Secure; SameSite=None; Path=/; Domain=api.example.test',
+      );
+      return new Response(JSON.stringify({ ok: true }), { status: 200, headers: h });
+    });
+
+    const res = await proxyFetch(req(), baseEnv);
+    const anyH = res.headers as Headers & { getSetCookie?: () => string[] };
+    const lines =
+      typeof anyH.getSetCookie === 'function' && anyH.getSetCookie().length > 0
+        ? anyH.getSetCookie()
+        : (() => {
+            const one = res.headers.get('Set-Cookie');
+            return one ? [one] : [];
+          })();
+    expect(lines.length).toBeGreaterThanOrEqual(1);
+    expect(lines[0]).toContain('lh_admin_session=x.y');
+    expect(lines[0]).toContain('Path=/');
+    expect(lines[0]).not.toMatch(/domain=/i);
+  });
 });

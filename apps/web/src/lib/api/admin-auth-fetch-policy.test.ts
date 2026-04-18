@@ -45,13 +45,13 @@ describe('resolveBrowserFetchRedirectPolicy', () => {
 });
 
 describe('shouldTreatBrowserAdminApiResponseAsAccessEdgeRedirect', () => {
-  it('is true for opaqueredirect', () => {
+  it('is false for opaqueredirect (no Location; avoid replace("/") loops)', () => {
     expect(
       shouldTreatBrowserAdminApiResponseAsAccessEdgeRedirect({
         type: 'opaqueredirect',
         status: 0,
       } as Response),
-    ).toBe(true);
+    ).toBe(false);
   });
 
   it('is true when Location targets Cloudflare Access login', () => {

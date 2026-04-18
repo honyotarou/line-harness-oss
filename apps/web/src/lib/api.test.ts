@@ -920,6 +920,24 @@ describe('fetchApiCore', () => {
     });
   });
 
+  it('opaqueredirect on non-auth /api/* does not call location.replace("/") (falls through to ApiError)', async () => {
+    const replace = vi.fn();
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: false,
+      status: 0,
+      type: 'opaqueredirect',
+      headers: new Headers(),
+      json: async () => {
+        throw new SyntaxError('no body');
+      },
+    } as Response);
+    vi.stubGlobal('location', { replace: replace });
+    await expect(
+      fetchApiCore('https://api.example', fetchMock as typeof fetch, '/api/broadcasts'),
+    ).rejects.toMatchObject({ name: 'ApiError' });
+    expect(replace).not.toHaveBeenCalled();
+  });
+
   it('302 on non-auth /api/* without Access Location falls through to error handling', async () => {
     const fetchMock = vi.fn().mockResolvedValue({
       ok: false,

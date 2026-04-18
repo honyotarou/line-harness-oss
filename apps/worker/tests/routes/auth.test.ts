@@ -634,7 +634,7 @@ describe('auth routes', () => {
     expect(sessionToken).toBeTruthy();
 
     let lastStatus = 200;
-    for (let i = 0; i < 121; i += 1) {
+    for (let i = 0; i < 301; i += 1) {
       const res = await app.fetch(
         new Request('http://localhost/api/auth/session', {
           headers: {
@@ -657,7 +657,7 @@ describe('auth routes', () => {
     const rateDb = createAuthIntegrationDb();
 
     let response: Response | undefined;
-    for (let attempt = 0; attempt < 6; attempt += 1) {
+    for (let attempt = 0; attempt < 25; attempt += 1) {
       response = await app.fetch(
         new Request('http://localhost/api/auth/login', {
           method: 'POST',

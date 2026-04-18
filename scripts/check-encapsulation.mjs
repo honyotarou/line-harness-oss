@@ -331,6 +331,11 @@ if (fs.existsSync(adminAccessProxyIndex)) {
       'apps/admin-access-proxy-worker/src/index.ts: must return the documented 502 JSON when upstream sends an Access interactive login redirect (browser must not see that Location).',
     );
   }
+  if (!src.includes('rewriteSetCookieLineForAdminBrowserOrigin')) {
+    errors.push(
+      'apps/admin-access-proxy-worker/src/index.ts: must rewrite upstream Set-Cookie via rewriteSetCookieLineForAdminBrowserOrigin (@line-crm/shared) so admin cookies are not scoped to the upstream Worker hostname.',
+    );
+  }
 }
 
 // ── Report ─────────────────────────────────────────────────────────────────
