@@ -7,7 +7,8 @@
  *
  * `/api/auth/*`: `fetchApiCore` uses **`location.replace(href)`** / reload gate (see client).
  * Other `/api/*`: on **Access-shaped** redirects only (readable `Location` to Access), use
- * **`location.replace('/')`** so a full document load can complete Access login. **`opaqueredirect`**
+ * **`location.replace('/login')`** (plus a **parallel mutex** in `client.ts`) so one navigation runs
+ * and the dashboard is not re-mounted immediately. **`opaqueredirect`**
  * is **not** treated as Access (no `Location`); callers surface a normal fetch error instead of a
  * top-level reload loop.
  *
@@ -20,6 +21,10 @@ const ADMIN_API_PATH_PREFIX = '/api/';
 const ADMIN_AUTH_PATH_PREFIX = '/api/auth/';
 
 export const AUTH_API_REDIRECT_NOT_FOLLOWED_CODE = 'AUTH_API_REDIRECT_NOT_FOLLOWED' as const;
+
+/** Parallel non-auth `/api/*` saw Access 302 after another request already started document login navigation. */
+export const ADMIN_ACCESS_DOCUMENT_REDIRECT_ALREADY_HANDLED_CODE =
+  'ADMIN_ACCESS_DOCUMENT_REDIRECT_ALREADY_HANDLED' as const;
 
 /** True for any browser admin API path (`/api/...`), including `/api/auth/*`. */
 export function isBrowserAdminManagedApiPath(path: string): boolean {
@@ -86,5 +91,16 @@ export function adminAuthFetchFailureBody(): {
     code: AUTH_API_REDIRECT_NOT_FOLLOWED_CODE,
     error:
       '認証 API がログインページへリダイレクトしています。ブラウザの fetch がそれを追従すると別オリジンで失敗することがあります。エッジ SSO では認証 API を JSON で返すか、静的アセットと同様にパス単位のポリシーを分けてください。',
+  };
+}
+
+export function adminAccessDocumentRedirectAlreadyHandledBody(): {
+  error: string;
+  code: typeof ADMIN_ACCESS_DOCUMENT_REDIRECT_ALREADY_HANDLED_CODE;
+} {
+  return {
+    code: ADMIN_ACCESS_DOCUMENT_REDIRECT_ALREADY_HANDLED_CODE,
+    error:
+      '別の並列リクエストが既に Access ドキュメントログイン用の遷移を開始しました。このリクエストはキャンセルします。',
   };
 }

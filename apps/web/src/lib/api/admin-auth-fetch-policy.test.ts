@@ -1,6 +1,8 @@
 import { describe, expect, it } from 'vitest';
 import {
+  ADMIN_ACCESS_DOCUMENT_REDIRECT_ALREADY_HANDLED_CODE,
   AUTH_API_REDIRECT_NOT_FOLLOWED_CODE,
+  adminAccessDocumentRedirectAlreadyHandledBody,
   adminAuthFetchFailureBody,
   isBrowserAdminAuthApiPath,
   isBrowserAdminManagedApiPath,
@@ -110,5 +112,13 @@ describe('adminAuthFetchFailureBody', () => {
       error: expect.stringMatching(/リダイレクト/),
       code: AUTH_API_REDIRECT_NOT_FOLLOWED_CODE,
     });
+  });
+});
+
+describe('adminAccessDocumentRedirectAlreadyHandledBody', () => {
+  it('returns a stable code for parallel Access redirect suppression', () => {
+    const b = adminAccessDocumentRedirectAlreadyHandledBody();
+    expect(b.code).toBe(ADMIN_ACCESS_DOCUMENT_REDIRECT_ALREADY_HANDLED_CODE);
+    expect(b.error).toMatch(/並列/);
   });
 });
