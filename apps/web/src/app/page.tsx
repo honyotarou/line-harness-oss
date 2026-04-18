@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import Link from 'next/link';
+import SafeLink from '@/components/safe-link';
 import { api, getApiBaseUrl } from '@/lib/api';
 import CcPromptButton from '@/components/cc-prompt-button';
 import { useAccount } from '@/contexts/account-context';
@@ -45,9 +45,8 @@ interface StatCardProps {
 
 function StatCard({ title, value, loading, icon, href }: StatCardProps) {
   return (
-    <Link
+    <SafeLink
       href={href}
-      prefetch={false}
       className="block bg-white rounded-lg shadow-sm border border-gray-200 p-6 hover:shadow-md transition-shadow group"
     >
       <div className="flex items-start justify-between">
@@ -68,7 +67,7 @@ function StatCard({ title, value, loading, icon, href }: StatCardProps) {
       <p className="text-xs text-gray-400 mt-3 group-hover:text-[var(--color-primary-hover)] transition-colors">
         詳細を見る →
       </p>
-    </Link>
+    </SafeLink>
   );
 }
 
@@ -290,9 +289,8 @@ export default function DashboardPage() {
       <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
         <h2 className="text-sm font-semibold text-gray-800 mb-4">クイックアクション</h2>
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-          <Link
+          <SafeLink
             href="/friends"
-            prefetch={false}
             className="flex items-center gap-3 p-3 rounded-lg border border-gray-200 hover:border-gray-300 hover:bg-[var(--color-primary-muted)] transition-colors group"
           >
             <div className="w-8 h-8 rounded-lg flex items-center justify-center shrink-0 bg-[var(--color-primary-muted)] text-[var(--color-primary)]">
@@ -311,11 +309,10 @@ export default function DashboardPage() {
               </p>
               <p className="text-xs text-gray-400">友だちの一覧・タグ管理</p>
             </div>
-          </Link>
+          </SafeLink>
 
-          <Link
+          <SafeLink
             href="/scenarios"
-            prefetch={false}
             className="flex items-center gap-3 p-3 rounded-lg border border-gray-200 hover:border-gray-300 hover:bg-[var(--color-primary-muted)] transition-colors group"
           >
             <div className="w-8 h-8 rounded-lg flex items-center justify-center shrink-0 bg-[var(--color-primary-muted)] text-[var(--color-primary)]">
@@ -334,11 +331,10 @@ export default function DashboardPage() {
               </p>
               <p className="text-xs text-gray-400">自動配信シナリオの作成・編集</p>
             </div>
-          </Link>
+          </SafeLink>
 
-          <Link
+          <SafeLink
             href="/broadcasts"
-            prefetch={false}
             className="flex items-center gap-3 p-3 rounded-lg border border-gray-200 hover:border-gray-300 hover:bg-[var(--color-primary-muted)] transition-colors group"
           >
             <div className="w-8 h-8 rounded-lg flex items-center justify-center shrink-0 bg-[var(--color-primary-muted)] text-[var(--color-primary)]">
@@ -357,11 +353,10 @@ export default function DashboardPage() {
               </p>
               <p className="text-xs text-gray-400">メッセージの一斉送信・予約</p>
             </div>
-          </Link>
+          </SafeLink>
 
-          <Link
+          <SafeLink
             href="/chats"
-            prefetch={false}
             className="flex items-center gap-3 p-3 rounded-lg border border-gray-200 hover:border-gray-300 hover:bg-[var(--color-primary-muted)] transition-colors group"
           >
             <div className="w-8 h-8 rounded-lg flex items-center justify-center shrink-0 bg-[var(--color-primary-muted)] text-[var(--color-primary)]">
@@ -380,11 +375,10 @@ export default function DashboardPage() {
               </p>
               <p className="text-xs text-gray-400">オペレーターチャット管理</p>
             </div>
-          </Link>
+          </SafeLink>
 
-          <Link
+          <SafeLink
             href="/health"
-            prefetch={false}
             className="flex items-center gap-3 p-3 rounded-lg border border-gray-200 hover:border-gray-300 hover:bg-[var(--color-primary-muted)] transition-colors group"
           >
             <div className="w-8 h-8 rounded-lg flex items-center justify-center shrink-0 bg-[var(--color-primary-muted)] text-[var(--color-primary)]">
@@ -403,7 +397,7 @@ export default function DashboardPage() {
               </p>
               <p className="text-xs text-gray-400">アカウント健康度ダッシュボード</p>
             </div>
-          </Link>
+          </SafeLink>
         </div>
       </div>
 

@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, useRef } from 'react';
-import Link from 'next/link';
+import SafeLink from '@/components/safe-link';
 import { usePathname } from 'next/navigation';
 import { api } from '@/lib/api';
 import { useAccount } from '@/contexts/account-context';
@@ -308,10 +308,9 @@ export default function Sidebar() {
               const active = isActive(item.href);
               const isDanger = 'danger' in item && item.danger;
               return (
-                <Link
+                <SafeLink
                   key={item.href}
                   href={item.href}
-                  prefetch={false}
                   className={`flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors ${
                     active
                       ? 'text-white'
@@ -329,7 +328,7 @@ export default function Sidebar() {
                 >
                   <NavIcon d={item.icon} />
                   {item.label}
-                </Link>
+                </SafeLink>
               );
             })}
           </div>

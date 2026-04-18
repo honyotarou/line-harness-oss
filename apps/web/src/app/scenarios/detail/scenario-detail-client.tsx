@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react';
 
-import Link from 'next/link';
+import SafeLink from '@/components/safe-link';
 import type { Scenario, ScenarioStep, ScenarioTriggerType, MessageType } from '@line-crm/shared';
 import { tryParseJsonLoose, tryParseJsonObjectForPreview } from '@line-crm/shared';
 import { api } from '@/lib/api';
@@ -296,13 +296,12 @@ export default function ScenarioDetailClient({ scenarioId }: { scenarioId: strin
         <Header title="シナリオ詳細" />
         <div className="bg-white rounded-lg border border-gray-200 p-8 text-center">
           <p className="text-gray-500">{error || 'シナリオが見つかりません'}</p>
-          <Link
+          <SafeLink
             href="/scenarios"
-            prefetch={false}
             className="text-sm text-[var(--color-primary)] hover:text-[var(--color-primary-hover)] mt-4 inline-block"
           >
             ← シナリオ一覧に戻る
-          </Link>
+          </SafeLink>
         </div>
       </div>
     );
@@ -313,13 +312,12 @@ export default function ScenarioDetailClient({ scenarioId }: { scenarioId: strin
       <Header
         title="シナリオ詳細"
         action={
-          <Link
+          <SafeLink
             href="/scenarios"
-            prefetch={false}
             className="px-4 py-2 min-h-[44px] text-sm font-medium text-gray-600 bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors inline-flex items-center"
           >
             ← シナリオ一覧
-          </Link>
+          </SafeLink>
         }
       />
 

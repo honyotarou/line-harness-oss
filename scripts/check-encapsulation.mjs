@@ -209,6 +209,20 @@ if (fs.existsSync(webSrcDir)) {
   }
 }
 
+// ── Web: next/link only inside SafeLink (RSC prefetch vs Cloudflare Access edge) ─────────
+const safeLinkSingleFile = path.join(ROOT, 'apps/web/src/components/safe-link.tsx');
+if (fs.existsSync(webSrcDir)) {
+  for (const f of listFilesRecursive(webSrcDir, (p) => p.endsWith('.ts') || p.endsWith('.tsx'))) {
+    if (path.normalize(f) === path.normalize(safeLinkSingleFile)) continue;
+    const rel = path.relative(ROOT, f);
+    if (/from\s+['"]next\/link['"]/.test(readUtf8(f))) {
+      errors.push(
+        `${rel}: do not import next/link directly — use @/components/safe-link (default prefetch=false avoids Access login CORS on RSC *.txt?_rsc= viewport prefetch).`,
+      );
+    }
+  }
+}
+
 // ── Web: client.ts must not depend on catalog ──────────────────────────────
 const clientTs = path.join(ROOT, 'apps/web/src/lib/api/client.ts');
 if (fs.existsSync(clientTs)) {
