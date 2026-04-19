@@ -28,4 +28,13 @@ describe('shouldAuthGuardBlockUiForSessionRecheck', () => {
       shouldAuthGuardBlockUiForSessionRecheck({ pathname: '/login', previousPathname: '/friends' }),
     ).toBe(false);
   });
+
+  it('treats null pathname like a non-login route for block logic', () => {
+    expect(
+      shouldAuthGuardBlockUiForSessionRecheck({ pathname: null, previousPathname: '/friends' }),
+    ).toBe(false);
+    expect(
+      shouldAuthGuardBlockUiForSessionRecheck({ pathname: null, previousPathname: null }),
+    ).toBe(true);
+  });
 });
