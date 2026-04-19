@@ -362,6 +362,24 @@ describe('auth routes', () => {
 
     expect(loginResponse.status).toBe(401);
     expect(sessionResponse.status).toBe(401);
+    const missing = (await sessionResponse.json()) as { code?: string };
+    expect(missing.code).toBe('MISSING_ADMIN_SESSION');
+  });
+
+  it('GET /api/auth/session with no credentials returns MISSING_ADMIN_SESSION', async () => {
+    const { authRoutes } = await import('../../src/routes/auth.js');
+    const app = new Hono();
+    app.route('/', authRoutes);
+
+    const sessionResponse = await app.fetch(new Request('http://localhost/api/auth/session'), {
+      API_KEY: 'root-api-key',
+      DB: createAuthIntegrationDb(),
+    } as never);
+
+    expect(sessionResponse.status).toBe(401);
+    const body = (await sessionResponse.json()) as { code?: string; error?: string };
+    expect(body.error).toBe('Unauthorized');
+    expect(body.code).toBe('MISSING_ADMIN_SESSION');
   });
 
   it('rejects raw API key on the session endpoint by default', async () => {
@@ -381,6 +399,8 @@ describe('auth routes', () => {
     );
 
     expect(response.status).toBe(401);
+    const body = (await response.json()) as { code?: string };
+    expect(body.code).toBe('API_KEY_BEARER_SESSION_FORBIDDEN');
   });
 
   it('signs login sessions with ADMIN_SESSION_SECRET when set (not with API_KEY)', async () => {
@@ -588,6 +608,8 @@ describe('auth routes', () => {
       { API_KEY: 'root-api-key', INCLUDE_SESSION_TOKEN_IN_LOGIN_BODY: '1', DB: db } as never,
     );
     expect(sessionAfter.status).toBe(401);
+    const afterJson = (await sessionAfter.json()) as { code?: string };
+    expect(afterJson.code).toBe('INVALID_ADMIN_SESSION');
   });
 
   it('rejects oversized login payloads before parsing them', async () => {

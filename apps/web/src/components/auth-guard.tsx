@@ -1,25 +1,37 @@
 'use client';
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { usePathname } from 'next/navigation';
 import { api, clearAdminSessionToken } from '@/lib/api';
 import {
   recordAuthGuardRedirectToLogin,
   shouldAllowAuthGuardRedirectToLogin,
 } from '@/lib/auth-guard-login-redirect-limit';
+import { shouldAuthGuardBlockUiForSessionRecheck } from '@/lib/auth-guard-session-recheck';
 
 export default function AuthGuard({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const [checked, setChecked] = useState(false);
   const [redirectLoopHalt, setRedirectLoopHalt] = useState(false);
+  const previousPathnameRef = useRef<string | null>(null);
 
   useEffect(() => {
     let cancelled = false;
 
     const check = async () => {
       if (pathname === '/login') {
+        previousPathnameRef.current = '/login';
         setRedirectLoopHalt(false);
         setChecked(true);
         return;
+      }
+
+      const previousPathname = previousPathnameRef.current;
+      const blockUi = shouldAuthGuardBlockUiForSessionRecheck({ pathname, previousPathname });
+      previousPathnameRef.current = pathname;
+
+      if (blockUi) {
+        setChecked(false);
+        setRedirectLoopHalt(false);
       }
 
       try {
@@ -47,8 +59,6 @@ export default function AuthGuard({ children }: { children: React.ReactNode }) {
       }
     };
 
-    setChecked(false);
-    setRedirectLoopHalt(false);
     void check();
 
     return () => {

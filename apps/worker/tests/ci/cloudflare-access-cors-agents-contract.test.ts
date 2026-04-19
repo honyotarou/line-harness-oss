@@ -11,6 +11,18 @@ const preflightPolicy = readFileSync(
 );
 
 describe('AGENTS.md ↔ official Access CORS preflight doc', () => {
+  it('documents Access path narrowing for same-origin Next + RSC prefetch', () => {
+    expect(agents).toContain('/api/lh-upstream/api/*');
+    expect(agents).toContain('*.txt?_rsc');
+    expect(agents).toContain('CLOUDFLARE_ACCESS_AUDIENCE');
+    expect(agents).toContain('Application Audience (AUD) Tag');
+  });
+
+  it('documents wrangler tail + requestId for opaque admin 500s', () => {
+    expect(agents).toContain('wrangler tail');
+    expect(agents).toContain('requestId');
+  });
+
   it('links Allow preflighted requests and Configure response to preflight (Option 2)', () => {
     expect(agents).toContain('allow-preflighted-requests');
     expect(agents).toContain('configure-response-to-preflight-requests');

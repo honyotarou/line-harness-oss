@@ -320,6 +320,26 @@ if (fs.existsSync(agentsMd)) {
       'AGENTS.md: must state repo policy — do not use Access CORS "Bypass options requests to origin" (Option 1).',
     );
   }
+  if (!agents.includes('/api/lh-upstream/api/*')) {
+    errors.push(
+      'AGENTS.md: must document narrowing Access Application paths to /api/lh-upstream/api/* (same-origin Next RSC prefetch vs Access).',
+    );
+  }
+  if (!agents.includes('*.txt?_rsc')) {
+    errors.push(
+      'AGENTS.md: must mention RSC prefetch (*.txt?_rsc) risk with Cloudflare Access path scope.',
+    );
+  }
+  if (!agents.includes('CLOUDFLARE_ACCESS_AUDIENCE')) {
+    errors.push(
+      'AGENTS.md: must document CLOUDFLARE_ACCESS_AUDIENCE alignment with Access Application Audience (AUD) Tag.',
+    );
+  }
+  if (!agents.includes('wrangler tail') || !agents.includes('requestId')) {
+    errors.push(
+      'AGENTS.md: must document wrangler tail triage using JSON requestId for admin API 500s.',
+    );
+  }
 }
 const cfAccessMw = path.join(ROOT, 'apps/worker/src/middleware/cloudflare-access.ts');
 if (fs.existsSync(cfAccessMw)) {

@@ -189,24 +189,30 @@ authRoutes.get('/api/auth/session', async (c) => {
 
     const token = getAdminAuthToken(c);
     if (!token) {
-      return c.json({ success: false, error: 'Unauthorized' }, 401);
+      return c.json({ success: false, error: 'Unauthorized', code: 'MISSING_ADMIN_SESSION' }, 401);
     }
 
     const apiKey = c.env.API_KEY ?? '';
     if (await timingSafeEqualUtf8(token, apiKey)) {
       if (!allowLegacyApiKeyBearerSession(c.env)) {
-        return c.json({ success: false, error: 'Unauthorized' }, 401);
+        return c.json(
+          { success: false, error: 'Unauthorized', code: 'API_KEY_BEARER_SESSION_FORBIDDEN' },
+          401,
+        );
       }
       return c.json({ success: true, data: { authenticated: true } });
     }
 
     const sessionSecret = resolveAdminSessionSecret(c.env);
     if (!sessionSecret) {
-      return c.json({ success: false, error: 'Unauthorized' }, 401);
+      return c.json(
+        { success: false, error: 'Unauthorized', code: 'ADMIN_SESSION_SECRET_UNCONFIGURED' },
+        401,
+      );
     }
     const ok = await isValidAdminAuthToken(sessionSecret, token, c.env.DB);
     if (!ok) {
-      return c.json({ success: false, error: 'Unauthorized' }, 401);
+      return c.json({ success: false, error: 'Unauthorized', code: 'INVALID_ADMIN_SESSION' }, 401);
     }
 
     return c.json({ success: true, data: { authenticated: true } });
