@@ -5,6 +5,7 @@ import { adminRbacMiddleware } from './middleware/admin-rbac.js';
 import { authMiddleware } from './middleware/auth.js';
 import { cloudflareAccessMiddleware } from './middleware/cloudflare-access.js';
 import { cfBotGuardMiddleware } from './middleware/cf-bot-guard.js';
+import { createAdminBffInboundPathRewrite } from './middleware/admin-bff-inbound-path-rewrite.js';
 import { hostHeaderMiddleware } from './middleware/host-header.js';
 import { requestCorrelationMiddleware } from './middleware/request-correlation.js';
 import { apiWriteContentTypeMiddleware } from './middleware/api-write-content-type.js';
@@ -199,6 +200,11 @@ export type Env = {
      */
     CLOUDFLARE_ACCESS_TRUSTED_SERVICE_CLIENT_IDS?: string;
     /**
+     * Inbound path prefix to strip when the Worker receives same-origin BFF URLs intact
+     * (e.g. `/api/lh-upstream/api/auth/session`). Default `/api/lh-upstream`. Set to empty string to disable.
+     */
+    ADMIN_INBOUND_BFF_PATH_PREFIX?: string;
+    /**
      * Optional comma-separated hostnames for `Host` header allowlisting (DNS rebinding mitigation).
      * When unset or empty, no check (typical for local dev). In production, set to your worker hostname(s).
      */
@@ -327,6 +333,7 @@ export type Env = {
 
 const app = new Hono<Env>();
 
+app.use('*', createAdminBffInboundPathRewrite(app));
 app.use('*', hostHeaderMiddleware);
 app.use('*', requestCorrelationMiddleware);
 app.use('*', cfBotGuardMiddleware);
