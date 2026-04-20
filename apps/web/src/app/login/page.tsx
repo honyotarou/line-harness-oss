@@ -2,6 +2,7 @@
 import { useEffect, useState } from 'react';
 import { ApiError, api, setAdminSessionToken, useCloudflareAccessLoginMode } from '@/lib/api';
 import { Input } from '@/components/ui/field';
+import { buildAdminAccessSessionStartHref } from '@/lib/admin-access-session-start';
 
 function errorMessageFromApi(err: unknown): string | undefined {
   if (err instanceof Error && err.name === 'ApiError' && 'body' in err) {
@@ -19,6 +20,7 @@ export default function LoginPage() {
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const [hydrated, setHydrated] = useState(false);
+  const accessStartHref = buildAdminAccessSessionStartHref({ returnTo: '/login' });
 
   useEffect(() => {
     setHydrated(true);
@@ -26,6 +28,11 @@ export default function LoginPage() {
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (accessLogin) {
+      // Access ログインは fetch では完走できないので、トップレベル遷移させる。
+      window.location.assign(accessStartHref);
+      return;
+    }
     setLoading(true);
     setError('');
 
@@ -138,8 +145,8 @@ export default function LoginPage() {
           <form onSubmit={handleLogin}>
             {accessLogin ? (
               <p className="text-sm text-gray-600 mb-4">
-                Cloudflare Access で認証したうえで、管理用セッションを発行します。先に Access
-                のログインを完了してください。
+                Cloudflare Access のログインを開始します。IdP（Google
+                など）での認証後、このページに戻ります。
               </p>
             ) : (
               <div className="mb-4">
@@ -157,14 +164,24 @@ export default function LoginPage() {
 
             {error && <p className="text-sm text-[var(--color-error)] mb-4">{error}</p>}
 
-            <button
-              type="submit"
-              disabled={loading || (!accessLogin && !apiKey)}
-              className="w-full py-3 text-white font-medium rounded-lg transition-opacity hover:opacity-90 disabled:opacity-50"
-              style={{ backgroundColor: 'var(--color-primary)' }}
-            >
-              {loading ? 'ログイン中...' : 'ログイン'}
-            </button>
+            {accessLogin ? (
+              <a
+                href={accessStartHref}
+                className="block w-full py-3 text-white text-center font-medium rounded-lg transition-opacity hover:opacity-90"
+                style={{ backgroundColor: 'var(--color-primary)' }}
+              >
+                Access ログインへ
+              </a>
+            ) : (
+              <button
+                type="submit"
+                disabled={loading || (!accessLogin && !apiKey)}
+                className="w-full py-3 text-white font-medium rounded-lg transition-opacity hover:opacity-90 disabled:opacity-50"
+                style={{ backgroundColor: 'var(--color-primary)' }}
+              >
+                {loading ? 'ログイン中...' : 'ログイン'}
+              </button>
+            )}
           </form>
         )}
       </div>
