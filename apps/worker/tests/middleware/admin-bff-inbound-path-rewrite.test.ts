@@ -12,6 +12,10 @@ function createTestApp() {
   app.use('*', createAdminBffInboundPathRewrite(app));
   app.use('*', authMiddleware);
   app.get('/api/auth/session', (c) => c.json({ hit: 'session' }));
+  app.get('/api/auth/access-bootstrap', (c) => {
+    const loc = c.req.query('returnTo')?.trim() || '/login';
+    return c.redirect(loc, 302);
+  });
   app.get('/api/scenarios', (c) => c.json({ hit: 'scenarios' }));
   return app;
 }
@@ -21,6 +25,12 @@ describe('resolveAdminBffInboundRewritePathname', () => {
     expect(
       resolveAdminBffInboundRewritePathname('/api/lh-upstream/api/auth/session', undefined),
     ).toBe('/api/auth/session');
+    expect(
+      resolveAdminBffInboundRewritePathname(
+        '/api/lh-upstream/api/auth/access-bootstrap',
+        undefined,
+      ),
+    ).toBe('/api/auth/access-bootstrap');
   });
 
   it('returns null when prefix binding is empty (disabled)', () => {
@@ -56,6 +66,25 @@ describe('resolveAdminBffInboundRewritePathname', () => {
 });
 
 describe('createAdminBffInboundPathRewrite', () => {
+  it('re-dispatches BFF-prefixed access-bootstrap like the canonical route', async () => {
+    const app = createTestApp();
+    const env = { API_KEY: 'secret' } as never;
+
+    const direct = await app.fetch(
+      new Request('http://localhost/api/auth/access-bootstrap?returnTo=%2Ffriends'),
+      env,
+    );
+    const viaBff = await app.fetch(
+      new Request('http://localhost/api/lh-upstream/api/auth/access-bootstrap?returnTo=%2Ffriends'),
+      env,
+    );
+
+    expect(direct.status).toBe(302);
+    expect(viaBff.status).toBe(302);
+    expect(direct.headers.get('Location')).toBe('/friends');
+    expect(viaBff.headers.get('Location')).toBe('/friends');
+  });
+
   it('re-dispatches BFF-prefixed auth/session like the canonical route', async () => {
     const app = createTestApp();
     const env = { API_KEY: 'secret' } as never;

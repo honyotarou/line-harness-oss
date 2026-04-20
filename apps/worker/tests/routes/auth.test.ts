@@ -382,6 +382,40 @@ describe('auth routes', () => {
     expect(body.code).toBe('MISSING_ADMIN_SESSION');
   });
 
+  it('GET /api/auth/access-bootstrap redirects to safe returnTo', async () => {
+    const { authRoutes } = await import('../../src/routes/auth.js');
+    const app = new Hono();
+    app.route('/', authRoutes);
+
+    const res = await app.fetch(
+      new Request('http://localhost/api/auth/access-bootstrap?returnTo=%2Ffriends'),
+      {
+        API_KEY: 'root-api-key',
+        DB: createAuthIntegrationDb(),
+      } as never,
+    );
+
+    expect(res.status).toBe(302);
+    expect(res.headers.get('Location')).toBe('/friends');
+  });
+
+  it('GET /api/auth/access-bootstrap falls back to /login for unsafe returnTo', async () => {
+    const { authRoutes } = await import('../../src/routes/auth.js');
+    const app = new Hono();
+    app.route('/', authRoutes);
+
+    const res = await app.fetch(
+      new Request('http://localhost/api/auth/access-bootstrap?returnTo=%2F%2Fevil.com'),
+      {
+        API_KEY: 'root-api-key',
+        DB: createAuthIntegrationDb(),
+      } as never,
+    );
+
+    expect(res.status).toBe(302);
+    expect(res.headers.get('Location')).toBe('/login');
+  });
+
   it('rejects raw API key on the session endpoint by default', async () => {
     const { authRoutes } = await import('../../src/routes/auth.js');
     const app = new Hono();
