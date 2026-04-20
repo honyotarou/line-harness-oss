@@ -3,6 +3,7 @@ import {
   canonicalRequestPathname,
   isAuthExemptPath,
   isCloudflareAccessExemptPath,
+  logicalAdminApiPathnameForPolicy,
 } from '../../src/services/auth-paths.js';
 
 describe('isAuthExemptPath', () => {
@@ -36,6 +37,29 @@ describe('isAuthExemptPath', () => {
     expect(isAuthExemptPath('/api/auth/login', 'POST')).toBe(true);
   });
 
+  it('treats default BFF-prefixed /api/auth/* as exempt (same policy as stripped /api/...)', () => {
+    expect(isAuthExemptPath('/api/lh-upstream/api/auth/session', 'GET')).toBe(true);
+    expect(isAuthExemptPath('/api/lh-upstream/api/auth/login', 'POST')).toBe(true);
+    expect(logicalAdminApiPathnameForPolicy('/api/lh-upstream/api/auth/session')).toBe(
+      '/api/auth/session',
+    );
+  });
+
+  it('does not strip BFF prefix when remainder is not an eligible admin proxy target', () => {
+    expect(isAuthExemptPath('/api/lh-upstream/openapi.json', 'GET')).toBe(false);
+    expect(logicalAdminApiPathnameForPolicy('/api/lh-upstream/openapi.json')).toBe(
+      '/api/lh-upstream/openapi.json',
+    );
+  });
+
+  it('does not apply BFF logical strip when ADMIN_INBOUND_BFF_PATH_PREFIX is empty', () => {
+    const disabled = { ADMIN_INBOUND_BFF_PATH_PREFIX: '' } as const;
+    expect(isAuthExemptPath('/api/lh-upstream/api/auth/session', 'GET', disabled)).toBe(false);
+    expect(isCloudflareAccessExemptPath('/api/lh-upstream/api/auth/session', 'GET', disabled)).toBe(
+      false,
+    );
+  });
+
   it('treats GET /favicon.ico as exempt (browser noise on Access-protected API hosts)', () => {
     expect(isAuthExemptPath('/favicon.ico', 'GET')).toBe(true);
     expect(isAuthExemptPath('/favicon.ico', 'POST')).toBe(false);
@@ -64,6 +88,10 @@ describe('isCloudflareAccessExemptPath', () => {
   it('does not exempt /api/auth/* while still exempting webhook', () => {
     expect(isCloudflareAccessExemptPath('/api/auth/login', 'POST')).toBe(false);
     expect(isCloudflareAccessExemptPath('/webhook', 'POST')).toBe(true);
+  });
+
+  it('does not exempt BFF-prefixed GET /api/auth/session (still requires Access JWT)', () => {
+    expect(isCloudflareAccessExemptPath('/api/lh-upstream/api/auth/session', 'GET')).toBe(false);
   });
 
   it('does not exempt env-probe from Cloudflare Access (same as /api/auth/session)', () => {

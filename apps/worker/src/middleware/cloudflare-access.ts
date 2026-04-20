@@ -34,7 +34,7 @@ export async function cloudflareAccessMiddleware(
   }
 
   const url = new URL(c.req.url);
-  if (isCloudflareAccessExemptPath(url.pathname, c.req.method)) {
+  if (isCloudflareAccessExemptPath(url.pathname, c.req.method, c.env)) {
     return next();
   }
 

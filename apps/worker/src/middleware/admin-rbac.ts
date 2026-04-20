@@ -46,7 +46,7 @@ export async function adminRbacMiddleware(c: Context<Env>, next: Next): Promise<
   const pathname = canonicalRequestPathname(url.pathname);
   const method = c.req.method;
 
-  if (isAuthExemptPath(pathname, method)) {
+  if (isAuthExemptPath(pathname, method, c.env)) {
     return next();
   }
 

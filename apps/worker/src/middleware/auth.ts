@@ -16,7 +16,7 @@ export async function authMiddleware(c: Context<Env>, next: Next): Promise<Respo
   const path = new URL(c.req.url).pathname;
   const method = c.req.method;
 
-  if (isAuthExemptPath(path, method)) {
+  if (isAuthExemptPath(path, method, c.env)) {
     return next();
   }
 
