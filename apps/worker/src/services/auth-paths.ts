@@ -1,3 +1,8 @@
+import {
+  isEligibleWorkerAdminProxyTargetPath,
+  stripAdminAccessProxyPrefix,
+} from '@line-crm/shared';
+
 /**
  * WHATWG-normalize an HTTP path (collapse `.` / `..`, etc.) so `startsWith('/api/liff/')` cannot be
  * bypassed with `/api/liff/../…` if a caller ever passes a non-normalized pathname.
@@ -14,11 +19,60 @@ export function canonicalRequestPathname(pathname: string): string {
 }
 
 /**
+ * Default same-origin admin BFF prefix (browser `NEXT_PUBLIC_ADMIN_BROWSER_API_BASE`).
+ * Matches the default in `middleware/admin-bff-inbound-path-rewrite.ts` when unset.
+ */
+const DEFAULT_ADMIN_BFF_INBOUND_PATH_PREFIX = '/api/lh-upstream';
+
+/**
+ * Collapse `..` then strip the default `/api/lh-upstream` prefix when the remainder is an eligible
+ * `/api/...` path. Ensures policy helpers see `/api/auth/session` even if the inbound URL still
+ * carries the BFF prefix (rewrite middleware absent or bypassed).
+ */
+export function logicalAdminApiPathnameForPolicy(pathname: string): string {
+  const canonical = canonicalRequestPathname(pathname);
+  const stripped = stripAdminAccessProxyPrefix(canonical, DEFAULT_ADMIN_BFF_INBOUND_PATH_PREFIX);
+  if (stripped !== null && isEligibleWorkerAdminProxyTargetPath(stripped)) {
+    return stripped;
+  }
+  return canonical;
+}
+
+/** Optional Worker binding: when set to empty string, inbound BFF logical strip is disabled. */
+export type AdminInboundBffPolicyBindings = {
+  ADMIN_INBOUND_BFF_PATH_PREFIX?: string;
+};
+
+function isInboundBffLogicalStripDisabled(bindings?: AdminInboundBffPolicyBindings): boolean {
+  const raw = bindings?.ADMIN_INBOUND_BFF_PATH_PREFIX;
+  return raw !== undefined && raw.trim() === '';
+}
+
+/**
+ * Pathname used by auth / Access policy checks. Honors {@link AdminInboundBffPolicyBindings} so an
+ * explicit empty `ADMIN_INBOUND_BFF_PATH_PREFIX` matches “rewrite disabled” and does not normalize
+ * away `/api/lh-upstream/...`.
+ */
+export function policyAdminRequestPathname(
+  pathname: string,
+  bindings?: AdminInboundBffPolicyBindings,
+): string {
+  if (isInboundBffLogicalStripDisabled(bindings)) {
+    return canonicalRequestPathname(pathname);
+  }
+  return logicalAdminApiPathnameForPolicy(pathname);
+}
+
+/**
  * Paths that skip admin Bearer/cookie auth.
  * Keep in sync with {@link authMiddleware}.
  */
-export function isAuthExemptPath(pathname: string, method: string): boolean {
-  const path = canonicalRequestPathname(pathname);
+export function isAuthExemptPath(
+  pathname: string,
+  method: string,
+  bindings?: AdminInboundBffPolicyBindings,
+): boolean {
+  const path = policyAdminRequestPathname(pathname, bindings);
   const publicFormDefinitionGet = method === 'GET' && /^\/api\/forms\/[^/]+$/.test(path);
   const publicFormSubmitPost = method === 'POST' && /^\/api\/forms\/[^/]+\/submit$/.test(path);
 
@@ -47,15 +101,19 @@ export function isAuthExemptPath(pathname: string, method: string): boolean {
  * `/api/auth/*` so a valid `Cf-Access-Jwt-Assertion` is required when Cloudflare Access is enforced
  * (closes direct `*.workers.dev` + API_KEY login bypass).
  */
-export function isCloudflareAccessExemptPath(pathname: string, method: string): boolean {
-  const path = canonicalRequestPathname(pathname);
-  if (!isAuthExemptPath(path, method)) {
+export function isCloudflareAccessExemptPath(
+  pathname: string,
+  method: string,
+  bindings?: AdminInboundBffPolicyBindings,
+): boolean {
+  if (!isAuthExemptPath(pathname, method, bindings)) {
     return false;
   }
+  const logical = policyAdminRequestPathname(pathname, bindings);
   const authApiRequiresCfJwt =
-    (path === '/api/auth/login' && method === 'POST') ||
-    (path === '/api/auth/session' && method === 'GET') ||
-    (path === '/api/auth/logout' && method === 'POST');
+    (logical === '/api/auth/login' && method === 'POST') ||
+    (logical === '/api/auth/session' && method === 'GET') ||
+    (logical === '/api/auth/logout' && method === 'POST');
   if (authApiRequiresCfJwt) {
     return false;
   }
