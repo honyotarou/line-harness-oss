@@ -19,6 +19,11 @@ const returnTo = readFileSync(
   join(repoRoot, 'apps/worker/src/services/auth-access-bootstrap-return-to.ts'),
   'utf8',
 );
+const webBootstrapStart = readFileSync(
+  join(repoRoot, 'apps/web/src/lib/admin-access-bootstrap-start.ts'),
+  'utf8',
+);
+const webLoginPage = readFileSync(join(repoRoot, 'apps/web/src/app/login/page.tsx'), 'utf8');
 
 describe('auth access-bootstrap source contract', () => {
   it('mounts GET /api/auth/access-bootstrap on auth routes', () => {
@@ -37,5 +42,12 @@ describe('auth access-bootstrap source contract', () => {
     expect(handoff).toMatch(/302/);
     expect(returnTo).toMatch(/sanitizeAccessBootstrapReturnTo/);
     expect(returnTo).toMatch(/\.\./);
+  });
+
+  it('web login uses access-bootstrap (not session) for Access top-level navigation', () => {
+    expect(webBootstrapStart).toMatch(/\/api\/auth\/access-bootstrap/);
+    expect(webBootstrapStart).toMatch(/buildAdminAccessBootstrapStartHref/);
+    expect(webLoginPage).toMatch(/buildAdminAccessBootstrapStartHref/);
+    expect(webLoginPage).not.toMatch(/\/api\/auth\/session\?returnTo=/);
   });
 });
