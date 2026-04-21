@@ -15,6 +15,7 @@ name: Deploy Worker
 # - Multi LINE accounts on one Worker: MULTI_LINE_ACCOUNT_QUERY_REQUIRES_LINE_ACCOUNT_ID=1
 # - REQUIRE_ADMIN_SESSION_SECRET=1 + ADMIN_SESSION_SECRET (wrangler secret) so sessions are not signed with API_KEY
 # - BROADCAST_SEND_SECRET + X-Broadcast-Send-Secret header for /api/broadcasts/:id/send (second factor for mass send)
+# - WORKER_LINE_CRM_IMAGES_BUCKET_NAME: optional; when set, CI appends `[[r2_buckets]]` binding LINE_CRM_IMAGES for POST /api/images (create bucket in dashboard first).
 # - AUTOMATION_SEND_WEBHOOK_ALLOWED_HOSTS: GitHub Secret (comma-separated hostnames) required for HTTPS deploy unless SKIP_CI_AUTOMATION_WEBHOOK_ALLOWLIST_CHECK=1
 #
 # After schema changes (e.g. admin_principal_roles), run D1 migrations against remote before relying on new features.
@@ -143,6 +144,36 @@ jobs:
             sed -i.bak "s|^INCLUDE_SESSION_TOKEN_IN_LOGIN_BODY = .*|INCLUDE_SESSION_TOKEN_IN_LOGIN_BODY = \"${INJECT_SESSION_TOKEN_BODY}\"|" wrangler.toml
             rm -f wrangler.toml.bak
           fi
+
+      - name: Append LINE_CRM_IMAGES R2 binding (optional; GitHub Secret WORKER_LINE_CRM_IMAGES_BUCKET_NAME)
+        working-directory: apps/worker
+        env:
+          WORKER_LINE_CRM_IMAGES_BUCKET_NAME: ${{ secrets.WORKER_LINE_CRM_IMAGES_BUCKET_NAME }}
+        run: |
+          node <<'NODE'
+          const fs = require('node:fs');
+          const bucket = (process.env.WORKER_LINE_CRM_IMAGES_BUCKET_NAME ?? '').trim();
+          if (!bucket) {
+            console.log('WORKER_LINE_CRM_IMAGES_BUCKET_NAME unset — skip R2 binding (configure later for image upload).');
+            process.exit(0);
+          }
+          const toml = fs.readFileSync('wrangler.toml', 'utf8');
+          if (/\bbinding\s*=\s*"LINE_CRM_IMAGES"/m.test(toml)) {
+            console.log('wrangler.toml already contains LINE_CRM_IMAGES binding — skip.');
+            process.exit(0);
+          }
+          const block =
+            '\n[[r2_buckets]]\nbinding = "LINE_CRM_IMAGES"\nbucket_name = ' +
+            JSON.stringify(bucket) +
+            '\n';
+          const next = toml.replace(/^\[triggers\]/m, block + '[triggers]');
+          if (next === toml) {
+            console.error('Could not find [triggers] in wrangler.toml — R2 inject failed.');
+            process.exit(1);
+          }
+          fs.writeFileSync('wrangler.toml', next);
+          console.log('Appended LINE_CRM_IMAGES R2 binding for bucket:', bucket);
+          NODE
 
       - uses: cloudflare/wrangler-action@v3
         with:

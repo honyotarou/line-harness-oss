@@ -90,7 +90,7 @@ description: >-
 | LIFF | `/auth/*`、`POST /api/liff/*`、CSP |
 | セキュリティ | 管理セッション、CF Access 任意、LIFF state／リダイレクト、Bot／ホスト |
 | DB | `schema.sql` と `migrations/` を同じ変更単位。**本番 D1 の遅れ**は運用論点 → `AGENTS.md` |
-| カプセル化 | `pnpm check:encapsulation`。新規 `routes/*.ts` は **`ROUTE_LINE_CAPS`** |
+| カプセル化 | `pnpm check:encapsulation`。新規 `routes/*.ts` は **`ROUTE_LINE_CAPS`**。加えて **`class` / `interface` 禁止**の TS 設計ゲートも毎回走る |
 | **harness が赤い** | 分岐の正本 → [steps-harness.md](steps-harness.md) **「マージゲートが赤いとき」** |
 
 ---
@@ -117,19 +117,21 @@ description: >-
 ### 5.4 TDD とカプセル化
 
 - **Red なし Green 禁止**。
-- Step 4〜5 のループの中で **`pnpm check:encapsulation`**（`ROUTE_LINE_CAPS` 忘れに注意）。
+- Step 4〜5 のループの中で **`pnpm check:encapsulation`**（`ROUTE_LINE_CAPS` 忘れに注意）。**この時点で `class` / `interface` 禁止も一緒に確認される**。
 - **P1〜P7** などコード検証済み論点は pentest 正本の表。**回帰は Vitest に残す**（`pnpm harness` が毎回実行）。
 
 ### 5.4.1 TypeScript 設計（構造的部分型の落とし穴）
 
-- **クラスを使わない**（必要なら Error/SDK の薄いラッパ程度）。基本は **関数 + 依存注入（引数）**で `this` 依存を避ける。
-- **データ型は Readonly**: DTO は `readonly` / `Readonly<T>` を優先し、ミューテーションは境界（DB/write）に閉じ込める。
-- **データ型と振る舞いを分離**: 型注釈はトランスパイルで消えるため、実行時の分岐・検証は関数で行う（interface を runtime に期待しない）。
-- **Branded Type** で値オブジェクト（ID 等）を区別する（TS は構造的部分型なので、同じ shape は区別されない）。
-- **注意**:
-  - `this` は必ずしもクラスインスタンスを指さない（`bind` 忘れやコールバックで壊れる）→ 関数化 or 明示 bind。
-  - `private` は型検査のみで、実行時の秘匿にはならない。
-  - `interface` / 型エイリアスは実行時に消える（型情報で分岐しない）。
+- **クラスを使わない**（必要なら Error/SDK の薄い互換ラッパ程度）。基本は **関数 + 依存注入（引数）**でクラス由来の `this` 依存を避ける。
+- **データ型には Readonly**: DTO は `readonly` / `Readonly<T>` を優先し、ミューテーションは境界（DB/write）に閉じ込める。
+- **データ型と振る舞いを分離**: 型は「形」のドキュメント。振る舞い・検証・分岐は **関数** に寄せる（後述のとおり型は実行時に存在しない）。
+- **Branded Type** で ID などの値オブジェクトを区別する。同じプリミティブでも brand が違えば代入ミスを型で止められる。
+- **`pnpm check:encapsulation` の TS 設計ゲート**: `packages/shared` / `packages/sdk` / `packages/line-sdk` / `apps/web` / `apps/worker` の本体コードで **`class` と `interface` を禁止**する。毎回の harness で機械的に落とす。
+- **Java/C# との違い（構造的部分型）**: TS は **名義型ではない**。例: `Post` と `User` が **同じ公開プロパティ**だけを持ち、**private がどちらにも無い**（または型検査上区別に効かない）なら、**型検査上は互換**として扱われ、意図した区別にならない。値の区別が要るときは **brand** や **判別 union（タグ）** など実行時にも残る形を使う。
+- **型注釈はトランスパイルで消える**: `interface` や型エイリアスで与えた情報は **実行時に参照できない**。リフレクションや「型名で分岐」はできない前提で設計する。
+- **そのほかの落とし穴**:
+  - **`this`** は必ずしもクラスインスタンスを指さない（メソッド抽出・コールバック・`bind` 忘れで変わる）。クラスに寄せない設計が安全。
+  - **`private`** は **型検査時のみ** の概念で、実行時の秘匿やランタイムでのフィールド隠蔽にはならない（トランスパイル後は普通のプロパティになり得る）。
 
 ### 5.5 テスト階層
 
@@ -138,7 +140,7 @@ description: >-
 ### 5.6 完了・その他
 
 - 変更後は **`pnpm harness`**（大きい変更は `harness:full` や `check`）。
-- **Modifius / 定期 CI**: 補助線。詳細は **[steps-harness.md §4.1](steps-harness.md)** のみ（ここでは複製しない）。
+- **Modifius / 定期 CI**: 補助線。詳細は **[steps-harness.md の 4.1](steps-harness.md)** のみ（ここでは複製しない）。
 - **Step 12**: 人間手順・証跡を残す。UI 微調整でも最終は harness；ルーティング変えたら e2e 検討。
 
 ---

@@ -1,23 +1,23 @@
 const PROFILE_CACHE_TTL_MS = 15 * 60_000;
 const inFlightProfileRefreshes = new Map<string, Promise<LineAccountProfile>>();
 
-interface LineAccountLike {
+type LineAccountLike = Readonly<{
   id: string;
   channel_access_token: string;
-}
+}>;
 
-interface CachedLineAccountProfileRow {
+type CachedLineAccountProfileRow = Readonly<{
   display_name: string | null;
   picture_url: string | null;
   basic_id: string | null;
   fetched_at: string;
-}
+}>;
 
-export interface LineAccountProfile {
+export type LineAccountProfile = Readonly<{
   displayName: string | null;
   pictureUrl: string | null;
   basicId: string | null;
-}
+}>;
 
 export function resetLineAccountProfileInflightState(): void {
   inFlightProfileRefreshes.clear();

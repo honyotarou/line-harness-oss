@@ -1,9 +1,9 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import {
   ADMIN_ACCESS_DOCUMENT_REDIRECT_ALREADY_HANDLED_CODE,
-  ApiError,
   AUTH_API_REDIRECT_NOT_FOLLOWED_CODE,
   fetchApiCore,
+  isApiError,
 } from './api';
 import { resetAdminAccessDocumentRedirectClaimForTests } from './api/admin-access-document-redirect-mutex.js';
 
@@ -378,6 +378,62 @@ describe('api object (integration via global fetch)', () => {
         body: JSON.stringify({ confirm: true }),
       }),
     );
+    await api.broadcasts.send('b1', { sendSecret: 'sec' });
+    expect(globalThis.fetch).toHaveBeenCalledWith(
+      'https://worker.test/api/broadcasts/b1/send',
+      expect.objectContaining({
+        headers: expect.objectContaining({ 'X-Broadcast-Send-Secret': 'sec' }),
+      }),
+    );
+    await api.broadcasts.segmentPreviewCount('b1', { operator: 'and', rules: [] });
+    expect(globalThis.fetch).toHaveBeenCalledWith(
+      'https://worker.test/api/broadcasts/b1/segment-preview-count',
+      expect.objectContaining({
+        method: 'POST',
+        body: JSON.stringify({ conditions: { operator: 'and', rules: [] } }),
+      }),
+    );
+    await api.broadcasts.testPush('b1', { friendId: 'f1', confirm: true }, { sendSecret: 'x' });
+    expect(globalThis.fetch).toHaveBeenCalledWith(
+      'https://worker.test/api/broadcasts/b1/test-push',
+      expect.objectContaining({
+        method: 'POST',
+        body: JSON.stringify({ friendId: 'f1', confirm: true }),
+        headers: expect.objectContaining({ 'X-Broadcast-Send-Secret': 'x' }),
+      }),
+    );
+  });
+
+  it('inbox threads list builds query', async () => {
+    const { api } = await import('./api');
+    await api.inbox.threads.list({ accountId: 'a1', limit: '10', offset: '0' });
+    const url = vi.mocked(globalThis.fetch).mock.calls.at(-1)?.[0] as string;
+    const u = new URL(url);
+    expect(u.pathname).toBe('/api/inbox/threads');
+    expect(u.searchParams.get('lineAccountId')).toBe('a1');
+    expect(u.searchParams.get('limit')).toBe('10');
+    expect(u.searchParams.get('offset')).toBe('0');
+  });
+
+  it('images.upload POSTs JSON', async () => {
+    const { api } = await import('./api');
+    await api.images.upload({ mimeType: 'image/png', base64: 'abc', lineAccountId: 'la1' });
+    expect(globalThis.fetch).toHaveBeenCalledWith(
+      'https://worker.test/api/images',
+      expect.objectContaining({
+        method: 'POST',
+        body: JSON.stringify({ mimeType: 'image/png', base64: 'abc', lineAccountId: 'la1' }),
+      }),
+    );
+  });
+
+  it('adPlatforms.list adds lineAccountId query', async () => {
+    const { api } = await import('./api');
+    await api.adPlatforms.list({ accountId: 'z9' });
+    expect(globalThis.fetch).toHaveBeenCalledWith(
+      'https://worker.test/api/ad-platforms?lineAccountId=z9',
+      expect.anything(),
+    );
   });
 
   it('users get create update delete link accounts', async () => {
@@ -439,6 +495,85 @@ describe('api object (integration via global fetch)', () => {
     await api.lineAccounts.delete('la1');
     expect(globalThis.fetch).toHaveBeenCalledWith(
       'https://worker.test/api/line-accounts/la1',
+      expect.objectContaining({ method: 'DELETE' }),
+    );
+  });
+
+  it('autoReplies list get create update delete', async () => {
+    const { api } = await import('./api');
+    await api.autoReplies.list();
+    expect(globalThis.fetch).toHaveBeenCalledWith(
+      'https://worker.test/api/auto-replies',
+      expect.anything(),
+    );
+    await api.autoReplies.list('acc-1');
+    const listUrl = vi.mocked(globalThis.fetch).mock.calls.at(-1)?.[0] as string;
+    expect(new URL(listUrl).searchParams.get('accountId')).toBe('acc-1');
+    await api.autoReplies.get('ar1');
+    expect(globalThis.fetch).toHaveBeenCalledWith(
+      'https://worker.test/api/auto-replies/ar1',
+      expect.anything(),
+    );
+    await api.autoReplies.create({
+      keyword: 'k',
+      responseContent: 'c',
+    });
+    expect(globalThis.fetch).toHaveBeenCalledWith(
+      'https://worker.test/api/auto-replies',
+      expect.objectContaining({ method: 'POST' }),
+    );
+    await api.autoReplies.update('ar1', { isActive: false });
+    expect(globalThis.fetch).toHaveBeenCalledWith(
+      'https://worker.test/api/auto-replies/ar1',
+      expect.objectContaining({ method: 'PUT' }),
+    );
+    await api.autoReplies.delete('ar1');
+    expect(globalThis.fetch).toHaveBeenCalledWith(
+      'https://worker.test/api/auto-replies/ar1',
+      expect.objectContaining({ method: 'DELETE' }),
+    );
+  });
+
+  it('trafficPools list create update delete and pool accounts', async () => {
+    const { api } = await import('./api');
+    await api.trafficPools.list();
+    expect(globalThis.fetch).toHaveBeenCalledWith(
+      'https://worker.test/api/traffic-pools',
+      expect.anything(),
+    );
+    await api.trafficPools.create({ slug: 'p', name: 'Pool', activeAccountId: 'la1' });
+    expect(globalThis.fetch).toHaveBeenCalledWith(
+      'https://worker.test/api/traffic-pools',
+      expect.objectContaining({ method: 'POST' }),
+    );
+    await api.trafficPools.update('tp1', { isActive: false });
+    expect(globalThis.fetch).toHaveBeenCalledWith(
+      'https://worker.test/api/traffic-pools/tp1',
+      expect.objectContaining({ method: 'PUT' }),
+    );
+    await api.trafficPools.delete('tp1');
+    expect(globalThis.fetch).toHaveBeenCalledWith(
+      'https://worker.test/api/traffic-pools/tp1',
+      expect.objectContaining({ method: 'DELETE' }),
+    );
+    await api.trafficPools.listAccounts('tp1');
+    expect(globalThis.fetch).toHaveBeenCalledWith(
+      'https://worker.test/api/traffic-pools/tp1/accounts',
+      expect.anything(),
+    );
+    await api.trafficPools.addAccount('tp1', 'la2');
+    expect(globalThis.fetch).toHaveBeenCalledWith(
+      'https://worker.test/api/traffic-pools/tp1/accounts',
+      expect.objectContaining({ method: 'POST' }),
+    );
+    await api.trafficPools.setAccountActive('tp1', 'pa1', true);
+    expect(globalThis.fetch).toHaveBeenCalledWith(
+      'https://worker.test/api/traffic-pools/tp1/accounts/pa1',
+      expect.objectContaining({ method: 'PUT' }),
+    );
+    await api.trafficPools.removeAccount('tp1', 'pa1');
+    expect(globalThis.fetch).toHaveBeenCalledWith(
+      'https://worker.test/api/traffic-pools/tp1/accounts/pa1',
       expect.objectContaining({ method: 'DELETE' }),
     );
   });
@@ -1015,7 +1150,7 @@ describe('fetchApiCore', () => {
     });
     await expect(
       fetchApiCore('https://api.example', fetchMock as typeof fetch, '/api/broadcasts'),
-    ).rejects.toBeInstanceOf(ApiError);
+    ).rejects.toSatisfy(isApiError);
   });
 
   it('second 302 on /api/auth/session after SSO gate throws without calling replace', async () => {
@@ -1110,8 +1245,11 @@ describe('fetchApiCore', () => {
       await fetchApiCore('https://x', fetchMock as typeof fetch, '/p');
       expect.fail('expected throw');
     } catch (e) {
-      expect(e).toBeInstanceOf(ApiError);
-      const err = e as ApiError;
+      expect(isApiError(e)).toBe(true);
+      const err = e as Parameters<typeof isApiError>[0] & {
+        status: number;
+        body?: unknown;
+      };
       expect(err.status).toBe(502);
       expect(err.body).toBeUndefined();
     }

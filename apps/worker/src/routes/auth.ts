@@ -13,11 +13,7 @@ import {
   verifyAdminSessionToken,
   writeAdminSessionCookie,
 } from '../services/admin-session.js';
-import {
-  BodyTooLargeError,
-  InvalidJsonBodyError,
-  readJsonBodyWithLimit,
-} from '../services/request-body.js';
+import { jsonBodyReadErrorResponse, readJsonBodyWithLimit } from '../services/request-body.js';
 import { enforceRateLimit } from '../services/request-rate-limit.js';
 import {
   hasValidAdminBrowserClientHeader,
@@ -152,11 +148,9 @@ authRoutes.post('/api/auth/login', async (c) => {
       data,
     });
   } catch (err) {
-    if (err instanceof Error && err.name === 'BodyTooLargeError') {
-      return c.json({ success: false, error: 'Request body too large' }, 413);
-    }
-    if (err instanceof Error && err.name === 'InvalidJsonBodyError') {
-      return c.json({ success: false, error: 'Invalid JSON body' }, 400);
+    const bodyErr = jsonBodyReadErrorResponse(err);
+    if (bodyErr) {
+      return c.json(bodyErr.body, bodyErr.status);
     }
     console.error('POST /api/auth/login error:', err);
     return c.json({ success: false, error: 'Internal server error' }, 500);

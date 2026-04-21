@@ -39,12 +39,12 @@ function formatDelay(minutes: number): string {
   return h > 0 ? `${d}日${h}時間後` : `${d}日${remaining}分後`;
 }
 
-interface StepFormState {
+type StepFormState = Readonly<{
   stepOrder: number;
   delayMinutes: number;
   messageType: MessageType;
   messageContent: string;
-}
+}>;
 
 const emptyStepForm: StepFormState = {
   stepOrder: 1,

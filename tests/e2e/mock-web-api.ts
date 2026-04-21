@@ -472,6 +472,147 @@ export async function mockWebApi(page: Page, hooks?: MockWebApiHooks): Promise<v
       return;
     }
 
+    if (path === '/api/auto-replies' && method === 'GET') {
+      await ok([
+        {
+          id: 'ar-1',
+          keyword: 'hello',
+          matchType: 'exact',
+          responseType: 'text',
+          responseContent: 'Hi',
+          lineAccountId: null,
+          isActive: true,
+          createdAt: '2026-01-01T00:00:00.000Z',
+        },
+      ]);
+      return;
+    }
+    const autoReplyIdPath = path.match(/^\/api\/auto-replies\/([^/]+)$/);
+    if (autoReplyIdPath && method === 'GET') {
+      await ok({
+        id: autoReplyIdPath[1],
+        keyword: 'hello',
+        matchType: 'exact',
+        responseType: 'text',
+        responseContent: 'Hi',
+        lineAccountId: null,
+        isActive: true,
+        createdAt: '2026-01-01T00:00:00.000Z',
+      });
+      return;
+    }
+    if (path === '/api/auto-replies' && method === 'POST') {
+      await ok({
+        id: 'ar-new',
+        keyword: 'new',
+        matchType: 'exact',
+        responseType: 'text',
+        responseContent: 'x',
+        lineAccountId: null,
+        isActive: true,
+        createdAt: '2026-01-01T00:00:00.000Z',
+      });
+      return;
+    }
+    if (autoReplyIdPath && method === 'PUT') {
+      await ok({
+        id: autoReplyIdPath[1],
+        keyword: 'hello',
+        matchType: 'exact',
+        responseType: 'text',
+        responseContent: 'Hi',
+        lineAccountId: null,
+        isActive: false,
+        createdAt: '2026-01-01T00:00:00.000Z',
+      });
+      return;
+    }
+    if (autoReplyIdPath && method === 'DELETE') {
+      await ok(null);
+      return;
+    }
+
+    if (path === '/api/traffic-pools' && method === 'GET') {
+      await ok([
+        {
+          id: 'tp-1',
+          slug: 'demo',
+          name: 'デモプール',
+          activeAccountId: 'account-1',
+          accountName: 'Main Account',
+          liffId: '2009554425-4IMBmLQ9',
+          isActive: true,
+          createdAt: '2026-01-01T00:00:00.000Z',
+          updatedAt: '2026-01-01T00:00:00.000Z',
+        },
+      ]);
+      return;
+    }
+    if (path === '/api/traffic-pools' && method === 'POST') {
+      await ok({
+        id: 'tp-new',
+        slug: 'new',
+        name: 'New',
+        activeAccountId: 'account-1',
+        accountName: 'Main Account',
+        liffId: null,
+        isActive: true,
+        createdAt: '2026-01-01T00:00:00.000Z',
+        updatedAt: '2026-01-01T00:00:00.000Z',
+      });
+      return;
+    }
+
+    const trafficPoolIdOnly = path.match(/^\/api\/traffic-pools\/([^/]+)$/);
+    if (trafficPoolIdOnly && method === 'PUT') {
+      await ok({
+        id: trafficPoolIdOnly[1],
+        slug: 'demo',
+        name: 'デモプール',
+        activeAccountId: 'account-1',
+        accountName: 'Main Account',
+        liffId: null,
+        isActive: true,
+        createdAt: '2026-01-01T00:00:00.000Z',
+        updatedAt: '2026-01-01T00:00:00.000Z',
+      });
+      return;
+    }
+    if (trafficPoolIdOnly && method === 'DELETE') {
+      await ok(null);
+      return;
+    }
+
+    const trafficPoolAccountsPath = path.match(/^\/api\/traffic-pools\/([^/]+)\/accounts$/);
+    if (trafficPoolAccountsPath && method === 'GET') {
+      await ok([]);
+      return;
+    }
+    if (trafficPoolAccountsPath && method === 'POST') {
+      await ok({
+        id: 'pa-new',
+        pool_id: trafficPoolAccountsPath[1],
+        line_account_id: 'account-1',
+        is_active: 1,
+        created_at: '2026-01-01T00:00:00.000Z',
+      });
+      return;
+    }
+
+    const trafficPoolAccountRow = path.match(/^\/api\/traffic-pools\/([^/]+)\/accounts\/([^/]+)$/);
+    if (trafficPoolAccountRow && method === 'PUT') {
+      await ok({ id: trafficPoolAccountRow[2], is_active: 1 });
+      return;
+    }
+    if (trafficPoolAccountRow && method === 'DELETE') {
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({ success: true }),
+      });
+      return;
+    }
+
     if (path === '/api/scenarios' && method === 'GET') {
       await ok([
         {
@@ -551,6 +692,86 @@ export async function mockWebApi(page: Page, hooks?: MockWebApiHooks): Promise<v
         totalCount: 0,
         successCount: 0,
         createdAt: '2026-03-26T00:00:00.000Z',
+      });
+      return;
+    }
+
+    const broadcastSegCount = path.match(/^\/api\/broadcasts\/([^/]+)\/segment-preview-count$/);
+    if (broadcastSegCount && method === 'POST') {
+      await ok({ count: 12 });
+      return;
+    }
+    const broadcastTestPush = path.match(/^\/api\/broadcasts\/([^/]+)\/test-push$/);
+    if (broadcastTestPush && method === 'POST') {
+      await ok({ pushed: true });
+      return;
+    }
+
+    if (path === '/api/inbox/threads' && method === 'GET') {
+      await ok([
+        {
+          friendId: 'friend-1',
+          friendName: 'Inboxサンプル',
+          friendPictureUrl: null,
+          lineUserId: 'U111',
+          lineAccountId: 'account-1',
+          lastContent: 'hello',
+          lastDirection: 'incoming',
+          lastAt: '2026-03-26T10:00:00.000Z',
+          incomingTotal: 3,
+        },
+      ]);
+      return;
+    }
+
+    if (path === '/api/images' && method === 'POST') {
+      await ok({
+        id: 'img-1',
+        mimeType: 'image/png',
+        byteSize: 120,
+        publicUrlPath: `/api/images/public/${'c'.repeat(64)}`,
+      });
+      return;
+    }
+
+    if (path === '/api/ad-platforms' && method === 'GET') {
+      await ok([]);
+      return;
+    }
+    if (path === '/api/ad-platforms' && method === 'POST') {
+      await ok({
+        id: 'adp-new',
+        provider: 'meta',
+        name: 'Demo',
+        lineAccountId: 'account-1',
+        externalAccountRef: null,
+        hasCredentials: false,
+        metadata: {},
+        isActive: true,
+        createdAt: '2026-01-01T00:00:00.000Z',
+        updatedAt: '2026-01-01T00:00:00.000Z',
+      });
+      return;
+    }
+    const adPlatformRow = path.match(/^\/api\/ad-platforms\/([^/]+)$/);
+    if (adPlatformRow && method === 'DELETE') {
+      await ok(null);
+      return;
+    }
+    const adPlatformSync = path.match(/^\/api\/ad-platforms\/([^/]+)\/sync$/);
+    if (adPlatformSync && method === 'POST') {
+      await ok({
+        id: adPlatformSync[1],
+        provider: 'meta',
+        name: 'E2E',
+        lineAccountId: 'account-1',
+        externalAccountRef: null,
+        hasCredentials: true,
+        metadata: { lastOutboundSyncOk: true, lastOutboundSyncAt: '2026-01-01T00:00:00.000Z' },
+        isActive: true,
+        createdAt: '2026-01-01T00:00:00.000Z',
+        updatedAt: '2026-01-01T00:00:00.000Z',
+        sync: { checkedAt: '2026-01-01T00:00:00.000Z', summary: { mock: true } },
       });
       return;
     }

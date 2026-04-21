@@ -1,93 +1,107 @@
-// ─── Config ─────────────────────────────────────────────
-export interface LineHarnessConfig {
+export type Brand<Tag extends string> = { readonly __brand: Tag };
+export type Branded<T, Tag extends string> = T & Brand<Tag>;
+
+export type FriendId = Branded<string, 'FriendId'>;
+export type TagId = Branded<string, 'TagId'>;
+export type ScenarioId = Branded<string, 'ScenarioId'>;
+export type ScenarioStepId = Branded<string, 'ScenarioStepId'>;
+export type FriendScenarioId = Branded<string, 'FriendScenarioId'>;
+export type BroadcastId = Branded<string, 'BroadcastId'>;
+export type LineAccountId = Branded<string, 'LineAccountId'>;
+export type RichMenuId = Branded<string, 'RichMenuId'>;
+export type TrackedLinkId = Branded<string, 'TrackedLinkId'>;
+export type TrafficPoolId = Branded<string, 'TrafficPoolId'>;
+export type PoolAccountRowId = Branded<string, 'PoolAccountRowId'>;
+export type FormId = Branded<string, 'FormId'>;
+export type FormSubmissionId = Branded<string, 'FormSubmissionId'>;
+export type CalendarConnectionId = Branded<string, 'CalendarConnectionId'>;
+export type CalendarBookingId = Branded<string, 'CalendarBookingId'>;
+
+export type LineHarnessConfig = Readonly<{
   apiUrl: string;
   apiKey: string;
-  timeout?: number; // default: 30000ms
-  lineAccountId?: string; // default account for multi-account setups
-}
+  timeout?: number;
+  lineAccountId?: string;
+}>;
 
-// ─── API Response ───────────────────────────────────────
-// HttpClient throws on non-2xx, so SDK consumers always receive the success case
-export interface ApiResponse<T> {
+export type ApiResponse<T> = Readonly<{
   success: boolean;
   data: T;
   error?: string;
-}
+}>;
 
-export interface PaginatedData<T> {
-  items: T[];
+export type PaginatedData<T> = Readonly<{
+  items: readonly T[];
   total: number;
   page: number;
   limit: number;
   hasNextPage: boolean;
-}
+}>;
 
-// ─── Common ─────────────────────────────────────────────
 export type ScenarioTriggerType = 'friend_add' | 'tag_added' | 'manual';
 export type MessageType = 'text' | 'image' | 'flex';
 export type BroadcastStatus = 'draft' | 'scheduled' | 'sending' | 'sent';
 
-// ─── Friend ─────────────────────────────────────────────
-export interface Friend {
-  id: string;
+export type Friend = Readonly<{
+  id: FriendId;
   lineUserId: string;
   displayName: string | null;
   pictureUrl: string | null;
   statusMessage: string | null;
   isFollowing: boolean;
-  lineAccountId: string | null;
-  metadata: Record<string, unknown>;
+  lineAccountId: LineAccountId | null;
+  metadata: Readonly<Record<string, unknown>>;
   refCode: string | null;
   userId: string | null;
-  tags: Tag[];
+  tags: readonly Tag[];
   createdAt: string;
   updatedAt: string;
-}
+}>;
 
-export interface FriendListParams {
+export type FriendListParams = Readonly<{
   limit?: number;
   offset?: number;
   tagId?: string;
   accountId?: string;
-}
+}>;
 
-// ─── Tag ────────────────────────────────────────────────
-export interface Tag {
-  id: string;
+export type Tag = Readonly<{
+  id: TagId;
   name: string;
   color: string;
   createdAt: string;
-}
+}>;
 
-export interface CreateTagInput {
+export type CreateTagInput = Readonly<{
   name: string;
   color?: string;
-}
+}>;
 
-// ─── Scenario ───────────────────────────────────────────
-export interface Scenario {
-  id: string;
+export type Scenario = Readonly<{
+  id: ScenarioId;
   name: string;
   description: string | null;
   triggerType: ScenarioTriggerType;
-  triggerTagId: string | null;
+  triggerTagId: TagId | null;
   isActive: boolean;
-  lineAccountId: string | null;
+  lineAccountId: LineAccountId | null;
   createdAt: string;
   updatedAt: string;
-}
+}>;
 
-export interface ScenarioListItem extends Scenario {
-  stepCount: number;
-}
+export type ScenarioListItem = Scenario &
+  Readonly<{
+    stepCount: number;
+  }>;
 
-export interface ScenarioWithSteps extends Scenario {
-  steps: ScenarioStep[];
-}
+export type ScenarioWithSteps = Scenario &
+  Readonly<{
+    steps: readonly ScenarioStep[];
+  }>;
 
-export interface ScenarioStep {
-  id: string;
-  scenarioId: string;
+export type ScenarioStep = Readonly<{
+  id: ScenarioStepId;
+  scenarioId: ScenarioId;
   stepOrder: number;
   delayMinutes: number;
   messageType: MessageType;
@@ -96,17 +110,17 @@ export interface ScenarioStep {
   conditionValue: string | null;
   nextStepOnFalse: number | null;
   createdAt: string;
-}
+}>;
 
-export interface CreateScenarioInput {
+export type CreateScenarioInput = Readonly<{
   name: string;
   description?: string;
   triggerType: ScenarioTriggerType;
   triggerTagId?: string;
   isActive?: boolean;
-}
+}>;
 
-export interface CreateStepInput {
+export type CreateStepInput = Readonly<{
   stepOrder: number;
   delayMinutes: number;
   messageType: MessageType;
@@ -114,17 +128,17 @@ export interface CreateStepInput {
   conditionType?: string | null;
   conditionValue?: string | null;
   nextStepOnFalse?: number | null;
-}
+}>;
 
-export interface UpdateScenarioInput {
+export type UpdateScenarioInput = Readonly<{
   name?: string;
   description?: string | null;
   triggerType?: ScenarioTriggerType;
   triggerTagId?: string | null;
   isActive?: boolean;
-}
+}>;
 
-export interface UpdateStepInput {
+export type UpdateStepInput = Readonly<{
   stepOrder?: number;
   delayMinutes?: number;
   messageType?: MessageType;
@@ -132,93 +146,95 @@ export interface UpdateStepInput {
   conditionType?: string | null;
   conditionValue?: string | null;
   nextStepOnFalse?: number | null;
-}
+}>;
 
-export interface FriendScenarioEnrollment {
-  id: string;
-  friendId: string;
-  scenarioId: string;
+export type FriendScenarioEnrollment = Readonly<{
+  id: FriendScenarioId;
+  friendId: FriendId;
+  scenarioId: ScenarioId;
   currentStepOrder: number;
   status: 'active' | 'paused' | 'completed';
   startedAt: string;
   nextDeliveryAt: string | null;
   updatedAt: string;
-}
+}>;
 
-// ─── Broadcast ──────────────────────────────────────────
-export interface Broadcast {
-  id: string;
+export type Broadcast = Readonly<{
+  id: BroadcastId;
   title: string;
   messageType: MessageType;
   messageContent: string;
   targetType: 'all' | 'tag';
-  targetTagId: string | null;
+  targetTagId: TagId | null;
   status: BroadcastStatus;
-  lineAccountId: string | null;
+  lineAccountId: LineAccountId | null;
   scheduledAt: string | null;
   sentAt: string | null;
   totalCount: number;
   successCount: number;
   createdAt: string;
-}
+}>;
 
-export interface CreateBroadcastInput {
+export type CreateBroadcastInput = Readonly<{
   title: string;
   messageType: MessageType;
   messageContent: string;
   targetType: 'all' | 'tag';
   targetTagId?: string;
   scheduledAt?: string;
-}
+}>;
 
-export interface UpdateBroadcastInput {
+export type UpdateBroadcastInput = Readonly<{
   title?: string;
   messageType?: MessageType;
   messageContent?: string;
   targetType?: 'all' | 'tag';
   targetTagId?: string | null;
   scheduledAt?: string | null;
-}
+}>;
 
-// ─── Rich Menu ──────────────────────────────────────────
-export interface RichMenuBounds {
+export type RichMenuBounds = Readonly<{
   x: number;
   y: number;
   width: number;
   height: number;
-}
+}>;
 
 export type RichMenuAction =
-  | { type: 'postback'; data: string; displayText?: string; label?: string }
-  | { type: 'message'; text: string; label?: string }
-  | { type: 'uri'; uri: string; label?: string }
-  | { type: 'datetimepicker'; data: string; mode: 'date' | 'time' | 'datetime'; label?: string }
-  | { type: 'richmenuswitch'; richMenuAliasId: string; data: string; label?: string };
+  | Readonly<{ type: 'postback'; data: string; displayText?: string; label?: string }>
+  | Readonly<{ type: 'message'; text: string; label?: string }>
+  | Readonly<{ type: 'uri'; uri: string; label?: string }>
+  | Readonly<{
+      type: 'datetimepicker';
+      data: string;
+      mode: 'date' | 'time' | 'datetime';
+      label?: string;
+    }>
+  | Readonly<{ type: 'richmenuswitch'; richMenuAliasId: string; data: string; label?: string }>;
 
-export interface RichMenuArea {
+export type RichMenuArea = Readonly<{
   bounds: RichMenuBounds;
   action: RichMenuAction;
-}
+}>;
 
-export interface RichMenu {
-  richMenuId: string;
-  size: { width: number; height: number };
+export type RichMenu = Readonly<{
+  richMenuId: RichMenuId;
+  size: Readonly<{ width: number; height: number }>;
   selected: boolean;
   name: string;
   chatBarText: string;
-  areas: RichMenuArea[];
-}
+  areas: readonly RichMenuArea[];
+}>;
 
-export interface CreateRichMenuInput {
-  size: { width: number; height: number };
+export type CreateRichMenuInput = Readonly<{
+  size: Readonly<{ width: number; height: number }>;
   selected: boolean;
   name: string;
   chatBarText: string;
-  areas: RichMenuArea[];
-}
+  areas: readonly RichMenuArea[];
+}>;
 
-// ─── Segment ─────────────────────────────────────────────
-export interface SegmentRule {
+export type SegmentRule = Readonly<{
   type:
     | 'tag_exists'
     | 'tag_not_exists'
@@ -226,127 +242,158 @@ export interface SegmentRule {
     | 'metadata_not_equals'
     | 'ref_code'
     | 'is_following';
-  value: string | boolean | { key: string; value: string };
-}
+  value: string | boolean | Readonly<{ key: string; value: string }>;
+}>;
 
-export interface SegmentCondition {
+export type SegmentCondition = Readonly<{
   operator: 'AND' | 'OR';
-  rules: SegmentRule[];
-}
+  rules: readonly SegmentRule[];
+}>;
 
-// ─── Tracked Links ──────────────────────────────────────────
-export interface TrackedLink {
-  id: string;
+export type TrackedLink = Readonly<{
+  id: TrackedLinkId;
   name: string;
   originalUrl: string;
   trackingUrl: string;
-  tagId: string | null;
-  scenarioId: string | null;
+  tagId: TagId | null;
+  scenarioId: ScenarioId | null;
   isActive: boolean;
   clickCount: number;
   createdAt: string;
   updatedAt: string;
-}
+}>;
 
-export interface LinkClick {
+export type LinkClick = Readonly<{
   id: string;
-  friendId: string | null;
+  friendId: FriendId | null;
   friendDisplayName: string | null;
   clickedAt: string;
-}
+}>;
 
-export interface TrackedLinkWithClicks extends TrackedLink {
-  clicks: LinkClick[];
-}
+export type TrackedLinkWithClicks = TrackedLink &
+  Readonly<{
+    clicks: readonly LinkClick[];
+  }>;
 
-export interface CreateTrackedLinkInput {
+export type CreateTrackedLinkInput = Readonly<{
   name: string;
   originalUrl: string;
   tagId?: string | null;
   scenarioId?: string | null;
-}
+}>;
 
-// ─── Forms ──────────────────────────────────────────────
-export interface FormField {
+export type TrafficPool = Readonly<{
+  id: TrafficPoolId;
+  slug: string;
+  name: string;
+  activeAccountId: LineAccountId;
+  accountName: string;
+  liffId: string | null;
+  isActive: boolean;
+  createdAt: string;
+  updatedAt: string;
+}>;
+
+export type PoolAccountRow = Readonly<{
+  id: PoolAccountRowId;
+  poolId: TrafficPoolId;
+  lineAccountId: LineAccountId;
+  accountName: string;
+  liffId: string | null;
+  isActive: boolean;
+  createdAt: string;
+}>;
+
+export type CreateTrafficPoolInput = Readonly<{
+  slug: string;
+  name: string;
+  activeAccountId: string;
+}>;
+
+export type UpdateTrafficPoolInput = Readonly<{
+  name?: string;
+  activeAccountId?: string;
+  isActive?: boolean;
+}>;
+
+export type FormField = Readonly<{
   name: string;
   label: string;
   type: 'text' | 'email' | 'tel' | 'number' | 'textarea' | 'select' | 'radio' | 'checkbox' | 'date';
   required?: boolean;
-  options?: string[]; // for select, radio, checkbox
+  options?: readonly string[];
   placeholder?: string;
-}
+}>;
 
-export interface Form {
-  id: string;
+export type Form = Readonly<{
+  id: FormId;
   name: string;
   description: string | null;
-  fields: FormField[];
-  onSubmitTagId: string | null;
-  onSubmitScenarioId: string | null;
+  fields: readonly FormField[];
+  onSubmitTagId: TagId | null;
+  onSubmitScenarioId: ScenarioId | null;
   saveToMetadata: boolean;
   isActive: boolean;
   submitCount: number;
   createdAt: string;
   updatedAt: string;
-}
+}>;
 
-export interface CreateFormInput {
+export type CreateFormInput = Readonly<{
   name: string;
   description?: string;
-  fields: FormField[];
+  fields: readonly FormField[];
   onSubmitTagId?: string | null;
   onSubmitScenarioId?: string | null;
   saveToMetadata?: boolean;
-}
+}>;
 
-export interface UpdateFormInput {
+export type UpdateFormInput = Readonly<{
   name?: string;
   description?: string | null;
-  fields?: FormField[];
+  fields?: readonly FormField[];
   onSubmitTagId?: string | null;
   onSubmitScenarioId?: string | null;
   saveToMetadata?: boolean;
   isActive?: boolean;
-}
+}>;
 
-export interface FormSubmission {
-  id: string;
-  formId: string;
-  friendId: string | null;
-  data: Record<string, unknown>;
+export type FormSubmission = Readonly<{
+  id: FormSubmissionId;
+  formId: FormId;
+  friendId: FriendId | null;
+  data: Readonly<Record<string, unknown>>;
   createdAt: string;
-}
+}>;
 
-// ─── Calendar ───────────────────────────────────────────
-export interface CalendarConnection {
-  id: string;
+export type CalendarConnection = Readonly<{
+  id: CalendarConnectionId;
   calendarId: string;
   authType: string;
   isActive: boolean;
   createdAt: string;
-}
+}>;
 
-export interface CalendarSlot {
+export type CalendarSlot = Readonly<{
   startAt: string;
   endAt: string;
   available: boolean;
-}
+}>;
 
-export interface CalendarBooking {
-  id: string;
-  connectionId: string;
-  friendId: string | null;
+export type CalendarBooking = Readonly<{
+  id: CalendarBookingId;
+  connectionId: CalendarConnectionId;
+  friendId: FriendId | null;
   eventId: string | null;
   title: string;
   startAt: string;
   endAt: string;
   status: 'confirmed' | 'cancelled' | 'completed';
   createdAt: string;
-}
+}>;
 
-// ─── High-Level ─────────────────────────────────────────
-export interface StepDefinition {
+export type StepDefinition = Readonly<{
   delay: string;
   type: MessageType;
   content: string;
-}
+}>;

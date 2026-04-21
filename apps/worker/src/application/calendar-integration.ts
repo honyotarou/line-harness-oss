@@ -18,15 +18,15 @@ import {
   decryptGoogleCalendarConnectionRow,
   encryptCalendarTokenAtRest,
 } from '../services/calendar-tokens.js';
-import { GoogleCalendarClient } from '../services/google-calendar.js';
+import { createGoogleCalendarClient } from '../services/google-calendar.js';
 import { tryParseJsonRecord } from '../services/safe-json.js';
 
-export type CalendarIntegrationDeps = {
+export type CalendarIntegrationDeps = Readonly<{
   db: D1Database;
   calendarTokenEncryptionSecret?: string;
   /** When true, storing OAuth/API secrets requires `CALENDAR_TOKEN_ENCRYPTION_SECRET` (see REQUIRE_CALENDAR_TOKEN_ENCRYPTION). */
   requireCalendarTokenEncryption?: boolean;
-};
+}>;
 
 export function mapCalendarConnectionListItem(conn: GoogleCalendarConnectionRow) {
   return {
@@ -39,13 +39,13 @@ export function mapCalendarConnectionListItem(conn: GoogleCalendarConnectionRow)
   };
 }
 
-export type CalendarConnectInput = {
+export type CalendarConnectInput = Readonly<{
   calendarId: string;
   authType: string;
   accessToken?: string;
   refreshToken?: string;
   apiKey?: string;
-};
+}>;
 
 export async function connectGoogleCalendar(
   deps: CalendarIntegrationDeps,
@@ -90,15 +90,15 @@ export async function loadDecryptedCalendarConnection(
   return decryptGoogleCalendarConnectionRow(raw, deps.calendarTokenEncryptionSecret);
 }
 
-export type SlotComputationParams = {
+export type SlotComputationParams = Readonly<{
   connectionId: string;
   date: string;
   slotMinutes: number;
   startHour: number;
   endHour: number;
-};
+}>;
 
-export type SlotItem = { startAt: string; endAt: string; available: boolean };
+export type SlotItem = Readonly<{ startAt: string; endAt: string; available: boolean }>;
 
 export type SlotComputationResult =
   | { ok: true; slots: SlotItem[] }
@@ -126,7 +126,7 @@ export async function computeCalendarAvailabilitySlots(
   let googleBusyIntervals: { start: string; end: string }[] = [];
   if (conn.access_token) {
     try {
-      const gcal = new GoogleCalendarClient({
+      const gcal = createGoogleCalendarClient({
         calendarId: conn.calendar_id,
         accessToken: conn.access_token,
       });
@@ -199,7 +199,7 @@ export async function resolveFriendIdForCalendarBooking(
   return bestMatch?.id;
 }
 
-export type BookCalendarInput = {
+export type BookCalendarInput = Readonly<{
   connectionId: string;
   friendId?: string;
   title: string;
@@ -207,7 +207,7 @@ export type BookCalendarInput = {
   endAt: string;
   description?: string;
   metadata?: Record<string, unknown>;
-};
+}>;
 
 export async function createBookingWithOptionalGoogleEvent(
   deps: CalendarIntegrationDeps,
@@ -223,7 +223,7 @@ export async function createBookingWithOptionalGoogleEvent(
   const conn = await loadDecryptedCalendarConnection(deps, body.connectionId);
   if (conn?.access_token) {
     try {
-      const gcal = new GoogleCalendarClient({
+      const gcal = createGoogleCalendarClient({
         calendarId: conn.calendar_id,
         accessToken: conn.access_token,
       });
@@ -269,7 +269,7 @@ export async function tryDeleteGoogleEventForCancelledBooking(
   const conn = await loadDecryptedCalendarConnection(deps, booking.connection_id);
   if (!conn?.access_token) return;
   try {
-    const gcal = new GoogleCalendarClient({
+    const gcal = createGoogleCalendarClient({
       calendarId: conn.calendar_id,
       accessToken: conn.access_token,
     });

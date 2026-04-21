@@ -78,6 +78,26 @@ function relativeImportHasPathSegment(mod, segment) {
   return parts.some((p) => p === segment);
 }
 
+function classNamesInSource(src) {
+  const names = [];
+  const re = /(?:^|\n)\s*(?:export\s+)?class\s+([A-Za-z0-9_]+)/g;
+  let m;
+  while ((m = re.exec(src)) !== null) {
+    names.push(m[1]);
+  }
+  return names;
+}
+
+function interfaceNamesInSource(src) {
+  const names = [];
+  const re = /(?:^|\n)\s*(?:export\s+)?interface\s+([A-Za-z0-9_]+)/g;
+  let m;
+  while ((m = re.exec(src)) !== null) {
+    names.push(m[1]);
+  }
+  return names;
+}
+
 // ── Worker: application/*.ts ───────────────────────────────────────────────
 const appDir = path.join(ROOT, 'apps/worker/src/application');
 for (const f of listFilesRecursive(appDir, (p) => p.endsWith('.ts'))) {
@@ -128,8 +148,10 @@ const ROUTE_LINE_CAPS = {
   'admin-audit.ts': 90,
   'admin-principal-roles.ts': 123,
   'affiliates.ts': 246,
+  'auto-replies.ts': 175,
   'auth.ts': 251,
   'automations.ts': 310,
+  'broadcasts-ops.ts': 180,
   'broadcasts.ts': 430,
   'calendar.ts': 230,
   'chats.ts': 430,
@@ -139,8 +161,11 @@ const ROUTE_LINE_CAPS = {
   'env-probe.ts': 55,
   'forms.ts': 497,
   'friends.ts': 498,
+  'images.ts': 200,
   'health.ts': 174,
+  'inbox.ts': 80,
   'line-accounts.ts': 300,
+  'ad-platforms.ts': 280,
   'liff.ts': 203,
   'notifications.ts': 270,
   'openapi.ts': 92,
@@ -152,7 +177,8 @@ const ROUTE_LINE_CAPS = {
   'stripe.ts': 211,
   'tags.ts': 96,
   'templates.ts': 141,
-  'tracked-links.ts': 262,
+  'tracked-links.ts': 340,
+  'traffic-pools.ts': 240,
   'users.ts': 240,
   'webhook.ts': 129,
   'webhooks.ts': 455,
@@ -286,6 +312,41 @@ if (fs.existsSync(liffSrcDir)) {
     if (/fetch\s*\(\s*['"`]https?:\/\//.test(src)) {
       errors.push(
         `${rel}: LIFF must not fetch() a literal http(s) URL; use API_BASE from api-base.js.`,
+      );
+    }
+  }
+}
+
+// ── TypeScript design gate: no class / interface declarations in app code ───────────────────
+for (const dir of [
+  path.join(ROOT, 'packages/shared/src'),
+  path.join(ROOT, 'packages/sdk/src'),
+  path.join(ROOT, 'packages/line-sdk/src'),
+  path.join(ROOT, 'apps/web/src'),
+  path.join(ROOT, 'apps/worker/src'),
+]) {
+  if (!fs.existsSync(dir)) continue;
+  for (const f of listFilesRecursive(
+    dir,
+    (p) =>
+      (p.endsWith('.ts') || p.endsWith('.tsx')) &&
+      !p.endsWith('.d.ts') &&
+      !p.includes('/out/') &&
+      !p.includes('/coverage/') &&
+      !p.includes('.test.'),
+  )) {
+    const rel = path.relative(ROOT, f);
+    const src = readUtf8(f);
+    const classNames = classNamesInSource(src);
+    if (classNames.length > 0) {
+      errors.push(
+        `${rel}: class declaration(s) ${classNames.join(', ')} found; use functions + plain objects/Error values instead of classes.`,
+      );
+    }
+    const interfaceNames = interfaceNamesInSource(src);
+    if (interfaceNames.length > 0) {
+      errors.push(
+        `${rel}: interface declaration(s) ${interfaceNames.join(', ')} found; prefer Readonly type aliases so structural typing remains explicit.`,
       );
     }
   }

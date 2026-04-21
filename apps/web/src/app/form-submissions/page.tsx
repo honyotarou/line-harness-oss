@@ -6,19 +6,19 @@ import { api, fetchApi } from '@/lib/api';
 import Header from '@/components/layout/header';
 import { useAccount } from '@/contexts/account-context';
 
-interface Form {
+type Form = Readonly<{
   id: string;
   name: string;
-}
+}>;
 
-interface Submission {
+type Submission = Readonly<{
   id: string;
   formId: string;
   friendId: string;
   friendName?: string;
   data: Record<string, unknown>;
   createdAt: string;
-}
+}>;
 
 export default function FormSubmissionsPage() {
   const { selectedAccountId } = useAccount();

@@ -93,20 +93,27 @@ function bearerForRequest(path: string, method: string): Record<string, string> 
   return t ? { Authorization: `Bearer ${t}` } : {};
 }
 
-export type ApiErrorLike = Error & { readonly status: number; readonly body?: unknown };
-export function createApiError(message: string, status: number, body?: unknown): ApiErrorLike {
-  return new ApiError(message, status, body);
+export type ApiError = Error &
+  Readonly<{
+    name: 'ApiError';
+    status: number;
+    body?: unknown;
+  }>;
+
+export function createApiError(message: string, status: number, body?: unknown): ApiError {
+  return Object.assign(new Error(message), {
+    name: 'ApiError' as const,
+    status,
+    ...(body === undefined ? {} : { body }),
+  });
 }
 
-export class ApiError extends Error {
-  constructor(
-    message: string,
-    public readonly status: number,
-    public readonly body?: unknown,
-  ) {
-    super(message);
-    this.name = 'ApiError';
-  }
+export function isApiError(err: unknown): err is ApiError {
+  return (
+    err instanceof Error &&
+    err.name === 'ApiError' &&
+    typeof (err as { status?: unknown }).status === 'number'
+  );
 }
 
 function apiBaseUrlValidationOptions(): { allowPlaceholderTemplate?: boolean } {
@@ -209,14 +216,14 @@ export async function fetchApiCore<T>(
     }
     const flagKey = edgeAuthReloadFlagKey(path, method);
     if (typeof globalThis !== 'undefined' && 'location' in globalThis) {
-      type EdgeAuthLocation = {
+      type EdgeAuthLocation = Readonly<{
         readonly href?: string;
         pathname?: string;
         search?: string;
         hash?: string;
         replace?: (url: string) => void;
         reload?: () => void;
-      };
+      }>;
       const loc = (globalThis as { location?: EdgeAuthLocation }).location;
       const hardReloadCurrentDocument = (): void => {
         if (!loc) {
@@ -277,11 +284,11 @@ export async function fetchApi<T>(path: string, options?: RequestInit): Promise<
   });
 }
 
-export type FriendListParams = {
+export type FriendListParams = Readonly<{
   offset?: string;
   limit?: string;
   tagId?: string;
   accountId?: string;
-};
+}>;
 
 export type FriendWithTags = Friend & { tags: Tag[] };

@@ -24,7 +24,7 @@ vi.mock('../../src/services/line-account-routing.js', () => ({
 }));
 
 vi.mock('@line-crm/line-sdk', () => ({
-  LineClient: vi.fn().mockImplementation(() => ({
+  createLineClient: vi.fn().mockImplementation(() => ({
     pushTextMessage: vi.fn().mockResolvedValue(undefined),
     pushFlexMessage: vi.fn().mockResolvedValue(undefined),
   })),

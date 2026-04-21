@@ -27,6 +27,7 @@ describe('攻撃者サイクル 301–350（セキュリティバッチ）', () 
         utmCampaign: '',
         utmContent: '',
         utmTerm: '',
+        pool: '',
         account: '',
         uid: 'u',
       },
@@ -42,7 +43,7 @@ describe('攻撃者サイクル 301–350（セキュリティバッチ）', () 
   });
 
   it('cycle 303: readJsonBodyWithLimit throws InvalidJsonBodyError on malformed JSON', async () => {
-    const { InvalidJsonBodyError, readJsonBodyWithLimit } = await import(
+    const { isInvalidJsonBodyError, readJsonBodyWithLimit } = await import(
       '../../src/services/request-body.js'
     );
     const req = new Request('http://x/', {
@@ -50,7 +51,7 @@ describe('攻撃者サイクル 301–350（セキュリティバッチ）', () 
       headers: { 'Content-Type': 'application/json' },
       body: '{',
     });
-    await expect(readJsonBodyWithLimit(req, 1024)).rejects.toBeInstanceOf(InvalidJsonBodyError);
+    await expect(readJsonBodyWithLimit(req, 1024)).rejects.toSatisfy(isInvalidJsonBodyError);
   });
 
   it('cycle 304: parseBearerAuthorization allows horizontal tab between scheme and token', async () => {
@@ -174,8 +175,8 @@ describe('攻撃者サイクル 301–350（セキュリティバッチ）', () 
   });
 
   it('cycle 320: BodyTooLargeError exposes limitBytes', async () => {
-    const { BodyTooLargeError } = await import('../../src/services/request-body.js');
-    expect(new BodyTooLargeError(500).limitBytes).toBe(500);
+    const { createBodyTooLargeError } = await import('../../src/services/request-body.js');
+    expect(createBodyTooLargeError(500).limitBytes).toBe(500);
   });
 
   it('cycle 321: verifyTrackedLinkFriendToken rejects token for different link id', async () => {
@@ -391,6 +392,7 @@ describe('攻撃者サイクル 301–350（セキュリティバッチ）', () 
         utmCampaign: '',
         utmContent: '',
         utmTerm: '',
+        pool: '',
         account: '',
         uid: '',
       },

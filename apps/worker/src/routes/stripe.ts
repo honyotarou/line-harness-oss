@@ -15,7 +15,7 @@ import { enforceRateLimit } from '../services/request-rate-limit.js';
 const stripe = new Hono<Env>();
 const STRIPE_WEBHOOK_RATE_LIMIT = { limit: 120, windowMs: 60_000 };
 
-interface StripeWebhookBody {
+type StripeWebhookBody = Readonly<{
   id: string;
   type: string;
   data: {
@@ -28,7 +28,7 @@ interface StripeWebhookBody {
       status?: string;
     };
   };
-}
+}>;
 
 // ========== Stripeイベント一覧 ==========
 

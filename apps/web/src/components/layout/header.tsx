@@ -1,10 +1,10 @@
 import React from 'react';
 
-interface HeaderProps {
+type HeaderProps = Readonly<{
   title: string;
   description?: string;
   action?: React.ReactNode;
-}
+}>;
 
 export default function Header({ title, description, action }: HeaderProps) {
   return (

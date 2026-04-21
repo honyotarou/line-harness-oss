@@ -8,12 +8,12 @@ import {
 } from './cloudflare-access-principal.js';
 import { getRequestClientAddress } from './request-rate-limit.js';
 
-export type AdminAuditPayload = {
+export type AdminAuditPayload = Readonly<{
   action: string;
   resourceType?: string;
   resourceId?: string;
   metadata?: Record<string, unknown>;
-};
+}>;
 
 async function hashAuditClientHint(request: Request): Promise<string | undefined> {
   const ip = getRequestClientAddress(request);

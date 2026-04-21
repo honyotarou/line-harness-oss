@@ -6,7 +6,7 @@ import {
   jsonInternalServerError,
   respondToAdminRouteCaughtError,
 } from '../../src/services/admin-internal-error.js';
-import { AdminPrincipalLineAccountsSchemaUnavailableError } from '../../src/services/admin-principal-line-accounts-schema-error.js';
+import { createAdminPrincipalLineAccountsSchemaUnavailableError } from '../../src/services/admin-principal-line-accounts-schema-error.js';
 import { requestCorrelationMiddleware } from '../../src/middleware/request-correlation.js';
 
 describe('admin-internal-error', () => {
@@ -44,7 +44,7 @@ describe('admin-internal-error', () => {
     app.get('/x', (c) =>
       respondToAdminRouteCaughtError(
         c,
-        new AdminPrincipalLineAccountsSchemaUnavailableError(),
+        createAdminPrincipalLineAccountsSchemaUnavailableError(),
         'label',
       ),
     );

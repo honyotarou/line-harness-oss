@@ -20,12 +20,12 @@ export function formatDeployedSecurityRelaxPairHint(): string {
   return `RELAX_DEPLOYED_SECURITY_DEFAULTS=1 together with RELAX_DEPLOYED_SECURITY_CONFIRM=${RELAX_SECURITY_CONFIRM_PHRASE}`;
 }
 
-export type DeployedSecurityBindings = {
+export type DeployedSecurityBindings = Readonly<{
   WORKER_URL?: string;
   RELAX_DEPLOYED_SECURITY_DEFAULTS?: string;
   /** Must equal {@link RELAX_SECURITY_CONFIRM_PHRASE} for global relax on non-local HTTPS. */
   RELAX_DEPLOYED_SECURITY_CONFIRM?: string;
-};
+}>;
 
 function relaxedSecurityConfirmMatches(env: {
   RELAX_DEPLOYED_SECURITY_CONFIRM?: string;

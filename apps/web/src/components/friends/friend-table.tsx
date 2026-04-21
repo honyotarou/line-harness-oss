@@ -7,11 +7,11 @@ import { api } from '@/lib/api';
 import TagBadge from './tag-badge';
 import { Badge } from '@/components/ui/badge';
 
-interface FriendTableProps {
+type FriendTableProps = Readonly<{
   friends: FriendWithTags[];
   allTags: Tag[];
   onRefresh: () => void;
-}
+}>;
 
 export default function FriendTable({ friends, allTags, onRefresh }: FriendTableProps) {
   const [expandedId, setExpandedId] = useState<string | null>(null);

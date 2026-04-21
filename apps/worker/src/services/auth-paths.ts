@@ -57,9 +57,9 @@ export function logicalAdminApiPathnameForPolicy(
 }
 
 /** Optional Worker binding: when set to empty string, inbound BFF logical strip is disabled. */
-export type AdminInboundBffPolicyBindings = {
+export type AdminInboundBffPolicyBindings = Readonly<{
   ADMIN_INBOUND_BFF_PATH_PREFIX?: string;
-};
+}>;
 
 function isInboundBffLogicalStripDisabled(bindings?: AdminInboundBffPolicyBindings): boolean {
   const raw = bindings?.ADMIN_INBOUND_BFF_PATH_PREFIX;
@@ -97,6 +97,7 @@ export function isAuthExemptPath(
   const path = policyAdminRequestPathname(pathname, bindings);
   const publicFormDefinitionGet = method === 'GET' && /^\/api\/forms\/[^/]+$/.test(path);
   const publicFormSubmitPost = method === 'POST' && /^\/api\/forms\/[^/]+\/submit$/.test(path);
+  const publicImageGet = method === 'GET' && /^\/api\/images\/public\/[A-Fa-f0-9]{64}$/.test(path);
 
   return (
     (method === 'GET' && path === '/') ||
@@ -107,6 +108,7 @@ export function isAuthExemptPath(
     path === '/api/affiliates/click' ||
     path.startsWith('/t/') ||
     path.startsWith('/r/') ||
+    (method === 'GET' && path.startsWith('/pool/')) ||
     path.startsWith('/api/liff/') ||
     path === '/api/auth/login' ||
     path === '/api/auth/session' ||
@@ -115,7 +117,8 @@ export function isAuthExemptPath(
     path === '/api/integrations/stripe/webhook' ||
     /^\/api\/webhooks\/incoming\/[^/]+\/receive$/.test(path) ||
     publicFormSubmitPost ||
-    publicFormDefinitionGet
+    publicFormDefinitionGet ||
+    publicImageGet
   );
 }
 

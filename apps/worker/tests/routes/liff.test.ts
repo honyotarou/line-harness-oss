@@ -14,6 +14,9 @@ const dbMocks = vi.hoisted(() => ({
   recordRefTracking: vi.fn(),
   addTagToFriend: vi.fn(),
   getLineAccountByChannelId: vi.fn(),
+  getTrafficPoolBySlug: vi.fn(),
+  getRandomPoolAccount: vi.fn(),
+  getPoolAccounts: vi.fn(),
   getScenarios: vi.fn(),
   enrollFriendInScenario: vi.fn(),
   getScenarioSteps: vi.fn(),
@@ -33,7 +36,7 @@ const lineSdkMocks = vi.hoisted(() => ({
 }));
 
 vi.mock('@line-crm/line-sdk', () => ({
-  LineClient: vi.fn().mockImplementation(() => ({
+  createLineClient: vi.fn().mockImplementation(() => ({
     pushMessage: lineSdkMocks.pushMessage,
   })),
 }));
@@ -182,6 +185,7 @@ async function signedOAuthState(
     utmCampaign: string;
     utmContent: string;
     utmTerm: string;
+    pool: string;
     account: string;
     uid: string;
   }> = {},
@@ -198,6 +202,7 @@ async function signedOAuthState(
       utmCampaign: '',
       utmContent: '',
       utmTerm: '',
+      pool: '',
       account: '',
       uid: '',
       ...overrides,
@@ -210,6 +215,9 @@ describe('liff auth routes', () => {
   beforeEach(() => {
     Object.values(dbMocks).forEach((mockFn) => mockFn.mockReset());
     dbMocks.getLineAccounts.mockResolvedValue([]);
+    dbMocks.getTrafficPoolBySlug.mockResolvedValue(null);
+    dbMocks.getRandomPoolAccount.mockResolvedValue(null);
+    dbMocks.getPoolAccounts.mockResolvedValue([]);
     dbMocks.getScenarios.mockResolvedValue([]);
     dbMocks.getScenarioSteps.mockResolvedValue([]);
     dbMocks.getUserById.mockResolvedValue(null);
@@ -220,6 +228,27 @@ describe('liff auth routes', () => {
 
   afterEach(() => {
     vi.unstubAllGlobals();
+  });
+
+  it('returns error HTML when explicit pool slug does not exist', async () => {
+    const { liffRoutes } = await import('../../src/routes/liff.js');
+    const app = new Hono();
+    app.route('/', liffRoutes);
+    dbMocks.getTrafficPoolBySlug.mockResolvedValue(null);
+
+    const response = await app.fetch(
+      new Request('http://localhost/auth/line?pool=missing-pool', {
+        headers: { 'User-Agent': 'Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X)' },
+      }),
+      {
+        ...baseEnv,
+        DB: {} as D1Database,
+      } as never,
+    );
+
+    expect(response.status).toBe(200);
+    const html = await response.text();
+    expect(html).toContain('トラフィックプール');
   });
 
   it('preserves redirect and attribution params in the mobile LIFF redirect', async () => {

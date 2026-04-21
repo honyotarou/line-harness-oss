@@ -12,7 +12,7 @@ import type {
   BroadcastMessageType,
   BroadcastTargetType,
 } from '@line-crm/db';
-import { LineClient } from '@line-crm/line-sdk';
+import { createLineClient } from '@line-crm/line-sdk';
 import { processBroadcastSend } from '../services/broadcast.js';
 import { processSegmentSend } from '../services/segment-send.js';
 import type { SegmentCondition } from '../services/segment-query.js';
@@ -319,7 +319,7 @@ broadcasts.post('/api/broadcasts/:id/send', async (c) => {
       existing.line_account_id,
       lineAccountDbOptions(c.env),
     );
-    const lineClient = new LineClient(accessToken);
+    const lineClient = createLineClient(accessToken);
     await processBroadcastSend(c.env.DB, lineClient, id, { skipMarkSending: true });
 
     const result = await getBroadcastById(c.env.DB, id);
@@ -403,7 +403,7 @@ broadcasts.post('/api/broadcasts/:id/send-segment', async (c) => {
       existing.line_account_id,
       lineAccountDbOptions(c.env),
     );
-    const lineClient = new LineClient(accessToken);
+    const lineClient = createLineClient(accessToken);
     await processSegmentSend(c.env.DB, lineClient, id, body.conditions, { skipMarkSending: true });
 
     const result = await getBroadcastById(c.env.DB, id);

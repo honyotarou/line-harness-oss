@@ -1,33 +1,33 @@
 // ─── Source types ────────────────────────────────────────────────────────────
 
-export interface UserSource {
+export type UserSource = Readonly<{
   type: 'user';
   userId: string;
-}
+}>;
 
-export interface GroupSource {
+export type GroupSource = Readonly<{
   type: 'group';
   groupId: string;
   userId?: string;
-}
+}>;
 
-export interface RoomSource {
+export type RoomSource = Readonly<{
   type: 'room';
   roomId: string;
   userId?: string;
-}
+}>;
 
 export type Source = UserSource | GroupSource | RoomSource;
 
 // ─── Message subtypes ────────────────────────────────────────────────────────
 
-export interface TextEventMessage {
+export type TextEventMessage = Readonly<{
   type: 'text';
   id: string;
   text: string;
-}
+}>;
 
-export interface ImageEventMessage {
+export type ImageEventMessage = Readonly<{
   type: 'image';
   id: string;
   contentProvider: {
@@ -35,9 +35,9 @@ export interface ImageEventMessage {
     originalContentUrl?: string;
     previewImageUrl?: string;
   };
-}
+}>;
 
-export interface VideoEventMessage {
+export type VideoEventMessage = Readonly<{
   type: 'video';
   id: string;
   duration: number;
@@ -46,9 +46,9 @@ export interface VideoEventMessage {
     originalContentUrl?: string;
     previewImageUrl?: string;
   };
-}
+}>;
 
-export interface AudioEventMessage {
+export type AudioEventMessage = Readonly<{
   type: 'audio';
   id: string;
   duration: number;
@@ -56,31 +56,31 @@ export interface AudioEventMessage {
     type: 'line' | 'external';
     originalContentUrl?: string;
   };
-}
+}>;
 
-export interface FileEventMessage {
+export type FileEventMessage = Readonly<{
   type: 'file';
   id: string;
   fileName: string;
   fileSize: number;
-}
+}>;
 
-export interface LocationEventMessage {
+export type LocationEventMessage = Readonly<{
   type: 'location';
   id: string;
   title?: string;
   address?: string;
   latitude: number;
   longitude: number;
-}
+}>;
 
-export interface StickerEventMessage {
+export type StickerEventMessage = Readonly<{
   type: 'sticker';
   id: string;
   packageId: string;
   stickerId: string;
   stickerResourceType: string;
-}
+}>;
 
 export type EventMessage =
   | TextEventMessage
@@ -93,7 +93,7 @@ export type EventMessage =
 
 // ─── Webhook events ───────────────────────────────────────────────────────────
 
-interface BaseEvent {
+type BaseEvent = Readonly<{
   timestamp: number;
   source: Source;
   webhookEventId: string;
@@ -101,90 +101,94 @@ interface BaseEvent {
     isRedelivery: boolean;
   };
   mode: 'active' | 'standby' | 'channel';
-}
+}>;
 
-export interface MessageEvent extends BaseEvent {
-  type: 'message';
-  replyToken: string;
-  message: EventMessage;
-}
+export type MessageEvent = BaseEvent &
+  Readonly<{
+    type: 'message';
+    replyToken: string;
+    message: EventMessage;
+  }>;
 
-export interface FollowEvent extends BaseEvent {
-  type: 'follow';
-  replyToken: string;
-  source: UserSource | GroupSource | RoomSource;
-}
+export type FollowEvent = BaseEvent &
+  Readonly<{
+    type: 'follow';
+    replyToken: string;
+    source: UserSource | GroupSource | RoomSource;
+  }>;
 
-export interface UnfollowEvent extends BaseEvent {
-  type: 'unfollow';
-  source: UserSource | GroupSource | RoomSource;
-}
+export type UnfollowEvent = BaseEvent &
+  Readonly<{
+    type: 'unfollow';
+    source: UserSource | GroupSource | RoomSource;
+  }>;
 
-export interface PostbackEvent extends BaseEvent {
-  type: 'postback';
-  replyToken: string;
-  postback: {
-    data: string;
-    params?: Record<string, string>;
-  };
-}
+export type PostbackEvent = BaseEvent &
+  Readonly<{
+    type: 'postback';
+    replyToken: string;
+    postback: {
+      data: string;
+      params?: Record<string, string>;
+    };
+  }>;
 
 export type WebhookEvent = MessageEvent | FollowEvent | UnfollowEvent | PostbackEvent;
 
-export interface WebhookRequestBody {
+export type WebhookRequestBody = Readonly<{
   destination: string;
   events: WebhookEvent[];
-}
+}>;
 
 // ─── User profile ─────────────────────────────────────────────────────────────
 
-export interface UserProfile {
+export type UserProfile = Readonly<{
   displayName: string;
   userId: string;
   pictureUrl?: string;
   statusMessage?: string;
-}
+}>;
 
 // ─── Send message types ───────────────────────────────────────────────────────
 
 export type FlexContainer = object;
 
-export interface TextMessage {
+export type TextMessage = Readonly<{
   type: 'text';
   text: string;
-}
+}>;
 
-export interface ImageMessage {
+export type ImageMessage = Readonly<{
   type: 'image';
   originalContentUrl: string;
   previewImageUrl: string;
-}
+}>;
 
-export interface FlexMessage {
+export type FlexMessage = Readonly<{
   type: 'flex';
   altText: string;
   contents: FlexContainer;
-}
+}>;
 
-export interface VideoMessage {
+export type VideoMessage = Readonly<{
   type: 'video';
   originalContentUrl: string;
   previewImageUrl: string;
-}
+}>;
 
-export interface TemplateMessage {
+export type TemplateMessage = Readonly<{
   type: 'template';
   altText: string;
   template: Record<string, unknown>;
-}
+}>;
 
-export interface ImageMapMessageType {
+export type ImageMapMessageType = Readonly<{
   type: 'imagemap';
   baseUrl: string;
   altText: string;
   baseSize: { width: number; height: number };
   actions: Record<string, unknown>[];
-}
+}>;
 
 export type Message =
   | TextMessage
@@ -196,50 +200,50 @@ export type Message =
 
 // ─── Rich Menu types ──────────────────────────────────────────────────────────
 
-export interface RichMenuSize {
+export type RichMenuSize = Readonly<{
   width: number;
   height: number;
-}
+}>;
 
-export interface RichMenuBounds {
+export type RichMenuBounds = Readonly<{
   x: number;
   y: number;
   width: number;
   height: number;
-}
+}>;
 
-export interface RichMenuActionPostback {
+export type RichMenuActionPostback = Readonly<{
   type: 'postback';
   data: string;
   displayText?: string;
   label?: string;
-}
+}>;
 
-export interface RichMenuActionMessage {
+export type RichMenuActionMessage = Readonly<{
   type: 'message';
   text: string;
   label?: string;
-}
+}>;
 
-export interface RichMenuActionUri {
+export type RichMenuActionUri = Readonly<{
   type: 'uri';
   uri: string;
   label?: string;
-}
+}>;
 
-export interface RichMenuActionDatetimePicker {
+export type RichMenuActionDatetimePicker = Readonly<{
   type: 'datetimepicker';
   data: string;
   mode: 'date' | 'time' | 'datetime';
   label?: string;
-}
+}>;
 
-export interface RichMenuActionRichMenuSwitch {
+export type RichMenuActionRichMenuSwitch = Readonly<{
   type: 'richmenuswitch';
   richMenuAliasId: string;
   data: string;
   label?: string;
-}
+}>;
 
 export type RichMenuAction =
   | RichMenuActionPostback
@@ -248,37 +252,37 @@ export type RichMenuAction =
   | RichMenuActionDatetimePicker
   | RichMenuActionRichMenuSwitch;
 
-export interface RichMenuArea {
+export type RichMenuArea = Readonly<{
   bounds: RichMenuBounds;
   action: RichMenuAction;
-}
+}>;
 
-export interface RichMenuObject {
+export type RichMenuObject = Readonly<{
   richMenuId?: string;
   size: RichMenuSize;
   selected: boolean;
   name: string;
   chatBarText: string;
   areas: RichMenuArea[];
-}
+}>;
 
 // ─── Request types ────────────────────────────────────────────────────────────
 
-export interface PushMessageRequest {
+export type PushMessageRequest = Readonly<{
   to: string;
   messages: Message[];
-}
+}>;
 
-export interface MulticastRequest {
+export type MulticastRequest = Readonly<{
   to: string[];
   messages: Message[];
-}
+}>;
 
-export interface BroadcastRequest {
+export type BroadcastRequest = Readonly<{
   messages: Message[];
-}
+}>;
 
-export interface ReplyMessageRequest {
+export type ReplyMessageRequest = Readonly<{
   replyToken: string;
   messages: Message[];
-}
+}>;

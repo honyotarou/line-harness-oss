@@ -7,20 +7,24 @@ import type {
   SegmentCondition,
 } from '../types.js';
 
-export function createBroadcastsResource(
-  http: HttpClient,
-  defaultAccountId?: string,
-): {
-  list: (params?: { accountId?: string }) => Promise<Broadcast[]>;
+export type BroadcastsResource = Readonly<{
+  list: (params?: Readonly<{ accountId?: string }>) => Promise<Broadcast[]>;
   get: (id: string) => Promise<Broadcast>;
-  create: (input: CreateBroadcastInput & { lineAccountId?: string }) => Promise<Broadcast>;
+  create: (
+    input: CreateBroadcastInput & Readonly<{ lineAccountId?: string }>,
+  ) => Promise<Broadcast>;
   update: (id: string, input: UpdateBroadcastInput) => Promise<Broadcast>;
   delete: (id: string) => Promise<void>;
   send: (id: string) => Promise<Broadcast>;
   sendToSegment: (id: string, conditions: SegmentCondition) => Promise<Broadcast>;
-} {
+}>;
+
+export function createBroadcastsResource(
+  http: HttpClient,
+  defaultAccountId?: string,
+): BroadcastsResource {
   return {
-    async list(params?: { accountId?: string }): Promise<Broadcast[]> {
+    async list(params?: Readonly<{ accountId?: string }>): Promise<Broadcast[]> {
       const accountId = params?.accountId ?? defaultAccountId;
       const query = accountId ? `?lineAccountId=${accountId}` : '';
       const res = await http.get<ApiResponse<Broadcast[]>>(`/api/broadcasts${query}`);
@@ -30,7 +34,9 @@ export function createBroadcastsResource(
       const res = await http.get<ApiResponse<Broadcast>>(`/api/broadcasts/${id}`);
       return res.data;
     },
-    async create(input: CreateBroadcastInput & { lineAccountId?: string }): Promise<Broadcast> {
+    async create(
+      input: CreateBroadcastInput & Readonly<{ lineAccountId?: string }>,
+    ): Promise<Broadcast> {
       const body = { ...input };
       if (!body.lineAccountId && defaultAccountId) {
         body.lineAccountId = defaultAccountId;
@@ -59,39 +65,4 @@ export function createBroadcastsResource(
       return res.data;
     },
   };
-}
-
-export class BroadcastsResource {
-  private readonly api: ReturnType<typeof createBroadcastsResource>;
-  constructor(http: HttpClient, defaultAccountId?: string) {
-    this.api = createBroadcastsResource(http, defaultAccountId);
-  }
-
-  async list(params?: { accountId?: string }): Promise<Broadcast[]> {
-    return this.api.list(params);
-  }
-
-  async get(id: string): Promise<Broadcast> {
-    return this.api.get(id);
-  }
-
-  async create(input: CreateBroadcastInput & { lineAccountId?: string }): Promise<Broadcast> {
-    return this.api.create(input);
-  }
-
-  async update(id: string, input: UpdateBroadcastInput): Promise<Broadcast> {
-    return this.api.update(id, input);
-  }
-
-  async delete(id: string): Promise<void> {
-    return this.api.delete(id);
-  }
-
-  async send(id: string): Promise<Broadcast> {
-    return this.api.send(id);
-  }
-
-  async sendToSegment(id: string, conditions: SegmentCondition): Promise<Broadcast> {
-    return this.api.sendToSegment(id, conditions);
-  }
 }

@@ -61,6 +61,7 @@
    - **Web `api/catalog/*.ts`（`index.ts` を除く）**: `@line-crm/shared` と `../client.js` 以外を import しない。  
    - **Web `api/catalog/index.ts`**: `./foo.js` 形式の兄弟モジュールのみ import。  
    - **LIFF `apps/liff/src/*.ts`（テスト・`env.d.ts` を除く）**: `fetch('http…')` / `fetch("http…")` / `` fetch(`http…`) `` のような **リテラル絶対 URL 禁止**（Worker オリジンは `api-base.js` / `getLiffApiBaseUrl()` 経由）。  
+   - **TypeScript 設計ゲート**: `packages/shared` / `packages/sdk` / `packages/line-sdk` / `apps/web` / `apps/worker` の本体コードで **`class` / `interface` を禁止**。構造的部分型の誤用を減らし、`Readonly` type alias / brand / 関数中心設計へ寄せる。  
    - **二重実行**: `apps/worker/tests/ci/encapsulation-gate.test.ts` が同じ `check-encapsulation.mjs` を `execFileSync` で走らせる（CI の unit でも層が崩れないことを担保）。  
    - 上限は **リファクタで下げる**のが理想。超過時は **`application/` へ抽出してから**必要なら上限を PR で調整。
 

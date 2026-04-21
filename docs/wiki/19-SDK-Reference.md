@@ -24,12 +24,12 @@ npm install github:your-org/line-harness#main --workspace=packages/sdk
 
 ---
 
-## 設定 (LineHarness コンストラクタ)
+## 設定 (createLineHarness)
 
 ```typescript
-import { LineHarness } from '@line-harness/sdk'
+import { createLineHarness } from '@line-harness/sdk'
 
-const lh = new LineHarness({
+const lh = createLineHarness({
   apiUrl: 'https://line-crm-worker.line-crm-api.workers.dev',
   apiKey: 'your-api-key-here',
   timeout: 30000,  // オプション。デフォルト: 30000ms
@@ -499,15 +499,15 @@ const url = lh.getAuthUrl({ ref: 'instagram', redirect: 'https://example.com/tha
 
 ### LineHarnessError
 
-全 HTTP エラーは `LineHarnessError` としてスローされる。
+全 HTTP エラーは `LineHarnessError` shape の `Error` としてスローされる。
 
 ```typescript
-import { LineHarnessError } from '@line-harness/sdk'
+import { isLineHarnessError } from '@line-harness/sdk'
 
 try {
   await lh.friends.get('nonexistent')
 } catch (err) {
-  if (err instanceof LineHarnessError) {
+  if (isLineHarnessError(err)) {
     console.log(err.message)   // "Friend not found"
     console.log(err.status)    // 404
     console.log(err.endpoint)  // "GET /api/friends/nonexistent"
@@ -564,9 +564,9 @@ LineHarnessError
 ### 友だち追加後の自動シナリオ構築
 
 ```typescript
-import { LineHarness } from '@line-harness/sdk'
+import { createLineHarness } from '@line-harness/sdk'
 
-const lh = new LineHarness({
+const lh = createLineHarness({
   apiUrl: 'https://line-crm-worker.line-crm-api.workers.dev',
   apiKey: process.env.LINE_HARNESS_API_KEY!,
 })

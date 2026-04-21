@@ -13,7 +13,7 @@
 
 | 目的 | コマンド |
 |------|-----------|
-| クイック検証（Biome + **カプセル化ゲート** + 型 + ユニット） | `pnpm harness` |
+| クイック検証（Biome + **カプセル化** + **`build:libs`** + 型 + LIFF build + ユニット）。**失敗メッセージは Lint と同様**に順に潰す | `pnpm harness` |
 | レイヤー／薄いルートだけ（単体） | `pnpm check:encapsulation` |
 | コード整形（Biome） | `pnpm format`（`pnpm format:check` で検証のみ） |
 | CI `unit` ジョブ相当（LIFF 型・`build:libs`・`next build`・カバレッジ + SDK） | `pnpm harness:ci` |
@@ -111,6 +111,6 @@ pnpm exec lefthook install
 - **クラスを使わない**（必要なら Error/SDK の薄い互換ラッパ程度）。基本は **関数 + 依存注入**。
 - **DTO は Readonly**（ミューテーションは境界に閉じ込める）。例: Worker の `readJsonBodyWithLimit<T>` は `Promise<Readonly<T>>`。
 - **データ型と振る舞いを分離**し、実行時の検証は関数で行う（型は消える）。
-- **Branded Type** で ID 等の値オブジェクトを区別する（構造的部分型の罠に注意）。
+- **Branded Type** で ID 等の値オブジェクトを区別する（名義型ではない: **同じ公開プロパティだけ**の Post/User は型検査上区別されない）。
 
 詳細・チェックリストは `/.cursor/skills/line/SKILL.md` の **「5.4.1 TypeScript 設計」** を正本とする。

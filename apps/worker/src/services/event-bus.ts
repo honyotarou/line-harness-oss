@@ -20,7 +20,7 @@ import {
   enrollFriendInScenario,
   jstNow,
 } from '@line-crm/db';
-import { LineClient } from '@line-crm/line-sdk';
+import { createLineClient } from '@line-crm/line-sdk';
 import { formatDeployedSecurityRelaxPairHint } from './deployed-security-defaults.js';
 import {
   automationSendWebhookHostnameAllowed,
@@ -30,10 +30,10 @@ import { fetchHttpsUrlAfterDnsAssertion } from './outbound-https-fetch.js';
 import { mergeFriendMetadataPatch } from './friend-metadata-merge.js';
 import { parseStringArrayJson, tryParseJsonLoose, tryParseJsonRecord } from './safe-json.js';
 
-export interface EventPayload {
+export type EventPayload = Readonly<{
   friendId?: string;
   eventData?: Record<string, unknown>;
-}
+}>;
 
 export const MAX_AUTOMATIONS_PER_EVENT = 200;
 export const MAX_AUTOMATION_ACTIONS_PER_RULE = 50;
@@ -80,7 +80,7 @@ export function matchAutomationConditions(
 }
 
 /** Optional gates for outbound actions triggered by {@link fireEvent}. */
-export type FireEventOptions = {
+export type FireEventOptions = Readonly<{
   /**
    * Comma-separated host rules for automation `send_webhook` only: exact `hooks.slack.com` or suffix `.example.com`.
    * Empty/unset → no host allowlist (SSRF checks still apply).
@@ -94,7 +94,7 @@ export type FireEventOptions = {
    * When true, automation `send_webhook` is not executed (mitigates partner incoming webhook → outbound → incoming loops).
    */
   suppressAutomationSendWebhook?: boolean;
-};
+}>;
 
 /**
  * イベントを発火し、登録された全ハンドラーを実行
@@ -392,7 +392,7 @@ async function executeAction(
         .bind(friendId)
         .first<{ line_user_id: string }>();
       if (!friend) break;
-      const lineClient = new LineClient(lineAccessToken);
+      const lineClient = createLineClient(lineAccessToken);
       const msgType = action.params.messageType || 'text';
       if (msgType === 'flex') {
         const contentsRaw = tryParseJsonLoose(action.params.content);
@@ -458,7 +458,7 @@ async function executeAction(
         .bind(friendId)
         .first<{ line_user_id: string }>();
       if (!friend) break;
-      const lineClient = new LineClient(lineAccessToken);
+      const lineClient = createLineClient(lineAccessToken);
       await lineClient.linkRichMenuToUser(friend.line_user_id, action.params.richMenuId);
       break;
     }
@@ -470,7 +470,7 @@ async function executeAction(
         .bind(friendId)
         .first<{ line_user_id: string }>();
       if (!friend) break;
-      const lineClient = new LineClient(lineAccessToken);
+      const lineClient = createLineClient(lineAccessToken);
       await lineClient.unlinkRichMenuFromUser(friend.line_user_id);
       break;
     }

@@ -24,7 +24,7 @@ import {
 /** Matches Hono `c.json` status typing (avoid widening to `number`). */
 export type LiffJsonStatus = 200 | 400 | 401 | 404 | 500 | 503;
 
-export type LiffJsonResult = { status: LiffJsonStatus; body: Record<string, unknown> };
+export type LiffJsonResult = Readonly<{ status: LiffJsonStatus; body: Record<string, unknown> }>;
 
 export async function liffProfilePost(
   db: D1Database,
@@ -102,12 +102,12 @@ export async function liffBookingPhoneFallbackPost(
   };
 }
 
-export type LiffLinkBody = {
+export type LiffLinkBody = Readonly<{
   idToken: string;
   displayName?: string | null;
   ref?: string;
   existingUuid?: string;
-};
+}>;
 
 export async function liffLinkPost(
   db: D1Database,

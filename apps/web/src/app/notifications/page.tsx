@@ -11,12 +11,12 @@ import { Alert } from '@/components/ui/alert';
 import { Badge } from '@/components/ui/badge';
 import { Input, Select, Textarea } from '@/components/ui/field';
 
-interface CreateFormState {
+type CreateFormState = Readonly<{
   name: string;
   eventType: string;
   channels: string;
   conditions: string;
-}
+}>;
 
 const statusConfig: Record<Notification['status'], { label: string; className: string }> = {
   pending: { label: '保留中', className: 'bg-gray-100 text-gray-600' },

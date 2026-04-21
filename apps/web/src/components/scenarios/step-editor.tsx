@@ -4,7 +4,7 @@ import { useState } from 'react';
 import type { ScenarioStep, MessageType } from '@line-crm/shared';
 import { tryParseJsonLoose, tryParseJsonObjectForPreview } from '@line-crm/shared';
 
-interface StepEditorProps {
+type StepEditorProps = Readonly<{
   step?: ScenarioStep;
   stepOrder: number;
   onSave: (data: {
@@ -14,7 +14,7 @@ interface StepEditorProps {
     messageContent: string;
   }) => Promise<void>;
   onCancel: () => void;
-}
+}>;
 
 const messageTypeLabels: Record<MessageType, string> = {
   text: 'テキスト',

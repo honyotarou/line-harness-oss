@@ -4,16 +4,16 @@
  */
 
 export type ClientApiBaseUrlResult =
-  | { ok: true; normalizedOrigin: string }
-  | { ok: false; reason: string };
+  | Readonly<{ ok: true; normalizedOrigin: string }>
+  | Readonly<{ ok: false; reason: string }>;
 
-export type ValidateClientApiBaseUrlOptions = {
+export type ValidateClientApiBaseUrlOptions = Readonly<{
   /**
    * When false, reject the repository template host `your_subdomain.workers.dev`.
    * Use false in production builds.
    */
   allowPlaceholderTemplate?: boolean;
-};
+}>;
 
 const PLACEHOLDER_HOST = 'your_subdomain.workers.dev';
 

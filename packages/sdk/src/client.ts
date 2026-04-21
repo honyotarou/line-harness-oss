@@ -1,12 +1,20 @@
-import { HttpClient } from './http.js';
-import { FriendsResource } from './resources/friends.js';
-import { TagsResource } from './resources/tags.js';
-import { ScenariosResource } from './resources/scenarios.js';
-import { BroadcastsResource } from './resources/broadcasts.js';
-import { RichMenusResource } from './resources/rich-menus.js';
-import { TrackedLinksResource } from './resources/tracked-links.js';
-import { FormsResource } from './resources/forms.js';
-import { createWorkflows, type WorkflowsApi } from './workflows.js';
+import { createHttpClient } from './http.js';
+import { createFriendsResource, type FriendsResource } from './resources/friends.js';
+import { createTagsResource, type TagsResource } from './resources/tags.js';
+import { createScenariosResource, type ScenariosResource } from './resources/scenarios.js';
+import { createBroadcastsResource, type BroadcastsResource } from './resources/broadcasts.js';
+import { createRichMenusResource, type RichMenusResource } from './resources/rich-menus.js';
+import {
+  createTrackedLinksResource,
+  type TrackedLinksResource,
+} from './resources/tracked-links.js';
+import {
+  createTrafficPoolsResource,
+  type TrafficPoolsResource,
+} from './resources/traffic-pools.js';
+import { createFormsResource, type FormsResource } from './resources/forms.js';
+import { createWorkflows } from './workflows.js';
+import type { Workflows } from './workflows.js';
 import type {
   LineHarnessConfig,
   StepDefinition,
@@ -17,55 +25,54 @@ import type {
   SegmentCondition,
 } from './types.js';
 
-export type LineHarnessApi = {
-  readonly friends: FriendsResource;
-  readonly tags: TagsResource;
-  readonly scenarios: ScenariosResource;
-  readonly broadcasts: BroadcastsResource;
-  readonly richMenus: RichMenusResource;
-  readonly trackedLinks: TrackedLinksResource;
-  readonly forms: FormsResource;
-
-  readonly createStepScenario: (
+export type LineHarness = Readonly<{
+  friends: FriendsResource;
+  tags: TagsResource;
+  scenarios: ScenariosResource;
+  broadcasts: BroadcastsResource;
+  richMenus: RichMenusResource;
+  trackedLinks: TrackedLinksResource;
+  trafficPools: TrafficPoolsResource;
+  forms: FormsResource;
+  createStepScenario: (
     name: string,
     triggerType: ScenarioTriggerType,
     steps: StepDefinition[],
   ) => Promise<ScenarioWithSteps>;
-  readonly broadcastText: (text: string) => Promise<Broadcast>;
-  readonly broadcastToTag: (
-    tagId: string,
-    messageType: MessageType,
-    content: string,
-  ) => Promise<Broadcast>;
-  readonly broadcastToSegment: (
+  broadcastText: (text: string) => Promise<Broadcast>;
+  broadcastToTag: (tagId: string, messageType: MessageType, content: string) => Promise<Broadcast>;
+  broadcastToSegment: (
     messageType: MessageType,
     content: string,
     conditions: SegmentCondition,
   ) => Promise<Broadcast>;
-  readonly sendTextToFriend: (friendId: string, text: string) => Promise<{ messageId: string }>;
-  readonly sendFlexToFriend: (friendId: string, flexJson: string) => Promise<{ messageId: string }>;
+  sendTextToFriend: (friendId: string, text: string) => Promise<Readonly<{ messageId: string }>>;
+  sendFlexToFriend: (
+    friendId: string,
+    flexJson: string,
+  ) => Promise<Readonly<{ messageId: string }>>;
+  getAuthUrl: (options?: Readonly<{ ref?: string; redirect?: string }>) => string;
+}>;
 
-  readonly getAuthUrl: (options?: { ref?: string; redirect?: string }) => string;
-};
-
-export function createLineHarness(config: LineHarnessConfig): LineHarnessApi {
+export function createLineHarness(config: LineHarnessConfig): LineHarness {
   const apiUrl = config.apiUrl.replace(/\/$/, '');
   const defaultAccountId = config.lineAccountId;
 
-  const http = new HttpClient({
+  const http = createHttpClient({
     baseUrl: apiUrl,
     apiKey: config.apiKey,
     timeout: config.timeout ?? 30_000,
   });
 
-  const friends = new FriendsResource(http, defaultAccountId);
-  const tags = new TagsResource(http);
-  const scenarios = new ScenariosResource(http, defaultAccountId);
-  const broadcasts = new BroadcastsResource(http, defaultAccountId);
-  const richMenus = new RichMenusResource(http);
-  const trackedLinks = new TrackedLinksResource(http);
-  const forms = new FormsResource(http);
-  const workflows = createWorkflows({
+  const friends = createFriendsResource(http, defaultAccountId);
+  const tags = createTagsResource(http);
+  const scenarios = createScenariosResource(http, defaultAccountId);
+  const broadcasts = createBroadcastsResource(http, defaultAccountId);
+  const richMenus = createRichMenusResource(http);
+  const trackedLinks = createTrackedLinksResource(http);
+  const trafficPools = createTrafficPoolsResource(http);
+  const forms = createFormsResource(http);
+  const workflows: Workflows = createWorkflows({
     friends,
     scenarios,
     broadcasts,
@@ -78,94 +85,19 @@ export function createLineHarness(config: LineHarnessConfig): LineHarnessApi {
     broadcasts,
     richMenus,
     trackedLinks,
+    trafficPools,
     forms,
-
     createStepScenario: workflows.createStepScenario,
     broadcastText: workflows.broadcastText,
     broadcastToTag: workflows.broadcastToTag,
     broadcastToSegment: workflows.broadcastToSegment,
     sendTextToFriend: workflows.sendTextToFriend,
     sendFlexToFriend: workflows.sendFlexToFriend,
-
-    getAuthUrl(options?: { ref?: string; redirect?: string }): string {
+    getAuthUrl(options?: Readonly<{ ref?: string; redirect?: string }>): string {
       const url = new URL(`${apiUrl}/auth/line`);
       if (options?.ref) url.searchParams.set('ref', options.ref);
       if (options?.redirect) url.searchParams.set('redirect', options.redirect);
       return url.toString();
     },
   };
-}
-
-export class LineHarness {
-  readonly friends: FriendsResource;
-  readonly tags: TagsResource;
-  readonly scenarios: ScenariosResource;
-  readonly broadcasts: BroadcastsResource;
-  readonly richMenus: RichMenusResource;
-  readonly trackedLinks: TrackedLinksResource;
-  readonly forms: FormsResource;
-
-  private readonly apiUrl: string;
-  private readonly defaultAccountId: string | undefined;
-  private readonly workflows: WorkflowsApi;
-
-  readonly createStepScenario: (
-    name: string,
-    triggerType: ScenarioTriggerType,
-    steps: StepDefinition[],
-  ) => Promise<ScenarioWithSteps>;
-  readonly broadcastText: (text: string) => Promise<Broadcast>;
-  readonly broadcastToTag: (
-    tagId: string,
-    messageType: MessageType,
-    content: string,
-  ) => Promise<Broadcast>;
-  readonly broadcastToSegment: (
-    messageType: MessageType,
-    content: string,
-    conditions: SegmentCondition,
-  ) => Promise<Broadcast>;
-  readonly sendTextToFriend: (friendId: string, text: string) => Promise<{ messageId: string }>;
-  readonly sendFlexToFriend: (friendId: string, flexJson: string) => Promise<{ messageId: string }>;
-
-  constructor(config: LineHarnessConfig) {
-    const api = createLineHarness(config);
-    this.apiUrl = config.apiUrl.replace(/\/$/, '');
-    this.defaultAccountId = config.lineAccountId;
-
-    this.friends = api.friends;
-    this.tags = api.tags;
-    this.scenarios = api.scenarios;
-    this.broadcasts = api.broadcasts;
-    this.richMenus = api.richMenus;
-    this.trackedLinks = api.trackedLinks;
-    this.forms = api.forms;
-
-    this.workflows = createWorkflows({
-      friends: this.friends,
-      scenarios: this.scenarios,
-      broadcasts: this.broadcasts,
-    });
-
-    this.createStepScenario = api.createStepScenario;
-    this.broadcastText = api.broadcastText;
-    this.broadcastToTag = api.broadcastToTag;
-    this.broadcastToSegment = api.broadcastToSegment;
-    this.sendTextToFriend = api.sendTextToFriend;
-    this.sendFlexToFriend = api.sendFlexToFriend;
-  }
-
-  /**
-   * Generate friend-add URL with OAuth (bot_prompt=aggressive)
-   * This URL does friend-add + UUID in one step.
-   *
-   * @param ref - Attribution code (e.g., 'lp-a', 'instagram', 'seminar-0322')
-   * @param redirect - URL to redirect after completion
-   */
-  getAuthUrl(options?: { ref?: string; redirect?: string }): string {
-    const url = new URL(`${this.apiUrl}/auth/line`);
-    if (options?.ref) url.searchParams.set('ref', options.ref);
-    if (options?.redirect) url.searchParams.set('redirect', options.redirect);
-    return url.toString();
-  }
 }

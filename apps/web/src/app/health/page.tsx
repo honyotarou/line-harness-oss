@@ -7,16 +7,16 @@ import CcPromptButton from '@/components/cc-prompt-button';
 import { Alert } from '@/components/ui/alert';
 import { Select } from '@/components/ui/field';
 
-interface LineAccount {
+type LineAccount = Readonly<{
   id: string;
   channelId: string;
   name: string;
   isActive: boolean;
   createdAt: string;
   updatedAt: string;
-}
+}>;
 
-interface AccountHealthLog {
+type AccountHealthLog = Readonly<{
   id: string;
   lineAccountId: string;
   errorCode: number | null;
@@ -24,9 +24,9 @@ interface AccountHealthLog {
   checkPeriod: string;
   riskLevel: 'normal' | 'warning' | 'danger';
   createdAt: string;
-}
+}>;
 
-interface AccountMigration {
+type AccountMigration = Readonly<{
   id: string;
   fromAccountId: string;
   toAccountId: string;
@@ -35,7 +35,7 @@ interface AccountMigration {
   totalCount: number;
   createdAt: string;
   completedAt: string | null;
-}
+}>;
 
 const riskConfig = {
   normal: {

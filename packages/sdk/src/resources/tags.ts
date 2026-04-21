@@ -1,11 +1,13 @@
 import type { HttpClient } from '../http.js';
 import type { ApiResponse, Tag, CreateTagInput } from '../types.js';
 
-export function createTagsResource(http: HttpClient): {
+export type TagsResource = Readonly<{
   list: () => Promise<Tag[]>;
   create: (input: CreateTagInput) => Promise<Tag>;
   delete: (id: string) => Promise<void>;
-} {
+}>;
+
+export function createTagsResource(http: HttpClient): TagsResource {
   return {
     async list(): Promise<Tag[]> {
       const res = await http.get<ApiResponse<Tag[]>>('/api/tags');
@@ -19,23 +21,4 @@ export function createTagsResource(http: HttpClient): {
       await http.delete(`/api/tags/${id}`);
     },
   };
-}
-
-export class TagsResource {
-  private readonly api: ReturnType<typeof createTagsResource>;
-  constructor(http: HttpClient) {
-    this.api = createTagsResource(http);
-  }
-
-  async list(): Promise<Tag[]> {
-    return this.api.list();
-  }
-
-  async create(input: CreateTagInput): Promise<Tag> {
-    return this.api.create(input);
-  }
-
-  async delete(id: string): Promise<void> {
-    return this.api.delete(id);
-  }
 }

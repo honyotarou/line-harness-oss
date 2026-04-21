@@ -1,4 +1,4 @@
-import { LineClient } from '@line-crm/line-sdk';
+import { createLineClient } from '@line-crm/line-sdk';
 import {
   addTagToFriend,
   createUser,
@@ -24,7 +24,7 @@ import { tryParseJsonRecord } from '../services/safe-json.js';
 import { emailsMatchForRecovery, resolveLiffOAuthStateSecret } from './liff-identity.js';
 import { completionPage, errorPage } from './liff-pages.js';
 
-export type LiffOAuthCallbackInput = {
+export type LiffOAuthCallbackInput = Readonly<{
   db: D1Database;
   bindings: Env['Bindings'];
   origin: string;
@@ -33,7 +33,7 @@ export type LiffOAuthCallbackInput = {
   oauthError: string | undefined;
   fetchImpl: typeof fetch;
   cspNonce?: string;
-};
+}>;
 
 export type LiffOAuthCallbackResult =
   | { kind: 'html'; html: string }
@@ -242,7 +242,7 @@ export async function runLiffOAuthCallback(
         const acct = await getLineAccountByChannelId(db, accountParam, laOpts);
         if (acct) accessToken = acct.channel_access_token;
       }
-      const lineClient = new LineClient(accessToken);
+      const lineClient = createLineClient(accessToken);
 
       const scenarios = await getScenarios(db);
       for (const scenario of scenarios) {

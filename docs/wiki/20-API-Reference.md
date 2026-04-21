@@ -149,6 +149,20 @@ status: `draft`, `scheduled`, `sending`, `sent`
 | DELETE | `/api/tracked-links/:id` | リンク削除 | - |
 | GET | `/t/:linkId` | リダイレクト (認証不要) | query: `f` (friendId) |
 
+### トラフィックプール (`/pool/:slug` + `/api/traffic-pools/*`)
+
+| メソッド | パス | 説明 | リクエストボディ |
+|---------|------|------|----------------|
+| GET | `/pool/:slug` | 有効プールなら `/auth/line?pool=…` へ 302（`account` クエリは転送しない） | - |
+| GET | `/api/traffic-pools` | プール一覧 | - |
+| POST | `/api/traffic-pools` | プール作成 | `{ slug, name, activeAccountId }` |
+| PUT | `/api/traffic-pools/:id` | 更新（`name` / `activeAccountId` / `isActive`） | JSON |
+| DELETE | `/api/traffic-pools/:id` | 削除 | - |
+| GET | `/api/traffic-pools/:id/accounts` | プールに紐づく LINE アカウント行 | - |
+| POST | `/api/traffic-pools/:id/accounts` | 行追加 | `{ lineAccountId }` |
+| PUT | `/api/traffic-pools/:id/accounts/:accountRowId` | 行の有効/無効 | `{ isActive }` |
+| DELETE | `/api/traffic-pools/:id/accounts/:accountRowId` | 行削除 | - |
+
 ### /api/forms/*
 
 | メソッド | パス | 説明 | リクエストボディ |

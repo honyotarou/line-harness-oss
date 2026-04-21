@@ -38,6 +38,11 @@ describe('wrangler config (no third-party demo hosts in repo defaults)', () => {
     expect(wranglerToml).toMatch(/REQUIRE_CF_BOT_SIGNAL/);
   });
 
+  it('wrangler.toml documents optional image R2 CI secret and ad platform outbound flag in comments', () => {
+    expect(wranglerToml).toMatch(/WORKER_LINE_CRM_IMAGES_BUCKET_NAME/);
+    expect(wranglerToml).toMatch(/AD_PLATFORM_OUTBOUND_ENABLED/);
+  });
+
   it('wrangler.toml comments document multi-account, LIFF state, session secret, broadcast send guard, and automation webhook hosts', () => {
     expect(wranglerToml).toMatch(/MULTI_LINE_ACCOUNT_QUERY_REQUIRES_LINE_ACCOUNT_ID/);
     expect(wranglerToml).toMatch(/REQUIRE_LIFF_STATE_SECRET/);

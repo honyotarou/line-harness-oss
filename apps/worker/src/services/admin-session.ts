@@ -78,13 +78,13 @@ export function isAdminSessionSecretRequired(env: {
   return effectiveRequireDedicatedAdminSessionSecret(env);
 }
 
-export interface AdminSessionPayload {
+export type AdminSessionPayload = Readonly<{
   scope: 'admin';
   iat: number;
   exp: number;
   /** Present on newly issued tokens; used with D1 `admin_session_revocations` for logout. */
   jti?: string;
-}
+}>;
 
 function isLocalHostname(hostname: string): boolean {
   return hostname === 'localhost' || hostname === '127.0.0.1' || hostname === '::1';

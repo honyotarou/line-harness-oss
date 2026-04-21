@@ -7,11 +7,11 @@ import { consumeRateLimitSlotDb } from './request-rate-limit.js';
 /** D1 bucket for per-account LINE multicast pacing (cross-isolate; see pentest note). */
 export const STEALTH_LINE_MULTICAST_RATE_BUCKET = 'stealth-line-multicast';
 
-export type StealthRateLimiterD1Storage = {
+export type StealthRateLimiterD1Storage = Readonly<{
   db: D1Database;
   /** e.g. `line:${lineAccountId ?? 'default'}` */
   subjectKey: string;
-};
+}>;
 
 /**
  * Add random jitter to a delay in milliseconds.
@@ -89,11 +89,17 @@ export function jitterDeliveryTime(scheduledAt: Date): Date {
   return result;
 }
 
-export function createStealthRateLimiter(opts?: {
-  maxCallsPerWindow?: number;
-  windowMs?: number;
-  d1?: StealthRateLimiterD1Storage;
-}): { waitForSlot: () => Promise<void> } {
+export type StealthRateLimiter = Readonly<{
+  waitForSlot: () => Promise<void>;
+}>;
+
+export function createStealthRateLimiter(
+  opts?: Readonly<{
+    maxCallsPerWindow?: number;
+    windowMs?: number;
+    d1?: StealthRateLimiterD1Storage;
+  }>,
+): StealthRateLimiter {
   const maxCallsPerWindow = opts?.maxCallsPerWindow ?? 1000;
   const windowMs = opts?.windowMs ?? 60_000;
   const d1 = opts?.d1;
@@ -135,18 +141,4 @@ export function createStealthRateLimiter(opts?: {
       callCount++;
     },
   };
-}
-
-/**
- * Rate limiter for LINE API calls.
- * LINE rate limit is 100,000 messages/min, but we stay well under.
- */
-export class StealthRateLimiter {
-  private readonly api: ReturnType<typeof createStealthRateLimiter>;
-  constructor(maxCallsPerWindow = 1000, windowMs = 60_000, d1?: StealthRateLimiterD1Storage) {
-    this.api = createStealthRateLimiter({ maxCallsPerWindow, windowMs, d1 });
-  }
-  waitForSlot(): Promise<void> {
-    return this.api.waitForSlot();
-  }
 }

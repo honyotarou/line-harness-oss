@@ -1,5 +1,5 @@
 import { describe, it, expect, vi } from 'vitest';
-import { BroadcastsResource } from '../../src/resources/broadcasts.js';
+import { createBroadcastsResource } from '../../src/resources/broadcasts.js';
 import type { HttpClient } from '../../src/http.js';
 
 function mockHttp(overrides: Partial<HttpClient> = {}): HttpClient {
@@ -9,7 +9,7 @@ function mockHttp(overrides: Partial<HttpClient> = {}): HttpClient {
     put: vi.fn(),
     delete: vi.fn(),
     ...overrides,
-  } as unknown as HttpClient;
+  };
 }
 
 describe('BroadcastsResource', () => {
@@ -31,7 +31,7 @@ describe('BroadcastsResource', () => {
       },
     ];
     const http = mockHttp({ get: vi.fn().mockResolvedValue({ success: true, data: broadcasts }) });
-    const resource = new BroadcastsResource(http);
+    const resource = createBroadcastsResource(http);
     const result = await resource.list();
     expect(http.get).toHaveBeenCalledWith('/api/broadcasts');
     expect(result).toEqual(broadcasts);
@@ -53,7 +53,7 @@ describe('BroadcastsResource', () => {
       createdAt: '2026-03-20T10:00:00Z',
     };
     const http = mockHttp({ get: vi.fn().mockResolvedValue({ success: true, data: broadcast }) });
-    const resource = new BroadcastsResource(http);
+    const resource = createBroadcastsResource(http);
     const result = await resource.get('bc-1');
     expect(http.get).toHaveBeenCalledWith('/api/broadcasts/bc-1');
     expect(result).toEqual(broadcast);
@@ -81,7 +81,7 @@ describe('BroadcastsResource', () => {
       targetType: 'all' as const,
     };
     const http = mockHttp({ post: vi.fn().mockResolvedValue({ success: true, data: broadcast }) });
-    const resource = new BroadcastsResource(http);
+    const resource = createBroadcastsResource(http);
     const result = await resource.create(input);
     expect(http.post).toHaveBeenCalledWith('/api/broadcasts', input);
     expect(result).toEqual(broadcast);
@@ -109,7 +109,7 @@ describe('BroadcastsResource', () => {
     const http = mockHttp({
       put: vi.fn().mockResolvedValue({ success: true, data: updatedBroadcast }),
     });
-    const resource = new BroadcastsResource(http);
+    const resource = createBroadcastsResource(http);
     const result = await resource.update('bc-1', input);
     expect(http.put).toHaveBeenCalledWith('/api/broadcasts/bc-1', input);
     expect(result).toEqual(updatedBroadcast);
@@ -117,7 +117,7 @@ describe('BroadcastsResource', () => {
 
   it('delete(id) calls DELETE /api/broadcasts/:id', async () => {
     const http = mockHttp({ delete: vi.fn().mockResolvedValue({ success: true, data: null }) });
-    const resource = new BroadcastsResource(http);
+    const resource = createBroadcastsResource(http);
     await resource.delete('bc-1');
     expect(http.delete).toHaveBeenCalledWith('/api/broadcasts/bc-1');
   });
@@ -138,7 +138,7 @@ describe('BroadcastsResource', () => {
       createdAt: '2026-03-20T10:00:00Z',
     };
     const http = mockHttp({ post: vi.fn().mockResolvedValue({ success: true, data: broadcast }) });
-    const resource = new BroadcastsResource(http);
+    const resource = createBroadcastsResource(http);
     const result = await resource.send('bc-1');
     expect(http.post).toHaveBeenCalledWith('/api/broadcasts/bc-1/send', { confirm: true });
     expect(result).toEqual(broadcast);

@@ -16,7 +16,7 @@ describe('request body helpers', () => {
   });
 
   it('rejects bodies larger than the configured limit', async () => {
-    const { BodyTooLargeError, readTextBodyWithLimit } = await import(
+    const { isBodyTooLargeError, readTextBodyWithLimit } = await import(
       '../../src/services/request-body.js'
     );
 
@@ -29,24 +29,24 @@ describe('request body helpers', () => {
       body: 'x'.repeat(2048),
     });
 
-    await expect(readTextBodyWithLimit(request, 1024)).rejects.toBeInstanceOf(BodyTooLargeError);
+    await expect(readTextBodyWithLimit(request, 1024)).rejects.toSatisfy(isBodyTooLargeError);
   });
 
   it('jsonBodyReadErrorResponse maps BodyTooLargeError to 413 shape', async () => {
-    const { BodyTooLargeError, jsonBodyReadErrorResponse } = await import(
+    const { createBodyTooLargeError, jsonBodyReadErrorResponse } = await import(
       '../../src/services/request-body.js'
     );
-    expect(jsonBodyReadErrorResponse(new BodyTooLargeError(100))).toEqual({
+    expect(jsonBodyReadErrorResponse(createBodyTooLargeError(100))).toEqual({
       status: 413,
       body: { success: false, error: 'Request body too large' },
     });
   });
 
   it('jsonBodyReadErrorResponse maps InvalidJsonBodyError to 400 shape', async () => {
-    const { InvalidJsonBodyError, jsonBodyReadErrorResponse } = await import(
+    const { createInvalidJsonBodyError, jsonBodyReadErrorResponse } = await import(
       '../../src/services/request-body.js'
     );
-    expect(jsonBodyReadErrorResponse(new InvalidJsonBodyError())).toEqual({
+    expect(jsonBodyReadErrorResponse(createInvalidJsonBodyError())).toEqual({
       status: 400,
       body: { success: false, error: 'Invalid JSON body' },
     });
@@ -73,8 +73,8 @@ describe('request body helpers', () => {
 
   it('assertRequestContentLengthWithinLimit throws when Content-Length exceeds cap', async () => {
     const {
-      BodyTooLargeError,
       assertRequestContentLengthWithinLimit,
+      isBodyTooLargeError,
       RICH_MENU_IMAGE_BINARY_MAX_BYTES,
     } = await import('../../src/services/request-body.js');
 
@@ -83,17 +83,25 @@ describe('request body helpers', () => {
       headers: { 'Content-Length': String(RICH_MENU_IMAGE_BINARY_MAX_BYTES + 1) },
     });
 
-    expect(() =>
-      assertRequestContentLengthWithinLimit(request, RICH_MENU_IMAGE_BINARY_MAX_BYTES),
-    ).toThrow(BodyTooLargeError);
+    try {
+      assertRequestContentLengthWithinLimit(request, RICH_MENU_IMAGE_BINARY_MAX_BYTES);
+      expect.fail('expected throw');
+    } catch (err) {
+      expect(isBodyTooLargeError(err)).toBe(true);
+    }
   });
 
   it('assertArrayBufferWithinLimit throws when buffer exceeds cap', async () => {
-    const { BodyTooLargeError, assertArrayBufferWithinLimit } = await import(
+    const { assertArrayBufferWithinLimit, isBodyTooLargeError } = await import(
       '../../src/services/request-body.js'
     );
 
     const buf = new ArrayBuffer(10);
-    expect(() => assertArrayBufferWithinLimit(buf, 9)).toThrow(BodyTooLargeError);
+    try {
+      assertArrayBufferWithinLimit(buf, 9);
+      expect.fail('expected throw');
+    } catch (err) {
+      expect(isBodyTooLargeError(err)).toBe(true);
+    }
   });
 });

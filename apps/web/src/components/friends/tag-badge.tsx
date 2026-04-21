@@ -1,9 +1,9 @@
 import type { Tag } from '@line-crm/shared';
 
-interface TagBadgeProps {
+type TagBadgeProps = Readonly<{
   tag: Tag;
   onRemove?: () => void;
-}
+}>;
 
 export default function TagBadge({ tag, onRemove }: TagBadgeProps) {
   // Determine text color based on background brightness

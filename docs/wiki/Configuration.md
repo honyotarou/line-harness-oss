@@ -157,7 +157,7 @@ crons = ["*/5 * * * *"]
 ```typescript
 // apps/worker/src/index.ts
 async function scheduled(event, env, ctx) {
-  const lineClient = new LineClient(env.LINE_CHANNEL_ACCESS_TOKEN);
+  const lineClient = createLineClient(env.LINE_CHANNEL_ACCESS_TOKEN);
   await Promise.allSettled([
     processStepDeliveries(env.DB, lineClient),      // ステップ配信
     processScheduledBroadcasts(env.DB, lineClient),  // 予約配信

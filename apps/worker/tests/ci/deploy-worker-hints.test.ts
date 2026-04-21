@@ -35,6 +35,7 @@ describe('deploy-worker workflow operational hints', () => {
     expect(workflow).toMatch(/LH_SESSION_TOKEN_IN_LOGIN_BODY/);
     expect(workflow).toMatch(/AUTOMATION_SEND_WEBHOOK_ALLOWED_HOSTS/);
     expect(workflow).toMatch(/SKIP_CI_AUTOMATION_WEBHOOK_ALLOWLIST_CHECK/);
+    expect(workflow).toMatch(/WORKER_LINE_CRM_IMAGES_BUCKET_NAME/);
   });
 
   it('fails HTTPS deploys when Access is enforced but service token allowlist is missing', () => {

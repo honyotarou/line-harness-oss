@@ -12,22 +12,24 @@ import type {
   FriendScenarioEnrollment,
 } from '../types.js';
 
-export function createScenariosResource(
-  http: HttpClient,
-  defaultAccountId?: string,
-): {
-  list: (params?: { accountId?: string }) => Promise<ScenarioListItem[]>;
+export type ScenariosResource = Readonly<{
+  list: (params?: Readonly<{ accountId?: string }>) => Promise<ScenarioListItem[]>;
   get: (id: string) => Promise<ScenarioWithSteps>;
-  create: (input: CreateScenarioInput & { lineAccountId?: string }) => Promise<Scenario>;
+  create: (input: CreateScenarioInput & Readonly<{ lineAccountId?: string }>) => Promise<Scenario>;
   update: (id: string, input: UpdateScenarioInput) => Promise<Scenario>;
   delete: (id: string) => Promise<void>;
   addStep: (scenarioId: string, input: CreateStepInput) => Promise<ScenarioStep>;
   updateStep: (scenarioId: string, stepId: string, input: UpdateStepInput) => Promise<ScenarioStep>;
   deleteStep: (scenarioId: string, stepId: string) => Promise<void>;
   enroll: (scenarioId: string, friendId: string) => Promise<FriendScenarioEnrollment>;
-} {
+}>;
+
+export function createScenariosResource(
+  http: HttpClient,
+  defaultAccountId?: string,
+): ScenariosResource {
   return {
-    async list(params?: { accountId?: string }): Promise<ScenarioListItem[]> {
+    async list(params?: Readonly<{ accountId?: string }>): Promise<ScenarioListItem[]> {
       const accountId = params?.accountId ?? defaultAccountId;
       const query = accountId ? `?lineAccountId=${accountId}` : '';
       const res = await http.get<ApiResponse<ScenarioListItem[]>>(`/api/scenarios${query}`);
@@ -37,7 +39,9 @@ export function createScenariosResource(
       const res = await http.get<ApiResponse<ScenarioWithSteps>>(`/api/scenarios/${id}`);
       return res.data;
     },
-    async create(input: CreateScenarioInput & { lineAccountId?: string }): Promise<Scenario> {
+    async create(
+      input: CreateScenarioInput & Readonly<{ lineAccountId?: string }>,
+    ): Promise<Scenario> {
       const body = { ...input };
       if (!body.lineAccountId && defaultAccountId) {
         body.lineAccountId = defaultAccountId;
@@ -80,51 +84,4 @@ export function createScenariosResource(
       return res.data;
     },
   };
-}
-
-export class ScenariosResource {
-  private readonly api: ReturnType<typeof createScenariosResource>;
-  constructor(http: HttpClient, defaultAccountId?: string) {
-    this.api = createScenariosResource(http, defaultAccountId);
-  }
-
-  async list(params?: { accountId?: string }): Promise<ScenarioListItem[]> {
-    return this.api.list(params);
-  }
-
-  async get(id: string): Promise<ScenarioWithSteps> {
-    return this.api.get(id);
-  }
-
-  async create(input: CreateScenarioInput & { lineAccountId?: string }): Promise<Scenario> {
-    return this.api.create(input);
-  }
-
-  async update(id: string, input: UpdateScenarioInput): Promise<Scenario> {
-    return this.api.update(id, input);
-  }
-
-  async delete(id: string): Promise<void> {
-    return this.api.delete(id);
-  }
-
-  async addStep(scenarioId: string, input: CreateStepInput): Promise<ScenarioStep> {
-    return this.api.addStep(scenarioId, input);
-  }
-
-  async updateStep(
-    scenarioId: string,
-    stepId: string,
-    input: UpdateStepInput,
-  ): Promise<ScenarioStep> {
-    return this.api.updateStep(scenarioId, stepId, input);
-  }
-
-  async deleteStep(scenarioId: string, stepId: string): Promise<void> {
-    return this.api.deleteStep(scenarioId, stepId);
-  }
-
-  async enroll(scenarioId: string, friendId: string): Promise<FriendScenarioEnrollment> {
-    return this.api.enroll(scenarioId, friendId);
-  }
 }

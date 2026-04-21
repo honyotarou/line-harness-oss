@@ -370,7 +370,7 @@ Stripe のメタデータに `line_friend_id` を設定することで、友だ�
 ### SDK からの利用
 
 ```typescript
-const lh = new LineHarness({ apiUrl: '...', apiKey: '...' });
+const lh = createLineHarness({ apiUrl: '...', apiKey: '...' });
 const authUrl = lh.getAuthUrl({ ref: 'instagram', redirect: 'https://example.com/thanks' });
 // => https://line-crm-worker.line-crm-api.workers.dev/auth/line?ref=instagram&redirect=...
 ```

@@ -24,3 +24,9 @@ GET {{base}}/r/hurl-smoke
 HTTP 200
 [Asserts]
 body contains "LINE で体験する"
+
+GET {{base}}/pool/hurl-smoke-pool
+HTTP 404
+
+GET {{base}}/api/traffic-pools
+HTTP 401

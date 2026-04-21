@@ -11,12 +11,12 @@ import {
 
 const DOH_ACCEPT = 'application/dns-json';
 
-type DnsJsonAnswer = { type: number; data: string };
+type DnsJsonAnswer = Readonly<{ type: number; data: string }>;
 
-type DnsJsonBody = {
+type DnsJsonBody = Readonly<{
   Status?: number;
   Answer?: DnsJsonAnswer[];
-};
+}>;
 
 function parseIpv4Literal(host: string): boolean {
   return /^(\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(\d{1,3})$/.test(host);
@@ -127,7 +127,9 @@ async function resolvedAddressesForHostname(
   return { ok: false, reason: 'Could not verify hostname DNS (CNAME chain too long)' };
 }
 
-export type OutboundUrlResolveResult = { ok: true } | { ok: false; reason: string };
+export type OutboundUrlResolveResult =
+  | Readonly<{ ok: true }>
+  | Readonly<{ ok: false; reason: string }>;
 
 /**
  * After {@link isSafeHttpsOutboundUrl}, resolve hostname via public DNS and reject private/link-local ranges.

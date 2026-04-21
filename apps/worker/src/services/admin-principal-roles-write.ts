@@ -13,12 +13,12 @@ export function isRequireAdminPrincipalAllowlist(env: {
 }
 
 export type PutPrincipalRoleResult =
-  | { ok: true }
-  | {
+  | Readonly<{ ok: true }>
+  | Readonly<{
       ok: false;
       status: 409;
       error: string;
-    };
+    }>;
 
 /**
  * PUT /api/admin/principal-roles body handler: atomic first row when allowlist is strict and table empty.

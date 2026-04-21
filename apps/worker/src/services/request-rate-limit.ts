@@ -5,20 +5,20 @@ type RateLimitEntry = {
   resetAt: number;
 };
 
-export type RateLimitOptions = {
+export type RateLimitOptions = Readonly<{
   bucket: string;
   key: string;
   limit: number;
   windowMs: number;
   now?: number;
-};
+}>;
 
-export type RateLimitDecision = {
+export type RateLimitDecision = Readonly<{
   allowed: boolean;
   remaining: number;
   resetAt: number;
   retryAfterSeconds: number;
-};
+}>;
 
 type RateLimitStorageOptions = RateLimitOptions & {
   db?: D1Database | null;

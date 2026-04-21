@@ -1,18 +1,18 @@
 import type { LineAccountDbOptions } from '@line-crm/db';
 import { hasAdminSessionRevocationsTable } from '@line-crm/db';
-import { LineClient } from '@line-crm/line-sdk';
+import { createLineClient } from '@line-crm/line-sdk';
 import { processStepDeliveries } from './step-delivery.js';
 import { processScheduledBroadcasts } from './broadcast.js';
 import { processReminderDeliveries } from './reminder-delivery.js';
 import { checkAccountHealth } from './ban-monitor.js';
 
-interface ActiveAccount {
+type ActiveAccount = Readonly<{
   id: string;
   is_active: number;
   channel_access_token: string;
-}
+}>;
 
-interface SchedulerParams {
+type SchedulerParams = Readonly<{
   db: D1Database;
   defaultAccessToken: string;
   workerUrl?: string;
@@ -20,18 +20,18 @@ interface SchedulerParams {
   defaultLineChannelId?: string;
   dbAccounts: ActiveAccount[];
   lineAccountDbOptions?: LineAccountDbOptions;
-}
+}>;
 
-interface SchedulerDeps {
-  LineClient: typeof LineClient;
+type SchedulerDeps = Readonly<{
+  createLineClient: typeof createLineClient;
   processStepDeliveries: typeof processStepDeliveries;
   processScheduledBroadcasts: typeof processScheduledBroadcasts;
   processReminderDeliveries: typeof processReminderDeliveries;
   checkAccountHealth: typeof checkAccountHealth;
-}
+}>;
 
 const defaultDeps: SchedulerDeps = {
-  LineClient,
+  createLineClient,
   processStepDeliveries,
   processScheduledBroadcasts,
   processReminderDeliveries,
@@ -105,7 +105,7 @@ async function runJobsForTarget(
   deps: SchedulerDeps,
   target: { lineAccountId: string | null; accessToken: string },
 ): Promise<void> {
-  const lineClient = new deps.LineClient(target.accessToken);
+  const lineClient = deps.createLineClient(target.accessToken);
 
   await Promise.all([
     runScheduledJob('step_deliveries', target.lineAccountId, () =>

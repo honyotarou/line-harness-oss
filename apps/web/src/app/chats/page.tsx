@@ -9,7 +9,7 @@ import CcPromptButton from '@/components/cc-prompt-button';
 import { Alert } from '@/components/ui/alert';
 import { Badge } from '@/components/ui/badge';
 
-interface Chat {
+type Chat = Readonly<{
   id: string;
   friendId: string;
   friendName: string;
@@ -20,21 +20,22 @@ interface Chat {
   lastMessageAt: string | null;
   createdAt: string;
   updatedAt: string;
-}
+}>;
 
-interface ChatMessage {
+type ChatMessage = Readonly<{
   id: string;
   direction: 'incoming' | 'outgoing';
   messageType: string;
   content: string;
   createdAt: string;
-}
+}>;
 
-interface ChatDetail extends Chat {
-  friendName: string;
-  friendPictureUrl: string | null;
-  messages?: ChatMessage[];
-}
+type ChatDetail = Chat &
+  Readonly<{
+    friendName: string;
+    friendPictureUrl: string | null;
+    messages?: ChatMessage[];
+  }>;
 
 type StatusFilter = 'all' | 'unread' | 'in_progress' | 'resolved';
 
@@ -84,20 +85,20 @@ const ccPrompts = [
   },
 ];
 
-interface FriendItem {
+type FriendItem = Readonly<{
   id: string;
   displayName: string;
   pictureUrl: string | null;
   isFollowing: boolean;
-}
+}>;
 
-interface MessageLog {
+type MessageLog = Readonly<{
   id: string;
   direction: 'incoming' | 'outgoing';
   messageType: string;
   content: string;
   createdAt: string;
-}
+}>;
 
 function DirectMessagePanel({
   friendId,

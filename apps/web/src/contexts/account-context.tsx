@@ -6,7 +6,7 @@ import { api } from '@/lib/api';
 
 const STORAGE_KEY = 'lh_selected_account';
 
-export interface AccountWithStats {
+export type AccountWithStats = Readonly<{
   id: string;
   channelId: string;
   name: string;
@@ -19,16 +19,16 @@ export interface AccountWithStats {
     activeScenarios: number;
     messagesThisMonth: number;
   };
-}
+}>;
 
-interface AccountContextValue {
+type AccountContextValue = Readonly<{
   accounts: AccountWithStats[];
   selectedAccountId: string | null;
   selectedAccount: AccountWithStats | null;
   setSelectedAccountId: (id: string) => void;
   refreshAccounts: () => Promise<void>;
   loading: boolean;
-}
+}>;
 
 const AccountContext = createContext<AccountContextValue | null>(null);
 

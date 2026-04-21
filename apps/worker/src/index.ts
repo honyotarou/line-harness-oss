@@ -24,15 +24,20 @@ import {
   jsonAdminPrincipalLineAccountsSchemaUnavailable,
   jsonInternalServerError,
 } from './services/admin-internal-error.js';
-import { AdminPrincipalLineAccountsSchemaUnavailableError } from './services/admin-principal-line-accounts-schema-error.js';
+import { isAdminPrincipalLineAccountsSchemaUnavailableError } from './services/admin-principal-line-accounts-schema-error.js';
 import { runScheduledJobs } from './services/scheduler.js';
 import { renderShortLinkLanding, type LandingEnv } from './ui/landing.js';
 import { authRoutes } from './routes/auth.js';
 import { webhook } from './routes/webhook.js';
 import { friends } from './routes/friends.js';
 import { tags } from './routes/tags.js';
+import { autoReplies } from './routes/auto-replies.js';
 import { scenarios } from './routes/scenarios.js';
 import { broadcasts } from './routes/broadcasts.js';
+import { broadcastsOps } from './routes/broadcasts-ops.js';
+import { images } from './routes/images.js';
+import { inbox } from './routes/inbox.js';
+import { adPlatforms } from './routes/ad-platforms.js';
 import { users } from './routes/users.js';
 import { lineAccounts } from './routes/line-accounts.js';
 import { conversions } from './routes/conversions.js';
@@ -54,11 +59,12 @@ import { health } from './routes/health.js';
 import { automations } from './routes/automations.js';
 import { richMenus } from './routes/rich-menus.js';
 import { trackedLinks } from './routes/tracked-links.js';
+import { trafficPools } from './routes/traffic-pools.js';
 import { forms } from './routes/forms.js';
 import { adminPrincipalRolesRoutes } from './routes/admin-principal-roles.js';
 import { adminAudit } from './routes/admin-audit.js';
 
-export type Env = {
+export type Env = Readonly<{
   Variables: {
     /** Stable id for logs and 500 JSON; set by {@link requestCorrelationMiddleware}. */
     requestCorrelationId?: string;
@@ -256,6 +262,12 @@ export type Env = {
      * Default off — use only for migration; prefer `BROADCAST_SEND_SECRET` + header.
      */
     ALLOW_BROADCAST_WITHOUT_SEND_SECRET?: string;
+    /** R2 bucket for `POST /api/images` and `GET /api/images/public/:token` (binding name `LINE_CRM_IMAGES`). */
+    LINE_CRM_IMAGES?: R2Bucket;
+    /**
+     * `1` / `true` / `yes` / `on`: allow live outbound calls from `POST /api/ad-platforms/:id/sync` (default stub 501).
+     */
+    AD_PLATFORM_OUTBOUND_ENABLED?: string;
     /**
      * Optional comma-separated host allowlist for automation `send_webhook` only.
      * Each entry: exact hostname (`hooks.slack.com`) or suffix (`.example.com`). When unset/empty, only SSRF/DNS checks apply.
@@ -329,7 +341,7 @@ export type Env = {
      */
     CORS_STRICT_VERCEL_ORIGINS?: string;
   } & LandingEnv;
-};
+}>;
 
 const app = new Hono<Env>();
 
@@ -399,8 +411,13 @@ app.route('/', envProbe);
 app.route('/', authRoutes);
 app.route('/', friends);
 app.route('/', tags);
+app.route('/', autoReplies);
 app.route('/', scenarios);
 app.route('/', broadcasts);
+app.route('/', broadcastsOps);
+app.route('/', images);
+app.route('/', inbox);
+app.route('/', adPlatforms);
 app.route('/', users);
 app.route('/', lineAccounts);
 app.route('/', conversions);
@@ -422,6 +439,7 @@ app.route('/', health);
 app.route('/', automations);
 app.route('/', richMenus);
 app.route('/', trackedLinks);
+app.route('/', trafficPools);
 app.route('/', forms);
 app.route('/', adminPrincipalRolesRoutes);
 app.route('/', adminAudit);
@@ -458,7 +476,7 @@ app.get('/r/:ref', async (c) => {
 app.notFound((c) => c.json({ success: false, error: 'Not found' }, 404));
 
 app.onError((err, c) => {
-  if (err instanceof AdminPrincipalLineAccountsSchemaUnavailableError) {
+  if (isAdminPrincipalLineAccountsSchemaUnavailableError(err)) {
     return jsonAdminPrincipalLineAccountsSchemaUnavailable(c, err, 'Worker onError:');
   }
   return jsonInternalServerError(c, 'Worker onError:', err);

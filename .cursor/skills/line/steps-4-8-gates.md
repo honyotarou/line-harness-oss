@@ -14,7 +14,7 @@
 pnpm harness
 ```
 
-中身は **`scripts/harness-check.sh`** 固定順: **Biome format** → **`node scripts/check-encapsulation.mjs`**（= `pnpm check:encapsulation`）→ Worker typecheck → LIFF typecheck → LIFF 本番 build（dummy `VITE_API_URL`）→ **`pnpm test`**（worker → web → sdk → liff）。
+中身は **`scripts/harness-check.sh`** 固定順: **Biome format** → **`node scripts/check-encapsulation.mjs`**（= `pnpm check:encapsulation`; ルート薄化に加えて **`class` / `interface` 禁止**の TS 設計ゲートを含む）→ Worker typecheck → LIFF typecheck → LIFF 本番 build（dummy `VITE_API_URL`）→ **`pnpm test`**（worker → web → sdk → liff）。
 
 **PR の CI**（`.github/workflows/ci.yml`）も **Biome の直後**に同じ `pnpm check:encapsulation` を実行する（TDD 中と同じ基準をマージ前に強制）。
 

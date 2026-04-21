@@ -5,8 +5,8 @@ import {
 } from './safe-api-base-url';
 
 export type AdminApiFetchBaseResult =
-  | { ok: true; fetchBase: string; origin: string }
-  | { ok: false; reason: string };
+  | Readonly<{ ok: true; fetchBase: string; origin: string }>
+  | Readonly<{ ok: false; reason: string }>;
 
 /**
  * Validates the browser base URL used by {@link fetchApi} (may include an `/api/...` prefix for

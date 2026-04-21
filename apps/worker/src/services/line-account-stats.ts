@@ -1,13 +1,13 @@
-export interface LineAccountStats {
+export type LineAccountStats = Readonly<{
   friendCount: number;
   activeScenarios: number;
   messagesThisMonth: number;
-}
+}>;
 
-interface AggregateRow {
+type AggregateRow = Readonly<{
   lineAccountId: string | null;
   count: number;
-}
+}>;
 
 const EMPTY_STATS: LineAccountStats = {
   friendCount: 0,

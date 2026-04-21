@@ -1,13 +1,13 @@
-interface LineLoginAccountLike {
+type LineLoginAccountLike = Readonly<{
   login_channel_id: string | null;
-}
+}>;
 
-export interface VerifiedLineIdToken {
+export type VerifiedLineIdToken = Readonly<{
   sub: string;
   email?: string;
   name?: string;
   picture?: string;
-}
+}>;
 
 export function collectLineLoginChannelIds(
   defaultChannelId: string,

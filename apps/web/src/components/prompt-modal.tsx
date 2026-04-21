@@ -2,16 +2,16 @@
 
 import { useState } from 'react';
 
-export interface PromptTemplate {
+export type PromptTemplate = Readonly<{
   title: string;
   prompt: string;
-}
+}>;
 
-interface PromptModalProps {
+type PromptModalProps = Readonly<{
   isOpen: boolean;
   onClose: () => void;
   prompts: PromptTemplate[];
-}
+}>;
 
 export default function PromptModal({ isOpen, onClose, prompts }: PromptModalProps) {
   const [expandedIndex, setExpandedIndex] = useState<number | null>(null);

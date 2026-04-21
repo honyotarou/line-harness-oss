@@ -289,14 +289,14 @@ chats.post('/api/chats/:id/send', async (c) => {
     if (!friend) return c.json({ success: false, error: 'Friend not found' }, 404);
 
     // LINE APIでメッセージ送信
-    const { LineClient } = await import('@line-crm/line-sdk');
+    const { createLineClient } = await import('@line-crm/line-sdk');
     const accessToken = await resolveLineAccessTokenForFriend(
       c.env.DB,
       c.env.LINE_CHANNEL_ACCESS_TOKEN,
       friend.id,
       lineAccountDbOptions(c.env),
     );
-    const lineClient = new LineClient(accessToken);
+    const lineClient = createLineClient(accessToken);
     const messageType = body.messageType ?? 'text';
 
     if (messageType === 'text') {

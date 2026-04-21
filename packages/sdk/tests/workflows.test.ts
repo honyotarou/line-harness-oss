@@ -1,5 +1,5 @@
 import { describe, it, expect, vi } from 'vitest';
-import { Workflows } from '../src/workflows.js';
+import { createWorkflows } from '../src/workflows.js';
 import type { FriendsResource } from '../src/resources/friends.js';
 import type { ScenariosResource } from '../src/resources/scenarios.js';
 import type { BroadcastsResource } from '../src/resources/broadcasts.js';
@@ -12,7 +12,10 @@ function mockFriends(): FriendsResource {
     addTag: vi.fn(),
     removeTag: vi.fn(),
     sendMessage: vi.fn(),
-  } as unknown as FriendsResource;
+    setMetadata: vi.fn(),
+    setRichMenu: vi.fn(),
+    removeRichMenu: vi.fn(),
+  };
 }
 
 function mockScenarios(): ScenariosResource {
@@ -26,7 +29,7 @@ function mockScenarios(): ScenariosResource {
     updateStep: vi.fn(),
     deleteStep: vi.fn(),
     enroll: vi.fn(),
-  } as unknown as ScenariosResource;
+  };
 }
 
 function mockBroadcasts(): BroadcastsResource {
@@ -37,7 +40,8 @@ function mockBroadcasts(): BroadcastsResource {
     update: vi.fn(),
     delete: vi.fn(),
     send: vi.fn(),
-  } as unknown as BroadcastsResource;
+    sendToSegment: vi.fn(),
+  };
 }
 
 describe('Workflows', () => {
@@ -45,7 +49,7 @@ describe('Workflows', () => {
     const friends = mockFriends();
     const scenarios = mockScenarios();
     const broadcasts = mockBroadcasts();
-    const workflows = new Workflows(friends, scenarios, broadcasts);
+    const workflows = createWorkflows({ friends, scenarios, broadcasts });
 
     const createdScenario = { id: 'sc-1', name: 'Test', triggerType: 'friend_add', isActive: true };
     (scenarios.create as any).mockResolvedValue(createdScenario);
@@ -78,7 +82,7 @@ describe('Workflows', () => {
     const friends = mockFriends();
     const scenarios = mockScenarios();
     const broadcasts = mockBroadcasts();
-    const workflows = new Workflows(friends, scenarios, broadcasts);
+    const workflows = createWorkflows({ friends, scenarios, broadcasts });
 
     const created = { id: 'bc-1', title: 'Hello', status: 'draft' };
     const sent = { ...created, status: 'sent' };
@@ -101,7 +105,7 @@ describe('Workflows', () => {
     const friends = mockFriends();
     const scenarios = mockScenarios();
     const broadcasts = mockBroadcasts();
-    const workflows = new Workflows(friends, scenarios, broadcasts);
+    const workflows = createWorkflows({ friends, scenarios, broadcasts });
 
     const created = { id: 'bc-2', status: 'draft' };
     const sent = { ...created, status: 'sent' };
@@ -124,7 +128,7 @@ describe('Workflows', () => {
     const friends = mockFriends();
     const scenarios = mockScenarios();
     const broadcasts = mockBroadcasts();
-    const workflows = new Workflows(friends, scenarios, broadcasts);
+    const workflows = createWorkflows({ friends, scenarios, broadcasts });
 
     (friends.sendMessage as any).mockResolvedValue({ messageId: 'msg-1' });
 
@@ -138,7 +142,7 @@ describe('Workflows', () => {
     const friends = mockFriends();
     const scenarios = mockScenarios();
     const broadcasts = mockBroadcasts();
-    const workflows = new Workflows(friends, scenarios, broadcasts);
+    const workflows = createWorkflows({ friends, scenarios, broadcasts });
 
     const flexJson = '{"type":"bubble","body":{"type":"box","layout":"vertical","contents":[]}}';
     (friends.sendMessage as any).mockResolvedValue({ messageId: 'msg-2' });

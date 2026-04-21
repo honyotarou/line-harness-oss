@@ -8,7 +8,7 @@ const DEFAULT_RETRY_BASE_MS = 5 * 60_000;
 
 type DeliveryOperationStatus = 'pending' | 'sent' | 'failed';
 
-interface DeliveryOperationRow {
+type DeliveryOperationRow = Readonly<{
   id: string;
   idempotency_key: string;
   status: DeliveryOperationStatus;
@@ -16,9 +16,9 @@ interface DeliveryOperationRow {
   next_retry_at: string | null;
   last_error: string | null;
   metadata: string | null;
-}
+}>;
 
-export interface DeliveryAttemptInput {
+export type DeliveryAttemptInput = Readonly<{
   idempotencyKey: string;
   jobName: string;
   sourceType: string;
@@ -26,11 +26,12 @@ export interface DeliveryAttemptInput {
   friendId?: string | null;
   lineAccountId?: string | null;
   metadata?: Record<string, unknown> | string | null;
-}
+}>;
 
-export interface DeliveryFailureInput extends DeliveryAttemptInput {
-  error: unknown;
-}
+export type DeliveryFailureInput = DeliveryAttemptInput &
+  Readonly<{
+    error: unknown;
+  }>;
 
 function normalizeErrorMessage(error: unknown): string {
   if (error instanceof Error && error.message) {

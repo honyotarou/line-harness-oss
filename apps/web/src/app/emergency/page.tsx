@@ -7,13 +7,13 @@ import CcPromptButton from '@/components/cc-prompt-button';
 
 type ActionStatus = 'idle' | 'confirming' | 'executing' | 'done' | 'error';
 
-interface EmergencyAction {
+type EmergencyAction = Readonly<{
   id: string;
   label: string;
   description: string;
   status: ActionStatus;
   errorMessage?: string;
-}
+}>;
 
 const emergencyPrompts = [
   {

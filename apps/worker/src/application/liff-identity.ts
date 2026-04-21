@@ -52,7 +52,7 @@ export function emailsMatchForRecovery(a: string | null, b: string | null): bool
 export const BOOKING_PHONE_FALLBACK_MESSAGE =
   'オンラインで予約を完了できない場合は、お電話にてご連絡ください。';
 
-export type LiffLineUserBody = { lineUserId: string; idToken: string };
+export type LiffLineUserBody = Readonly<{ lineUserId: string; idToken: string }>;
 
 export type LiffFriendFromLineUserResult =
   | { ok: true; friend: NonNullable<Awaited<ReturnType<typeof getFriendByLineUserId>>> }

@@ -198,6 +198,31 @@ CREATE TABLE IF NOT EXISTS line_accounts (
 CREATE INDEX IF NOT EXISTS idx_line_accounts_login_channel_id ON line_accounts (login_channel_id);
 
 -- ============================================================
+-- Traffic Pools (LIFF entry distribution via /pool/:slug)
+-- ============================================================
+CREATE TABLE IF NOT EXISTS traffic_pools (
+  id                 TEXT PRIMARY KEY,
+  slug               TEXT UNIQUE NOT NULL,
+  name               TEXT NOT NULL,
+  active_account_id  TEXT NOT NULL REFERENCES line_accounts (id),
+  is_active          INTEGER NOT NULL DEFAULT 1,
+  created_at         TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%f', 'now', '+9 hours')),
+  updated_at         TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%f', 'now', '+9 hours'))
+);
+
+CREATE TABLE IF NOT EXISTS pool_accounts (
+  id              TEXT PRIMARY KEY,
+  pool_id         TEXT NOT NULL REFERENCES traffic_pools (id) ON DELETE CASCADE,
+  line_account_id TEXT NOT NULL REFERENCES line_accounts (id) ON DELETE CASCADE,
+  is_active       INTEGER NOT NULL DEFAULT 1,
+  created_at      TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%f', 'now', '+9 hours')),
+  UNIQUE (pool_id, line_account_id)
+);
+
+CREATE INDEX IF NOT EXISTS idx_pool_accounts_pool_id ON pool_accounts (pool_id);
+CREATE INDEX IF NOT EXISTS idx_pool_accounts_line_account_id ON pool_accounts (line_account_id);
+
+-- ============================================================
 -- Round 2: Entry Routes / Ref Attribution
 -- ============================================================
 CREATE TABLE IF NOT EXISTS entry_routes (
@@ -601,15 +626,17 @@ CREATE INDEX IF NOT EXISTS idx_automation_logs_automation ON automation_logs (au
 -- Round 3: Tracked Links
 -- ============================================================
 CREATE TABLE IF NOT EXISTS tracked_links (
-  id           TEXT PRIMARY KEY,
-  name         TEXT NOT NULL,
-  original_url TEXT NOT NULL,
-  tag_id       TEXT REFERENCES tags (id) ON DELETE SET NULL,
-  scenario_id  TEXT REFERENCES scenarios (id) ON DELETE SET NULL,
-  is_active    INTEGER NOT NULL DEFAULT 1,
-  click_count  INTEGER NOT NULL DEFAULT 0,
-  created_at   TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%f', 'now', '+9 hours')),
-  updated_at   TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%f', 'now', '+9 hours'))
+  id                   TEXT PRIMARY KEY,
+  name                 TEXT NOT NULL,
+  original_url         TEXT NOT NULL,
+  tag_id               TEXT REFERENCES tags (id) ON DELETE SET NULL,
+  scenario_id          TEXT REFERENCES scenarios (id) ON DELETE SET NULL,
+  intro_template_id    TEXT REFERENCES templates (id) ON DELETE SET NULL,
+  reward_template_id   TEXT REFERENCES templates (id) ON DELETE SET NULL,
+  is_active            INTEGER NOT NULL DEFAULT 1,
+  click_count          INTEGER NOT NULL DEFAULT 0,
+  created_at           TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%f', 'now', '+9 hours')),
+  updated_at           TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%f', 'now', '+9 hours'))
 );
 
 CREATE TABLE IF NOT EXISTS link_clicks (
@@ -769,3 +796,38 @@ CREATE TABLE IF NOT EXISTS incoming_webhook_processed_payloads (
 
 CREATE INDEX IF NOT EXISTS idx_incoming_webhook_payload_dedup_received_at_ms
   ON incoming_webhook_processed_payloads (received_at_ms);
+
+-- ============================================================
+-- Media assets (R2 object key + public unguessable token for LINE URLs)
+-- ============================================================
+CREATE TABLE IF NOT EXISTS media_assets (
+  id               TEXT PRIMARY KEY,
+  line_account_id  TEXT REFERENCES line_accounts (id) ON DELETE SET NULL,
+  r2_key           TEXT NOT NULL,
+  mime_type        TEXT NOT NULL,
+  byte_size        INTEGER NOT NULL,
+  public_token     TEXT NOT NULL UNIQUE,
+  created_at       TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%f', 'now', '+9 hours'))
+);
+
+CREATE INDEX IF NOT EXISTS idx_media_assets_line_account_id ON media_assets (line_account_id);
+CREATE INDEX IF NOT EXISTS idx_media_assets_public_token ON media_assets (public_token);
+
+-- ============================================================
+-- Ad platform connections (registry; live API calls opt-in via env in Worker)
+-- ============================================================
+CREATE TABLE IF NOT EXISTS ad_platform_connections (
+  id                   TEXT PRIMARY KEY,
+  provider             TEXT NOT NULL CHECK (provider IN ('meta', 'google', 'tiktok', 'x')),
+  name                 TEXT NOT NULL,
+  line_account_id      TEXT REFERENCES line_accounts (id) ON DELETE SET NULL,
+  external_account_ref TEXT,
+  credentials_enc      TEXT,
+  metadata_json        TEXT NOT NULL DEFAULT '{}',
+  is_active            INTEGER NOT NULL DEFAULT 1,
+  created_at           TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%f', 'now', '+9 hours')),
+  updated_at           TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%f', 'now', '+9 hours'))
+);
+
+CREATE INDEX IF NOT EXISTS idx_ad_platform_connections_line_account_id ON ad_platform_connections (line_account_id);
+CREATE INDEX IF NOT EXISTS idx_ad_platform_connections_provider ON ad_platform_connections (provider);

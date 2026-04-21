@@ -170,6 +170,7 @@ describe('攻撃者サイクル 151–200（セキュリティバッチ）', () 
         utmCampaign: '',
         utmContent: '',
         utmTerm: '',
+        pool: '',
         account: '',
         uid: 'u',
       },
@@ -316,12 +317,12 @@ describe('攻撃者サイクル 151–200（セキュリティバッチ）', () 
   });
 
   it('cycle 177: readTextBodyWithLimit rejects one byte over limit', async () => {
-    const { BodyTooLargeError, readTextBodyWithLimit } = await import(
+    const { isBodyTooLargeError, readTextBodyWithLimit } = await import(
       '../../src/services/request-body.js'
     );
     const body = 'b'.repeat(101);
     const req = new Request('http://x/', { method: 'POST', body });
-    await expect(readTextBodyWithLimit(req, 100)).rejects.toBeInstanceOf(BodyTooLargeError);
+    await expect(readTextBodyWithLimit(req, 100)).rejects.toSatisfy(isBodyTooLargeError);
   });
 
   it('cycle 178: verifySignedPayload rejects non-hex character in signature', async () => {
@@ -420,6 +421,7 @@ describe('攻撃者サイクル 151–200（セキュリティバッチ）', () 
         utmCampaign: '',
         utmContent: '',
         utmTerm: '',
+        pool: '',
         account: '',
         uid: '',
       },
@@ -500,7 +502,7 @@ describe('攻撃者サイクル 151–200（セキュリティバッチ）', () 
   });
 
   it('cycle 199: BodyTooLargeError exposes limitBytes', async () => {
-    const { BodyTooLargeError, readTextBodyWithLimit } = await import(
+    const { isBodyTooLargeError, readTextBodyWithLimit } = await import(
       '../../src/services/request-body.js'
     );
     const req = new Request('http://x/', {
@@ -512,6 +514,7 @@ describe('攻撃者サイクル 151–200（セキュリティバッチ）', () 
       limitBytes: 10,
       name: 'BodyTooLargeError',
     });
+    await expect(readTextBodyWithLimit(req, 10)).rejects.toSatisfy(isBodyTooLargeError);
   });
 
   it('cycle 200: parseStringArrayJson rejects array with boolean element', async () => {

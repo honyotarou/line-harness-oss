@@ -36,7 +36,7 @@ async function storedMsg(type: string, content: string, opts?: { flexAltFallback
 
 describe('攻撃者サイクル 101–150（セキュリティバッチ）', () => {
   it('cycle 101: readJsonBodyWithLimit throws on invalid JSON', async () => {
-    const { InvalidJsonBodyError, readJsonBodyWithLimit } = await import(
+    const { isInvalidJsonBodyError, readJsonBodyWithLimit } = await import(
       '../../src/services/request-body.js'
     );
     const request = new Request('http://localhost/test', {
@@ -44,11 +44,11 @@ describe('攻撃者サイクル 101–150（セキュリティバッチ）', () 
       headers: { 'Content-Type': 'application/json' },
       body: '{not-json',
     });
-    await expect(readJsonBodyWithLimit(request, 1024)).rejects.toBeInstanceOf(InvalidJsonBodyError);
+    await expect(readJsonBodyWithLimit(request, 1024)).rejects.toSatisfy(isInvalidJsonBodyError);
   });
 
   it('cycle 102: readJsonBodyWithLimit throws on empty body', async () => {
-    const { InvalidJsonBodyError, readJsonBodyWithLimit } = await import(
+    const { isInvalidJsonBodyError, readJsonBodyWithLimit } = await import(
       '../../src/services/request-body.js'
     );
     const request = new Request('http://localhost/test', {
@@ -56,11 +56,11 @@ describe('攻撃者サイクル 101–150（セキュリティバッチ）', () 
       headers: { 'Content-Type': 'application/json' },
       body: '',
     });
-    await expect(readJsonBodyWithLimit(request, 1024)).rejects.toBeInstanceOf(InvalidJsonBodyError);
+    await expect(readJsonBodyWithLimit(request, 1024)).rejects.toSatisfy(isInvalidJsonBodyError);
   });
 
   it('cycle 103: readTextBodyWithLimit rejects UTF-8 body over byte limit', async () => {
-    const { BodyTooLargeError, readTextBodyWithLimit } = await import(
+    const { isBodyTooLargeError, readTextBodyWithLimit } = await import(
       '../../src/services/request-body.js'
     );
     const text = 'あ'.repeat(20);
@@ -68,11 +68,11 @@ describe('攻撃者サイクル 101–150（セキュリティバッチ）', () 
       method: 'POST',
       body: text,
     });
-    await expect(readTextBodyWithLimit(request, 50)).rejects.toBeInstanceOf(BodyTooLargeError);
+    await expect(readTextBodyWithLimit(request, 50)).rejects.toSatisfy(isBodyTooLargeError);
   });
 
   it('cycle 104: negative Content-Length is ignored; actual body still size-checked', async () => {
-    const { BodyTooLargeError, readTextBodyWithLimit } = await import(
+    const { isBodyTooLargeError, readTextBodyWithLimit } = await import(
       '../../src/services/request-body.js'
     );
     const body = 'x'.repeat(200);
@@ -81,7 +81,7 @@ describe('攻撃者サイクル 101–150（セキュリティバッチ）', () 
       headers: { 'Content-Length': '-1' },
       body,
     });
-    await expect(readTextBodyWithLimit(request, 100)).rejects.toBeInstanceOf(BodyTooLargeError);
+    await expect(readTextBodyWithLimit(request, 100)).rejects.toSatisfy(isBodyTooLargeError);
   });
 
   it('cycle 105: clampListLimit Infinity string uses fallback', async () => {
@@ -299,7 +299,7 @@ describe('攻撃者サイクル 101–150（セキュリティバッチ）', () 
   });
 
   it('cycle 134: invalid Content-Length header is ignored for early reject', async () => {
-    const { BodyTooLargeError, readTextBodyWithLimit } = await import(
+    const { isBodyTooLargeError, readTextBodyWithLimit } = await import(
       '../../src/services/request-body.js'
     );
     const body = 'y'.repeat(50);
@@ -308,7 +308,7 @@ describe('攻撃者サイクル 101–150（セキュリティバッチ）', () 
       headers: { 'Content-Length': 'not-a-number' },
       body,
     });
-    await expect(readTextBodyWithLimit(request, 40)).rejects.toBeInstanceOf(BodyTooLargeError);
+    await expect(readTextBodyWithLimit(request, 40)).rejects.toSatisfy(isBodyTooLargeError);
   });
 
   it('cycle 135: isSafeHttpsOutboundUrl rejects private 10.0.0.0/8 with explicit port', async () => {
@@ -359,9 +359,9 @@ describe('攻撃者サイクル 101–150（セキュリティバッチ）', () 
     expect(d).toBeLessThan(10_000);
   });
 
-  it('cycle 141: StealthRateLimiter allows calls under the cap without long wait', async () => {
-    const { StealthRateLimiter } = await import('../../src/services/stealth.js');
-    const limiter = new StealthRateLimiter(5, 60_000);
+  it('cycle 141: createStealthRateLimiter allows calls under the cap without long wait', async () => {
+    const { createStealthRateLimiter } = await import('../../src/services/stealth.js');
+    const limiter = createStealthRateLimiter({ maxCallsPerWindow: 5, windowMs: 60_000 });
     await limiter.waitForSlot();
     await limiter.waitForSlot();
     await expect(limiter.waitForSlot()).resolves.toBeUndefined();

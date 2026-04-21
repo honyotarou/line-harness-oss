@@ -26,22 +26,22 @@ const ccPrompts = [
   },
 ];
 
-interface DashboardStats {
+type DashboardStats = Readonly<{
   friendCount: number | null;
   activeScenarioCount: number | null;
   broadcastCount: number | null;
   templateCount: number | null;
   automationCount: number | null;
   scoringRuleCount: number | null;
-}
+}>;
 
-interface StatCardProps {
+type StatCardProps = Readonly<{
   title: string;
   value: number | null;
   loading: boolean;
   icon: React.ReactNode;
   href: string;
-}
+}>;
 
 function StatCard({ title, value, loading, icon, href }: StatCardProps) {
   return (

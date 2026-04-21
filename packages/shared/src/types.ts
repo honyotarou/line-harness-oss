@@ -19,7 +19,7 @@ export type BroadcastId = import('./brand').Branded<string, 'BroadcastId'>;
 export type MessageLogId = import('./brand').Branded<string, 'MessageLogId'>;
 export type LineAccountId = import('./brand').Branded<string, 'LineAccountId'>;
 
-export interface Friend {
+export type Friend = Readonly<{
   /** 主キー (UUIDv4) */
   id: string;
   /** LINE ユーザーID */
@@ -47,12 +47,12 @@ export interface Friend {
   createdAt: string;
   /** 更新日時 (ISO 8601) */
   updatedAt: string;
-}
+}>;
 
 // -----------------------------------------------------------------------------
 // タグ (Tag)
 // -----------------------------------------------------------------------------
-export interface Tag {
+export type Tag = Readonly<{
   /** 主キー (UUIDv4) */
   id: string;
   /** タグ名 */
@@ -61,19 +61,19 @@ export interface Tag {
   color: string;
   /** 作成日時 (ISO 8601) */
   createdAt: string;
-}
+}>;
 
 // -----------------------------------------------------------------------------
 // 友だち×タグ 中間テーブル (FriendTag)
 // -----------------------------------------------------------------------------
-export interface FriendTag {
+export type FriendTag = Readonly<{
   /** 友だちID */
   friendId: string;
   /** タグID */
   tagId: string;
   /** 割り当て日時 (ISO 8601) */
   assignedAt: string;
-}
+}>;
 
 // -----------------------------------------------------------------------------
 // シナリオ (Scenario)
@@ -82,7 +82,7 @@ export interface FriendTag {
 /** シナリオのトリガー種別 */
 export type ScenarioTriggerType = 'friend_add' | 'tag_added' | 'manual';
 
-export interface Scenario {
+export type Scenario = Readonly<{
   /** 主キー (UUIDv4) */
   id: string;
   /** シナリオ名 */
@@ -101,7 +101,7 @@ export interface Scenario {
   createdAt: string;
   /** 更新日時 (ISO 8601) */
   updatedAt: string;
-}
+}>;
 
 // -----------------------------------------------------------------------------
 // シナリオステップ (ScenarioStep)
@@ -110,7 +110,7 @@ export interface Scenario {
 /** メッセージ種別 */
 export type MessageType = 'text' | 'image' | 'flex';
 
-export interface ScenarioStep {
+export type ScenarioStep = Readonly<{
   /** 主キー (UUIDv4) */
   id: string;
   /** 所属するシナリオID */
@@ -125,7 +125,7 @@ export interface ScenarioStep {
   messageContent: string;
   /** 作成日時 (ISO 8601) */
   createdAt: string;
-}
+}>;
 
 // -----------------------------------------------------------------------------
 // 友だち×シナリオ 進捗テーブル (FriendScenario)
@@ -134,7 +134,7 @@ export interface ScenarioStep {
 /** シナリオ配信ステータス */
 export type FriendScenarioStatus = 'active' | 'paused' | 'completed';
 
-export interface FriendScenario {
+export type FriendScenario = Readonly<{
   /** 主キー (UUIDv4) */
   id: string;
   /** 友だちID */
@@ -151,7 +151,7 @@ export interface FriendScenario {
   nextDeliveryAt: string | null;
   /** 更新日時 (ISO 8601) */
   updatedAt: string;
-}
+}>;
 
 // -----------------------------------------------------------------------------
 // 一斉配信 (Broadcast)
@@ -163,7 +163,7 @@ export type BroadcastTargetType = 'all' | 'tag';
 /** 配信ステータス */
 export type BroadcastStatus = 'draft' | 'scheduled' | 'sending' | 'sent';
 
-export interface Broadcast {
+export type Broadcast = Readonly<{
   /** 主キー (UUIDv4) */
   id: string;
   /** 配信タイトル (管理用ラベル) */
@@ -190,7 +190,7 @@ export interface Broadcast {
   successCount: number;
   /** 作成日時 (ISO 8601) */
   createdAt: string;
-}
+}>;
 
 // -----------------------------------------------------------------------------
 // メッセージログ (MessageLog)
@@ -199,7 +199,7 @@ export interface Broadcast {
 /** メッセージの方向 */
 export type MessageDirection = 'incoming' | 'outgoing';
 
-export interface MessageLog {
+export type MessageLog = Readonly<{
   /** 主キー (UUIDv4) */
   id: string;
   /** 友だちID */
@@ -216,7 +216,7 @@ export interface MessageLog {
   scenarioStepId: string | null;
   /** 作成日時 (ISO 8601) */
   createdAt: string;
-}
+}>;
 
 // -----------------------------------------------------------------------------
 // 自動返信 (AutoReply)
@@ -225,7 +225,7 @@ export interface MessageLog {
 /** キーワードマッチ種別 */
 export type AutoReplyMatchType = 'exact' | 'contains';
 
-export interface AutoReply {
+export type AutoReply = Readonly<{
   /** 主キー (UUIDv4) */
   id: string;
   /** マッチさせるキーワード */
@@ -240,7 +240,7 @@ export interface AutoReply {
   isActive: boolean;
   /** 作成日時 (ISO 8601) */
   createdAt: string;
-}
+}>;
 
 // -----------------------------------------------------------------------------
 // 管理ユーザー (AdminUser)
@@ -250,7 +250,7 @@ export interface AutoReply {
  * 管理ユーザー (内部用 — パスワードハッシュを含む)
  * ※ API レスポンスとして直接返してはならない。フロントへは AdminUserPublic を使う。
  */
-export interface AdminUser {
+export type AdminUser = Readonly<{
   /** 主キー (UUIDv4) */
   id: string;
   /** メールアドレス */
@@ -259,7 +259,7 @@ export interface AdminUser {
   passwordHash: string;
   /** 作成日時 (ISO 8601) */
   createdAt: string;
-}
+}>;
 
 /**
  * 管理ユーザー (公開用 — パスワードハッシュを除いたもの)
@@ -271,7 +271,7 @@ export type AdminUserPublic = Omit<AdminUser, 'passwordHash'>;
 // 内部ユーザー (User) — UUID Cross-Account System
 // -----------------------------------------------------------------------------
 
-export interface User {
+export type User = Readonly<{
   /** 主キー (UUIDv4) — 内部UUID */
   id: string;
   /** メールアドレス (識別子) */
@@ -286,13 +286,13 @@ export interface User {
   createdAt: string;
   /** 更新日時 (ISO 8601) */
   updatedAt: string;
-}
+}>;
 
 // -----------------------------------------------------------------------------
 // LINE アカウント (LineAccount) — マルチアカウント管理
 // -----------------------------------------------------------------------------
 
-export interface LineAccount {
+export type LineAccount = Readonly<{
   /** 主キー (UUIDv4) */
   id: string;
   /** LINE Channel ID */
@@ -309,13 +309,13 @@ export interface LineAccount {
   createdAt: string;
   /** 更新日時 (ISO 8601) */
   updatedAt: string;
-}
+}>;
 
 // -----------------------------------------------------------------------------
 // LINE 友だちリンク (LineFriend) — LINE userId ↔ 内部UUID マッピング
 // -----------------------------------------------------------------------------
 
-export interface LineFriend {
+export type LineFriend = Readonly<{
   /** 主キー (UUIDv4) */
   id: string;
   /** LINE ユーザーID (アカウントごとに異なる) */
@@ -334,13 +334,13 @@ export interface LineFriend {
   createdAt: string;
   /** 更新日時 (ISO 8601) */
   updatedAt: string;
-}
+}>;
 
 // -----------------------------------------------------------------------------
 // コンバージョンポイント (ConversionPoint) — CV計測
 // -----------------------------------------------------------------------------
 
-export interface ConversionPoint {
+export type ConversionPoint = Readonly<{
   /** 主キー (UUIDv4) */
   id: string;
   /** CV名 */
@@ -351,13 +351,13 @@ export interface ConversionPoint {
   value: number | null;
   /** 作成日時 (ISO 8601) */
   createdAt: string;
-}
+}>;
 
 // -----------------------------------------------------------------------------
 // コンバージョンイベント (ConversionEvent) — CV記録
 // -----------------------------------------------------------------------------
 
-export interface ConversionEvent {
+export type ConversionEvent = Readonly<{
   /** 主キー (UUIDv4) */
   id: string;
   /** コンバージョンポイントID */
@@ -372,13 +372,13 @@ export interface ConversionEvent {
   metadata: string | null;
   /** 作成日時 (ISO 8601) */
   createdAt: string;
-}
+}>;
 
 // -----------------------------------------------------------------------------
 // アフィリエイト (Affiliate) — アフィリエイト管理
 // -----------------------------------------------------------------------------
 
-export interface Affiliate {
+export type Affiliate = Readonly<{
   /** 主キー (UUIDv4) */
   id: string;
   /** アフィリエイト名 */
@@ -391,13 +391,13 @@ export interface Affiliate {
   isActive: boolean;
   /** 作成日時 (ISO 8601) */
   createdAt: string;
-}
+}>;
 
 // -----------------------------------------------------------------------------
 // アフィリエイトクリック (AffiliateClick) — クリック記録
 // -----------------------------------------------------------------------------
 
-export interface AffiliateClick {
+export type AffiliateClick = Readonly<{
   /** 主キー (UUIDv4) */
   id: string;
   /** アフィリエイトID */
@@ -408,13 +408,13 @@ export interface AffiliateClick {
   ipAddress: string | null;
   /** 作成日時 (ISO 8601) */
   createdAt: string;
-}
+}>;
 
 // -----------------------------------------------------------------------------
 // 受信Webhook (IncomingWebhook)
 // -----------------------------------------------------------------------------
 
-export interface IncomingWebhook {
+export type IncomingWebhook = Readonly<{
   id: string;
   name: string;
   sourceType: string;
@@ -422,13 +422,13 @@ export interface IncomingWebhook {
   isActive: boolean;
   createdAt: string;
   updatedAt: string;
-}
+}>;
 
 // -----------------------------------------------------------------------------
 // 送信Webhook (OutgoingWebhook)
 // -----------------------------------------------------------------------------
 
-export interface OutgoingWebhook {
+export type OutgoingWebhook = Readonly<{
   id: string;
   name: string;
   url: string;
@@ -437,22 +437,22 @@ export interface OutgoingWebhook {
   isActive: boolean;
   createdAt: string;
   updatedAt: string;
-}
+}>;
 
 // -----------------------------------------------------------------------------
 // Google Calendar 連携
 // -----------------------------------------------------------------------------
 
-export interface GoogleCalendarConnection {
+export type GoogleCalendarConnection = Readonly<{
   id: string;
   calendarId: string;
   authType: string;
   isActive: boolean;
   createdAt: string;
   updatedAt: string;
-}
+}>;
 
-export interface CalendarBooking {
+export type CalendarBooking = Readonly<{
   id: string;
   connectionId: string;
   friendId: string | null;
@@ -464,13 +464,13 @@ export interface CalendarBooking {
   metadata: string | null;
   createdAt: string;
   updatedAt: string;
-}
+}>;
 
 // -----------------------------------------------------------------------------
 // リマインダ (Reminder)
 // -----------------------------------------------------------------------------
 
-export interface Reminder {
+export type Reminder = Readonly<{
   id: string;
   name: string;
   description: string | null;
@@ -478,18 +478,18 @@ export interface Reminder {
   lineAccountId: string | null;
   createdAt: string;
   updatedAt: string;
-}
+}>;
 
-export interface ReminderStep {
+export type ReminderStep = Readonly<{
   id: string;
   reminderId: string;
   offsetMinutes: number;
   messageType: MessageType;
   messageContent: string;
   createdAt: string;
-}
+}>;
 
-export interface FriendReminder {
+export type FriendReminder = Readonly<{
   id: string;
   friendId: string;
   reminderId: string;
@@ -497,13 +497,13 @@ export interface FriendReminder {
   status: 'active' | 'completed' | 'cancelled';
   createdAt: string;
   updatedAt: string;
-}
+}>;
 
 // -----------------------------------------------------------------------------
 // スコアリング (Lead Scoring)
 // -----------------------------------------------------------------------------
 
-export interface ScoringRule {
+export type ScoringRule = Readonly<{
   id: string;
   name: string;
   eventType: string;
@@ -511,22 +511,22 @@ export interface ScoringRule {
   isActive: boolean;
   createdAt: string;
   updatedAt: string;
-}
+}>;
 
-export interface FriendScore {
+export type FriendScore = Readonly<{
   id: string;
   friendId: string;
   scoringRuleId: string | null;
   scoreChange: number;
   reason: string | null;
   createdAt: string;
-}
+}>;
 
 // -----------------------------------------------------------------------------
 // テンプレート (Template)
 // -----------------------------------------------------------------------------
 
-export interface Template {
+export type Template = Readonly<{
   id: string;
   name: string;
   category: string;
@@ -534,13 +534,13 @@ export interface Template {
   messageContent: string;
   createdAt: string;
   updatedAt: string;
-}
+}>;
 
 // -----------------------------------------------------------------------------
 // オペレーター (Operator)
 // -----------------------------------------------------------------------------
 
-export interface Operator {
+export type Operator = Readonly<{
   id: string;
   name: string;
   email: string;
@@ -548,13 +548,13 @@ export interface Operator {
   isActive: boolean;
   createdAt: string;
   updatedAt: string;
-}
+}>;
 
 // -----------------------------------------------------------------------------
 // チャット (Chat)
 // -----------------------------------------------------------------------------
 
-export interface Chat {
+export type Chat = Readonly<{
   id: string;
   friendId: string;
   operatorId: string | null;
@@ -564,13 +564,13 @@ export interface Chat {
   lineAccountId: string | null;
   createdAt: string;
   updatedAt: string;
-}
+}>;
 
 // -----------------------------------------------------------------------------
 // 通知ルール (NotificationRule)
 // -----------------------------------------------------------------------------
 
-export interface NotificationRule {
+export type NotificationRule = Readonly<{
   id: string;
   name: string;
   eventType: string;
@@ -580,9 +580,9 @@ export interface NotificationRule {
   isActive: boolean;
   createdAt: string;
   updatedAt: string;
-}
+}>;
 
-export interface Notification {
+export type Notification = Readonly<{
   id: string;
   ruleId: string | null;
   eventType: string;
@@ -593,13 +593,13 @@ export interface Notification {
   lineAccountId: string | null;
   metadata: Record<string, unknown> | null;
   createdAt: string;
-}
+}>;
 
 // -----------------------------------------------------------------------------
 // Stripe イベント (StripeEvent)
 // -----------------------------------------------------------------------------
 
-export interface StripeEvent {
+export type StripeEvent = Readonly<{
   id: string;
   stripeEventId: string;
   eventType: string;
@@ -608,13 +608,13 @@ export interface StripeEvent {
   currency: string | null;
   metadata: string | null;
   processedAt: string;
-}
+}>;
 
 // -----------------------------------------------------------------------------
 // アカウントヘルス (AccountHealth)
 // -----------------------------------------------------------------------------
 
-export interface AccountHealthLog {
+export type AccountHealthLog = Readonly<{
   id: string;
   lineAccountId: string;
   errorCode: number | null;
@@ -622,9 +622,9 @@ export interface AccountHealthLog {
   checkPeriod: string;
   riskLevel: 'normal' | 'warning' | 'danger';
   createdAt: string;
-}
+}>;
 
-export interface AccountMigration {
+export type AccountMigration = Readonly<{
   id: string;
   fromAccountId: string;
   toAccountId: string;
@@ -633,7 +633,7 @@ export interface AccountMigration {
   totalCount: number;
   createdAt: string;
   completedAt: string | null;
-}
+}>;
 
 // -----------------------------------------------------------------------------
 // 自動化 (Automation)
@@ -647,7 +647,7 @@ export type AutomationEventType =
   | 'message_received'
   | 'calendar_booked';
 
-export interface AutomationAction {
+export type AutomationAction = Readonly<{
   type:
     | 'add_tag'
     | 'remove_tag'
@@ -656,9 +656,9 @@ export interface AutomationAction {
     | 'send_webhook'
     | 'switch_rich_menu';
   params: Record<string, unknown>;
-}
+}>;
 
-export interface Automation {
+export type Automation = Readonly<{
   id: string;
   name: string;
   description: string | null;
@@ -670,9 +670,9 @@ export interface Automation {
   lineAccountId: string | null;
   createdAt: string;
   updatedAt: string;
-}
+}>;
 
-export interface AutomationLog {
+export type AutomationLog = Readonly<{
   id: string;
   automationId: string;
   friendId: string | null;
@@ -680,7 +680,7 @@ export interface AutomationLog {
   actionsResult: string | null;
   status: 'success' | 'partial' | 'failed';
   createdAt: string;
-}
+}>;
 
 // =============================================================================
 // API レスポンスラッパー型
@@ -691,23 +691,23 @@ export interface AutomationLog {
  * 成功時は data を持ち、失敗時は error メッセージを持つ
  */
 export type ApiResponse<T> =
-  | {
+  | Readonly<{
       success: true;
       data: T;
-    }
-  | {
+    }>
+  | Readonly<{
       success: false;
       error: string;
       /** バリデーションエラー等の詳細 (任意) */
       details?: Record<string, string[]>;
-    };
+    }>;
 
 /**
  * ページネーション付き API レスポンス型
  * エラーハンドリングが必要な場合は ApiResponse<PaginatedResponse<T>> として使う。
  * 例: `ApiResponse<PaginatedResponse<Friend>>`
  */
-export interface PaginatedResponse<T> {
+export type PaginatedResponse<T> = Readonly<{
   /** データ一覧 */
   items: T[];
   /** 総件数 */
@@ -718,4 +718,4 @@ export interface PaginatedResponse<T> {
   limit: number;
   /** 次ページが存在するか */
   hasNextPage: boolean;
-}
+}>;

@@ -25,7 +25,7 @@ function jwtAudienceMatchesClaim(aud: unknown, expected: string): boolean {
   return false;
 }
 
-export type VerifyCloudflareAccessJwtInput = {
+export type VerifyCloudflareAccessJwtInput = Readonly<{
   jwt: string;
   teamDomain: string;
   /** Optional comma-separated emails (case-insensitive). When set, resolved principal email must match. */
@@ -33,7 +33,7 @@ export type VerifyCloudflareAccessJwtInput = {
   /** When set, JWT `aud` must equal this string (or include it when `aud` is an array). */
   expectedAudience?: string | undefined;
   fetchFn?: typeof fetch;
-};
+}>;
 
 const JWKS_CACHE_TTL_MS = 5 * 60 * 1000;
 /** Reject absurd JWKS payloads (cache-poisoning / DoS hardening). */
@@ -47,12 +47,12 @@ export function resetCloudflareAccessJwksCacheForTests(): void {
 }
 
 export type VerifyCloudflareAccessJwtResult =
-  | { ok: true; payload: Record<string, unknown> }
-  | { ok: false; reason: string };
+  | Readonly<{ ok: true; payload: Record<string, unknown> }>
+  | Readonly<{ ok: false; reason: string }>;
 
-interface CfCertsResponse {
+type CfCertsResponse = Readonly<{
   keys?: Array<Record<string, unknown>>;
-}
+}>;
 
 /**
  * Verifies the `Cf-Access-Jwt-Assertion` header using Cloudflare Access JWKS

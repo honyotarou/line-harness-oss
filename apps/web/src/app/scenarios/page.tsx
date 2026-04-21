@@ -38,13 +38,13 @@ const triggerOptions: { value: ScenarioTriggerType; label: string }[] = [
   { value: 'manual', label: '手動' },
 ];
 
-interface CreateFormState {
+type CreateFormState = Readonly<{
   name: string;
   description: string;
   triggerType: ScenarioTriggerType;
   triggerTagId: string;
   isActive: boolean;
-}
+}>;
 
 export default function ScenariosPage() {
   const { selectedAccountId } = useAccount();

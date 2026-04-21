@@ -1,8 +1,8 @@
 import { Hono } from 'hono';
-import { verifySignature, LineClient } from '@line-crm/line-sdk';
+import { verifySignature, createLineClient } from '@line-crm/line-sdk';
 import type { WebhookRequestBody } from '@line-crm/line-sdk';
 import type { Env } from '../index.js';
-import { BodyTooLargeError, readTextBodyWithLimit } from '../services/request-body.js';
+import { isBodyTooLargeError, readTextBodyWithLimit } from '../services/request-body.js';
 import { handleLineWebhookEvent } from '../application/line-webhook-handlers.js';
 import { enforceRateLimit } from '../services/request-rate-limit.js';
 import { prioritizeLineWebhookEvents } from '../services/line-webhook-event-order.js';
@@ -28,7 +28,7 @@ webhook.post('/webhook', async (c) => {
   try {
     rawBody = await readTextBodyWithLimit(c.req.raw, LINE_WEBHOOK_LIMIT_BYTES);
   } catch (err) {
-    if (err instanceof Error && err.name === 'BodyTooLargeError') {
+    if (isBodyTooLargeError(err)) {
       return c.json({ status: 'payload_too_large' }, 413);
     }
     console.error('Failed to read webhook body', err);
@@ -66,7 +66,7 @@ webhook.post('/webhook', async (c) => {
     return c.json({ status: 'ok' }, 200);
   }
 
-  const lineClient = new LineClient(channelAccessToken);
+  const lineClient = createLineClient(channelAccessToken);
 
   if (!Array.isArray(body.events)) {
     console.warn('LINE webhook: body.events is not an array');

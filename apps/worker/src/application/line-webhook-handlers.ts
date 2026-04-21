@@ -1,5 +1,4 @@
-import { LineClient } from '@line-crm/line-sdk';
-import type { WebhookEvent, TextEventMessage, PostbackEvent } from '@line-crm/line-sdk';
+import type { LineClient, WebhookEvent, TextEventMessage, PostbackEvent } from '@line-crm/line-sdk';
 import {
   upsertFriend,
   updateFriendFollowStatus,
