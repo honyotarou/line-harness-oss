@@ -38,6 +38,45 @@ describe('admin-access-proxy-worker fetch (upstream Access login → 502 JSON)',
     expect(globalThis.fetch).not.toHaveBeenCalled();
   });
 
+  it('returns 503 when UPSTREAM_API_ORIGIN is still the repo placeholder (misdeploy / unset GitHub secret)', async () => {
+    globalThis.fetch = vi.fn();
+    const res = await proxyFetch(
+      req('/api/lh-upstream/api/auth/access-bootstrap?returnTo=%2Flogin'),
+      {
+        ...baseEnv,
+        UPSTREAM_API_ORIGIN: 'https://YOUR_UPSTREAM_API_ORIGIN',
+      },
+    );
+    expect(res.status).toBe(503);
+    const body = await res.json();
+    expect(body.success).toBe(false);
+    expect(String(body.error)).toMatch(/UPSTREAM_API_ORIGIN/);
+    expect(String(body.error)).toMatch(/ADMIN_ACCESS_PROXY_UPSTREAM_ORIGIN/);
+    expect(globalThis.fetch).not.toHaveBeenCalled();
+  });
+
+  it('returns 503 when UPSTREAM_API_ORIGIN is empty', async () => {
+    globalThis.fetch = vi.fn();
+    const res = await proxyFetch(req(), { ...baseEnv, UPSTREAM_API_ORIGIN: '   ' });
+    expect(res.status).toBe(503);
+    expect(globalThis.fetch).not.toHaveBeenCalled();
+  });
+
+  it('allows http://127.0.0.1 upstream for local wrangler dev', async () => {
+    globalThis.fetch = vi.fn(async () => {
+      return new Response(JSON.stringify({ ok: true }), {
+        status: 200,
+        headers: { 'Content-Type': 'application/json' },
+      });
+    });
+    const res = await proxyFetch(req(), {
+      ...baseEnv,
+      UPSTREAM_API_ORIGIN: 'http://127.0.0.1:8787',
+    });
+    expect(res.status).toBe(200);
+    expect(globalThis.fetch).toHaveBeenCalled();
+  });
+
   it('maps upstream Access application login redirect to 502 JSON (not forwarded to browser)', async () => {
     globalThis.fetch = vi.fn(async () => {
       return new Response(null, {
