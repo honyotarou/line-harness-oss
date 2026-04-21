@@ -128,8 +128,11 @@ export default function BroadcastsPage() {
     setSegmentCount(null);
     try {
       const res = await api.broadcasts.segmentPreviewCount(opsBroadcastId.trim(), conditions);
-      if (res.success && res.data) setSegmentCount(res.data.count);
-      else setOpsError(typeof res.error === 'string' ? res.error : '人数取得に失敗しました');
+      if (!res.success) {
+        setOpsError(typeof res.error === 'string' ? res.error : '人数取得に失敗しました');
+      } else {
+        setSegmentCount(res.data.count);
+      }
     } catch {
       setOpsError('人数取得に失敗しました');
     } finally {
@@ -228,28 +231,35 @@ export default function BroadcastsPage() {
               ))}
             </Select>
           </label>
-          <Input
-            label="テスト送信先 friendId"
-            value={testFriendId}
-            onChange={(e) => setTestFriendId(e.target.value)}
-            placeholder="友だちの内部 ID"
-          />
+          <label className="block text-sm text-gray-600">
+            テスト送信先 friendId
+            <Input
+              className="mt-1 w-full"
+              value={testFriendId}
+              onChange={(e) => setTestFriendId(e.target.value)}
+              placeholder="友だちの内部 ID"
+            />
+          </label>
         </div>
-        <Input
-          label="X-Broadcast-Send-Secret（テスト送信・本番送信で必須の環境向け）"
-          type="password"
-          value={sendSecret}
-          onChange={(e) => setSendSecret(e.target.value)}
-          className="mt-3"
-          autoComplete="off"
-        />
-        <Textarea
-          label="セグメント conditions（JSON）"
-          value={segmentJson}
-          onChange={(e) => setSegmentJson(e.target.value)}
-          rows={5}
-          className="mt-3 font-mono text-xs"
-        />
+        <label className="block text-sm text-gray-600 mt-3">
+          X-Broadcast-Send-Secret（テスト送信・本番送信で必須の環境向け）
+          <Input
+            type="password"
+            value={sendSecret}
+            onChange={(e) => setSendSecret(e.target.value)}
+            className="mt-1 w-full"
+            autoComplete="off"
+          />
+        </label>
+        <label className="block text-sm text-gray-600 mt-3">
+          セグメント conditions（JSON）
+          <Textarea
+            value={segmentJson}
+            onChange={(e) => setSegmentJson(e.target.value)}
+            rows={5}
+            className="mt-1 w-full font-mono text-xs"
+          />
+        </label>
         <div className="mt-3 flex flex-wrap gap-2 items-center">
           <button
             type="button"

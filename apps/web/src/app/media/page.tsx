@@ -47,7 +47,7 @@ export default function MediaPage() {
         base64,
         lineAccountId: selectedAccountId || null,
       });
-      if (!res.success || !res.data) {
+      if (!res.success) {
         setError(typeof res.error === 'string' ? res.error : 'アップロードに失敗しました');
         return;
       }

@@ -34,8 +34,11 @@ export default function AdPlatformsPage() {
     setError('');
     try {
       const res = await api.adPlatforms.list({ accountId: selectedAccountId || undefined });
-      if (res.success && res.data) setRows(res.data);
-      else setError(typeof res.error === 'string' ? res.error : '一覧の取得に失敗しました');
+      if (!res.success) {
+        setError(typeof res.error === 'string' ? res.error : '一覧の取得に失敗しました');
+      } else {
+        setRows(res.data);
+      }
     } catch {
       setError('APIに接続できませんでした');
     } finally {
@@ -170,30 +173,44 @@ export default function AdPlatformsPage() {
                 ))}
               </Select>
             </label>
-            <Input
-              label="表示名"
-              value={form.name}
-              onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))}
-              required
-            />
+            <label className="block text-sm">
+              <span className="text-gray-600">表示名</span>
+              <Input
+                value={form.name}
+                onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))}
+                required
+                className="mt-1 w-full"
+              />
+            </label>
           </div>
-          <Input
-            label="外部アカウント参照（任意）"
-            value={form.externalAccountRef}
-            onChange={(e) => setForm((f) => ({ ...f, externalAccountRef: e.target.value }))}
-          />
-          <Textarea
-            label="credentialsEnc（任意・Worker / KMS で暗号化済み文字列を想定）"
-            value={form.credentialsEnc}
-            onChange={(e) => setForm((f) => ({ ...f, credentialsEnc: e.target.value }))}
-            rows={2}
-          />
-          <Textarea
-            label="metadata（JSON）"
-            value={form.metadataJson}
-            onChange={(e) => setForm((f) => ({ ...f, metadataJson: e.target.value }))}
-            rows={3}
-          />
+          <label className="block text-sm">
+            <span className="text-gray-600">外部アカウント参照（任意）</span>
+            <Input
+              value={form.externalAccountRef}
+              onChange={(e) => setForm((f) => ({ ...f, externalAccountRef: e.target.value }))}
+              className="mt-1 w-full"
+            />
+          </label>
+          <label className="block text-sm">
+            <span className="text-gray-600">
+              credentialsEnc（任意・Worker / KMS で暗号化済み文字列を想定）
+            </span>
+            <Textarea
+              value={form.credentialsEnc}
+              onChange={(e) => setForm((f) => ({ ...f, credentialsEnc: e.target.value }))}
+              rows={2}
+              className="mt-1 w-full"
+            />
+          </label>
+          <label className="block text-sm">
+            <span className="text-gray-600">metadata（JSON）</span>
+            <Textarea
+              value={form.metadataJson}
+              onChange={(e) => setForm((f) => ({ ...f, metadataJson: e.target.value }))}
+              rows={3}
+              className="mt-1 w-full"
+            />
+          </label>
           <button
             type="submit"
             className="px-4 py-2 text-sm font-medium text-white rounded-lg"

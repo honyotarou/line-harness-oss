@@ -33,8 +33,11 @@ export default function InboxPage() {
         limit: '100',
         offset: '0',
       });
-      if (res.success && res.data) setRows(res.data);
-      else setError(typeof res.error === 'string' ? res.error : 'スレッドの取得に失敗しました');
+      if (!res.success) {
+        setError(typeof res.error === 'string' ? res.error : 'スレッドの取得に失敗しました');
+      } else {
+        setRows(res.data);
+      }
     } catch {
       setError('APIに接続できませんでした');
     } finally {
