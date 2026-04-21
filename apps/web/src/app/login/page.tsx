@@ -2,7 +2,7 @@
 import { useEffect, useState } from 'react';
 import { ApiError, api, setAdminSessionToken, useCloudflareAccessLoginMode } from '@/lib/api';
 import { Input } from '@/components/ui/field';
-import { buildAdminAccessSessionStartHref } from '@/lib/admin-access-session-start';
+import { buildAdminAccessBootstrapStartHref } from '@/lib/admin-access-bootstrap-start';
 
 function errorMessageFromApi(err: unknown): string | undefined {
   if (err instanceof Error && err.name === 'ApiError' && 'body' in err) {
@@ -20,7 +20,7 @@ export default function LoginPage() {
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const [hydrated, setHydrated] = useState(false);
-  const accessStartHref = buildAdminAccessSessionStartHref({ returnTo: '/login' });
+  const accessStartHref = buildAdminAccessBootstrapStartHref({ returnTo: '/login' });
 
   useEffect(() => {
     setHydrated(true);

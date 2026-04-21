@@ -40,6 +40,8 @@ describe('isAuthExemptPath', () => {
   it('treats default BFF-prefixed /api/auth/* as exempt (same policy as stripped /api/...)', () => {
     expect(isAuthExemptPath('/api/lh-upstream/api/auth/session', 'GET')).toBe(true);
     expect(isAuthExemptPath('/api/lh-upstream/api/auth/login', 'POST')).toBe(true);
+    expect(isAuthExemptPath('/api/lh-upstream/api/auth/access-bootstrap', 'GET')).toBe(true);
+    expect(isAuthExemptPath('/api/lh-upstream/api/auth/access-bootstrap', 'POST')).toBe(false);
     expect(logicalAdminApiPathnameForPolicy('/api/lh-upstream/api/auth/session')).toBe(
       '/api/auth/session',
     );
@@ -92,6 +94,13 @@ describe('isCloudflareAccessExemptPath', () => {
 
   it('does not exempt BFF-prefixed GET /api/auth/session (still requires Access JWT)', () => {
     expect(isCloudflareAccessExemptPath('/api/lh-upstream/api/auth/session', 'GET')).toBe(false);
+  });
+
+  it('does not exempt GET /api/auth/access-bootstrap (Access JWT still required)', () => {
+    expect(isCloudflareAccessExemptPath('/api/auth/access-bootstrap', 'GET')).toBe(false);
+    expect(isCloudflareAccessExemptPath('/api/lh-upstream/api/auth/access-bootstrap', 'GET')).toBe(
+      false,
+    );
   });
 
   it('does not exempt env-probe from Cloudflare Access (same as /api/auth/session)', () => {

@@ -78,6 +78,7 @@ export function isAuthExemptPath(
 
   return (
     (method === 'GET' && path === '/favicon.ico') ||
+    (method === 'GET' && path === '/api/auth/access-bootstrap') ||
     path === '/webhook' ||
     path === '/docs' ||
     path === '/openapi.json' ||
@@ -113,6 +114,7 @@ export function isCloudflareAccessExemptPath(
   const authApiRequiresCfJwt =
     (logical === '/api/auth/login' && method === 'POST') ||
     (logical === '/api/auth/session' && method === 'GET') ||
+    (logical === '/api/auth/access-bootstrap' && method === 'GET') ||
     (logical === '/api/auth/logout' && method === 'POST');
   if (authApiRequiresCfJwt) {
     return false;

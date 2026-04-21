@@ -1,7 +1,4 @@
-/**
- * Admin auth: API key and/or Cloudflare Access JWT at login, then HMAC session cookie/Bearer.
- * For passwordless enterprise login, prefer Cloudflare Access (with IdP MFA) rather than embedding WebAuthn here.
- */
+/** Admin auth (login/session/logout) + Access bootstrap redirect (`/api/auth/access-bootstrap`). */
 import { Hono } from 'hono';
 import type { Env } from '../index.js';
 import { revokeAdminSessionJti } from '@line-crm/db';
@@ -39,6 +36,7 @@ import {
   includeSessionTokenInLoginBody,
   strictHttpsCloudflareAccessRequiredError,
 } from '../services/auth-route-helpers.js';
+import { respondAuthAccessBootstrapGet } from '../services/auth-access-bootstrap-handoff.js';
 
 const authRoutes = new Hono<Env>();
 const LOGIN_BODY_LIMIT_BYTES = 8 * 1024;
@@ -163,6 +161,8 @@ authRoutes.post('/api/auth/login', async (c) => {
     return c.json({ success: false, error: 'Internal server error' }, 500);
   }
 });
+
+authRoutes.get('/api/auth/access-bootstrap', respondAuthAccessBootstrapGet);
 
 authRoutes.get('/api/auth/session', async (c) => {
   try {
