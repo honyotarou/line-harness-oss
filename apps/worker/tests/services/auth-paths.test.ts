@@ -62,9 +62,24 @@ describe('isAuthExemptPath', () => {
     );
   });
 
+  it('still exempts GET access-bootstrap when inbound rewrite binding is empty (BFF-prefixed URL)', () => {
+    const disabled = { ADMIN_INBOUND_BFF_PATH_PREFIX: '' } as const;
+    expect(isAuthExemptPath('/api/lh-upstream/api/auth/access-bootstrap', 'GET', disabled)).toBe(
+      true,
+    );
+    expect(
+      isCloudflareAccessExemptPath('/api/lh-upstream/api/auth/access-bootstrap', 'GET', disabled),
+    ).toBe(false);
+  });
+
   it('treats GET /favicon.ico as exempt (browser noise on Access-protected API hosts)', () => {
     expect(isAuthExemptPath('/favicon.ico', 'GET')).toBe(true);
     expect(isAuthExemptPath('/favicon.ico', 'POST')).toBe(false);
+  });
+
+  it('treats GET / as bearer-exempt (API host document navigation; no public route → 404)', () => {
+    expect(isAuthExemptPath('/', 'GET')).toBe(true);
+    expect(isAuthExemptPath('/', 'POST')).toBe(false);
   });
 
   it('does not exempt GET /api/_debug/env-probe (requires admin session when ALLOW_WORKER_ENV_PROBE)', () => {
@@ -109,5 +124,9 @@ describe('isCloudflareAccessExemptPath', () => {
 
   it('exempts GET /favicon.ico from Cloudflare Access (matches auth exempt)', () => {
     expect(isCloudflareAccessExemptPath('/favicon.ico', 'GET')).toBe(true);
+  });
+
+  it('does not exempt GET / from Cloudflare Access (JWT still required when enforcement is on)', () => {
+    expect(isCloudflareAccessExemptPath('/', 'GET')).toBe(false);
   });
 });
