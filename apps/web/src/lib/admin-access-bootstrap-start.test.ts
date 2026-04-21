@@ -13,7 +13,7 @@ describe('buildAdminAccessBootstrapStartHref', () => {
   it('builds default href for /login', () => {
     process.env.NEXT_PUBLIC_ADMIN_BROWSER_API_BASE = '/api/lh-upstream';
     expect(buildAdminAccessBootstrapStartHref()).toBe(
-      '/api/lh-upstream/api/auth/access-bootstrap?returnTo=%2Flogin',
+      '/api/lh-upstream/api/auth/access-bootstrap?returnTo=%2Flogin%3Faccess%3Dcomplete',
     );
     reset();
   });

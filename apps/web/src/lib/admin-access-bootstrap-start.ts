@@ -5,6 +5,7 @@
  * Access 未ログインならエッジが IdP へ誘導し、成功後に `CF_Authorization` が付いたうえで `/login` 等へ戻る。
  */
 
+import { buildAdminAccessLoginCompleteReturnTo } from '@line-crm/shared';
 import { getAdminBrowserApiFetchBase } from './admin-public-config';
 
 export function buildAdminAccessBootstrapStartHref(params?: {
@@ -18,7 +19,7 @@ export function buildAdminAccessBootstrapStartHref(params?: {
    */
   browserApiFetchBase?: string;
 }): string {
-  const returnTo = params?.returnTo ?? '/login';
+  const returnTo = params?.returnTo ?? buildAdminAccessLoginCompleteReturnTo('/login');
   const baseRaw = (params?.browserApiFetchBase ?? getAdminBrowserApiFetchBase()).replace(
     /\/+$/,
     '',

@@ -14,6 +14,7 @@ import {
 import {
   adminAccessDocumentRedirectAlreadyHandledBody,
   adminAuthFetchFailureBody,
+  getBrowserAdminAuthCompletionRedirectTarget,
   isBrowserAdminAuthApiPath,
   isBrowserAdminManagedApiPath,
   resolveBrowserFetchRedirectPolicy,
@@ -159,6 +160,27 @@ export async function fetchApiCore<T>(
   const treatAsSsoRedirect = isBrowserAdminAuthApiPath(path)
     ? shouldTreatBrowserAuthResponseAsSsoRedirect(res)
     : shouldTreatBrowserAdminApiResponseAsAccessEdgeRedirect(res);
+  const authCompletionRedirectTarget = isBrowserAdminAuthApiPath(path)
+    ? getBrowserAdminAuthCompletionRedirectTarget(res)
+    : null;
+
+  if (authCompletionRedirectTarget) {
+    clearEdgeAuthReloadFlags();
+    if (typeof globalThis !== 'undefined' && 'location' in globalThis) {
+      const loc = (globalThis as { location?: { replace?: (url: string) => void } }).location;
+      if (loc && typeof loc.replace === 'function') {
+        loc.replace(authCompletionRedirectTarget);
+        return new Promise(() => {
+          /* never resolves — top-level navigation for login completion */
+        });
+      }
+    }
+    throw createApiError(
+      'Admin auth API returned login completion redirect (no window.location.replace).',
+      401,
+      adminAuthFetchFailureBody(),
+    );
+  }
 
   if (isBrowserAdminManagedApiPath(path) && treatAsSsoRedirect) {
     if (!isBrowserAdminAuthApiPath(path)) {
