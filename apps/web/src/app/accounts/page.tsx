@@ -7,7 +7,7 @@ import CcPromptButton from '@/components/cc-prompt-button';
 import { Alert } from '@/components/ui/alert';
 import { Input } from '@/components/ui/field';
 
-interface LineAccountListItem {
+type LineAccountListItem = Readonly<{
   id: string;
   channelId: string;
   name: string;
@@ -22,7 +22,7 @@ interface LineAccountListItem {
     activeScenarios: number;
     messagesThisMonth: number;
   };
-}
+}>;
 
 const ccPrompts = [
   {

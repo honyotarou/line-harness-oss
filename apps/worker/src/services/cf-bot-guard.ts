@@ -7,10 +7,10 @@ import { canonicalRequestPathname } from './auth-paths.js';
  * (local dev / plan without BM), checks are skipped unless REQUIRE_CF_BOT_SIGNAL is on.
  */
 
-export type CfBotGuardEnv = {
+export type CfBotGuardEnv = Readonly<{
   MIN_CF_BOT_SCORE?: string;
   REQUIRE_CF_BOT_SIGNAL?: string;
-};
+}>;
 
 type CfRequest = Request & {
   cf?: {
@@ -55,8 +55,8 @@ export function isCfBotScoreProtectedRoute(pathname: string, method: string): bo
 }
 
 export type CfBotBlockDecision =
-  | { block: false }
-  | { block: true; reason: 'low_bot_score' | 'missing_bot_signal' };
+  | Readonly<{ block: false }>
+  | Readonly<{ block: true; reason: 'low_bot_score' | 'missing_bot_signal' }>;
 
 export function shouldBlockForCfBotScore(input: {
   minScore: number | null;

@@ -134,6 +134,32 @@ export const openApiSpec = {
           updatedAt: { type: 'string', format: 'date-time' },
         },
       },
+      TrafficPool: {
+        type: 'object',
+        properties: {
+          id: { type: 'string' },
+          slug: { type: 'string' },
+          name: { type: 'string' },
+          activeAccountId: { type: 'string' },
+          accountName: { type: 'string' },
+          liffId: { type: 'string', nullable: true },
+          isActive: { type: 'boolean' },
+          createdAt: { type: 'string' },
+          updatedAt: { type: 'string' },
+        },
+      },
+      PoolAccountRow: {
+        type: 'object',
+        properties: {
+          id: { type: 'string' },
+          poolId: { type: 'string' },
+          lineAccountId: { type: 'string' },
+          accountName: { type: 'string' },
+          liffId: { type: 'string', nullable: true },
+          isActive: { type: 'boolean' },
+          createdAt: { type: 'string' },
+        },
+      },
       ConversionPoint: {
         type: 'object',
         properties: {
@@ -177,6 +203,47 @@ export const openApiSpec = {
           totalClicks: { type: 'integer' },
           totalConversions: { type: 'integer' },
           totalRevenue: { type: 'number' },
+        },
+      },
+      InboxThread: {
+        type: 'object',
+        properties: {
+          friendId: { type: 'string' },
+          friendName: { type: 'string' },
+          friendPictureUrl: { type: 'string', nullable: true },
+          lineUserId: { type: 'string', nullable: true },
+          lineAccountId: { type: 'string', nullable: true },
+          lastContent: { type: 'string', nullable: true },
+          lastDirection: { type: 'string', nullable: true },
+          lastAt: { type: 'string', nullable: true },
+          incomingTotal: { type: 'integer' },
+        },
+      },
+      MediaImageUpload: {
+        type: 'object',
+        properties: {
+          id: { type: 'string' },
+          mimeType: { type: 'string' },
+          byteSize: { type: 'integer' },
+          publicUrlPath: {
+            type: 'string',
+            description: 'Path under this Worker; prefix with WORKER_URL for LINE',
+          },
+        },
+      },
+      AdPlatformConnection: {
+        type: 'object',
+        properties: {
+          id: { type: 'string' },
+          provider: { type: 'string', enum: ['meta', 'google', 'tiktok', 'x'] },
+          name: { type: 'string' },
+          lineAccountId: { type: 'string', nullable: true },
+          externalAccountRef: { type: 'string', nullable: true },
+          hasCredentials: { type: 'boolean' },
+          metadata: {},
+          isActive: { type: 'boolean' },
+          createdAt: { type: 'string' },
+          updatedAt: { type: 'string' },
         },
       },
     },
@@ -419,10 +486,210 @@ export const openApiSpec = {
       post: {
         tags: ['Broadcasts'],
         summary: '即時配信',
+        description:
+          'When `BROADCAST_SEND_SECRET` is set (or required on HTTPS), send header `X-Broadcast-Send-Secret` matching the env value.',
         parameters: [{ name: 'id', in: 'path', required: true, schema: { type: 'string' } }],
         responses: {
           '200': { description: 'Sent' },
           '429': { description: 'Too many requests (per-admin mass-send rate limit)' },
+        },
+      },
+    },
+    '/api/broadcasts/{id}/segment-preview-count': {
+      post: {
+        tags: ['Broadcasts'],
+        summary: 'セグメント対象人数プレビュー（送信しない）',
+        description:
+          'D1-backed rate limit. Body: `{ conditions }` (same shape as segment send rules).',
+        parameters: [{ name: 'id', in: 'path', required: true, schema: { type: 'string' } }],
+        requestBody: {
+          content: {
+            'application/json': {
+              schema: {
+                type: 'object',
+                properties: {
+                  conditions: {
+                    type: 'object',
+                    description: 'SegmentCondition (operator + rules)',
+                  },
+                },
+                required: ['conditions'],
+              },
+            },
+          },
+        },
+        responses: {
+          '200': { description: '{ count: number }' },
+          '429': { description: 'Too many requests' },
+        },
+      },
+    },
+    '/api/broadcasts/{id}/test-push': {
+      post: {
+        tags: ['Broadcasts'],
+        summary: '1 件テスト送信（指定 friendId）',
+        description:
+          'Same `X-Broadcast-Send-Secret` policy as mass send when configured. Body must include `confirm: true`.',
+        parameters: [{ name: 'id', in: 'path', required: true, schema: { type: 'string' } }],
+        requestBody: {
+          content: {
+            'application/json': {
+              schema: {
+                type: 'object',
+                properties: {
+                  friendId: { type: 'string' },
+                  confirm: { const: true, description: 'Must be true' },
+                },
+                required: ['friendId', 'confirm'],
+              },
+            },
+          },
+        },
+        responses: {
+          '200': { description: 'Push accepted' },
+          '400': { description: 'Friend cannot receive or confirm missing' },
+          '429': { description: 'Too many requests' },
+        },
+      },
+    },
+    // ── Inbox ─────────────────────────────────────────────────────────────────
+    '/api/inbox/threads': {
+      get: {
+        tags: ['Inbox'],
+        summary: '受信箱スレッド一覧',
+        description:
+          'Friends with at least one `messages_log` row, newest activity first. Restricted principals require `lineAccountId` query.',
+        parameters: [
+          { name: 'lineAccountId', in: 'query', schema: { type: 'string' } },
+          { name: 'limit', in: 'query', schema: { type: 'integer', default: 50 } },
+          { name: 'offset', in: 'query', schema: { type: 'integer', default: 0 } },
+        ],
+        responses: {
+          '200': { description: 'Array of InboxThread' },
+          '400': { description: 'lineAccountId required' },
+        },
+      },
+    },
+    // ── Media (R2) ───────────────────────────────────────────────────────────
+    '/api/images': {
+      post: {
+        tags: ['Media'],
+        summary: '画像アップロード（管理 API）',
+        description:
+          'Requires R2 binding `LINE_CRM_IMAGES`; returns 503 when unconfigured. Payload size and type checks apply.',
+        requestBody: {
+          content: {
+            'application/json': {
+              schema: {
+                type: 'object',
+                properties: {
+                  mimeType: { type: 'string' },
+                  base64: { type: 'string' },
+                  lineAccountId: { type: 'string', nullable: true },
+                },
+                required: ['mimeType', 'base64'],
+              },
+            },
+          },
+        },
+        responses: {
+          '201': { description: 'MediaImageUpload' },
+          '400': { description: 'Invalid payload or image policy violation' },
+          '503': { description: 'R2 not bound' },
+        },
+      },
+    },
+    '/api/images/public/{token}': {
+      get: {
+        tags: ['Media'],
+        summary: '公開画像取得（64 hex token）',
+        description:
+          'No admin session; unguessable token + IP rate limit. LINE Messaging API may fetch this URL.',
+        security: [],
+        parameters: [
+          {
+            name: 'token',
+            in: 'path',
+            required: true,
+            schema: { type: 'string', pattern: '^[a-fA-F0-9]{64}$' },
+          },
+        ],
+        responses: {
+          '200': { description: 'Image bytes (Content-Type from stored mime)' },
+          '404': { description: 'Invalid token, missing object, or R2 not bound' },
+          '429': { description: 'Too many requests' },
+        },
+      },
+    },
+    // ── Ad platforms ───────────────────────────────────────────────────────────
+    '/api/ad-platforms': {
+      get: {
+        tags: ['Ad platforms'],
+        summary: '広告プラットフォーム接続一覧',
+        parameters: [{ name: 'lineAccountId', in: 'query', schema: { type: 'string' } }],
+        responses: { '200': { description: 'AdPlatformConnection[]' } },
+      },
+      post: {
+        tags: ['Ad platforms'],
+        summary: '接続作成',
+        requestBody: {
+          content: {
+            'application/json': {
+              schema: {
+                type: 'object',
+                properties: {
+                  provider: { type: 'string', enum: ['meta', 'google', 'tiktok', 'x'] },
+                  name: { type: 'string' },
+                  lineAccountId: { type: 'string', nullable: true },
+                  externalAccountRef: { type: 'string', nullable: true },
+                  credentialsEnc: { type: 'string', nullable: true },
+                  metadata: { type: 'object' },
+                },
+                required: ['provider', 'name'],
+              },
+            },
+          },
+        },
+        responses: { '201': { description: 'Created' } },
+      },
+    },
+    '/api/ad-platforms/{id}': {
+      get: {
+        tags: ['Ad platforms'],
+        summary: '接続取得',
+        parameters: [{ name: 'id', in: 'path', required: true, schema: { type: 'string' } }],
+        responses: {
+          '200': { description: 'AdPlatformConnection' },
+          '404': { description: 'Not found' },
+        },
+      },
+      put: {
+        tags: ['Ad platforms'],
+        summary: '接続更新',
+        parameters: [{ name: 'id', in: 'path', required: true, schema: { type: 'string' } }],
+        responses: { '200': { description: 'Updated' } },
+      },
+      delete: {
+        tags: ['Ad platforms'],
+        summary: '接続削除',
+        parameters: [{ name: 'id', in: 'path', required: true, schema: { type: 'string' } }],
+        responses: { '200': { description: 'Deleted' } },
+      },
+    },
+    '/api/ad-platforms/{id}/sync': {
+      post: {
+        tags: ['Ad platforms'],
+        summary: '外部同期（資格情報の検証）',
+        description:
+          'When `AD_PLATFORM_OUTBOUND_ENABLED` is off → 501. When on, performs a read-only HTTPS check against the vendor (Meta Graph `me`, Google userinfo, X `users/me`, TikTok advertiser info). `credentials_enc` must be JSON `{ "accessToken": "…" }` (TikTok also needs `externalAccountRef` or `advertiserId` for the advertiser id). Updates `metadata_json` with `lastOutboundSyncAt` / `lastOutboundSyncOk` / summary or error.',
+        parameters: [{ name: 'id', in: 'path', required: true, schema: { type: 'string' } }],
+        responses: {
+          '200': { description: 'Serialized connection + sync summary' },
+          '400': { description: 'Missing or invalid credentials JSON' },
+          '404': { description: 'Not found' },
+          '429': { description: 'Too many requests' },
+          '501': { description: 'AD_PLATFORM_OUTBOUND_ENABLED not set' },
+          '502': { description: 'Vendor rejected token or HTTP error' },
         },
       },
     },
@@ -730,6 +997,167 @@ export const openApiSpec = {
         responses: { '201': { description: 'Recorded' } },
       },
     },
+    // ── Auto replies ─────────────────────────────────────────────────────────
+    '/api/auto-replies': {
+      get: {
+        tags: ['Auto replies'],
+        summary: '自動返信ルール一覧',
+        parameters: [{ name: 'accountId', in: 'query', schema: { type: 'string' } }],
+        responses: { '200': { description: 'Rules' } },
+      },
+      post: {
+        tags: ['Auto replies'],
+        summary: '自動返信ルール作成',
+        requestBody: {
+          content: {
+            'application/json': {
+              schema: {
+                type: 'object',
+                properties: {
+                  keyword: { type: 'string' },
+                  matchType: { type: 'string', enum: ['exact', 'contains'] },
+                  responseType: { type: 'string' },
+                  responseContent: { type: 'string' },
+                  lineAccountId: { type: 'string', nullable: true },
+                },
+                required: ['keyword', 'responseContent'],
+              },
+            },
+          },
+        },
+        responses: { '201': { description: 'Created' } },
+      },
+    },
+    '/api/auto-replies/{id}': {
+      get: {
+        tags: ['Auto replies'],
+        summary: '自動返信ルール取得',
+        parameters: [{ name: 'id', in: 'path', required: true, schema: { type: 'string' } }],
+        responses: { '200': { description: 'Rule' }, '404': { description: 'Not found' } },
+      },
+      put: {
+        tags: ['Auto replies'],
+        summary: '自動返信ルール更新',
+        parameters: [{ name: 'id', in: 'path', required: true, schema: { type: 'string' } }],
+        responses: { '200': { description: 'Updated' }, '404': { description: 'Not found' } },
+      },
+      delete: {
+        tags: ['Auto replies'],
+        summary: '自動返信ルール削除',
+        parameters: [{ name: 'id', in: 'path', required: true, schema: { type: 'string' } }],
+        responses: { '200': { description: 'Deleted' }, '404': { description: 'Not found' } },
+      },
+    },
+    // ── Traffic pools (public entry + admin API) ─────────────────────────────
+    '/pool/{slug}': {
+      get: {
+        tags: ['Traffic pools'],
+        summary: 'トラフィックプール入口（LIFF OAuth へ 302）',
+        security: [],
+        parameters: [{ name: 'slug', in: 'path', required: true, schema: { type: 'string' } }],
+        responses: {
+          '302': { description: 'Redirect to /auth/line?pool=…' },
+          '404': { description: 'Pool not found' },
+        },
+      },
+    },
+    '/api/traffic-pools': {
+      get: {
+        tags: ['Traffic pools'],
+        summary: 'トラフィックプール一覧',
+        responses: { '200': { description: 'Pools' } },
+      },
+      post: {
+        tags: ['Traffic pools'],
+        summary: 'トラフィックプール作成',
+        requestBody: {
+          content: {
+            'application/json': {
+              schema: {
+                type: 'object',
+                properties: {
+                  slug: { type: 'string' },
+                  name: { type: 'string' },
+                  activeAccountId: { type: 'string' },
+                },
+                required: ['slug', 'name', 'activeAccountId'],
+              },
+            },
+          },
+        },
+        responses: { '201': { description: 'Created' } },
+      },
+    },
+    '/api/traffic-pools/{id}': {
+      put: {
+        tags: ['Traffic pools'],
+        summary: 'トラフィックプール更新',
+        parameters: [{ name: 'id', in: 'path', required: true, schema: { type: 'string' } }],
+        responses: { '200': { description: 'Updated' } },
+      },
+      delete: {
+        tags: ['Traffic pools'],
+        summary: 'トラフィックプール削除',
+        parameters: [{ name: 'id', in: 'path', required: true, schema: { type: 'string' } }],
+        responses: { '200': { description: 'Deleted' } },
+      },
+    },
+    '/api/traffic-pools/{id}/accounts': {
+      get: {
+        tags: ['Traffic pools'],
+        summary: 'プール内 LINE アカウント一覧',
+        parameters: [{ name: 'id', in: 'path', required: true, schema: { type: 'string' } }],
+        responses: { '200': { description: 'Pool accounts' } },
+      },
+      post: {
+        tags: ['Traffic pools'],
+        summary: 'プールに LINE アカウント追加',
+        parameters: [{ name: 'id', in: 'path', required: true, schema: { type: 'string' } }],
+        requestBody: {
+          content: {
+            'application/json': {
+              schema: {
+                type: 'object',
+                properties: { lineAccountId: { type: 'string' } },
+                required: ['lineAccountId'],
+              },
+            },
+          },
+        },
+        responses: { '201': { description: 'Added' } },
+      },
+    },
+    '/api/traffic-pools/{id}/accounts/{accountId}': {
+      put: {
+        tags: ['Traffic pools'],
+        summary: 'プールアカウントの有効/無効',
+        parameters: [
+          { name: 'id', in: 'path', required: true, schema: { type: 'string' } },
+          { name: 'accountId', in: 'path', required: true, schema: { type: 'string' } },
+        ],
+        requestBody: {
+          content: {
+            'application/json': {
+              schema: {
+                type: 'object',
+                properties: { isActive: { type: 'boolean' } },
+                required: ['isActive'],
+              },
+            },
+          },
+        },
+        responses: { '200': { description: 'Updated' } },
+      },
+      delete: {
+        tags: ['Traffic pools'],
+        summary: 'プールから LINE アカウント削除',
+        parameters: [
+          { name: 'id', in: 'path', required: true, schema: { type: 'string' } },
+          { name: 'accountId', in: 'path', required: true, schema: { type: 'string' } },
+        ],
+        responses: { '200': { description: 'Removed' } },
+      },
+    },
     // ── Webhook ─────────────────────────────────────────────────────────────
     '/webhook': {
       post: {
@@ -751,6 +1179,11 @@ export const openApiSpec = {
     { name: 'LINE Accounts', description: 'マルチLINEアカウント管理' },
     { name: 'Conversions', description: 'コンバージョン計測' },
     { name: 'Affiliates', description: 'アフィリエイト管理' },
+    { name: 'Auto replies', description: 'キーワード自動返信（Webhook が D1 のルールを評価）' },
+    { name: 'Traffic pools', description: 'トラフィックプール（/pool/:slug エントリと管理 API）' },
+    { name: 'Inbox', description: '受信箱（messages_log ベースのスレッド一覧）' },
+    { name: 'Media', description: 'R2 画像（管理アップロードと公開取得）' },
+    { name: 'Ad platforms', description: '広告プラットフォーム接続レジストリ' },
     { name: 'Webhook', description: 'LINE Webhook' },
   ],
 };

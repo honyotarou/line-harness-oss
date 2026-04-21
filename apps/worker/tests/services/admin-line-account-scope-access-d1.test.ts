@@ -49,12 +49,12 @@ describe('resolveLineAccountScopeForRequest (Access + D1 migration)', () => {
     const { resolveLineAccountScopeForRequest } = await import(
       '../../src/services/admin-line-account-scope.js'
     );
-    const { AdminPrincipalLineAccountsSchemaUnavailableError } = await import(
+    const { isAdminPrincipalLineAccountsSchemaUnavailableError } = await import(
       '../../src/services/admin-principal-line-accounts-schema-error.js'
     );
-    await expect(
-      resolveLineAccountScopeForRequest({} as D1Database, mockCtx()),
-    ).rejects.toBeInstanceOf(AdminPrincipalLineAccountsSchemaUnavailableError);
+    await expect(resolveLineAccountScopeForRequest({} as D1Database, mockCtx())).rejects.toSatisfy(
+      isAdminPrincipalLineAccountsSchemaUnavailableError,
+    );
   });
 
   it('rethrows non-schema D1 errors', async () => {

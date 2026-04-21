@@ -1,47 +1,41 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import {
-  createGoogleCalendarClient,
-  GoogleCalendarClient,
-} from '../../src/services/google-calendar.js';
+import { createGoogleCalendarClient } from '../../src/services/google-calendar.js';
 
-describe('GoogleCalendarClient', () => {
+describe('createGoogleCalendarClient', () => {
   afterEach(() => {
     vi.unstubAllGlobals();
   });
 
   const client = () =>
-    new GoogleCalendarClient({
+    createGoogleCalendarClient({
       calendarId: 'abc123group@group.calendar.google.com',
       accessToken: 'test-token',
     });
 
-  it('constructor rejects calendar ids outside the allowed shapes', () => {
-    expect(
-      () =>
-        new GoogleCalendarClient({
-          calendarId: 'https://evil.example/cal',
-          accessToken: 't',
-        }),
+  it('rejects calendar ids outside the allowed shapes', () => {
+    expect(() =>
+      createGoogleCalendarClient({
+        calendarId: 'https://evil.example/cal',
+        accessToken: 't',
+      }),
     ).toThrow(/Invalid Google Calendar id/);
-    expect(
-      () =>
-        new GoogleCalendarClient({
-          calendarId: ' primary ',
-          accessToken: 't',
-        }),
+    expect(() =>
+      createGoogleCalendarClient({
+        calendarId: ' primary ',
+        accessToken: 't',
+      }),
     ).toThrow(/Invalid Google Calendar id/);
   });
 
-  it('constructor accepts primary and group-calendar ids (URL path segment hygiene)', () => {
-    expect(
-      () => new GoogleCalendarClient({ calendarId: 'primary', accessToken: 't' }),
+  it('accepts primary and group-calendar ids (URL path segment hygiene)', () => {
+    expect(() =>
+      createGoogleCalendarClient({ calendarId: 'primary', accessToken: 't' }),
     ).not.toThrow();
-    expect(
-      () =>
-        new GoogleCalendarClient({
-          calendarId: 'abc123group@group.calendar.google.com',
-          accessToken: 't',
-        }),
+    expect(() =>
+      createGoogleCalendarClient({
+        calendarId: 'abc123group@group.calendar.google.com',
+        accessToken: 't',
+      }),
     ).not.toThrow();
   });
 

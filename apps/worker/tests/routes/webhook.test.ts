@@ -27,13 +27,15 @@ const lineSdkMocks = vi.hoisted(() => ({
 
 vi.mock('@line-crm/line-sdk', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@line-crm/line-sdk')>();
+  const lineLike = () => ({
+    replyMessage: lineSdkMocks.replyMessage,
+    getProfile: lineSdkMocks.getProfile,
+  });
   return {
     ...actual,
     verifySignature: lineSdkMocks.verifySignature,
-    LineClient: vi.fn().mockImplementation(() => ({
-      replyMessage: lineSdkMocks.replyMessage,
-      getProfile: lineSdkMocks.getProfile,
-    })),
+    createLineClient: vi.fn().mockImplementation(() => lineLike()),
+    LineClient: vi.fn().mockImplementation(() => lineLike()),
   };
 });
 

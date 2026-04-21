@@ -238,13 +238,13 @@ describe('攻撃者サイクル 251–300（セキュリティバッチ）', () 
   });
 
   it('cycle 279: BodyTooLargeError message mentions byte limit', async () => {
-    const { BodyTooLargeError } = await import('../../src/services/request-body.js');
-    expect(new BodyTooLargeError(8192).message).toMatch(/8192/);
+    const { createBodyTooLargeError } = await import('../../src/services/request-body.js');
+    expect(createBodyTooLargeError(8192).message).toMatch(/8192/);
   });
 
   it('cycle 280: InvalidJsonBodyError default message', async () => {
-    const { InvalidJsonBodyError } = await import('../../src/services/request-body.js');
-    expect(new InvalidJsonBodyError().message).toMatch(/Invalid JSON/);
+    const { createInvalidJsonBodyError } = await import('../../src/services/request-body.js');
+    expect(createInvalidJsonBodyError().message).toMatch(/Invalid JSON/);
   });
 
   it('cycle 281: mergeFriendMetadataPatch rejects patch mixing forbidden key with safe keys', async () => {

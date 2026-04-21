@@ -41,10 +41,10 @@ function cleanEmptyNodes(obj: unknown): void {
   }
 }
 
-export type BuildStoredMessageOptions = {
+export type BuildStoredMessageOptions = Readonly<{
   /** Used when flex JSON has no extractable text (default: お知らせ) */
   flexAltFallback?: string;
-};
+}>;
 
 /**
  * Build a LINE push message from DB-stored template fields.

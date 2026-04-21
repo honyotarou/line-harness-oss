@@ -8,32 +8,32 @@ import { useAccount } from '@/contexts/account-context';
 
 const WORKER_BASE = getApiBaseUrl();
 
-interface RefRoute {
+type RefRoute = Readonly<{
   refCode: string;
   name: string;
   friendCount: number;
   clickCount: number;
   latestAt: string | null;
-}
+}>;
 
-interface RefSummaryData {
+type RefSummaryData = Readonly<{
   routes: RefRoute[];
   totalFriends: number;
   friendsWithRef: number;
   friendsWithoutRef: number;
-}
+}>;
 
-interface RefFriend {
+type RefFriend = Readonly<{
   id: string;
   displayName: string;
   trackedAt: string | null;
-}
+}>;
 
-interface RefDetailData {
+type RefDetailData = Readonly<{
   refCode: string;
   name: string;
   friends: RefFriend[];
-}
+}>;
 
 export default function AttributionPage() {
   const { selectedAccountId } = useAccount();

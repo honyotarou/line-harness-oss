@@ -460,14 +460,14 @@ friends.post('/api/friends/:id/messages', async (c) => {
     }
 
     const friendRow = friend!;
-    const { LineClient } = await import('@line-crm/line-sdk');
+    const { createLineClient } = await import('@line-crm/line-sdk');
     const accessToken = await resolveLineAccessTokenForFriend(
       db,
       c.env.LINE_CHANNEL_ACCESS_TOKEN,
       friendId,
       lineAccountDbOptions(c.env),
     );
-    const lineClient = new LineClient(accessToken);
+    const lineClient = createLineClient(accessToken);
     const messageType = body.messageType ?? 'text';
 
     const message = buildMessage(messageType, body.content);

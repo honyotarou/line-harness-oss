@@ -13,9 +13,9 @@ npm install @line-harness/sdk
 ## Quick Start
 
 ```ts
-import { LineHarness } from '@line-harness/sdk'
+import { createLineHarness } from '@line-harness/sdk'
 
-const client = new LineHarness({
+const client = createLineHarness({
   apiUrl: 'https://your-worker.workers.dev',
   apiKey: 'your-api-key',
 })
@@ -104,12 +104,12 @@ await client.broadcastToTag(tagId, 'text', 'Message')
 ## Error Handling
 
 ```ts
-import { LineHarness, LineHarnessError } from '@line-harness/sdk'
+import { createLineHarness, isLineHarnessError } from '@line-harness/sdk'
 
 try {
   await client.scenarios.get('nonexistent')
 } catch (err) {
-  if (err instanceof LineHarnessError) {
+  if (isLineHarnessError(err)) {
     console.log(err.status)    // 404
     console.log(err.message)   // 'Scenario not found'
     console.log(err.endpoint)  // 'GET /api/scenarios/nonexistent'

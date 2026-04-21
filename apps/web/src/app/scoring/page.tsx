@@ -7,7 +7,7 @@ import CcPromptButton from '@/components/cc-prompt-button';
 import { Alert } from '@/components/ui/alert';
 import { Input } from '@/components/ui/field';
 
-interface ScoringRule {
+type ScoringRule = Readonly<{
   id: string;
   name: string;
   eventType: string;
@@ -15,13 +15,13 @@ interface ScoringRule {
   isActive: boolean;
   createdAt: string;
   updatedAt: string;
-}
+}>;
 
-interface CreateFormState {
+type CreateFormState = Readonly<{
   name: string;
   eventType: string;
   scoreValue: string;
-}
+}>;
 
 const ccPrompts = [
   {

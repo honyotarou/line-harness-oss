@@ -9,38 +9,39 @@ import { Alert } from '@/components/ui/alert';
 import { Badge } from '@/components/ui/badge';
 import { Input, Select, Textarea } from '@/components/ui/field';
 
-interface Reminder {
+type Reminder = Readonly<{
   id: string;
   name: string;
   description: string | null;
   isActive: boolean;
   createdAt: string;
   updatedAt: string;
-}
+}>;
 
-interface ReminderStep {
+type ReminderStep = Readonly<{
   id: string;
   reminderId: string;
   offsetMinutes: number;
   messageType: string;
   messageContent: string;
   createdAt: string;
-}
+}>;
 
-interface ReminderWithSteps extends Reminder {
-  steps: ReminderStep[];
-}
+type ReminderWithSteps = Reminder &
+  Readonly<{
+    steps: ReminderStep[];
+  }>;
 
-interface CreateFormState {
+type CreateFormState = Readonly<{
   name: string;
   description: string;
-}
+}>;
 
-interface StepFormState {
+type StepFormState = Readonly<{
   offsetMinutes: number;
   messageType: string;
   messageContent: string;
-}
+}>;
 
 function formatOffset(minutes: number): string {
   const abs = Math.abs(minutes);

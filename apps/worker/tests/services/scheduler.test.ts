@@ -24,9 +24,7 @@ describe('runScheduledJobs', () => {
         ],
       },
       {
-        LineClient: createFakeLineClient as unknown as new (
-          token: string,
-        ) => { readonly token: string },
+        createLineClient: createFakeLineClient,
         processStepDeliveries,
         processScheduledBroadcasts,
         processReminderDeliveries,
@@ -86,9 +84,7 @@ describe('runScheduledJobs', () => {
         dbAccounts: [{ id: 'account-1', is_active: 1, channel_access_token: 'account-1-token' }],
       },
       {
-        LineClient: createFakeLineClient as unknown as new (
-          token: string,
-        ) => { readonly token: string },
+        createLineClient: createFakeLineClient,
         processStepDeliveries,
         processScheduledBroadcasts,
         processReminderDeliveries,
@@ -142,9 +138,7 @@ describe('runScheduledJobs', () => {
         dbAccounts: [],
       },
       {
-        LineClient: createFakeLineClient as unknown as new (
-          token: string,
-        ) => { readonly token: string },
+        createLineClient: createFakeLineClient,
         processStepDeliveries,
         processScheduledBroadcasts,
         processReminderDeliveries,

@@ -348,8 +348,12 @@ jitterDeliveryTime(scheduledAt: Date): Date
 #### 5. レート制限
 
 ```typescript
-const limiter = new StealthRateLimiter(1000, 60_000);
-// 1分あたり最大1000コール
+const limiter = createStealthRateLimiter({
+  maxCallsPerWindow: 1000,
+  windowMs: 60_000,
+  d1: { db, subjectKey: `line:${lineAccountId}` },
+});
+// 1分あたり最大1000コール（D1 でアカウント横断のキャップ）
 await limiter.waitForSlot();
 ```
 
@@ -363,7 +367,7 @@ LINE API のレート制限は 100,000 msg/min だが、安全マージンとし
 2. **メッセージバリエーション** -- 一斉配信では `addMessageVariation` が自動適用
 3. **5分毎のヘルスチェック** -- `danger` 検出時は即座に送信を停止
 4. **アカウント分散** -- 複数 LINE アカウントで負荷分散
-5. **レート制限の遵守** -- `StealthRateLimiter` で API コール数を制限
+5. **レート制限の遵守** -- `createStealthRateLimiter` で API コール数を制限
 6. **403 エラー即応** -- BAN の兆候を早期発見し、アカウント移行を開始
 7. **友だち追加直後の大量送信回避** -- シナリオのディレイ設定を活用
 8. **Webhook 通知設定** -- `danger` 検出時に外部通知を送る自動化ルールを設定

@@ -11,7 +11,7 @@ function isTruthyEnvFlag(raw: string | undefined): boolean {
   return v === '1' || v === 'true' || v === 'yes' || v === 'on';
 }
 
-export type ProductionCloudPolicyEnv = {
+export type ProductionCloudPolicyEnv = Readonly<{
   API_KEY?: string;
   WORKER_URL?: string;
   ALLOWED_HOSTNAMES?: string;
@@ -35,7 +35,7 @@ export type ProductionCloudPolicyEnv = {
   ALLOW_LINE_ACCOUNT_SECRETS_PLAINTEXT_AT_REST?: string;
   RELAX_DEPLOYED_SECURITY_DEFAULTS?: string;
   RELAX_DEPLOYED_SECURITY_CONFIRM?: string;
-};
+}>;
 
 /** True when WORKER_URL is a non-local `https:` origin (deployed Worker surface). */
 export function isNonLocalHttpsWorkerUrl(url: string): boolean {

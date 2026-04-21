@@ -6,12 +6,13 @@ import { tryParseJsonLoose, tryParseJsonObjectForPreview } from '@line-crm/share
 import { api, type ApiBroadcast } from '@/lib/api';
 import { useAccount } from '@/contexts/account-context';
 import { Input, Select, Textarea } from '@/components/ui/field';
+import { FlexPreview } from '@/components/broadcasts/flex-preview';
 
-interface BroadcastFormProps {
+type BroadcastFormProps = Readonly<{
   tags: Tag[];
   onSuccess: () => void;
   onCancel: () => void;
-}
+}>;
 
 const messageTypeLabels: Record<ApiBroadcast['messageType'], string> = {
   text: 'テキスト',
@@ -19,7 +20,7 @@ const messageTypeLabels: Record<ApiBroadcast['messageType'], string> = {
   flex: 'Flexメッセージ',
 };
 
-interface FormState {
+type FormState = Readonly<{
   title: string;
   messageType: ApiBroadcast['messageType'];
   messageContent: string;
@@ -27,7 +28,7 @@ interface FormState {
   targetTagId: string;
   scheduledAt: string;
   sendNow: boolean;
-}
+}>;
 
 export default function BroadcastForm({ tags, onSuccess, onCancel }: BroadcastFormProps) {
   const { selectedAccountId } = useAccount();
@@ -231,6 +232,7 @@ export default function BroadcastForm({ tags, onSuccess, onCancel }: BroadcastFo
           {form.messageType === 'image' && (
             <p className="text-xs text-gray-400 mt-1">上のURLフォームか、直接JSONを編集できます</p>
           )}
+          {form.messageType === 'flex' ? <FlexPreview jsonText={form.messageContent} /> : null}
         </div>
 
         {/* Target */}

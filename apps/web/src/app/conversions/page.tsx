@@ -7,13 +7,13 @@ import Header from '@/components/layout/header';
 import CcPromptButton from '@/components/cc-prompt-button';
 import { Input, Select } from '@/components/ui/field';
 
-interface ConversionReportItem {
+type ConversionReportItem = Readonly<{
   conversionPointId: string;
   conversionPointName: string;
   eventType: string;
   totalCount: number;
   totalValue: number;
-}
+}>;
 
 const ccPrompts = [
   {

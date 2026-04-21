@@ -28,11 +28,11 @@ export function flexMessage(altText: string, contents: FlexContainer): Message {
 
 // ── Video Message ───────────────────────────────────────────────────────────
 
-export interface VideoMessage {
+export type VideoMessage = Readonly<{
   type: 'video';
   originalContentUrl: string;
   previewImageUrl: string;
-}
+}>;
 
 export function videoMessage(originalContentUrl: string, previewImageUrl: string): VideoMessage {
   return { type: 'video', originalContentUrl, previewImageUrl };
@@ -40,7 +40,7 @@ export function videoMessage(originalContentUrl: string, previewImageUrl: string
 
 // ── Template Messages ───────────────────────────────────────────────────────
 
-export interface TemplateAction {
+export type TemplateAction = Readonly<{
   type: 'uri' | 'message' | 'postback';
   label: string;
   uri?: string;
@@ -48,9 +48,9 @@ export interface TemplateAction {
   data?: string;
   /** Shown in chat when the user taps a Flex postback action (Messaging API). */
   displayText?: string;
-}
+}>;
 
-export interface ButtonsTemplate {
+export type ButtonsTemplate = Readonly<{
   type: 'template';
   altText: string;
   template: {
@@ -60,7 +60,7 @@ export interface ButtonsTemplate {
     text: string;
     actions: TemplateAction[];
   };
-}
+}>;
 
 export function buttonsTemplate(opts: {
   altText: string;
@@ -82,7 +82,7 @@ export function buttonsTemplate(opts: {
   };
 }
 
-export interface ConfirmTemplate {
+export type ConfirmTemplate = Readonly<{
   type: 'template';
   altText: string;
   template: {
@@ -90,7 +90,7 @@ export interface ConfirmTemplate {
     text: string;
     actions: [TemplateAction, TemplateAction];
   };
-}
+}>;
 
 export function confirmTemplate(opts: {
   altText: string;
@@ -109,21 +109,21 @@ export function confirmTemplate(opts: {
   };
 }
 
-export interface CarouselColumn {
+export type CarouselColumn = Readonly<{
   thumbnailImageUrl?: string;
   title?: string;
   text: string;
   actions: TemplateAction[];
-}
+}>;
 
-export interface CarouselTemplate {
+export type CarouselTemplate = Readonly<{
   type: 'template';
   altText: string;
   template: {
     type: 'carousel';
     columns: CarouselColumn[];
   };
-}
+}>;
 
 export function carouselTemplate(altText: string, columns: CarouselColumn[]): CarouselTemplate {
   return {
@@ -138,20 +138,20 @@ export function carouselTemplate(altText: string, columns: CarouselColumn[]): Ca
 
 // ── Image Map Message ───────────────────────────────────────────────────────
 
-export interface ImageMapAction {
+export type ImageMapAction = Readonly<{
   type: 'uri' | 'message';
   linkUri?: string;
   text?: string;
   area: { x: number; y: number; width: number; height: number };
-}
+}>;
 
-export interface ImageMapMessage {
+export type ImageMapMessage = Readonly<{
   type: 'imagemap';
   baseUrl: string;
   altText: string;
   baseSize: { width: number; height: number };
   actions: ImageMapAction[];
-}
+}>;
 
 export function imageMapMessage(opts: {
   baseUrl: string;
@@ -170,15 +170,15 @@ export function imageMapMessage(opts: {
 
 // ── Quick Reply ─────────────────────────────────────────────────────────────
 
-export interface QuickReplyItem {
+export type QuickReplyItem = Readonly<{
   type: 'action';
   imageUrl?: string;
   action: TemplateAction;
-}
+}>;
 
-export interface QuickReply {
+export type QuickReply = Readonly<{
   items: QuickReplyItem[];
-}
+}>;
 
 export function quickReply(items: QuickReplyItem[]): QuickReply {
   return { items };
@@ -193,7 +193,7 @@ export function withQuickReply<T extends object>(
 
 // ── Flex Builders ───────────────────────────────────────────────────────────
 
-export interface FlexBox {
+export type FlexBox = Readonly<{
   type: 'box';
   layout: 'horizontal' | 'vertical' | 'baseline';
   contents: FlexComponent[];
@@ -204,9 +204,9 @@ export interface FlexBox {
   backgroundColor?: string;
   cornerRadius?: string;
   action?: TemplateAction;
-}
+}>;
 
-export interface FlexText {
+export type FlexText = Readonly<{
   type: 'text';
   text: string;
   size?: string;
@@ -217,36 +217,36 @@ export interface FlexText {
   flex?: number;
   margin?: string;
   action?: TemplateAction;
-}
+}>;
 
-export interface FlexImage {
+export type FlexImage = Readonly<{
   type: 'image';
   url: string;
   size?: string;
   aspectRatio?: string;
   aspectMode?: string;
   action?: TemplateAction;
-}
+}>;
 
-export interface FlexButton {
+export type FlexButton = Readonly<{
   type: 'button';
   style?: 'primary' | 'secondary' | 'link';
   color?: string;
   action: TemplateAction;
   height?: string;
   margin?: string;
-}
+}>;
 
-export interface FlexSeparator {
+export type FlexSeparator = Readonly<{
   type: 'separator';
   margin?: string;
   color?: string;
-}
+}>;
 
-export interface FlexSpacer {
+export type FlexSpacer = Readonly<{
   type: 'spacer';
   size?: string;
-}
+}>;
 
 export type FlexComponent =
   | FlexBox
@@ -256,7 +256,7 @@ export type FlexComponent =
   | FlexSeparator
   | FlexSpacer;
 
-export interface FlexBubble {
+export type FlexBubble = Readonly<{
   type: 'bubble';
   size?: string;
   header?: FlexBox;
@@ -264,12 +264,12 @@ export interface FlexBubble {
   body?: FlexBox;
   footer?: FlexBox;
   styles?: Record<string, unknown>;
-}
+}>;
 
-export interface FlexCarousel {
+export type FlexCarousel = Readonly<{
   type: 'carousel';
   contents: FlexBubble[];
-}
+}>;
 
 export function flexBubble(opts: {
   size?: string;

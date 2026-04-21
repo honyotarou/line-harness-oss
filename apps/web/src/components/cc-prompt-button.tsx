@@ -3,9 +3,9 @@
 import { useState } from 'react';
 import PromptModal, { type PromptTemplate } from '@/components/prompt-modal';
 
-interface CcPromptButtonProps {
+type CcPromptButtonProps = Readonly<{
   prompts: PromptTemplate[];
-}
+}>;
 
 export default function CcPromptButton({ prompts }: CcPromptButtonProps) {
   const [isOpen, setIsOpen] = useState(false);

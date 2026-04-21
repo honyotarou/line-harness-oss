@@ -11,11 +11,11 @@ const STORAGE_KEY = 'lh_auth_guard_login_redirect_ts';
 const COOKIE_KEY = 'lh_auth_guard_lr';
 const COOKIE_MAX_AGE_SEC = 30;
 
-export type AuthGuardLoginRedirectLimitDeps = {
+export type AuthGuardLoginRedirectLimitDeps = Readonly<{
   now: () => number;
   readTs: () => number[];
   writeTs: (ts: number[]) => void;
-};
+}>;
 
 function defaultDeps(): AuthGuardLoginRedirectLimitDeps {
   return {

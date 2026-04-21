@@ -3,7 +3,7 @@
  * Secret: see {@link resolveLiffOAuthStateSecret} in `liff-identity.ts` (`REQUIRE_LIFF_STATE_SECRET` disables `API_KEY` fallback).
  */
 
-export type LiffOAuthStateFields = {
+export type LiffOAuthStateFields = Readonly<{
   ref: string;
   redirect: string;
   gclid: string;
@@ -13,9 +13,11 @@ export type LiffOAuthStateFields = {
   utmCampaign: string;
   utmContent: string;
   utmTerm: string;
+  /** Traffic pool slug when entry was `/pool/:slug` or `?pool=`; empty when unused. */
+  pool: string;
   account: string;
   uid: string;
-};
+}>;
 
 type LiffOAuthStatePayload = LiffOAuthStateFields & { iat: number; exp: number };
 
@@ -116,6 +118,7 @@ export async function verifyLiffOAuthState(
     utmCampaign: typeof parsed.utmCampaign === 'string' ? parsed.utmCampaign : '',
     utmContent: typeof parsed.utmContent === 'string' ? parsed.utmContent : '',
     utmTerm: typeof parsed.utmTerm === 'string' ? parsed.utmTerm : '',
+    pool: typeof (parsed as Record<string, unknown>).pool === 'string' ? String(parsed.pool) : '',
     account: typeof parsed.account === 'string' ? parsed.account : '',
     uid: typeof parsed.uid === 'string' ? parsed.uid : '',
   };

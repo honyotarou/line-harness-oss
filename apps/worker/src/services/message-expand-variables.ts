@@ -1,10 +1,10 @@
-export type ExpandVariablesOptions = {
+export type ExpandVariablesOptions = Readonly<{
   /**
    * When set, `{{auth_url:CHANNEL}}` expands only if CHANNEL is in this set.
    * When `apiOrigin` is set but this is omitted or empty, auth_url tokens are stripped (safe default).
    */
   allowedAuthUrlChannelIds?: ReadonlySet<string> | readonly string[];
-};
+}>;
 
 function looksLikeJsonTemplate(content: string): boolean {
   const t = content.trimStart();

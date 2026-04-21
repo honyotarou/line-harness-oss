@@ -25,7 +25,7 @@ const lineSdkMocks = vi.hoisted(() => ({
 }));
 
 vi.mock('@line-crm/line-sdk', () => ({
-  LineClient: vi.fn().mockImplementation((token: string) => {
+  createLineClient: vi.fn().mockImplementation((token: string) => {
     lineSdkMocks.lineClientCtor(token);
     return { token };
   }),

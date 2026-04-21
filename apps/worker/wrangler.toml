@@ -98,5 +98,14 @@ binding = "DB"
 database_name = "line-crm"
 database_id = "YOUR_D1_DATABASE_ID"
 
+# Optional: image uploads for broadcasts / Flex (`POST /api/images`, public fetch `GET /api/images/public/:token`).
+# Create bucket in dashboard, then uncomment and set bucket_name (binding name must stay LINE_CRM_IMAGES).
+# CI: set GitHub Repository Secret WORKER_LINE_CRM_IMAGES_BUCKET_NAME to append `[[r2_buckets]]` on deploy (see deploy-worker.yml).
+# [[r2_buckets]]
+# binding = "LINE_CRM_IMAGES"
+# bucket_name = "line-crm-images"
+#
+# Optional: `AD_PLATFORM_OUTBOUND_ENABLED=1` — enables `POST /api/ad-platforms/:id/sync` (HTTPS credential checks vs Meta / Google / X / TikTok; see ad-platform-outbound-sync.ts). Default: sync returns 501.
+
 [triggers]
 crons = ["*/5 * * * *"]

@@ -239,9 +239,9 @@ curl -X DELETE "https://line-crm-worker.line-crm-api.workers.dev/api/friends/FRI
 ## SDK 使用例
 
 ```typescript
-import { LineHarness } from '@line-harness/sdk'
+import { createLineHarness } from '@line-harness/sdk'
 
-const client = new LineHarness({
+const client = createLineHarness({
   apiUrl: 'https://line-crm-worker.line-crm-api.workers.dev',
   apiKey: 'YOUR_API_KEY',
 })

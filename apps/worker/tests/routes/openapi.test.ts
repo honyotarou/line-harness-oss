@@ -45,6 +45,13 @@ describe('openapi routes', () => {
     expect(json.openapi).toBe('3.1.0');
     expect(json.info.title).toBe('LINE OSS CRM API');
     expect(json.components.securitySchemes.bearerAuth.scheme).toBe('bearer');
+    const paths = json.paths as Record<string, unknown>;
+    expect(paths['/api/inbox/threads']).toBeTruthy();
+    expect(paths['/api/images']).toBeTruthy();
+    expect(paths['/api/images/public/{token}']).toBeTruthy();
+    expect(paths['/api/ad-platforms']).toBeTruthy();
+    expect(paths['/api/broadcasts/{id}/segment-preview-count']).toBeTruthy();
+    expect(paths['/api/broadcasts/{id}/test-push']).toBeTruthy();
   });
 
   it('serves Swagger UI HTML when enabled', async () => {

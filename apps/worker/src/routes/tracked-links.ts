@@ -3,12 +3,13 @@ import {
   getTrackedLinks,
   getTrackedLinkById,
   createTrackedLink,
+  updateTrackedLink,
   deleteTrackedLink,
   recordLinkClick,
   getLinkClicks,
 } from '@line-crm/db';
 import { addTagToFriend, enrollFriendInScenario } from '@line-crm/db';
-import type { TrackedLink } from '@line-crm/db';
+import type { TrackedLink, UpdateTrackedLinkInput } from '@line-crm/db';
 import type { Env } from '../index.js';
 import {
   DEFAULT_TRACKED_LINK_TTL_SECONDS,
@@ -37,6 +38,8 @@ function serializeTrackedLink(row: TrackedLink, baseUrl: string) {
     trackingUrl: `${baseUrl}/t/${row.id}`,
     tagId: row.tag_id,
     scenarioId: row.scenario_id,
+    introTemplateId: row.intro_template_id,
+    rewardTemplateId: row.reward_template_id,
     isActive: Boolean(row.is_active),
     clickCount: row.click_count,
     createdAt: row.created_at,
@@ -140,6 +143,8 @@ trackedLinks.post('/api/tracked-links', async (c) => {
       originalUrl: string;
       tagId?: string | null;
       scenarioId?: string | null;
+      introTemplateId?: string | null;
+      rewardTemplateId?: string | null;
     }>(c.req.raw, DEFAULT_ADMIN_JSON_BODY_LIMIT_BYTES);
 
     const originalUrl = body.originalUrl?.trim() ?? '';
@@ -157,6 +162,8 @@ trackedLinks.post('/api/tracked-links', async (c) => {
       originalUrl,
       tagId: body.tagId ?? null,
       scenarioId: body.scenarioId ?? null,
+      introTemplateId: body.introTemplateId ?? null,
+      rewardTemplateId: body.rewardTemplateId ?? null,
     });
 
     const base = getBaseUrl(c);
@@ -164,7 +171,77 @@ trackedLinks.post('/api/tracked-links', async (c) => {
   } catch (err) {
     const jr = jsonBodyReadErrorResponse(err);
     if (jr) return c.json(jr.body, jr.status);
+    if (err instanceof Error) {
+      if (
+        err.message === 'intro_template_not_found' ||
+        err.message === 'reward_template_not_found'
+      ) {
+        return c.json(
+          { success: false, error: 'Unknown introTemplateId or rewardTemplateId' },
+          400,
+        );
+      }
+    }
     console.error('POST /api/tracked-links error:', err);
+    return c.json({ success: false, error: 'Internal server error' }, 500);
+  }
+});
+
+// PUT /api/tracked-links/:id — partial update (name, URLs, tags, templates, active)
+trackedLinks.put('/api/tracked-links/:id', async (c) => {
+  try {
+    const id = c.req.param('id');
+    const body = await readJsonBodyWithLimit<{
+      name?: string;
+      originalUrl?: string;
+      tagId?: string | null;
+      scenarioId?: string | null;
+      introTemplateId?: string | null;
+      rewardTemplateId?: string | null;
+      isActive?: boolean;
+    }>(c.req.raw, DEFAULT_ADMIN_JSON_BODY_LIMIT_BYTES);
+
+    const existing = await getTrackedLinkById(c.env.DB, id);
+    if (!existing) {
+      return c.json({ success: false, error: 'Tracked link not found' }, 404);
+    }
+
+    const input: UpdateTrackedLinkInput = {};
+    if (body.name !== undefined) input.name = body.name;
+    if (body.originalUrl !== undefined) {
+      const outboundOk = await assertHttpsOutboundUrlResolvedSafe(body.originalUrl.trim(), fetch);
+      if (!outboundOk.ok) {
+        return c.json({ success: false, error: TRACKED_LINK_ORIGINAL_URL_ERROR }, 400);
+      }
+      input.originalUrl = body.originalUrl.trim();
+    }
+    if ('tagId' in body) input.tagId = body.tagId ?? null;
+    if ('scenarioId' in body) input.scenarioId = body.scenarioId ?? null;
+    if ('introTemplateId' in body) input.introTemplateId = body.introTemplateId ?? null;
+    if ('rewardTemplateId' in body) input.rewardTemplateId = body.rewardTemplateId ?? null;
+    if (body.isActive !== undefined) input.isActive = body.isActive;
+
+    const link = await updateTrackedLink(c.env.DB, id, input);
+    if (!link) {
+      return c.json({ success: false, error: 'Tracked link not found' }, 404);
+    }
+    const base = getBaseUrl(c);
+    return c.json({ success: true, data: serializeTrackedLink(link, base) });
+  } catch (err) {
+    const jr = jsonBodyReadErrorResponse(err);
+    if (jr) return c.json(jr.body, jr.status);
+    if (err instanceof Error) {
+      if (
+        err.message === 'intro_template_not_found' ||
+        err.message === 'reward_template_not_found'
+      ) {
+        return c.json(
+          { success: false, error: 'Unknown introTemplateId or rewardTemplateId' },
+          400,
+        );
+      }
+    }
+    console.error('PUT /api/tracked-links/:id error:', err);
     return c.json({ success: false, error: 'Internal server error' }, 500);
   }
 });

@@ -18,7 +18,7 @@ type AutomationEventType =
   | 'message_received'
   | 'calendar_booked';
 
-interface AutomationAction {
+type AutomationAction = Readonly<{
   type:
     | 'add_tag'
     | 'remove_tag'
@@ -27,9 +27,9 @@ interface AutomationAction {
     | 'send_webhook'
     | 'switch_rich_menu';
   params: Record<string, unknown>;
-}
+}>;
 
-interface Automation {
+type Automation = Readonly<{
   id: string;
   name: string;
   description: string | null;
@@ -40,7 +40,7 @@ interface Automation {
   priority: number;
   createdAt: string;
   updatedAt: string;
-}
+}>;
 
 const eventTypeOptions: { value: AutomationEventType; label: string }[] = [
   { value: 'friend_add', label: '友だち追加' },
@@ -69,14 +69,14 @@ const eventTypeBadgeColor: Record<AutomationEventType, string> = {
   calendar_booked: 'bg-indigo-100 text-indigo-700',
 };
 
-interface CreateFormState {
+type CreateFormState = Readonly<{
   name: string;
   description: string;
   eventType: AutomationEventType;
   actionsJson: string;
   conditionsJson: string;
   priority: number;
-}
+}>;
 
 const initialForm: CreateFormState = {
   name: '',

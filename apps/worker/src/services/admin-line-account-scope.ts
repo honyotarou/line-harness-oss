@@ -11,9 +11,11 @@ import {
 } from './cloudflare-access-principal.js';
 import { effectiveMultiLineAccountQueryRequiresLineAccountId } from './deployed-security-defaults.js';
 import { lineAccountDbOptions } from './line-account-at-rest-key.js';
-import { AdminPrincipalLineAccountsSchemaUnavailableError } from './admin-principal-line-accounts-schema-error.js';
+import { createAdminPrincipalLineAccountsSchemaUnavailableError } from './admin-principal-line-accounts-schema-error.js';
 
-export type LineAccountScope = { mode: 'all' } | { mode: 'restricted'; ids: Set<string> };
+export type LineAccountScope =
+  | Readonly<{ mode: 'all' }>
+  | Readonly<{ mode: 'restricted'; ids: Set<string> }>;
 
 function isTruthyEnvFlag(raw: string | undefined): boolean {
   const v = raw?.trim().toLowerCase();
@@ -40,7 +42,7 @@ export async function resolveLineAccountScopeForRequest(
         }
       } catch (err) {
         if (isD1NoSuchTableError(err, 'admin_principal_line_accounts')) {
-          throw new AdminPrincipalLineAccountsSchemaUnavailableError();
+          throw createAdminPrincipalLineAccountsSchemaUnavailableError();
         }
         throw err;
       }
@@ -59,8 +61,8 @@ export async function resolveLineAccountScopeForRequest(
 }
 
 export type ScopedLineAccountQueryResult =
-  | { ok: true }
-  | { ok: false; status: 400 | 403; error: string };
+  | Readonly<{ ok: true }>
+  | Readonly<{ ok: false; status: 400 | 403; error: string }>;
 
 /** Validates `lineAccountId` query param when the principal has LINE account restrictions. */
 export function validateScopedLineAccountQueryParam(
@@ -104,8 +106,8 @@ export function resourceLineAccountVisibleInScope(
 }
 
 export type BodyLineAccountResult =
-  | { ok: true; lineAccountId: string | null }
-  | { ok: false; status: 400 | 403; error: string };
+  | Readonly<{ ok: true; lineAccountId: string | null }>
+  | Readonly<{ ok: false; status: 400 | 403; error: string }>;
 
 /**
  * For POST create: restricted principals must send `lineAccountId` and it must be allowed.

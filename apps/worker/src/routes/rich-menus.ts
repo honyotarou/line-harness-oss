@@ -1,5 +1,5 @@
 import { Hono } from 'hono';
-import { LineClient, type RichMenuObject } from '@line-crm/line-sdk';
+import { createLineClient, type RichMenuObject } from '@line-crm/line-sdk';
 import { getFriendById } from '@line-crm/db';
 import type { Env } from '../index.js';
 import { lineAccountDbOptions } from '../services/line-account-at-rest-key.js';
@@ -40,7 +40,7 @@ richMenus.get('/api/rich-menus', async (c) => {
       lineAccountId ?? null,
       lineAccountDbOptions(c.env),
     );
-    const lineClient = new LineClient(accessToken);
+    const lineClient = createLineClient(accessToken);
     const result = await lineClient.getRichMenuList();
     return c.json({ success: true, data: result.richmenus ?? [] });
   } catch (err) {
@@ -92,7 +92,7 @@ richMenus.post('/api/rich-menus', async (c) => {
       effectiveLineAccountId,
       lineAccountDbOptions(c.env),
     );
-    const lineClient = new LineClient(accessToken);
+    const lineClient = createLineClient(accessToken);
     const result = await lineClient.createRichMenu(menuPayload);
     return c.json({ success: true, data: result }, 201);
   } catch (err) {
@@ -120,7 +120,7 @@ richMenus.delete('/api/rich-menus/:id', async (c) => {
       lineAccountId ?? null,
       lineAccountDbOptions(c.env),
     );
-    const lineClient = new LineClient(accessToken);
+    const lineClient = createLineClient(accessToken);
     await lineClient.deleteRichMenu(richMenuId);
     return c.json({ success: true, data: null });
   } catch (err) {
@@ -146,7 +146,7 @@ richMenus.post('/api/rich-menus/:id/default', async (c) => {
       lineAccountId ?? null,
       lineAccountDbOptions(c.env),
     );
-    const lineClient = new LineClient(accessToken);
+    const lineClient = createLineClient(accessToken);
     await lineClient.setDefaultRichMenu(richMenuId);
     return c.json({ success: true, data: null });
   } catch (err) {
@@ -185,7 +185,7 @@ richMenus.post('/api/friends/:friendId/rich-menu', async (c) => {
       friendId,
       lineAccountDbOptions(c.env),
     );
-    const lineClient = new LineClient(accessToken);
+    const lineClient = createLineClient(accessToken);
     await lineClient.linkRichMenuToUser(friend.line_user_id, body.richMenuId);
 
     return c.json({ success: true, data: null });
@@ -219,7 +219,7 @@ richMenus.delete('/api/friends/:friendId/rich-menu', async (c) => {
       friendId,
       lineAccountDbOptions(c.env),
     );
-    const lineClient = new LineClient(accessToken);
+    const lineClient = createLineClient(accessToken);
     await lineClient.unlinkRichMenuFromUser(friend.line_user_id);
 
     return c.json({ success: true, data: null });
@@ -314,7 +314,7 @@ richMenus.post('/api/rich-menus/:id/image', async (c) => {
       lineAccountId ?? null,
       lineAccountDbOptions(c.env),
     );
-    const lineClient = new LineClient(accessToken);
+    const lineClient = createLineClient(accessToken);
     await lineClient.uploadRichMenuImage(richMenuId, imageData, imageContentType);
 
     return c.json({ success: true, data: null });

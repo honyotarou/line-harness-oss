@@ -15,31 +15,31 @@ export const RICH_MENU_IMAGE_JSON_BODY_LIMIT_BYTES = 2 * 1024 * 1024;
 /** Same cap for `Content-Type: image/*` uploads (binary path must match JSON path). */
 export const RICH_MENU_IMAGE_BINARY_MAX_BYTES = RICH_MENU_IMAGE_JSON_BODY_LIMIT_BYTES;
 
-export type BodyTooLargeErrorLike = Error & { readonly limitBytes: number };
-export function createBodyTooLargeError(limitBytes: number): BodyTooLargeErrorLike {
-  return new BodyTooLargeError(limitBytes);
+export type BodyTooLargeError = Error &
+  Readonly<{
+    name: 'BodyTooLargeError';
+    limitBytes: number;
+  }>;
+
+export function createBodyTooLargeError(limitBytes: number): BodyTooLargeError {
+  return Object.assign(new Error(`Request body exceeds ${limitBytes} bytes`), {
+    name: 'BodyTooLargeError' as const,
+    limitBytes,
+  });
 }
 
-export class BodyTooLargeError extends Error {
-  constructor(public readonly limitBytes: number) {
-    super(`Request body exceeds ${limitBytes} bytes`);
-    this.name = 'BodyTooLargeError';
-  }
+export type InvalidJsonBodyError = Error &
+  Readonly<{
+    name: 'InvalidJsonBodyError';
+  }>;
+
+export function createInvalidJsonBodyError(): InvalidJsonBodyError {
+  return Object.assign(new Error('Invalid JSON body'), {
+    name: 'InvalidJsonBodyError' as const,
+  });
 }
 
-export type InvalidJsonBodyErrorLike = Error;
-export function createInvalidJsonBodyError(): InvalidJsonBodyErrorLike {
-  return new InvalidJsonBodyError();
-}
-
-export class InvalidJsonBodyError extends Error {
-  constructor() {
-    super('Invalid JSON body');
-    this.name = 'InvalidJsonBodyError';
-  }
-}
-
-function isBodyTooLargeError(err: unknown): err is BodyTooLargeErrorLike {
+export function isBodyTooLargeError(err: unknown): err is BodyTooLargeError {
   return (
     err instanceof Error &&
     err.name === 'BodyTooLargeError' &&
@@ -47,7 +47,7 @@ function isBodyTooLargeError(err: unknown): err is BodyTooLargeErrorLike {
   );
 }
 
-function isInvalidJsonBodyError(err: unknown): err is InvalidJsonBodyErrorLike {
+export function isInvalidJsonBodyError(err: unknown): err is InvalidJsonBodyError {
   return err instanceof Error && err.name === 'InvalidJsonBodyError';
 }
 

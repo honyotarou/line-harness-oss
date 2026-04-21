@@ -2,7 +2,7 @@
  * Origins derived from Worker/LIFF env (CORS and post-login redirect allowlists).
  */
 
-export type AllowedOriginsEnv = {
+export type AllowedOriginsEnv = Readonly<{
   WEB_URL?: string;
   WORKER_URL?: string;
   LIFF_URL?: string;
@@ -12,7 +12,7 @@ export type AllowedOriginsEnv = {
    * exactly matches `WEB_URL` (mitigates unrelated preview/staging origins in `ALLOWED_ORIGINS`).
    */
   CORS_STRICT_VERCEL_ORIGINS?: string;
-};
+}>;
 
 export function normalizeOrigin(value: string | undefined | null): string | null {
   if (!value) {

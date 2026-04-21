@@ -42,9 +42,9 @@ CLAUDE.md またはプロジェクトの memory に以下を記載:
 ### 3. SDK の利用 (TypeScript プロジェクトの場合)
 
 ```typescript
-import { LineHarness } from '@line-harness/sdk'
+import { createLineHarness } from '@line-harness/sdk'
 
-const lh = new LineHarness({
+const lh = createLineHarness({
   apiUrl: 'https://line-crm-worker.line-crm-api.workers.dev',
   apiKey: process.env.LINE_HARNESS_API_KEY!,
 })

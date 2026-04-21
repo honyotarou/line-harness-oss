@@ -43,6 +43,7 @@ liffRoutes.get('/auth/line', async (c) => {
     utmContent: c.req.query('utm_content') || '',
     utmTerm: c.req.query('utm_term') || '',
     accountParam: c.req.query('account') || '',
+    poolParam: c.req.query('pool') || '',
     uidParam: c.req.query('uid') || '',
   });
 

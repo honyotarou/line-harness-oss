@@ -1,12 +1,13 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { HttpClient } from '../src/http.js';
-import { LineHarnessError } from '../src/errors.js';
+import { createHttpClient } from '../src/http.js';
+import type { HttpClient } from '../src/http.js';
+import { isLineHarnessError } from '../src/errors.js';
 
 describe('HttpClient', () => {
   let http: HttpClient;
 
   beforeEach(() => {
-    http = new HttpClient({
+    http = createHttpClient({
       baseUrl: 'https://api.example.com',
       apiKey: 'test-key',
       timeout: 5000,
@@ -62,12 +63,13 @@ describe('HttpClient', () => {
     });
     vi.stubGlobal('fetch', mockFetch);
 
-    await expect(http.get('/api/scenarios/xxx')).rejects.toThrow(LineHarnessError);
     await expect(http.get('/api/scenarios/xxx')).rejects.toMatchObject({
+      name: 'LineHarnessError',
       status: 404,
       message: 'Not found',
       endpoint: 'GET /api/scenarios/xxx',
     });
+    await expect(http.get('/api/scenarios/xxx')).rejects.toSatisfy(isLineHarnessError);
     vi.unstubAllGlobals();
   });
 });

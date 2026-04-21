@@ -9,6 +9,7 @@ import BroadcastForm from '@/components/broadcasts/broadcast-form';
 import CcPromptButton from '@/components/cc-prompt-button';
 import { Alert } from '@/components/ui/alert';
 import { Badge } from '@/components/ui/badge';
+import { Input, Select, Textarea } from '@/components/ui/field';
 
 const ccPrompts = [
   {
@@ -61,6 +62,14 @@ export default function BroadcastsPage() {
   const [error, setError] = useState('');
   const [showCreate, setShowCreate] = useState(false);
   const [sendingId, setSendingId] = useState<string | null>(null);
+  const [opsBroadcastId, setOpsBroadcastId] = useState('');
+  const [segmentJson, setSegmentJson] = useState('{\n  "operator": "and",\n  "rules": []\n}');
+  const [segmentCount, setSegmentCount] = useState<number | null>(null);
+  const [testFriendId, setTestFriendId] = useState('');
+  const [sendSecret, setSendSecret] = useState('');
+  const [opsBusy, setOpsBusy] = useState(false);
+  const [opsError, setOpsError] = useState('');
+  const [opsNotice, setOpsNotice] = useState('');
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -84,6 +93,10 @@ export default function BroadcastsPage() {
     load();
   }, [load]);
 
+  useEffect(() => {
+    setOpsBroadcastId((cur) => cur || broadcasts[0]?.id || '');
+  }, [broadcasts]);
+
   const handleSend = async (id: string) => {
     if (!confirm('この配信を今すぐ送信してもよいですか？')) return;
     setSendingId(id);
@@ -94,6 +107,64 @@ export default function BroadcastsPage() {
       setError('送信に失敗しました');
     } finally {
       setSendingId(null);
+    }
+  };
+
+  const handleSegmentPreview = async () => {
+    if (!opsBroadcastId.trim()) {
+      setOpsError('配信を選択してください');
+      return;
+    }
+    let conditions: unknown;
+    try {
+      conditions = JSON.parse(segmentJson) as unknown;
+    } catch {
+      setOpsError('セグメント JSON が不正です');
+      return;
+    }
+    setOpsError('');
+    setOpsNotice('');
+    setOpsBusy(true);
+    setSegmentCount(null);
+    try {
+      const res = await api.broadcasts.segmentPreviewCount(opsBroadcastId.trim(), conditions);
+      if (!res.success) {
+        setOpsError(typeof res.error === 'string' ? res.error : '人数取得に失敗しました');
+      } else {
+        setSegmentCount(res.data.count);
+      }
+    } catch {
+      setOpsError('人数取得に失敗しました');
+    } finally {
+      setOpsBusy(false);
+    }
+  };
+
+  const handleTestPush = async () => {
+    if (!opsBroadcastId.trim() || !testFriendId.trim()) {
+      setOpsError('配信と friendId を入力してください');
+      return;
+    }
+    setOpsError('');
+    setOpsNotice('');
+    setOpsBusy(true);
+    try {
+      await api.broadcasts.testPush(
+        opsBroadcastId.trim(),
+        { friendId: testFriendId.trim(), confirm: true },
+        sendSecret.trim() ? { sendSecret: sendSecret.trim() } : {},
+      );
+      setOpsNotice(
+        'テスト送信リクエストを受け付けました（配信結果は Worker / LINE に依存します）。',
+      );
+    } catch (e: unknown) {
+      const msg =
+        e && typeof e === 'object' && 'message' in e
+          ? String((e as { message?: unknown }).message)
+          : 'テスト送信に失敗しました';
+      setOpsError(msg);
+    } finally {
+      setOpsBusy(false);
     }
   };
 
@@ -133,6 +204,87 @@ export default function BroadcastsPage() {
           {error}
         </Alert>
       )}
+      {opsError ? (
+        <Alert variant="error" className="mb-4">
+          {opsError}
+        </Alert>
+      ) : null}
+      {opsNotice ? <Alert className="mb-4">{opsNotice}</Alert> : null}
+
+      <div className="mb-6 bg-white rounded-lg border border-gray-200 p-4 shadow-sm">
+        <h2 className="text-sm font-semibold text-gray-800 mb-3">
+          運用ツール（セグメント人数・テスト送信）
+        </h2>
+        <div className="grid gap-3 md:grid-cols-2">
+          <label className="block text-sm text-gray-600">
+            対象配信
+            <Select
+              className="mt-1 w-full"
+              value={opsBroadcastId}
+              onChange={(e) => setOpsBroadcastId(e.target.value)}
+            >
+              <option value="">選択してください</option>
+              {broadcasts.map((b) => (
+                <option key={b.id} value={b.id}>
+                  {b.title}（{b.id.slice(0, 8)}…）
+                </option>
+              ))}
+            </Select>
+          </label>
+          <label className="block text-sm text-gray-600">
+            テスト送信先 friendId
+            <Input
+              className="mt-1 w-full"
+              value={testFriendId}
+              onChange={(e) => setTestFriendId(e.target.value)}
+              placeholder="友だちの内部 ID"
+            />
+          </label>
+        </div>
+        <label className="block text-sm text-gray-600 mt-3">
+          X-Broadcast-Send-Secret（テスト送信・本番送信で必須の環境向け）
+          <Input
+            type="password"
+            value={sendSecret}
+            onChange={(e) => setSendSecret(e.target.value)}
+            className="mt-1 w-full"
+            autoComplete="off"
+          />
+        </label>
+        <label className="block text-sm text-gray-600 mt-3">
+          セグメント conditions（JSON）
+          <Textarea
+            value={segmentJson}
+            onChange={(e) => setSegmentJson(e.target.value)}
+            rows={5}
+            className="mt-1 w-full font-mono text-xs"
+          />
+        </label>
+        <div className="mt-3 flex flex-wrap gap-2 items-center">
+          <button
+            type="button"
+            disabled={opsBusy}
+            onClick={() => void handleSegmentPreview()}
+            className="px-3 py-2 text-sm rounded-lg border border-gray-300 hover:bg-gray-50 disabled:opacity-50"
+          >
+            セグメント人数を確認
+          </button>
+          {segmentCount !== null ? (
+            <span className="text-sm text-gray-700">
+              該当: {segmentCount.toLocaleString('ja-JP')} 人
+            </span>
+          ) : null}
+          <button
+            type="button"
+            disabled={opsBusy}
+            onClick={() => void handleTestPush()}
+            className="px-3 py-2 text-sm rounded-lg text-white disabled:opacity-50"
+            style={{ backgroundColor: 'var(--color-primary)' }}
+          >
+            1 件テスト送信
+          </button>
+        </div>
+      </div>
 
       {/* Create form */}
       {showCreate && (

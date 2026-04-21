@@ -8,7 +8,7 @@ import { Alert } from '@/components/ui/alert';
 import { Badge } from '@/components/ui/badge';
 import { Input, Select, Textarea } from '@/components/ui/field';
 
-interface Template {
+type Template = Readonly<{
   id: string;
   name: string;
   category: string;
@@ -16,7 +16,7 @@ interface Template {
   messageContent: string;
   createdAt: string;
   updatedAt: string;
-}
+}>;
 
 const messageTypeLabels: Record<string, string> = {
   text: 'テキスト',
@@ -24,12 +24,12 @@ const messageTypeLabels: Record<string, string> = {
   flex: 'Flex',
 };
 
-interface CreateFormState {
+type CreateFormState = Readonly<{
   name: string;
   category: string;
   messageType: string;
   messageContent: string;
-}
+}>;
 
 function formatDate(iso: string): string {
   return new Date(iso).toLocaleString('ja-JP', {

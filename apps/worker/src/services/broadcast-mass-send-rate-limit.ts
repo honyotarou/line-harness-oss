@@ -7,7 +7,7 @@ const BROADCAST_MASS_SEND_RATE = { limit: 3, windowMs: 60_000 };
 
 export async function enforceBroadcastMassSendRateLimit(
   c: Context<Env>,
-  bucket: 'broadcast-send' | 'broadcast-send-segment',
+  bucket: 'broadcast-send' | 'broadcast-send-segment' | 'broadcast-test-push',
 ): Promise<Response | null> {
   return enforceRateLimit(c, {
     bucket,

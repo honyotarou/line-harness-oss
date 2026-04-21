@@ -20,7 +20,7 @@ const dbMocks = vi.hoisted(() => ({
 vi.mock('@line-crm/db', () => dbMocks);
 
 vi.mock('../../src/services/google-calendar.js', () => ({
-  GoogleCalendarClient: vi.fn().mockImplementation(() => ({
+  createGoogleCalendarClient: vi.fn(() => ({
     createEvent: vi.fn(),
     deleteEvent: vi.fn(),
     getFreeBusy: vi.fn(),

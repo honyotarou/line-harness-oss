@@ -1,6 +1,6 @@
 import { qrPayloadToSvgDataUrl } from '../services/qr-svg-data-url.js';
 
-export type LandingEnv = {
+export type LandingEnv = Readonly<{
   LANDING_VARIANT?: string;
   LANDING_TITLE?: string;
   LANDING_SUBTITLE?: string;
@@ -10,7 +10,7 @@ export type LandingEnv = {
   LANDING_QR_TITLE?: string;
   LANDING_QR_SUBTITLE?: string;
   LANDING_QR_HINT_HTML?: string;
-};
+}>;
 
 function resolveVariant(env: LandingEnv): 'default' | 'custom' {
   return (env.LANDING_VARIANT ?? '').toLowerCase() === 'custom' ? 'custom' : 'default';

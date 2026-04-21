@@ -11,13 +11,13 @@ export const EDGE_AUTH_RELOAD_LOGIN_KEY = 'lh_edge_auth_sso_reload_login';
 
 const COOKIE_MAX_AGE_SEC = 180;
 
-export type EdgeAuthSsoReloadGateDeps = {
+export type EdgeAuthSsoReloadGateDeps = Readonly<{
   sessionGet: (key: string) => string | null;
   sessionSet: (key: string, value: string) => void;
   sessionRemove: (key: string) => void;
   cookieRead: (name: string) => string | null;
   cookieWrite: (name: string, value: string, maxAgeSec: number) => void;
-};
+}>;
 
 function cookieNameForFlag(flagKey: string): string {
   if (flagKey === EDGE_AUTH_RELOAD_SESSION_KEY) {

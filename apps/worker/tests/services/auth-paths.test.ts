@@ -21,10 +21,23 @@ describe('isAuthExemptPath', () => {
     expect(isAuthExemptPath('/api/webhooks/incoming/hook-1', 'POST')).toBe(false);
   });
 
+  it('treats traffic pool entry GET /pool/:slug as exempt (public redirect to LIFF auth)', () => {
+    expect(isAuthExemptPath('/pool/promo', 'GET')).toBe(true);
+    expect(isAuthExemptPath('/pool/promo', 'POST')).toBe(false);
+  });
+
   it('treats GET form definition and POST submit as exempt', () => {
     expect(isAuthExemptPath('/api/forms/abc', 'GET')).toBe(true);
     expect(isAuthExemptPath('/api/forms/abc', 'PUT')).toBe(false);
     expect(isAuthExemptPath('/api/forms/abc/submit', 'POST')).toBe(true);
+  });
+
+  it('treats GET /api/images/public/:64hex as exempt (LINE fetches image bytes without admin session)', () => {
+    const tok = 'a'.repeat(64);
+    expect(isAuthExemptPath(`/api/images/public/${tok}`, 'GET')).toBe(true);
+    expect(isAuthExemptPath(`/api/images/public/${tok}`, 'POST')).toBe(false);
+    expect(isAuthExemptPath('/api/images/public/nothex', 'GET')).toBe(false);
+    expect(isAuthExemptPath('/api/images/public/short', 'GET')).toBe(false);
   });
 
   it('does not exempt admin-only analytics or link wrap (mounted with LIFF router but different path prefix)', () => {
@@ -100,6 +113,10 @@ describe('isCloudflareAccessExemptPath', () => {
     expect(isCloudflareAccessExemptPath('/webhook', 'POST')).toBe(true);
   });
 
+  it('exempts GET /pool/:slug from Cloudflare Access (matches auth exempt)', () => {
+    expect(isCloudflareAccessExemptPath('/pool/promo', 'GET')).toBe(true);
+  });
+
   it('does not exempt BFF-prefixed GET /api/auth/session (still requires Access JWT)', () => {
     expect(isCloudflareAccessExemptPath('/api/lh-upstream/api/auth/session', 'GET')).toBe(false);
   });
@@ -117,6 +134,10 @@ describe('isCloudflareAccessExemptPath', () => {
 
   it('exempts GET /favicon.ico from Cloudflare Access (matches auth exempt)', () => {
     expect(isCloudflareAccessExemptPath('/favicon.ico', 'GET')).toBe(true);
+  });
+
+  it('exempts GET /api/images/public/:token from Cloudflare Access when token shape matches', () => {
+    expect(isCloudflareAccessExemptPath(`/api/images/public/${'b'.repeat(64)}`, 'GET')).toBe(true);
   });
 
   it('does not exempt GET / from Cloudflare Access (JWT still required when enforcement is on)', () => {

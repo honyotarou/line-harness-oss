@@ -8,7 +8,7 @@ import { Badge } from '@/components/ui/badge';
 import { Input, Select } from '@/components/ui/field';
 
 type PrincipalRole = 'owner' | 'admin' | 'viewer';
-type Row = { email: string; role: PrincipalRole; updatedAt: string };
+type Row = Readonly<{ email: string; role: PrincipalRole; updatedAt: string }>;
 
 export default function AccessRolesPage() {
   const [rows, setRows] = useState<Row[]>([]);

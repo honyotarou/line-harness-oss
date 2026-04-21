@@ -11,11 +11,7 @@ import type {
 } from './types.js';
 import { parseDelay } from './delay.js';
 
-export function createWorkflows(deps: {
-  friends: FriendsResource;
-  scenarios: ScenariosResource;
-  broadcasts: BroadcastsResource;
-}): {
+export type Workflows = Readonly<{
   createStepScenario: (
     name: string,
     triggerType: ScenarioTriggerType,
@@ -28,9 +24,20 @@ export function createWorkflows(deps: {
     content: string,
     conditions: SegmentCondition,
   ) => Promise<Broadcast>;
-  sendTextToFriend: (friendId: string, text: string) => Promise<{ messageId: string }>;
-  sendFlexToFriend: (friendId: string, flexJson: string) => Promise<{ messageId: string }>;
-} {
+  sendTextToFriend: (friendId: string, text: string) => Promise<Readonly<{ messageId: string }>>;
+  sendFlexToFriend: (
+    friendId: string,
+    flexJson: string,
+  ) => Promise<Readonly<{ messageId: string }>>;
+}>;
+
+export function createWorkflows(
+  deps: Readonly<{
+    friends: FriendsResource;
+    scenarios: ScenariosResource;
+    broadcasts: BroadcastsResource;
+  }>,
+): Workflows {
   const { friends, scenarios, broadcasts } = deps;
 
   return {
@@ -93,46 +100,18 @@ export function createWorkflows(deps: {
       return broadcasts.sendToSegment(broadcast.id, conditions);
     },
 
-    async sendTextToFriend(friendId: string, text: string): Promise<{ messageId: string }> {
+    async sendTextToFriend(
+      friendId: string,
+      text: string,
+    ): Promise<Readonly<{ messageId: string }>> {
       return friends.sendMessage(friendId, text, 'text');
     },
 
-    async sendFlexToFriend(friendId: string, flexJson: string): Promise<{ messageId: string }> {
+    async sendFlexToFriend(
+      friendId: string,
+      flexJson: string,
+    ): Promise<Readonly<{ messageId: string }>> {
       return friends.sendMessage(friendId, flexJson, 'flex');
     },
   };
-}
-
-export type WorkflowsApi = ReturnType<typeof createWorkflows>;
-
-/** Backward-compatible class wrapper. Prefer `createWorkflows` to avoid `this` binding hazards. */
-export class Workflows {
-  private readonly api: WorkflowsApi;
-
-  constructor(
-    friends: FriendsResource,
-    scenarios: ScenariosResource,
-    broadcasts: BroadcastsResource,
-  ) {
-    this.api = createWorkflows({ friends, scenarios, broadcasts });
-  }
-
-  createStepScenario(...args: Parameters<WorkflowsApi['createStepScenario']>) {
-    return this.api.createStepScenario(...args);
-  }
-  broadcastText(...args: Parameters<WorkflowsApi['broadcastText']>) {
-    return this.api.broadcastText(...args);
-  }
-  broadcastToTag(...args: Parameters<WorkflowsApi['broadcastToTag']>) {
-    return this.api.broadcastToTag(...args);
-  }
-  broadcastToSegment(...args: Parameters<WorkflowsApi['broadcastToSegment']>) {
-    return this.api.broadcastToSegment(...args);
-  }
-  sendTextToFriend(...args: Parameters<WorkflowsApi['sendTextToFriend']>) {
-    return this.api.sendTextToFriend(...args);
-  }
-  sendFlexToFriend(...args: Parameters<WorkflowsApi['sendFlexToFriend']>) {
-    return this.api.sendFlexToFriend(...args);
-  }
 }

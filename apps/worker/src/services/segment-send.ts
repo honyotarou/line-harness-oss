@@ -11,7 +11,7 @@ import {
   calculateStaggerDelay,
   sleep,
   addMessageVariation,
-  StealthRateLimiter,
+  createStealthRateLimiter,
 } from './stealth.js';
 import { buildSegmentQuery } from './segment-query.js';
 import type { SegmentCondition } from './segment-query.js';
@@ -37,10 +37,10 @@ async function segmentConditionIdempotencyTag(condition: SegmentCondition): Prom
 
 const MULTICAST_BATCH_SIZE = 500;
 
-interface FriendRow {
+type FriendRow = Readonly<{
   id: string;
   line_user_id: string;
-}
+}>;
 
 export async function processSegmentSend(
   db: D1Database,
@@ -96,9 +96,13 @@ export async function processSegmentSend(
 
     const now = jstNow();
     const totalBatches = Math.ceil(friends.length / MULTICAST_BATCH_SIZE);
-    const stealthLimiter = new StealthRateLimiter(1000, 60_000, {
-      db,
-      subjectKey: `line:${broadcast.line_account_id ?? 'default'}`,
+    const stealthLimiter = createStealthRateLimiter({
+      maxCallsPerWindow: 1000,
+      windowMs: 60_000,
+      d1: {
+        db,
+        subjectKey: `line:${broadcast.line_account_id ?? 'default'}`,
+      },
     });
 
     for (let i = 0; i < friends.length; i += MULTICAST_BATCH_SIZE) {

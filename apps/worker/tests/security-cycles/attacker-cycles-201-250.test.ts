@@ -417,7 +417,7 @@ describe('攻撃者サイクル 201–250（セキュリティバッチ）', () 
   });
 
   it('cycle 244: readTextBodyWithLimit rejects when Content-Length exceeds limit', async () => {
-    const { BodyTooLargeError, readTextBodyWithLimit } = await import(
+    const { isBodyTooLargeError, readTextBodyWithLimit } = await import(
       '../../src/services/request-body.js'
     );
     const req = new Request('http://x/', {
@@ -425,7 +425,7 @@ describe('攻撃者サイクル 201–250（セキュリティバッチ）', () 
       headers: { 'Content-Length': '5000' },
       body: 'x',
     });
-    await expect(readTextBodyWithLimit(req, 100)).rejects.toBeInstanceOf(BodyTooLargeError);
+    await expect(readTextBodyWithLimit(req, 100)).rejects.toSatisfy(isBodyTooLargeError);
   });
 
   it('cycle 245: verifyTrackedLinkFriendToken rejects wrong iat type', async () => {
@@ -457,13 +457,13 @@ describe('攻撃者サイクル 201–250（セキュリティバッチ）', () 
   });
 
   it('cycle 246: BodyTooLargeError is instanceof Error', async () => {
-    const { BodyTooLargeError } = await import('../../src/services/request-body.js');
-    expect(new BodyTooLargeError(99)).toBeInstanceOf(Error);
+    const { createBodyTooLargeError } = await import('../../src/services/request-body.js');
+    expect(createBodyTooLargeError(99)).toBeInstanceOf(Error);
   });
 
   it('cycle 247: InvalidJsonBodyError is instanceof Error', async () => {
-    const { InvalidJsonBodyError } = await import('../../src/services/request-body.js');
-    expect(new InvalidJsonBodyError()).toBeInstanceOf(Error);
+    const { createInvalidJsonBodyError } = await import('../../src/services/request-body.js');
+    expect(createInvalidJsonBodyError()).toBeInstanceOf(Error);
   });
 
   it('cycle 248: tryParseJsonRecord rejects top-level JSON array', async () => {

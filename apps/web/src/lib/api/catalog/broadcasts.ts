@@ -38,9 +38,34 @@ export const broadcasts = {
     }),
   delete: (id: string) =>
     fetchApi<ApiResponse<null>>(`/api/broadcasts/${id}`, { method: 'DELETE' }),
-  send: (id: string) =>
+  send: (
+    id: string,
+    opts?: Readonly<{
+      sendSecret?: string;
+    }>,
+  ) =>
     fetchApi<ApiResponse<ApiBroadcast>>(`/api/broadcasts/${id}/send`, {
       method: 'POST',
       body: JSON.stringify({ confirm: true }),
+      headers: opts?.sendSecret?.trim()
+        ? { 'X-Broadcast-Send-Secret': opts.sendSecret.trim() }
+        : {},
+    }),
+  segmentPreviewCount: (id: string, conditions: unknown) =>
+    fetchApi<ApiResponse<{ count: number }>>(`/api/broadcasts/${id}/segment-preview-count`, {
+      method: 'POST',
+      body: JSON.stringify({ conditions }),
+    }),
+  testPush: (
+    id: string,
+    body: Readonly<{ friendId: string; confirm: true }>,
+    opts?: Readonly<{ sendSecret?: string }>,
+  ) =>
+    fetchApi<ApiResponse<unknown>>(`/api/broadcasts/${id}/test-push`, {
+      method: 'POST',
+      body: JSON.stringify(body),
+      headers: opts?.sendSecret?.trim()
+        ? { 'X-Broadcast-Send-Secret': opts.sendSecret.trim() }
+        : {},
     }),
 };

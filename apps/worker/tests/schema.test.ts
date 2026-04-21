@@ -60,6 +60,16 @@ const migration025Path = resolve(
   '../../packages/db/migrations/025_audit_log_webhook_secret_not_null.sql',
 );
 
+const migration028Path = resolve(
+  process.cwd(),
+  '../../packages/db/migrations/028_tracked_link_template_refs.sql',
+);
+
+const migration029Path = resolve(
+  process.cwd(),
+  '../../packages/db/migrations/029_media_assets_ad_platforms.sql',
+);
+
 describe('schema.sql', () => {
   it('migration 011 matches admin_principal_roles DDL', () => {
     const m011 = readFileSync(migration011Path, 'utf8');
@@ -96,6 +106,10 @@ describe('schema.sql', () => {
     expect(schema).toContain('CREATE TABLE IF NOT EXISTS incoming_webhook_processed_payloads');
     expect(schema).toContain('CREATE TABLE IF NOT EXISTS admin_session_revocations');
     expect(schema).toContain('CREATE TABLE IF NOT EXISTS admin_audit_log');
+    expect(schema).toContain('CREATE TABLE IF NOT EXISTS traffic_pools');
+    expect(schema).toContain('CREATE TABLE IF NOT EXISTS pool_accounts');
+    expect(schema).toContain('CREATE TABLE IF NOT EXISTS media_assets');
+    expect(schema).toContain('CREATE TABLE IF NOT EXISTS ad_platform_connections');
   });
 
   it('defines friend columns required by runtime code', () => {
@@ -160,6 +174,22 @@ describe('schema.sql', () => {
     expect(m025).toContain('secret TEXT NOT NULL');
     expect(m025).toMatch(/WHEN secret IS NULL OR trim\(secret\) = ''/);
     expect(m025).toContain('lower(hex(randomblob(32)))');
+  });
+
+  it('migration 029 adds media_assets and ad_platform_connections', () => {
+    const m029 = readFileSync(migration029Path, 'utf8');
+    expect(m029).toContain('CREATE TABLE IF NOT EXISTS media_assets');
+    expect(m029).toContain('CREATE TABLE IF NOT EXISTS ad_platform_connections');
+    expect(m029).toContain("CHECK (provider IN ('meta', 'google', 'tiktok', 'x'))");
+  });
+
+  it('defines tracked link template ref columns for campaign messaging', () => {
+    const trackedBlock = schema.match(/CREATE TABLE IF NOT EXISTS tracked_links \(([\s\S]*?)\n\);/);
+    expect(trackedBlock?.[1]).toContain('intro_template_id');
+    expect(trackedBlock?.[1]).toContain('reward_template_id');
+    const m028 = readFileSync(migration028Path, 'utf8');
+    expect(m028).toContain('intro_template_id');
+    expect(m028).toContain('reward_template_id');
   });
 
   it('requires webhook signing secrets and documents calendar token ciphertext in schema', () => {

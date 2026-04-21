@@ -25,9 +25,7 @@ import { collectLineLoginChannelIds, verifyLineIdToken } from '../services/line-
 import { lineAccountDbOptions } from '../services/line-account-at-rest-key.js';
 import { resolveLineAccessTokenForFriend } from '../services/line-account-routing.js';
 import {
-  BodyTooLargeError,
   DEFAULT_ADMIN_JSON_BODY_LIMIT_BYTES,
-  InvalidJsonBodyError,
   jsonBodyReadErrorResponse,
   readJsonBodyWithLimit,
 } from '../services/request-body.js';
@@ -382,14 +380,14 @@ forms.post('/api/forms/:id/submit', async (c) => {
           return;
         }
         console.log('Form reply: sending to', refreshedFriend.line_user_id);
-        const { LineClient } = await import('@line-crm/line-sdk');
+        const { createLineClient } = await import('@line-crm/line-sdk');
         const accessToken = await resolveLineAccessTokenForFriend(
           db,
           c.env.LINE_CHANNEL_ACCESS_TOKEN,
           friendId,
           lineAccountDbOptions(c.env),
         );
-        const lineClient = new LineClient(accessToken);
+        const lineClient = createLineClient(accessToken);
 
         // Build Flex card showing their answers
         const entries = Object.entries(submissionData as Record<string, unknown>);
@@ -480,11 +478,9 @@ forms.post('/api/forms/:id/submit', async (c) => {
 
     return c.json({ success: true, data: serializeSubmission(submission) }, 201);
   } catch (err) {
-    if (err instanceof Error && err.name === 'BodyTooLargeError') {
-      return c.json({ success: false, error: 'Request body too large' }, 413);
-    }
-    if (err instanceof Error && err.name === 'InvalidJsonBodyError') {
-      return c.json({ success: false, error: 'Invalid JSON body' }, 400);
+    const bodyErr = jsonBodyReadErrorResponse(err);
+    if (bodyErr) {
+      return c.json(bodyErr.body, bodyErr.status);
     }
     console.error('POST /api/forms/:id/submit error:', err);
     return c.json({ success: false, error: 'Internal server error' }, 500);

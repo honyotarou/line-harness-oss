@@ -8,7 +8,7 @@ import { Alert } from '@/components/ui/alert';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/field';
 
-interface IncomingWebhook {
+type IncomingWebhook = Readonly<{
   id: string;
   name: string;
   sourceType: string;
@@ -16,9 +16,9 @@ interface IncomingWebhook {
   isActive: boolean;
   createdAt: string;
   updatedAt: string;
-}
+}>;
 
-interface OutgoingWebhook {
+type OutgoingWebhook = Readonly<{
   id: string;
   name: string;
   url: string;
@@ -27,7 +27,7 @@ interface OutgoingWebhook {
   isActive: boolean;
   createdAt: string;
   updatedAt: string;
-}
+}>;
 
 type Tab = 'incoming' | 'outgoing';
 

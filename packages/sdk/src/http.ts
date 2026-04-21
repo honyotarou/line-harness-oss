@@ -1,17 +1,19 @@
-import { LineHarnessError } from './errors.js';
+import { createLineHarnessError } from './errors.js';
 
-interface HttpClientConfig {
+export type HttpClientConfig = Readonly<{
   baseUrl: string;
   apiKey: string;
   timeout: number;
-}
+}>;
 
-export function createHttpClient(config: HttpClientConfig): {
+export type HttpClient = Readonly<{
   get: <T = unknown>(path: string) => Promise<T>;
   post: <T = unknown>(path: string, body?: unknown) => Promise<T>;
   put: <T = unknown>(path: string, body?: unknown) => Promise<T>;
   delete: <T = unknown>(path: string) => Promise<T>;
-} {
+}>;
+
+export function createHttpClient(config: HttpClientConfig): HttpClient {
   const baseUrl = config.baseUrl.replace(/\/$/, '');
   const apiKey = config.apiKey;
   const timeout = config.timeout;
@@ -43,7 +45,7 @@ export function createHttpClient(config: HttpClientConfig): {
       } catch {
         // ignore parse errors
       }
-      throw new LineHarnessError(errorMessage, res.status, `${method} ${path}`);
+      throw createLineHarnessError(errorMessage, res.status, `${method} ${path}`);
     }
 
     return res.json() as Promise<T>;
@@ -63,27 +65,4 @@ export function createHttpClient(config: HttpClientConfig): {
       return request<T>('DELETE', path);
     },
   };
-}
-
-export class HttpClient {
-  private readonly api: ReturnType<typeof createHttpClient>;
-  constructor(config: HttpClientConfig) {
-    this.api = createHttpClient(config);
-  }
-
-  async get<T = unknown>(path: string): Promise<T> {
-    return this.api.get<T>(path);
-  }
-
-  async post<T = unknown>(path: string, body?: unknown): Promise<T> {
-    return this.api.post<T>(path, body);
-  }
-
-  async put<T = unknown>(path: string, body?: unknown): Promise<T> {
-    return this.api.put<T>(path, body);
-  }
-
-  async delete<T = unknown>(path: string): Promise<T> {
-    return this.api.delete<T>(path);
-  }
 }

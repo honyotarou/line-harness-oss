@@ -9,13 +9,13 @@ import { timingSafeEqualUtf8 } from './timing-safe-equal.js';
 /** Default validity for signed tracking URLs (personalized links). */
 export const DEFAULT_TRACKED_LINK_TTL_SECONDS = 90 * 24 * 60 * 60;
 
-interface TrackedLinkFriendPayload {
+type TrackedLinkFriendPayload = Readonly<{
   scope: 'tracked_link_friend';
   lid: string;
   fid: string;
   iat: number;
   exp: number;
-}
+}>;
 
 function encodeBase64Url(input: string): string {
   const bytes = new TextEncoder().encode(input);

@@ -12,7 +12,7 @@ import {
   calculateStaggerDelay,
   sleep,
   addMessageVariation,
-  StealthRateLimiter,
+  createStealthRateLimiter,
 } from './stealth.js';
 import { buildMessageFromStoredContent } from './stored-line-message.js';
 import {
@@ -82,9 +82,13 @@ export async function processBroadcastSend(
       // Send in batches with stealth delays to mimic human patterns
       const now = jstNow();
       const totalBatches = Math.ceil(followingFriends.length / MULTICAST_BATCH_SIZE);
-      const stealthLimiter = new StealthRateLimiter(1000, 60_000, {
-        db,
-        subjectKey: `line:${broadcast.line_account_id ?? 'default'}`,
+      const stealthLimiter = createStealthRateLimiter({
+        maxCallsPerWindow: 1000,
+        windowMs: 60_000,
+        d1: {
+          db,
+          subjectKey: `line:${broadcast.line_account_id ?? 'default'}`,
+        },
       });
       for (let i = 0; i < followingFriends.length; i += MULTICAST_BATCH_SIZE) {
         const batchIndex = Math.floor(i / MULTICAST_BATCH_SIZE);

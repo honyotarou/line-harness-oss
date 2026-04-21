@@ -23,5 +23,12 @@ binding = "DB"
 database_name = "line-crm"
 database_id = "YOUR_D1_DATABASE_ID"
 
+# Optional R2 for POST /api/images — or set GitHub Secret WORKER_LINE_CRM_IMAGES_BUCKET_NAME for CI deploy inject.
+# [[r2_buckets]]
+# binding = "LINE_CRM_IMAGES"
+# bucket_name = "line-crm-images"
+#
+# AD_PLATFORM_OUTBOUND_ENABLED=1 — see wrangler.toml header comment (sync remains stub until provider SDK is wired).
+
 [triggers]
 crons = ["*/5 * * * *"]

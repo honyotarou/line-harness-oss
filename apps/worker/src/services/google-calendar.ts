@@ -25,28 +25,30 @@ export function assertValidGoogleCalendarId(calendarId: string): void {
   throw new Error('Invalid Google Calendar id');
 }
 
-export interface GoogleCalendarConfig {
+export type GoogleCalendarConfig = Readonly<{
   calendarId: string;
   accessToken: string;
-}
+}>;
 
-export interface BusyInterval {
+export type BusyInterval = Readonly<{
   start: string;
   end: string;
-}
+}>;
 
-export interface CreateEventInput {
+export type CreateEventInput = Readonly<{
   summary: string;
   start: string; // ISO datetime string
   end: string; // ISO datetime string
   description?: string;
-}
+}>;
 
-export function createGoogleCalendarClient(config: GoogleCalendarConfig): {
+export type GoogleCalendarClient = Readonly<{
   getFreeBusy: (timeMin: string, timeMax: string) => Promise<BusyInterval[]>;
-  createEvent: (event: CreateEventInput) => Promise<{ eventId: string }>;
+  createEvent: (event: CreateEventInput) => Promise<Readonly<{ eventId: string }>>;
   deleteEvent: (eventId: string) => Promise<void>;
-} {
+}>;
+
+export function createGoogleCalendarClient(config: GoogleCalendarConfig): GoogleCalendarClient {
   assertValidGoogleCalendarId(config.calendarId);
 
   return {
@@ -80,7 +82,7 @@ export function createGoogleCalendarClient(config: GoogleCalendarConfig): {
       return calendarData?.busy ?? [];
     },
 
-    async createEvent(event: CreateEventInput): Promise<{ eventId: string }> {
+    async createEvent(event: CreateEventInput): Promise<Readonly<{ eventId: string }>> {
       const url = `${GCAL_BASE}/calendars/${encodeURIComponent(config.calendarId)}/events`;
 
       const body = {
@@ -129,34 +131,4 @@ export function createGoogleCalendarClient(config: GoogleCalendarConfig): {
       }
     },
   };
-}
-
-export class GoogleCalendarClient {
-  private readonly api: ReturnType<typeof createGoogleCalendarClient>;
-  constructor(private readonly config: GoogleCalendarConfig) {
-    this.api = createGoogleCalendarClient(config);
-  }
-
-  /**
-   * Get busy time intervals from Google Calendar FreeBusy API.
-   * Returns an array of { start, end } intervals when the calendar is busy.
-   */
-  async getFreeBusy(timeMin: string, timeMax: string): Promise<BusyInterval[]> {
-    return this.api.getFreeBusy(timeMin, timeMax);
-  }
-
-  /**
-   * Create an event on Google Calendar.
-   * Returns the created event's ID.
-   */
-  async createEvent(event: CreateEventInput): Promise<{ eventId: string }> {
-    return this.api.createEvent(event);
-  }
-
-  /**
-   * Delete an event from Google Calendar.
-   */
-  async deleteEvent(eventId: string): Promise<void> {
-    return this.api.deleteEvent(eventId);
-  }
 }

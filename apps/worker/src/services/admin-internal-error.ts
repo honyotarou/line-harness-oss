@@ -1,6 +1,9 @@
 import type { Context } from 'hono';
 import type { Env } from '../index.js';
-import { AdminPrincipalLineAccountsSchemaUnavailableError } from './admin-principal-line-accounts-schema-error.js';
+import {
+  isAdminPrincipalLineAccountsSchemaUnavailableError,
+  type AdminPrincipalLineAccountsSchemaUnavailableError,
+} from './admin-principal-line-accounts-schema-error.js';
 
 export function getRequestCorrelationId(c: Context<Env>): string {
   const existing = c.get('requestCorrelationId');
@@ -42,7 +45,7 @@ export function jsonAdminPrincipalLineAccountsSchemaUnavailable(
 
 /** Use in route `catch` blocks after body-read helpers so D1 migration gaps return 503 instead of opaque 500. */
 export function respondToAdminRouteCaughtError(c: Context<Env>, err: unknown, logLabel: string) {
-  if (err instanceof AdminPrincipalLineAccountsSchemaUnavailableError) {
+  if (isAdminPrincipalLineAccountsSchemaUnavailableError(err)) {
     return jsonAdminPrincipalLineAccountsSchemaUnavailable(c, err, logLabel);
   }
   return jsonInternalServerError(c, logLabel, err);

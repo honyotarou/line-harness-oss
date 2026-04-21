@@ -4,7 +4,7 @@
 
 import { LINE_WEBHOOK_EVENT_DEDUP_RETENTION_MS } from './line-webhook-dedup.js';
 
-type D1RunResult = { meta?: { changes?: number } };
+type D1RunResult = Readonly<{ meta?: { changes?: number } }>;
 
 async function sha256HexUtf8(input: string): Promise<string> {
   const digest = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(input));

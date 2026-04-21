@@ -1,4 +1,4 @@
-export interface SegmentRule {
+export type SegmentRule = Readonly<{
   type:
     | 'tag_exists'
     | 'tag_not_exists'
@@ -7,12 +7,12 @@ export interface SegmentRule {
     | 'ref_code'
     | 'is_following';
   value: string | boolean | { key: string; value: string };
-}
+}>;
 
-export interface SegmentCondition {
+export type SegmentCondition = Readonly<{
   operator: 'AND' | 'OR';
   rules: SegmentRule[];
-}
+}>;
 
 export const MAX_SEGMENT_RULES = 100;
 

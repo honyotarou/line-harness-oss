@@ -5,7 +5,7 @@
 
 export const LINE_WEBHOOK_EVENT_DEDUP_RETENTION_MS = 14 * 24 * 60 * 60 * 1000;
 
-type D1RunResult = { meta?: { changes?: number } };
+type D1RunResult = Readonly<{ meta?: { changes?: number } }>;
 
 function parseWebhookEventId(event: { webhookEventId?: unknown }): string | null {
   const raw = event.webhookEventId;

@@ -11,6 +11,10 @@ pnpm exec biome format .
 echo "== harness: encapsulation (layers / thin routes) =="
 node scripts/check-encapsulation.mjs
 
+# CI の unit ジョブと同様: line-sdk / shared の dist を最新にしてから型検査（src だけ更新して dist が古いと誤って赤くなるのを防ぐ）
+echo "== harness: build workspace libs (shared + line-sdk dist) =="
+pnpm build:libs
+
 echo "== harness: worker typecheck =="
 pnpm --filter worker typecheck
 

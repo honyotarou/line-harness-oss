@@ -10,12 +10,12 @@ const triggerLabels: Record<string, string> = {
   manual: '手動',
 };
 
-interface ScenarioListProps {
+type ScenarioListProps = Readonly<{
   scenarios: ScenarioWithCount[];
   onToggleActive: (id: string, current: boolean) => void;
   onDelete: (id: string) => void;
   loading?: boolean;
-}
+}>;
 
 export default function ScenarioList({
   scenarios,

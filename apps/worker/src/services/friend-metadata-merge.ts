@@ -9,8 +9,8 @@ export const FRIEND_METADATA_PATCH_MAX_DEPTH = 8;
 export const FRIEND_METADATA_PATCH_MAX_TOTAL_KEYS = 400;
 
 export type FriendMetadataMergeResult =
-  | { ok: true; merged: Record<string, unknown> }
-  | { ok: false; status: 400; error: string };
+  | Readonly<{ ok: true; merged: Record<string, unknown> }>
+  | Readonly<{ ok: false; status: 400; error: string }>;
 
 function countPatchKeys(patch: Record<string, unknown>): number {
   let n = Object.keys(patch).length;

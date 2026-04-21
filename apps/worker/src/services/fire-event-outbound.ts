@@ -18,9 +18,9 @@ export type AutomationWebhookBindings = Partial<
 >;
 
 /** Optional caller context (e.g. incoming webhook handler). */
-export type FireEventOutboundContext = {
+export type FireEventOutboundContext = Readonly<{
   incomingWebhookTriggered?: boolean;
-};
+}>;
 
 function isTruthyEnvFlag(raw: string | undefined): boolean {
   const v = raw?.trim().toLowerCase();

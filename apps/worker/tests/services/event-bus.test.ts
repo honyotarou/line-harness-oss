@@ -16,7 +16,7 @@ const dbMocks = vi.hoisted(() => ({
 vi.mock('@line-crm/db', () => dbMocks);
 
 vi.mock('@line-crm/line-sdk', () => ({
-  LineClient: vi.fn().mockImplementation(() => ({
+  createLineClient: vi.fn().mockImplementation(() => ({
     pushMessage: vi.fn().mockResolvedValue(undefined),
     linkRichMenuToUser: vi.fn().mockResolvedValue(undefined),
     unlinkRichMenuFromUser: vi.fn().mockResolvedValue(undefined),

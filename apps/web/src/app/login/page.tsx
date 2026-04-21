@@ -5,13 +5,13 @@ import {
   isAdminAccessLoginCompletePath,
   stripAdminAccessLoginCompleteMarker,
 } from '@line-crm/shared';
-import { ApiError, api, setAdminSessionToken, useCloudflareAccessLoginMode } from '@/lib/api';
+import { api, isApiError, setAdminSessionToken, useCloudflareAccessLoginMode } from '@/lib/api';
 import { Input } from '@/components/ui/field';
 import { buildAdminAccessBootstrapStartHref } from '@/lib/admin-access-bootstrap-start';
 
 function errorMessageFromApi(err: unknown): string | undefined {
-  if (err instanceof Error && err.name === 'ApiError' && 'body' in err) {
-    const body = (err as { body?: unknown }).body;
+  if (isApiError(err)) {
+    const body = err.body;
     if (!body || typeof body !== 'object') return undefined;
     const e = (body as { error?: unknown }).error;
     return typeof e === 'string' && e.trim() ? e : undefined;
@@ -79,7 +79,7 @@ function LoginPageInner() {
       try {
         sess = await api.auth.session();
       } catch (sessionErr) {
-        if (sessionErr instanceof ApiError && sessionErr.status === 401) {
+        if (isApiError(sessionErr) && sessionErr.status === 401) {
           const msg = errorMessageFromApi(sessionErr);
           if (msg && msg !== 'Unauthorized') {
             setError(msg);
@@ -103,38 +103,20 @@ function LoginPageInner() {
     } catch (err) {
       const fromBody = errorMessageFromApi(err);
       // Worker returns `{ error: 'Unauthorized' }` for bad API key; keep a friendly JP message for admins.
+      const apiErr = isApiError(err) ? err : null;
       const preferJp401 =
-        err instanceof Error &&
-        err.name === 'ApiError' &&
-        'status' in err &&
-        (err as { status?: unknown }).status === 401 &&
-        (!fromBody || fromBody === 'Unauthorized');
+        apiErr !== null && apiErr.status === 401 && (!fromBody || fromBody === 'Unauthorized');
       if (fromBody && !preferJp401) {
         setError(fromBody);
-      } else if (
-        err instanceof Error &&
-        err.name === 'ApiError' &&
-        'status' in err &&
-        (err as { status?: unknown }).status === 401
-      ) {
+      } else if (apiErr !== null && apiErr.status === 401) {
         setError(
           params.accessLogin
             ? 'Cloudflare Access のログインが必要です（JWT が Worker に届いているか確認してください）'
             : 'APIキーが正しくありません',
         );
-      } else if (
-        err instanceof Error &&
-        err.name === 'ApiError' &&
-        'status' in err &&
-        (err as { status?: unknown }).status === 400
-      ) {
+      } else if (apiErr !== null && apiErr.status === 400) {
         setError(fromBody ?? 'リクエストが無効です');
-      } else if (
-        err instanceof Error &&
-        err.name === 'ApiError' &&
-        'status' in err &&
-        (err as { status?: unknown }).status === 429
-      ) {
+      } else if (apiErr !== null && apiErr.status === 429) {
         setError(
           fromBody ??
             '短時間にリクエストが多すぎます。しばらく待ってから再度お試しください（レート制限）。',
