@@ -5,14 +5,28 @@
  * Access 未ログインならエッジが IdP へ誘導し、成功後に `CF_Authorization` が付いたうえで `/login` 等へ戻る。
  */
 
-const DEFAULT_BFF_PREFIX = '/api/lh-upstream';
+import { getAdminBrowserApiFetchBase } from './admin-public-config';
 
 export function buildAdminAccessBootstrapStartHref(params?: {
   returnTo?: string;
-  bffPrefix?: string;
+  /**
+   * Override the browser API base.
+   *
+   * - When the admin UI is same-origin with `admin-access-proxy-worker`, this is typically a path
+   *   like `/api/lh-upstream` (or an absolute URL ending with it).
+   * - Otherwise, this is the upstream Worker origin like `https://api.example.com`.
+   */
+  browserApiFetchBase?: string;
 }): string {
   const returnTo = params?.returnTo ?? '/login';
-  const prefix = (params?.bffPrefix ?? DEFAULT_BFF_PREFIX).replace(/\/+$/, '');
-  const base = prefix.startsWith('/') ? prefix : `/${prefix}`;
-  return `${base}/api/auth/access-bootstrap?returnTo=${encodeURIComponent(returnTo)}`;
+  const baseRaw = (params?.browserApiFetchBase ?? getAdminBrowserApiFetchBase()).replace(
+    /\/+$/,
+    '',
+  );
+  const path = `/api/auth/access-bootstrap?returnTo=${encodeURIComponent(returnTo)}`;
+  if (/^https?:\/\//i.test(baseRaw)) {
+    return `${baseRaw}${path}`;
+  }
+  const base = baseRaw.startsWith('/') ? baseRaw : `/${baseRaw}`;
+  return `${base}${path}`;
 }

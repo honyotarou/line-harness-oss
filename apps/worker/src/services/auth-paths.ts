@@ -24,14 +24,32 @@ export function canonicalRequestPathname(pathname: string): string {
  */
 const DEFAULT_ADMIN_BFF_INBOUND_PATH_PREFIX = '/api/lh-upstream';
 
+function resolveAdminInboundBffPrefix(bindings?: AdminInboundBffPolicyBindings): string | null {
+  const raw = bindings?.ADMIN_INBOUND_BFF_PATH_PREFIX;
+  // Explicit empty string means "disabled" (no logical strip).
+  if (raw !== undefined && raw.trim() === '') {
+    return null;
+  }
+  const v = raw?.trim() || DEFAULT_ADMIN_BFF_INBOUND_PATH_PREFIX;
+  const trimmed = v.replace(/\/+$/, '');
+  return trimmed || DEFAULT_ADMIN_BFF_INBOUND_PATH_PREFIX;
+}
+
 /**
  * Collapse `..` then strip the default `/api/lh-upstream` prefix when the remainder is an eligible
  * `/api/...` path. Ensures policy helpers see `/api/auth/session` even if the inbound URL still
  * carries the BFF prefix (rewrite middleware absent or bypassed).
  */
-export function logicalAdminApiPathnameForPolicy(pathname: string): string {
+export function logicalAdminApiPathnameForPolicy(
+  pathname: string,
+  bindings?: AdminInboundBffPolicyBindings,
+): string {
   const canonical = canonicalRequestPathname(pathname);
-  const stripped = stripAdminAccessProxyPrefix(canonical, DEFAULT_ADMIN_BFF_INBOUND_PATH_PREFIX);
+  const prefix = resolveAdminInboundBffPrefix(bindings);
+  if (prefix === null) {
+    return canonical;
+  }
+  const stripped = stripAdminAccessProxyPrefix(canonical, prefix);
   if (stripped !== null && isEligibleWorkerAdminProxyTargetPath(stripped)) {
     return stripped;
   }
@@ -58,10 +76,7 @@ export function policyAdminRequestPathname(
   pathname: string,
   bindings?: AdminInboundBffPolicyBindings,
 ): string {
-  if (isInboundBffLogicalStripDisabled(bindings)) {
-    return canonicalRequestPathname(pathname);
-  }
-  return logicalAdminApiPathnameForPolicy(pathname);
+  return logicalAdminApiPathnameForPolicy(pathname, bindings);
 }
 
 /**
@@ -75,7 +90,7 @@ export function isAuthExemptPath(
 ): boolean {
   if (
     method === 'GET' &&
-    logicalAdminApiPathnameForPolicy(pathname) === '/api/auth/access-bootstrap'
+    logicalAdminApiPathnameForPolicy(pathname, bindings) === '/api/auth/access-bootstrap'
   ) {
     return true;
   }
@@ -118,7 +133,7 @@ export function isCloudflareAccessExemptPath(
   if (!isAuthExemptPath(pathname, method, bindings)) {
     return false;
   }
-  const logicalForJwt = logicalAdminApiPathnameForPolicy(pathname);
+  const logicalForJwt = logicalAdminApiPathnameForPolicy(pathname, bindings);
   const authApiRequiresCfJwt =
     (logicalForJwt === '/' && method === 'GET') ||
     (logicalForJwt === '/api/auth/login' && method === 'POST') ||

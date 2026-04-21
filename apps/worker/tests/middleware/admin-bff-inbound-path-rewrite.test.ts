@@ -112,7 +112,7 @@ describe('createAdminBffInboundPathRewrite', () => {
     expect(res.status).toBe(401);
   });
 
-  it('does not return 401 for BFF-prefixed access-bootstrap when inbound rewrite binding is empty', async () => {
+  it('returns 401 for BFF-prefixed access-bootstrap when inbound rewrite binding is empty', async () => {
     const app = createTestApp();
     const env = { API_KEY: 'secret', ADMIN_INBOUND_BFF_PATH_PREFIX: '' } as never;
 
@@ -120,7 +120,7 @@ describe('createAdminBffInboundPathRewrite', () => {
       new Request('http://localhost/api/lh-upstream/api/auth/access-bootstrap?returnTo=%2Flogin'),
       env,
     );
-    expect(res.status).not.toBe(401);
+    expect(res.status).toBe(401);
   });
 
   it('applies auth to protected routes after rewrite', async () => {

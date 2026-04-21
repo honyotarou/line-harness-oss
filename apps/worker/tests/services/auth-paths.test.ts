@@ -60,16 +60,9 @@ describe('isAuthExemptPath', () => {
     expect(isCloudflareAccessExemptPath('/api/lh-upstream/api/auth/session', 'GET', disabled)).toBe(
       false,
     );
-  });
-
-  it('still exempts GET access-bootstrap when inbound rewrite binding is empty (BFF-prefixed URL)', () => {
-    const disabled = { ADMIN_INBOUND_BFF_PATH_PREFIX: '' } as const;
-    expect(isAuthExemptPath('/api/lh-upstream/api/auth/access-bootstrap', 'GET', disabled)).toBe(
-      true,
+    expect(logicalAdminApiPathnameForPolicy('/api/lh-upstream/api/auth/session', disabled)).toBe(
+      '/api/lh-upstream/api/auth/session',
     );
-    expect(
-      isCloudflareAccessExemptPath('/api/lh-upstream/api/auth/access-bootstrap', 'GET', disabled),
-    ).toBe(false);
   });
 
   it('treats GET /favicon.ico as exempt (browser noise on Access-protected API hosts)', () => {

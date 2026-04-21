@@ -40,18 +40,31 @@ describe('admin-access-proxy-worker fetch (upstream Access login → 502 JSON)',
 
   it('returns 503 when UPSTREAM_API_ORIGIN is still the repo placeholder (misdeploy / unset GitHub secret)', async () => {
     globalThis.fetch = vi.fn();
-    const res = await proxyFetch(
-      req('/api/lh-upstream/api/auth/access-bootstrap?returnTo=%2Flogin'),
-      {
-        ...baseEnv,
-        UPSTREAM_API_ORIGIN: 'https://YOUR_UPSTREAM_API_ORIGIN',
-      },
-    );
+    const res = await proxyFetch(req('/api/lh-upstream/api/health'), {
+      ...baseEnv,
+      UPSTREAM_API_ORIGIN: 'https://YOUR_UPSTREAM_API_ORIGIN',
+    });
     expect(res.status).toBe(503);
     const body = await res.json();
     expect(body.success).toBe(false);
     expect(String(body.error)).toMatch(/UPSTREAM_API_ORIGIN/);
     expect(String(body.error)).toMatch(/ADMIN_ACCESS_PROXY_UPSTREAM_ORIGIN/);
+    expect(globalThis.fetch).not.toHaveBeenCalled();
+  });
+
+  it('handles GET /api/auth/access-bootstrap locally (does not require upstream / service token)', async () => {
+    globalThis.fetch = vi.fn();
+    const res = await proxyFetch(
+      req('/api/lh-upstream/api/auth/access-bootstrap?returnTo=%2Flogin'),
+      {
+        ...baseEnv,
+        UPSTREAM_API_ORIGIN: 'https://YOUR_UPSTREAM_API_ORIGIN',
+        CF_ACCESS_CLIENT_ID: '',
+        CF_ACCESS_CLIENT_SECRET: '',
+      },
+    );
+    expect(res.status).toBe(302);
+    expect(res.headers.get('Location')).toBe('/login');
     expect(globalThis.fetch).not.toHaveBeenCalled();
   });
 
