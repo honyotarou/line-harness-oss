@@ -1,6 +1,7 @@
 import type { Metadata } from 'next';
 import './globals.css';
 import AppShell from '@/components/app-shell';
+import ChunkLoadRecovery from '@/components/chunk-load-recovery';
 
 export const metadata: Metadata = {
   title: 'LINE CRM 管理画面',
@@ -20,6 +21,7 @@ export default function RootLayout({
           fontFamily: "'Noto Sans JP', 'Hiragino Sans', 'Yu Gothic', system-ui, sans-serif",
         }}
       >
+        <ChunkLoadRecovery />
         <AppShell>{children}</AppShell>
       </body>
     </html>
