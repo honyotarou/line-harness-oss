@@ -2,6 +2,8 @@ import {
   isCloudflareAccessApplicationLoginRedirect,
   isEligibleWorkerAdminProxyTargetPath,
   rewriteSetCookieLineForAdminBrowserOrigin,
+  shouldForwardSetCookieLineToAdminBrowserOrigin,
+  stripCloudflareCookiesFromCookieHeader,
   stripAdminAccessProxyPrefix,
 } from '@line-crm/shared';
 import { STRIP_REQUEST_HOP_BY_HOP_HEADERS } from './hop-headers.js';
@@ -72,6 +74,9 @@ function forwardedUpstreamResponse(res: Response): Response {
           return one ? [one] : [];
         })();
   for (const line of setLines) {
+    if (!shouldForwardSetCookieLineToAdminBrowserOrigin(line)) {
+      continue;
+    }
     out.append('Set-Cookie', rewriteSetCookieLineForAdminBrowserOrigin(line));
   }
   return new Response(res.body, {
@@ -127,6 +132,13 @@ export default {
     const headers = new Headers();
     for (const [k, v] of request.headers) {
       if (STRIP_REQUEST_HOP_BY_HOP_HEADERS.has(k.toLowerCase())) {
+        continue;
+      }
+      if (k.toLowerCase() === 'cookie') {
+        const filtered = stripCloudflareCookiesFromCookieHeader(v);
+        if (filtered) {
+          headers.set('Cookie', filtered);
+        }
         continue;
       }
       headers.set(k, v);
