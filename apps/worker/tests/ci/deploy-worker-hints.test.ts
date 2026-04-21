@@ -36,4 +36,11 @@ describe('deploy-worker workflow operational hints', () => {
     expect(workflow).toMatch(/AUTOMATION_SEND_WEBHOOK_ALLOWED_HOSTS/);
     expect(workflow).toMatch(/SKIP_CI_AUTOMATION_WEBHOOK_ALLOWLIST_CHECK/);
   });
+
+  it('fails HTTPS deploys when Access is enforced but service token allowlist is missing', () => {
+    expect(workflow).toMatch(
+      /Missing GitHub Secret for HTTPS deploy: CLOUDFLARE_ACCESS_TRUSTED_SERVICE_CLIENT_IDS/,
+    );
+    expect(workflow).toMatch(/admin-access-proxy/i);
+  });
 });

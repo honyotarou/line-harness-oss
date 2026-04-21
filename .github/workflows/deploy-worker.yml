@@ -55,6 +55,7 @@ jobs:
           # These two are injected into wrangler.toml to enforce Cloudflare Access on deploy.
           REQUIRE_CLOUDFLARE_ACCESS_JWT: ${{ secrets.REQUIRE_CLOUDFLARE_ACCESS_JWT }}
           CLOUDFLARE_ACCESS_TEAM_DOMAIN: ${{ secrets.CLOUDFLARE_ACCESS_TEAM_DOMAIN }}
+          CLOUDFLARE_ACCESS_TRUSTED_SERVICE_CLIENT_IDS: ${{ secrets.CLOUDFLARE_ACCESS_TRUSTED_SERVICE_CLIENT_IDS }}
           AUTOMATION_SEND_WEBHOOK_ALLOWED_HOSTS: ${{ secrets.AUTOMATION_SEND_WEBHOOK_ALLOWED_HOSTS }}
           SKIP_CI_AUTOMATION_WEBHOOK_ALLOWLIST_CHECK: ${{ secrets.SKIP_CI_AUTOMATION_WEBHOOK_ALLOWLIST_CHECK }}
         run: |
@@ -66,6 +67,12 @@ jobs:
           if echo "$WORKER_URL" | grep -qE '^https://'; then
             if [ -z "$REQUIRE_CLOUDFLARE_ACCESS_JWT" ] || [ -z "$CLOUDFLARE_ACCESS_TEAM_DOMAIN" ]; then
               echo "Missing GitHub Secrets for HTTPS deploy: REQUIRE_CLOUDFLARE_ACCESS_JWT and/or CLOUDFLARE_ACCESS_TEAM_DOMAIN" >&2
+              fail=1
+            fi
+            # When Access is enforced on the API Worker, same-origin admin BFF/proxy traffic uses a service token JWT
+            # without an email claim; production requires allowlisting those client ids to avoid a proxy login outage.
+            if [ -z "${CLOUDFLARE_ACCESS_TRUSTED_SERVICE_CLIENT_IDS:-}" ]; then
+              echo "Missing GitHub Secret for HTTPS deploy: CLOUDFLARE_ACCESS_TRUSTED_SERVICE_CLIENT_IDS (required for admin-access-proxy service token auth)" >&2
               fail=1
             fi
             if [ "${SKIP_CI_AUTOMATION_WEBHOOK_ALLOWLIST_CHECK:-}" != "1" ]; then
