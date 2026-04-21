@@ -196,7 +196,7 @@ wrangler secret put API_KEY
 
 - API キーは1つのサービスにつき1つ
 - 管理パネル用と外部連携用でキーを分ける (将来の拡張)
-- CORS は現在 `*` (MVP) -- 本番では適切なオリジンに制限推奨
+- ブラウザから叩く API は、**必要最小の origin** のみ許可する（`ALLOWED_ORIGINS` / `WEB_URL` / `LIFF_URL` 等を実 URL に合わせる）
 
 ### 機密データの取り扱い
 
@@ -248,6 +248,23 @@ curl -v -H "Authorization: Bearer YOUR_KEY" \
 
 - **`POST /api/auth/login` または `GET /api/auth/session` が 503**（本文に *D1 database binding required for auth rate limiting*）→ Worker に **D1 がバインドされていない**。本番・ステージングの `wrangler.toml` / ダッシュボード設定を確認。
 - **公開の受信 Webhook** `POST /api/webhooks/incoming/:id/receive` が **401**（`Unauthorized`）→ 署名・ID・有効フラグ・シークレット設定のいずれか。**シークレット未設定専用の 503 は返さない**（列挙耐性）。受信 Webhook の状態は `GET /api/webhooks/incoming`（Bearer）で確認する（[15-Webhooks-and-Notifications.md](./15-Webhooks-and-Notifications.md)）。
+
+**管理画面（Cloudflare Access / BFF）固有**
+
+- **`GET /api/auth/access-bootstrap` が 401 + `{"success":false,"error":"Unauthorized"}`**  
+  これは Cloudflare Access 自体の失敗（403 HTML 等）ではなく、origin 側の通常の `authMiddleware` 401 を踏んでいる可能性が高い。現行の設計ではこの endpoint は **「管理セッション不要」だが「Access JWT は必須」**の特例で、401 は「設計どおり」より **「誤った Worker/古いデプロイ/誤ルーティング」**を疑う。
+
+  - **疑うべきこと（優先順）**
+    - **`/api/lh-upstream/*` が本当に `admin-access-proxy-worker` に向いているか**（Route の向き先が別 Worker / 古い Worker だと起きる）
+    - **`line-crm-worker` と `admin-access-proxy-worker` を両方 redeploy したか**（片方だけ古いと壊れる）
+    - `cf-ray` をキーに `wrangler tail` で「どの Worker が応答しているか」を突き止める（誤ルート切り分けが最短）
+
+  - **正常系の目安**
+    - ブラウザのトップレベル遷移（`navigate`）で `GET /api/auth/access-bootstrap` は 302 を返し、Access 後に `returnTo` へ戻る（`returnTo` はサーバで安全検証される）
+
+  - **多要素（MFA）を上げたいとき**
+    - この経路の「多要素」は **Cloudflare Access（IdP/MFA）**で担保するのが基本。管理セッションや API Key を増やしても、ブラウザの UX と運用事故（誤ルート）リスクが増えるだけになりやすい。
+    - 管理画面を別 origin に置く場合は、ブラウザが API origin に直接 cookie を送れない前提で **同一 origin の BFF（`admin-access-proxy-worker`）**を使い、上流 API は **Service Token**（Access Service Auth）で保護する（`apps/admin-access-proxy-worker/README.md` 参照）。
 
 #### 5. D1 ストレージ上限
 

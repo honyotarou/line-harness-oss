@@ -15,6 +15,19 @@ export interface Env {
 
 export { STRIP_REQUEST_HOP_BY_HOP_HEADERS } from './hop-headers.js';
 
+const DEFAULT_RETURN_TO = '/login';
+/** Same-origin relative path only (open-redirect mitigation for Access bootstrap redirect). */
+const SAFE_RELATIVE_RETURN_TO = /^\/(?!\/)[^\s\\]{0,255}$/;
+function sanitizeAccessBootstrapReturnTo(raw: string | undefined): string {
+  if (raw === undefined) return DEFAULT_RETURN_TO;
+  const t = raw.trim();
+  if (!t) return DEFAULT_RETURN_TO;
+  if (t.length > 256) return DEFAULT_RETURN_TO;
+  if (!SAFE_RELATIVE_RETURN_TO.test(t)) return DEFAULT_RETURN_TO;
+  if (t.includes('..')) return DEFAULT_RETURN_TO;
+  return t;
+}
+
 function isLocalDevHttpHostname(hostname: string): boolean {
   return hostname === 'localhost' || hostname === '127.0.0.1' || hostname === '[::1]';
 }
@@ -84,6 +97,18 @@ export default {
         status: 403,
         headers: { 'Content-Type': 'application/json' },
       });
+    }
+
+    /**
+     * `GET /api/auth/access-bootstrap` is a top-level-navigation helper for Cloudflare Access.
+     * Handle it locally so it never depends on upstream rewrites / auth exemptions.
+     */
+    if (request.method === 'GET' && stripped === '/api/auth/access-bootstrap') {
+      const returnTo = sanitizeAccessBootstrapReturnTo(
+        url.searchParams.get('returnTo') ?? undefined,
+      );
+      // `Response.redirect` rejects relative URLs in some runtimes; emit Location manually.
+      return new Response(null, { status: 302, headers: { Location: returnTo } });
     }
 
     const origin = env.UPSTREAM_API_ORIGIN.replace(/\/+$/, '');
