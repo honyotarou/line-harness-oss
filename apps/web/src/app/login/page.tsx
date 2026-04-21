@@ -1,5 +1,5 @@
 'use client';
-import { useEffect, useRef, useState } from 'react';
+import { Suspense, useEffect, useRef, useState } from 'react';
 import { usePathname, useSearchParams } from 'next/navigation';
 import {
   isAdminAccessLoginCompletePath,
@@ -19,7 +19,32 @@ function errorMessageFromApi(err: unknown): string | undefined {
   return undefined;
 }
 
-export default function LoginPage() {
+function LoginPageFallback() {
+  return (
+    <div
+      className="min-h-screen flex items-center justify-center"
+      style={{ backgroundColor: 'var(--color-primary)' }}
+    >
+      <div className="bg-white rounded-2xl shadow-xl p-8 w-full max-w-sm">
+        <div className="text-center mb-6">
+          <div
+            className="w-12 h-12 rounded-xl flex items-center justify-center text-white font-bold text-lg mx-auto mb-3"
+            style={{ backgroundColor: 'var(--color-primary)' }}
+          >
+            H
+          </div>
+          <h1 className="text-xl font-bold text-gray-900">LINE Harness</h1>
+          <p className="text-sm text-gray-500 mt-1">管理画面にログイン</p>
+        </div>
+        <div className="py-10 flex justify-center">
+          <div className="animate-spin w-8 h-8 border-[3px] border-gray-200 border-t-green-500 rounded-full" />
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function LoginPageInner() {
   const accessLogin = useCloudflareAccessLoginMode();
   const [apiKey, setApiKey] = useState('');
   const [error, setError] = useState('');
@@ -220,5 +245,13 @@ export default function LoginPage() {
         )}
       </div>
     </div>
+  );
+}
+
+export default function LoginPage() {
+  return (
+    <Suspense fallback={<LoginPageFallback />}>
+      <LoginPageInner />
+    </Suspense>
   );
 }
