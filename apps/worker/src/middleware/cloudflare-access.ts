@@ -15,7 +15,7 @@ import { isTrustedCloudflareAccessServiceTokenPayload } from '../services/cloudf
  * Optional gate: when `REQUIRE_CLOUDFLARE_ACCESS_JWT` + `CLOUDFLARE_ACCESS_TEAM_DOMAIN` are set,
  * protected routes must present a valid Cf Access JWT (see {@link CF_ACCESS_JWT_HEADER}).
  * Public paths match {@link isCloudflareAccessExemptPath} (webhook, LIFF, form submit, etc.;
- * `/api/auth/*` is not exempt so Access JWT is still required there when enforcement is on).
+ * `/api/auth/*` and **GET /** are not exempt so Access JWT is still required there when enforcement is on).
  *
  * CORS preflight: {@link shouldBypassCloudflareAccessJwtForCorsPreflight} skips this gate for
  * `OPTIONS` so browsers never need `CF_Authorization` on preflight (AGENTS.md Zero Trust + CORS).

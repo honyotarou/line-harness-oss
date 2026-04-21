@@ -49,9 +49,10 @@ function isInboundBffLogicalStripDisabled(bindings?: AdminInboundBffPolicyBindin
 }
 
 /**
- * Pathname used by auth / Access policy checks. Honors {@link AdminInboundBffPolicyBindings} so an
- * explicit empty `ADMIN_INBOUND_BFF_PATH_PREFIX` matches “rewrite disabled” and does not normalize
- * away `/api/lh-upstream/...`.
+ * Pathname used for **bearer/cookie auth skip** checks. Honors {@link AdminInboundBffPolicyBindings}
+ * so an explicit empty `ADMIN_INBOUND_BFF_PATH_PREFIX` matches “inbound rewrite disabled” and does
+ * not normalize away `/api/lh-upstream/...` (except {@link logicalAdminApiPathnameForPolicy} is still
+ * used for `GET /api/auth/access-bootstrap` so BFF-prefixed bootstrap never dies in `authMiddleware`).
  */
 export function policyAdminRequestPathname(
   pathname: string,
@@ -72,13 +73,19 @@ export function isAuthExemptPath(
   method: string,
   bindings?: AdminInboundBffPolicyBindings,
 ): boolean {
+  if (
+    method === 'GET' &&
+    logicalAdminApiPathnameForPolicy(pathname) === '/api/auth/access-bootstrap'
+  ) {
+    return true;
+  }
   const path = policyAdminRequestPathname(pathname, bindings);
   const publicFormDefinitionGet = method === 'GET' && /^\/api\/forms\/[^/]+$/.test(path);
   const publicFormSubmitPost = method === 'POST' && /^\/api\/forms\/[^/]+\/submit$/.test(path);
 
   return (
+    (method === 'GET' && path === '/') ||
     (method === 'GET' && path === '/favicon.ico') ||
-    (method === 'GET' && path === '/api/auth/access-bootstrap') ||
     path === '/webhook' ||
     path === '/docs' ||
     path === '/openapi.json' ||
@@ -99,8 +106,9 @@ export function isAuthExemptPath(
 
 /**
  * Subset of {@link isAuthExemptPath}: still skips webhook/LIFF/public forms, but **does not** skip
- * `/api/auth/*` so a valid `Cf-Access-Jwt-Assertion` is required when Cloudflare Access is enforced
- * (closes direct `*.workers.dev` + API_KEY login bypass).
+ * `/api/auth/*` or **GET /** so a valid `Cf-Access-Jwt-Assertion` is required when Cloudflare Access is enforced
+ * (closes direct `*.workers.dev` + API_KEY login bypass). GET `/` skips admin session only so document
+ * navigations to the API host return 404 instead of a misleading 401.
  */
 export function isCloudflareAccessExemptPath(
   pathname: string,
@@ -110,12 +118,13 @@ export function isCloudflareAccessExemptPath(
   if (!isAuthExemptPath(pathname, method, bindings)) {
     return false;
   }
-  const logical = policyAdminRequestPathname(pathname, bindings);
+  const logicalForJwt = logicalAdminApiPathnameForPolicy(pathname);
   const authApiRequiresCfJwt =
-    (logical === '/api/auth/login' && method === 'POST') ||
-    (logical === '/api/auth/session' && method === 'GET') ||
-    (logical === '/api/auth/access-bootstrap' && method === 'GET') ||
-    (logical === '/api/auth/logout' && method === 'POST');
+    (logicalForJwt === '/' && method === 'GET') ||
+    (logicalForJwt === '/api/auth/login' && method === 'POST') ||
+    (logicalForJwt === '/api/auth/session' && method === 'GET') ||
+    (logicalForJwt === '/api/auth/access-bootstrap' && method === 'GET') ||
+    (logicalForJwt === '/api/auth/logout' && method === 'POST');
   if (authApiRequiresCfJwt) {
     return false;
   }

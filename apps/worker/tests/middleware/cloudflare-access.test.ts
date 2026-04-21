@@ -147,6 +147,21 @@ describe('cloudflareAccessMiddleware', () => {
     expect(res.status).toBe(403);
   });
 
+  it('returns 403 for GET / when enforcement is on and JWT is missing', async () => {
+    const app = new Hono<{ Bindings: Env['Bindings'] }>();
+    app.use('*', cloudflareAccessMiddleware);
+    app.get('/', (c) => c.json({ ok: true }));
+
+    const res = await app.fetch(
+      new Request('http://localhost/'),
+      env({
+        REQUIRE_CLOUDFLARE_ACCESS_JWT: '1',
+        CLOUDFLARE_ACCESS_TEAM_DOMAIN: 'team.cloudflareaccess.com',
+      }),
+    );
+    expect(res.status).toBe(403);
+  });
+
   it('returns 403 when JWT verifies but email claim is missing (RBAC / audit)', async () => {
     const cfJwt = await import('../../src/services/cloudflare-access-jwt.js');
     vi.spyOn(cfJwt, 'verifyCloudflareAccessJwt').mockResolvedValue({

@@ -33,8 +33,12 @@ describe('auth access-bootstrap source contract', () => {
 
   it('exempts GET access-bootstrap from bearer auth and still requires Access JWT', () => {
     expect(authPaths).toMatch(/\/api\/auth\/access-bootstrap/);
-    expect(authPaths).toMatch(/method === 'GET' && path === '\/api\/auth\/access-bootstrap'/);
-    expect(authPaths).toMatch(/logical === '\/api\/auth\/access-bootstrap' && method === 'GET'/);
+    expect(authPaths).toMatch(
+      /method === 'GET'\s*&&\s*logicalAdminApiPathnameForPolicy\(pathname\) === '\/api\/auth\/access-bootstrap'/s,
+    );
+    expect(authPaths).toMatch(
+      /logicalForJwt === '\/api\/auth\/access-bootstrap' && method === 'GET'/,
+    );
   });
 
   it('keeps handoff redirect + returnTo sanitizer', () => {

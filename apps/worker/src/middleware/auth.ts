@@ -16,6 +16,8 @@ export async function authMiddleware(c: Context<Env>, next: Next): Promise<Respo
   const path = new URL(c.req.url).pathname;
   const method = c.req.method;
 
+  // Pass c.env: GET /api/auth/access-bootstrap stays bearer-exempt even for `/api/lh-upstream/.../access-bootstrap`
+  // when inbound rewrite is disabled (`ADMIN_INBOUND_BFF_PATH_PREFIX` empty); see isAuthExemptPath + logical strip.
   if (isAuthExemptPath(path, method, c.env)) {
     return next();
   }
