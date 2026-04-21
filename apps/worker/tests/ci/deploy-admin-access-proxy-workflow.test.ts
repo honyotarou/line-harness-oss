@@ -8,6 +8,10 @@ const workflow = readFileSync(
   join(repoRoot, '.github/workflows/deploy-admin-access-proxy.yml'),
   'utf8',
 );
+const proxyWrangler = readFileSync(
+  join(repoRoot, 'apps/admin-access-proxy-worker/wrangler.toml'),
+  'utf8',
+);
 
 describe('deploy-admin-access-proxy workflow', () => {
   it('documents GitHub Secrets for service token sync after deploy', () => {
@@ -28,6 +32,13 @@ describe('deploy-admin-access-proxy workflow', () => {
     expect(workflow).toMatch(/ADMIN_ACCESS_PROXY_UPSTREAM_ORIGIN/);
     expect(workflow).toMatch(/ADMIN_ACCESS_PROXY_ROUTE_PATTERN/);
     expect(workflow).toMatch(/ADMIN_ACCESS_PROXY_ZONE_NAME/);
+  });
+
+  it('sed upstream injection target matches wrangler UPSTREAM_API_ORIGIN placeholder (fork + CI stay aligned)', () => {
+    const needle = 'https://YOUR_UPSTREAM_API_ORIGIN';
+    expect(proxyWrangler).toContain(`UPSTREAM_API_ORIGIN = "${needle}"`);
+    expect(workflow).toContain(needle);
+    expect(workflow).toContain("sed -i.bak 's|https://YOUR_UPSTREAM_API_ORIGIN|'");
   });
 
   it('fails manual runs when CF proxy token secrets are missing', () => {

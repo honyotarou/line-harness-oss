@@ -15,6 +15,33 @@ export interface Env {
 
 export { STRIP_REQUEST_HOP_BY_HOP_HEADERS } from './hop-headers.js';
 
+function isLocalDevHttpHostname(hostname: string): boolean {
+  return hostname === 'localhost' || hostname === '127.0.0.1' || hostname === '[::1]';
+}
+
+function isUpstreamOriginConfigured(origin: string): boolean {
+  const t = origin.trim();
+  if (!t) {
+    return false;
+  }
+  // Commit placeholder + deploy-admin-access-proxy.yml sed target; never call fetch with it.
+  if (t.includes('YOUR_UPSTREAM_API_ORIGIN')) {
+    return false;
+  }
+  try {
+    const u = new URL(t);
+    if (u.protocol === 'https:') {
+      return true;
+    }
+    if (u.protocol === 'http:' && isLocalDevHttpHostname(u.hostname)) {
+      return true;
+    }
+    return false;
+  } catch {
+    return false;
+  }
+}
+
 function forwardedUpstreamResponse(res: Response): Response {
   const out = new Headers();
   res.headers.forEach((value, key) => {
@@ -60,6 +87,16 @@ export default {
     }
 
     const origin = env.UPSTREAM_API_ORIGIN.replace(/\/+$/, '');
+    if (!isUpstreamOriginConfigured(origin)) {
+      return new Response(
+        JSON.stringify({
+          success: false,
+          error:
+            'Proxy misconfigured: UPSTREAM_API_ORIGIN is missing, invalid, or still the repo placeholder (set GitHub Secret ADMIN_ACCESS_PROXY_UPSTREAM_ORIGIN to your line-crm API origin, e.g. https://api.example.com, then redeploy this Worker).',
+        }),
+        { status: 503, headers: { 'Content-Type': 'application/json' } },
+      );
+    }
     const upstreamUrl = `${origin}${stripped}${url.search}`;
 
     const headers = new Headers();

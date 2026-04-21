@@ -1,5 +1,8 @@
 # Copy to `.dev.vars` for local `pnpm exec wrangler dev` (never commit `.dev.vars`).
 #
+# Optional: override `[vars] UPSTREAM_API_ORIGIN` in wrangler.toml (defaults to https://YOUR_UPSTREAM_API_ORIGIN,
+# which the proxy rejects at runtime with 503 until you set a real API origin or use http://127.0.0.1:8787 locally).
+#
 # Cloudflare Access の Service Token（API に付けた Access の「Client ID / Client Secret」）を設定する。
 # 本番・ステージングはダッシュボードの Worker Variables and Secrets、または
 # `wrangler secret put CF_ACCESS_CLIENT_ID` / `CF_ACCESS_CLIENT_SECRET`、または
