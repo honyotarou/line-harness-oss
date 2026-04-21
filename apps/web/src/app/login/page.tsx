@@ -1,5 +1,10 @@
 'use client';
-import { useEffect, useState } from 'react';
+import { Suspense, useEffect, useRef, useState } from 'react';
+import { usePathname, useSearchParams } from 'next/navigation';
+import {
+  isAdminAccessLoginCompletePath,
+  stripAdminAccessLoginCompleteMarker,
+} from '@line-crm/shared';
 import { ApiError, api, setAdminSessionToken, useCloudflareAccessLoginMode } from '@/lib/api';
 import { Input } from '@/components/ui/field';
 import { buildAdminAccessBootstrapStartHref } from '@/lib/admin-access-bootstrap-start';
@@ -14,33 +19,57 @@ function errorMessageFromApi(err: unknown): string | undefined {
   return undefined;
 }
 
-export default function LoginPage() {
+function LoginPageFallback() {
+  return (
+    <div
+      className="min-h-screen flex items-center justify-center"
+      style={{ backgroundColor: 'var(--color-primary)' }}
+    >
+      <div className="bg-white rounded-2xl shadow-xl p-8 w-full max-w-sm">
+        <div className="text-center mb-6">
+          <div
+            className="w-12 h-12 rounded-xl flex items-center justify-center text-white font-bold text-lg mx-auto mb-3"
+            style={{ backgroundColor: 'var(--color-primary)' }}
+          >
+            H
+          </div>
+          <h1 className="text-xl font-bold text-gray-900">LINE Harness</h1>
+          <p className="text-sm text-gray-500 mt-1">管理画面にログイン</p>
+        </div>
+        <div className="py-10 flex justify-center">
+          <div className="animate-spin w-8 h-8 border-[3px] border-gray-200 border-t-green-500 rounded-full" />
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function LoginPageInner() {
   const accessLogin = useCloudflareAccessLoginMode();
   const [apiKey, setApiKey] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const [hydrated, setHydrated] = useState(false);
-  const accessStartHref = buildAdminAccessBootstrapStartHref({ returnTo: '/login' });
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
+  const accessLoginAttemptedRef = useRef(false);
+  const accessStartHref = buildAdminAccessBootstrapStartHref();
 
   useEffect(() => {
     setHydrated(true);
   }, []);
 
-  const handleLogin = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (accessLogin) {
-      // Access ログインは fetch では完走できないので、トップレベル遷移させる。
-      window.location.assign(accessStartHref);
-      return;
-    }
+  const runLoginFlow = async (params: { accessLogin: boolean; apiKey?: string }) => {
     setLoading(true);
     setError('');
 
     let skipLoadingReset = false;
     try {
-      const res = await api.auth.login(accessLogin ? undefined : apiKey);
+      const res = await api.auth.login(params.accessLogin ? undefined : params.apiKey);
       if (!res.success || !res.data?.expiresAt) {
-        setError(accessLogin ? 'セッションの開始に失敗しました' : 'APIキーが正しくありません');
+        setError(
+          params.accessLogin ? 'セッションの開始に失敗しました' : 'APIキーが正しくありません',
+        );
         return;
       }
       if (res.data.sessionToken) {
@@ -89,7 +118,7 @@ export default function LoginPage() {
         (err as { status?: unknown }).status === 401
       ) {
         setError(
-          accessLogin
+          params.accessLogin
             ? 'Cloudflare Access のログインが必要です（JWT が Worker に届いているか確認してください）'
             : 'APIキーが正しくありません',
         );
@@ -118,6 +147,36 @@ export default function LoginPage() {
         setLoading(false);
       }
     }
+  };
+
+  useEffect(() => {
+    if (!hydrated || !accessLogin || pathname !== '/login') {
+      return;
+    }
+    const search = searchParams?.toString() ?? '';
+    const currentLoginPath = search ? `${pathname}?${search}` : pathname;
+    if (!isAdminAccessLoginCompletePath(currentLoginPath)) {
+      return;
+    }
+    if (accessLoginAttemptedRef.current) {
+      return;
+    }
+    accessLoginAttemptedRef.current = true;
+    const cleaned = stripAdminAccessLoginCompleteMarker(currentLoginPath);
+    if (typeof window !== 'undefined' && window.history?.replaceState) {
+      window.history.replaceState(null, '', cleaned);
+    }
+    void runLoginFlow({ accessLogin: true });
+  }, [accessLogin, hydrated, pathname, searchParams]);
+
+  const handleLogin = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (accessLogin) {
+      // Access ログインは fetch では完走できないので、トップレベル遷移させる。
+      window.location.assign(accessStartHref);
+      return;
+    }
+    await runLoginFlow({ accessLogin: false, apiKey });
   };
 
   return (
@@ -186,5 +245,13 @@ export default function LoginPage() {
         )}
       </div>
     </div>
+  );
+}
+
+export default function LoginPage() {
+  return (
+    <Suspense fallback={<LoginPageFallback />}>
+      <LoginPageInner />
+    </Suspense>
   );
 }

@@ -910,6 +910,33 @@ describe('fetchApiCore', () => {
     });
   });
 
+  it('same-origin login completion redirect on /api/auth/session navigates to /login?access=complete', async () => {
+    const replace = vi.fn();
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: false,
+      status: 302,
+      type: 'basic',
+      headers: new Headers({ Location: '/login?access=complete' }),
+    });
+    vi.stubGlobal('sessionStorage', {
+      getItem: vi.fn(() => null),
+      setItem: vi.fn(),
+      removeItem: vi.fn(),
+    });
+    vi.stubGlobal('location', {
+      href: 'https://admin.example/login',
+      pathname: '/login',
+      search: '',
+      hash: '',
+      replace,
+      reload: vi.fn(),
+    });
+    void fetchApiCore('https://api.example', fetchMock as typeof fetch, '/api/auth/session');
+    await vi.waitFor(() => {
+      expect(replace).toHaveBeenCalledWith('/login?access=complete');
+    });
+  });
+
   it('302 on non-auth /api/* with Access Location calls location.replace("/login") (not dashboard /)', async () => {
     const replace = vi.fn();
     const fetchMock = vi.fn().mockResolvedValue({

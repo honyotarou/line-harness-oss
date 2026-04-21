@@ -1,3 +1,5 @@
+import { normalizeAdminAccessLoginCompletePath } from '@line-crm/shared';
+
 /**
  * Browser `fetch` policy for the **admin Worker API** (`/api/*`).
  *
@@ -55,6 +57,20 @@ export function shouldTreatBrowserAuthResponseAsSsoRedirect(res: Response): bool
     return true;
   }
   return res.status >= 300 && res.status < 400;
+}
+
+export function getBrowserAdminAuthCompletionRedirectTarget(res: Response): string | null {
+  if (res.type === 'opaqueredirect') {
+    return null;
+  }
+  if (res.status < 300 || res.status >= 400) {
+    return null;
+  }
+  const loc = res.headers?.get('Location')?.trim() ?? '';
+  if (!loc) {
+    return null;
+  }
+  return normalizeAdminAccessLoginCompletePath(loc);
 }
 
 /**

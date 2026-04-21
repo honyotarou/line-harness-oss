@@ -382,6 +382,26 @@ describe('auth routes', () => {
     expect(body.code).toBe('MISSING_ADMIN_SESSION');
   });
 
+  it('GET /api/auth/session redirects to login completion when Access is already authenticated', async () => {
+    const { authRoutes } = await import('../../src/routes/auth.js');
+    const app = new Hono();
+    app.use('*', async (c, next) => {
+      c.set('cfAccessJwtPayload', { email: 'admin@example.com' });
+      return next();
+    });
+    app.route('/', authRoutes);
+
+    const sessionResponse = await app.fetch(new Request('http://localhost/api/auth/session'), {
+      API_KEY: 'root-api-key',
+      REQUIRE_CLOUDFLARE_ACCESS_JWT: '1',
+      CLOUDFLARE_ACCESS_TEAM_DOMAIN: 'team.cloudflareaccess.com',
+      DB: createAuthIntegrationDb(),
+    } as never);
+
+    expect(sessionResponse.status).toBe(302);
+    expect(sessionResponse.headers.get('Location')).toBe('/login?access=complete');
+  });
+
   it('GET /api/auth/access-bootstrap redirects to safe returnTo', async () => {
     const { authRoutes } = await import('../../src/routes/auth.js');
     const app = new Hono();

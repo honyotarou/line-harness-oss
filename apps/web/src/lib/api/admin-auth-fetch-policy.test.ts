@@ -4,6 +4,7 @@ import {
   AUTH_API_REDIRECT_NOT_FOLLOWED_CODE,
   adminAccessDocumentRedirectAlreadyHandledBody,
   adminAuthFetchFailureBody,
+  getBrowserAdminAuthCompletionRedirectTarget,
   isBrowserAdminAuthApiPath,
   isBrowserAdminManagedApiPath,
   resolveBrowserFetchRedirectPolicy,
@@ -102,6 +103,30 @@ describe('shouldTreatBrowserAuthResponseAsSsoRedirect', () => {
     expect(shouldTreatBrowserAuthResponseAsSsoRedirect(new Response('{}', { status: 200 }))).toBe(
       false,
     );
+  });
+});
+
+describe('getBrowserAdminAuthCompletionRedirectTarget', () => {
+  it('returns the same-origin login completion redirect target', () => {
+    expect(
+      getBrowserAdminAuthCompletionRedirectTarget(
+        new Response(null, {
+          status: 302,
+          headers: { Location: '/login?access=complete' },
+        }),
+      ),
+    ).toBe('/login?access=complete');
+  });
+
+  it('ignores non-login redirects', () => {
+    expect(
+      getBrowserAdminAuthCompletionRedirectTarget(
+        new Response(null, {
+          status: 302,
+          headers: { Location: '/login' },
+        }),
+      ),
+    ).toBeNull();
   });
 });
 

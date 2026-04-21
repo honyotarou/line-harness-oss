@@ -29,6 +29,7 @@ import {
   isCloudflareAccessEnforced,
 } from '../services/cloudflare-access-principal.js';
 import { formatDeployedSecurityRelaxPairHint } from '../services/deployed-security-defaults.js';
+import { respondMissingAdminSession } from '../services/auth-session-response.js';
 import { timingSafeEqualUtf8 } from '../services/timing-safe-equal.js';
 import {
   allowLegacyApiKeyBearerSession,
@@ -189,7 +190,7 @@ authRoutes.get('/api/auth/session', async (c) => {
 
     const token = getAdminAuthToken(c);
     if (!token) {
-      return c.json({ success: false, error: 'Unauthorized', code: 'MISSING_ADMIN_SESSION' }, 401);
+      return respondMissingAdminSession(c);
     }
 
     const apiKey = c.env.API_KEY ?? '';
