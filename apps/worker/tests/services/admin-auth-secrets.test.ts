@@ -24,6 +24,14 @@ describe('resolveAdminSessionSecret', () => {
         RELAX_DEPLOYED_SECURITY_DEFAULTS: '1',
         RELAX_DEPLOYED_SECURITY_CONFIRM: 'YES_I_ACCEPT_REDUCED_SECURITY',
       }),
+    ).toBeNull();
+    expect(
+      resolveAdminSessionSecret({
+        ...base,
+        RELAX_DEPLOYED_SECURITY_DEFAULTS: '1',
+        RELAX_DEPLOYED_SECURITY_CONFIRM: 'YES_I_ACCEPT_REDUCED_SECURITY',
+        ALLOW_LEGACY_API_KEY_SESSION_SIGNER: '1',
+      }),
     ).toBe('k');
   });
 

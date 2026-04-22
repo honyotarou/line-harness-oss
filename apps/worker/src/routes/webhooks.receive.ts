@@ -2,7 +2,7 @@ import { Hono } from 'hono';
 import { getIncomingWebhookById } from '@line-crm/db';
 import type { Env } from '../index.js';
 import { tryConsumeIncomingWebhookPayload } from '../services/incoming-webhook-dedup.js';
-import { verifySignedPayload } from '../services/signed-payload.js';
+import { verifyIncomingWebhookSignedBody } from '../services/incoming-webhook-receive-signature.js';
 import { jsonBodyReadErrorResponse, readTextBodyWithLimit } from '../services/request-body.js';
 import { enforceRateLimit } from '../services/request-rate-limit.js';
 import { sanitizeIncomingWebhookPayload } from '../services/incoming-webhook-payload-sanitizer.js';
@@ -52,11 +52,12 @@ incomingWebhookReceive.post('/api/webhooks/incoming/:id/receive', async (c) => {
 
     const rawBody = await readTextBodyWithLimit(c.req.raw, INCOMING_WEBHOOK_LIMIT_BYTES);
     const signature = c.req.header('X-Webhook-Signature') ?? '';
-    const ts = c.req.header('X-Webhook-Timestamp') ?? undefined;
-    const valid = await verifySignedPayload(wh.secret, rawBody, signature, {
-      timestamp: ts,
-      maxAgeSec: 300,
-    });
+    const valid = await verifyIncomingWebhookSignedBody(
+      wh.secret,
+      rawBody,
+      signature,
+      c.req.header('X-Webhook-Timestamp'),
+    );
     if (!valid) {
       return c.json(INCOMING_WEBHOOK_UNAUTHORIZED, 401);
     }

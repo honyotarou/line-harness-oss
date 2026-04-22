@@ -31,6 +31,14 @@ describe('verifySignedPayload', () => {
     );
   });
 
+  it('rejects legacy body-only HMAC when requireTimestamp is true', async () => {
+    const { verifySignedPayload } = await import('../../src/services/signed-payload.js');
+    const mac = sign('top-secret', '{"ok":true}');
+    await expect(
+      verifySignedPayload('top-secret', '{"ok":true}', mac, { requireTimestamp: true }),
+    ).resolves.toBe(false);
+  });
+
   it('supports timestamped signatures and rejects replays outside the window', async () => {
     const { buildTimestampedSignedPayload, verifySignedPayload } = await import(
       '../../src/services/signed-payload.js'

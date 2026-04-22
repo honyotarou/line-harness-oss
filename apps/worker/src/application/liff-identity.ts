@@ -29,6 +29,7 @@ export function liffStateSecret(env: Env['Bindings']): string {
  * (`REQUIRE_LIFF_STATE_SECRET` or non-local HTTPS defaults), only a non-empty `LIFF_STATE_SECRET`
  * is allowed (no `API_KEY` fallback). Otherwise `LIFF_STATE_SECRET` is preferred; `API_KEY` is
  * used only when `ALLOW_LIFF_OAUTH_API_KEY_FALLBACK` is enabled (local/dev convenience).
+ * `RELAX_DEPLOYED_SECURITY_*` alone does not waive the HTTPS LIFF state secret requirement.
  */
 export function resolveLiffOAuthStateSecret(env: Env['Bindings']): string | null {
   if (isRequireLiffStateSecretEnabled(env)) {

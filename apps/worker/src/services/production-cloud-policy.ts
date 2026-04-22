@@ -116,7 +116,7 @@ export function getProductionCloudSurfaceWarnings(env: ProductionCloudPolicyEnv)
     }
     if (effectiveRequireDedicatedAdminSessionSecret(env) && !env.ADMIN_SESSION_SECRET?.trim()) {
       warnings.push(
-        `ADMIN_SESSION_SECRET is required on non-local HTTPS (default) or when REQUIRE_ADMIN_SESSION_SECRET=1; set wrangler secret, or ${formatDeployedSecurityRelaxPairHint()}, or ALLOW_LEGACY_API_KEY_SESSION_SIGNER=1 only for migration.`,
+        'ADMIN_SESSION_SECRET is required on non-local HTTPS (default) or when REQUIRE_ADMIN_SESSION_SECRET=1; set wrangler secret, or ALLOW_LEGACY_API_KEY_SESSION_SIGNER=1 only for staged HTTPS migration (API_KEY session signer).',
       );
     }
     if (!env.BROADCAST_SEND_SECRET?.trim()) {

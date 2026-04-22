@@ -24,7 +24,6 @@ import {
   getValidatedAccessEmailFromPayload,
   isCloudflareAccessEnforced,
 } from '../services/cloudflare-access-principal.js';
-import { formatDeployedSecurityRelaxPairHint } from '../services/deployed-security-defaults.js';
 import { respondMissingAdminSession } from '../services/auth-session-response.js';
 import { timingSafeEqualUtf8 } from '../services/timing-safe-equal.js';
 import {
@@ -103,7 +102,7 @@ authRoutes.post('/api/auth/login', async (c) => {
       return c.json(
         {
           success: false,
-          error: `ADMIN_SESSION_SECRET is required on this HTTPS Worker (or ${formatDeployedSecurityRelaxPairHint()} for staging relax, or ALLOW_LEGACY_API_KEY_SESSION_SIGNER=1 only for migration); set a dedicated session signing secret.`,
+          error: `ADMIN_SESSION_SECRET is required on this HTTPS Worker. Staged HTTPS migration may set ALLOW_LEGACY_API_KEY_SESSION_SIGNER=1 (with the global relax pair if you use it) so sessions can sign with API_KEY temporarily; production must use a dedicated ADMIN_SESSION_SECRET (wrangler secret).`,
         },
         503,
       );

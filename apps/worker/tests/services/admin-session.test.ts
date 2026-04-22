@@ -13,7 +13,7 @@ describe('isAdminSessionSecretRequired', () => {
         RELAX_DEPLOYED_SECURITY_DEFAULTS: '1',
         RELAX_DEPLOYED_SECURITY_CONFIRM: 'YES_I_ACCEPT_REDUCED_SECURITY',
       }),
-    ).toBe(false);
+    ).toBe(true);
     expect(isAdminSessionSecretRequired({ REQUIRE_ADMIN_SESSION_SECRET: '1' })).toBe(true);
     expect(isDedicatedAdminSessionSecretConfigured({})).toBe(false);
     expect(isDedicatedAdminSessionSecretConfigured({ ADMIN_SESSION_SECRET: 'x' })).toBe(true);
@@ -62,9 +62,51 @@ describe('admin session tokens', () => {
 
     expect(verified).toEqual({
       scope: 'admin',
+      sub: 'lh_admin',
       iat: 1_700_000_000,
       exp: 1_700_003_600,
       jti: 'test-jti-stable',
+    });
+  });
+
+  it('rejects tokens with wrong or missing sub claim', async () => {
+    const { verifyAdminSessionToken, issueAdminSessionToken, ADMIN_SESSION_JWT_SUB } = await import(
+      '../../src/services/admin-session.js'
+    );
+    const { createHmac } = await import('node:crypto');
+    const iat = 1_800_000_000;
+    const exp = iat + 3600;
+    const enc = Buffer.from(
+      JSON.stringify({ scope: 'admin', sub: 'evil', iat, exp, jti: 'j1' }),
+      'utf8',
+    )
+      .toString('base64')
+      .replace(/\+/g, '-')
+      .replace(/\//g, '_')
+      .replace(/=+$/g, '');
+    const sig = createHmac('sha256', 'sec').update(enc, 'utf8').digest('base64url');
+    await expect(
+      verifyAdminSessionToken('sec', `${enc}.${sig}`, { now: iat + 10 }),
+    ).resolves.toBeNull();
+
+    const encNoSub = Buffer.from(JSON.stringify({ scope: 'admin', iat, exp, jti: 'j2' }), 'utf8')
+      .toString('base64')
+      .replace(/\+/g, '-')
+      .replace(/\//g, '_')
+      .replace(/=+$/g, '');
+    const sig2 = createHmac('sha256', 'sec').update(encNoSub, 'utf8').digest('base64url');
+    await expect(
+      verifyAdminSessionToken('sec', `${encNoSub}.${sig2}`, { now: iat + 10 }),
+    ).resolves.toBeNull();
+
+    expect(ADMIN_SESSION_JWT_SUB).toBe('lh_admin');
+    const good = await issueAdminSessionToken('sec', {
+      issuedAt: iat,
+      expiresInSeconds: 3600,
+      jti: 'j3',
+    });
+    await expect(verifyAdminSessionToken('sec', good, { now: iat + 10 })).resolves.toMatchObject({
+      sub: 'lh_admin',
     });
   });
 
