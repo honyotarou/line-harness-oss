@@ -143,23 +143,41 @@ export default function DashboardPage() {
 
   return (
     <div>
-      <div
-        className="relative -mx-4 sm:-mx-6 lg:-mx-8 -mt-2 mb-8 overflow-hidden rounded-b-3xl border-b border-[var(--color-border-strong)] bg-cover bg-[center_28%] px-6 py-8 sm:px-8 shadow-[var(--shadow-token-md)]"
-        style={{ backgroundImage: "url('/hero-spring-field.png')" }}
-      >
-        <div className="absolute inset-0 bg-gradient-to-r from-[var(--color-marketing-orange)]/90 via-[var(--color-marketing-orange-deep)]/82 to-[var(--color-marketing-hero-mid)]/55" />
-        <div className="relative z-10">
-          <p className="text-xs font-semibold uppercase tracking-[0.12em] text-white/90">
-            LINE公式アカウント CRM
-          </p>
-          <h1 className="mt-1 text-2xl sm:text-3xl font-black tracking-tight text-white drop-shadow-sm">
-            ダッシュボード
-          </h1>
-          <p className="mt-2 max-w-xl text-sm text-white/95">
-            {selectedAccount
-              ? `${selectedAccount.displayName || selectedAccount.name} の管理画面`
-              : '友だち・配信・シナリオをひとつの画面から管理'}
-          </p>
+      <div className="relative -mx-4 sm:-mx-6 lg:-mx-8 -mt-2 mb-8 overflow-hidden rounded-b-3xl border-b border-[var(--color-border-strong)] shadow-[var(--shadow-token-md)]">
+        <div className="relative min-h-[min(44vh,360px)]">
+          <div
+            className="absolute inset-0 bg-cover bg-[center_20%]"
+            style={{ backgroundImage: "url('/hero-spring-field.png')" }}
+            aria-hidden
+          />
+          <div className="pointer-events-none absolute inset-0 bg-gradient-to-b from-black/10 from-0% via-transparent via-45% to-[var(--color-canvas)] to-100%" />
+          <div className="relative z-10 flex min-h-[min(44vh,360px)] flex-col justify-end px-6 py-8 sm:px-8">
+            <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
+              <div className="flex items-end gap-4">
+                <img
+                  src="/racheck-logo.png"
+                  alt=""
+                  width={72}
+                  height={72}
+                  className="h-16 w-16 shrink-0 rounded-2xl bg-white/92 object-contain p-1.5 shadow-md ring-1 ring-black/5"
+                  decoding="async"
+                />
+                <div className="min-w-0 pb-0.5">
+                  <p className="text-xs font-semibold uppercase tracking-[0.12em] text-[var(--color-foreground-muted)]">
+                    LINE公式アカウント CRM
+                  </p>
+                  <h1 className="mt-1 text-2xl sm:text-3xl font-black tracking-tight text-[var(--color-foreground)]">
+                    ダッシュボード
+                  </h1>
+                  <p className="mt-2 max-w-xl text-sm text-[var(--color-foreground-muted)]">
+                    {selectedAccount
+                      ? `${selectedAccount.displayName || selectedAccount.name} の管理画面`
+                      : '友だち・配信・シナリオをひとつの画面から管理'}
+                  </p>
+                </div>
+              </div>
+            </div>
+          </div>
         </div>
       </div>
 
