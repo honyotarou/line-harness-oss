@@ -6,6 +6,7 @@ import {
   stripAdminAccessLoginCompleteMarker,
 } from '@line-crm/shared';
 import { api, isApiError, setAdminSessionToken, useCloudflareAccessLoginMode } from '@/lib/api';
+import { SpringFieldBackdrop } from '@/components/layout/spring-field-backdrop';
 import { Input } from '@/components/ui/field';
 import { buildAdminAccessBootstrapStartHref } from '@/lib/admin-access-bootstrap-start';
 
@@ -19,41 +20,32 @@ function errorMessageFromApi(err: unknown): string | undefined {
   return undefined;
 }
 
-function LoginHeroBand() {
+function LoginBrandBlock() {
   return (
-    <header className="relative isolate w-full shrink-0 overflow-hidden min-h-[min(52vh,440px)] bg-[center_22%] bg-cover">
-      <div
-        className="absolute inset-0 bg-cover bg-[center_22%]"
-        style={{ backgroundImage: "url('/hero-spring-field.png')" }}
-        aria-hidden
+    <div className="text-center border-b border-[var(--color-border)] pb-6 mb-6">
+      <img
+        src="/racheck-logo.png"
+        alt="らチェック"
+        width={220}
+        height={220}
+        className="mx-auto h-[clamp(4.25rem,22vw,7.5rem)] w-auto max-w-[min(100%,220px)] object-contain"
+        decoding="async"
       />
-      <div className="pointer-events-none absolute inset-0 bg-gradient-to-b from-black/[0.06] via-transparent via-50% to-[var(--color-canvas)]" />
-      <div className="relative flex min-h-[min(52vh,440px)] flex-col items-center justify-center px-4 pb-12 pt-10">
-        <div className="rounded-2xl bg-white/90 px-6 py-5 shadow-[var(--shadow-token-lg)] ring-1 ring-[var(--color-border)] backdrop-blur-md">
-          <img
-            src="/racheck-logo.png"
-            alt="らチェック"
-            width={220}
-            height={220}
-            className="mx-auto h-[clamp(5.25rem,26vw,9rem)] w-auto max-w-[min(100%,220px)] object-contain"
-            decoding="async"
-          />
-        </div>
-        <p className="mt-5 text-center text-sm font-medium text-[var(--color-foreground)] drop-shadow-[0_1px_0_rgb(255_255_255/0.85)]">
-          LINE Harness OSS · 管理コンソール
-        </p>
-      </div>
-    </header>
+      <p className="mt-3 text-xs text-[var(--color-foreground-muted)]">
+        LINE Harness OSS · 管理コンソール
+      </p>
+    </div>
   );
 }
 
 function LoginPageFallback() {
   return (
-    <div className="min-h-screen flex flex-col bg-[var(--color-canvas)]">
-      <LoginHeroBand />
-      <div className="flex-1 flex flex-col items-center px-4 -mt-14 sm:-mt-16 relative z-10 pb-6">
-        <div className="bg-white rounded-2xl shadow-xl p-8 w-full max-w-sm border border-[var(--color-border)]">
-          <div className="text-center mb-6">
+    <div className="relative flex min-h-screen flex-col">
+      <SpringFieldBackdrop variant="fixed" position="center 42%" />
+      <div className="relative z-10 flex flex-1 flex-col items-center justify-center px-4 py-10">
+        <div className="w-full max-w-sm rounded-2xl border border-[var(--color-border)] bg-white/92 p-8 shadow-[var(--shadow-token-lg)] backdrop-blur-md">
+          <LoginBrandBlock />
+          <div className="text-center mb-2">
             <h1 className="text-lg font-bold text-gray-900">ログイン</h1>
             <p className="text-sm text-gray-500 mt-1">セッションを確認しています</p>
           </div>
@@ -62,7 +54,7 @@ function LoginPageFallback() {
           </div>
         </div>
       </div>
-      <footer className="mt-auto shrink-0 py-3 text-center text-xs sm:text-sm text-[var(--color-foreground-muted)] bg-[var(--color-marketing-yellow)] border-t border-black/10">
+      <footer className="relative z-10 mt-auto shrink-0 border-t border-[var(--color-border-strong)]/70 bg-[var(--color-surface)]/85 py-3 text-center text-xs text-[var(--color-foreground-muted)] backdrop-blur-md sm:text-sm">
         LINE Harness OSS — 管理コンソール
       </footer>
     </div>
@@ -187,11 +179,12 @@ function LoginPageInner() {
   };
 
   return (
-    <div className="min-h-screen flex flex-col bg-[var(--color-canvas)]">
-      <LoginHeroBand />
-      <div className="flex-1 flex flex-col items-center px-4 -mt-14 sm:-mt-16 relative z-10 pb-6">
-        <div className="bg-white rounded-2xl shadow-xl p-8 w-full max-w-sm border border-[var(--color-border)]">
-          <div className="text-center mb-6">
+    <div className="relative flex min-h-screen flex-col">
+      <SpringFieldBackdrop variant="fixed" position="center 42%" />
+      <div className="relative z-10 flex flex-1 flex-col items-center justify-center px-4 py-10">
+        <div className="w-full max-w-sm rounded-2xl border border-[var(--color-border)] bg-white/92 p-8 shadow-[var(--shadow-token-lg)] backdrop-blur-md">
+          <LoginBrandBlock />
+          <div className="text-center mb-4">
             <h1 className="text-xl font-bold text-gray-900">ログイン</h1>
             <p className="text-sm text-gray-500 mt-1">API キーまたは Cloudflare Access</p>
           </div>
@@ -243,7 +236,7 @@ function LoginPageInner() {
           )}
         </div>
       </div>
-      <footer className="mt-auto shrink-0 py-3 text-center text-xs sm:text-sm text-[var(--color-foreground-muted)] bg-[var(--color-marketing-yellow)] border-t border-black/10">
+      <footer className="relative z-10 mt-auto shrink-0 border-t border-[var(--color-border-strong)]/70 bg-[var(--color-surface)]/85 py-3 text-center text-xs text-[var(--color-foreground-muted)] backdrop-blur-md sm:text-sm">
         LINE Harness OSS — 管理コンソール
       </footer>
     </div>

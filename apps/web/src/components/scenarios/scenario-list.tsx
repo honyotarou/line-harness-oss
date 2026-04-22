@@ -25,7 +25,7 @@ export default function ScenarioList({
 }: ScenarioListProps) {
   if (scenarios.length === 0) {
     return (
-      <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-12 text-center">
+      <div className="rounded-lg border border-gray-200 bg-white/95 p-12 text-center shadow-sm backdrop-blur-sm">
         <p className="text-gray-500">シナリオがありません。新しいシナリオを作成してください。</p>
       </div>
     );
