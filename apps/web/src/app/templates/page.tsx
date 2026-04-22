@@ -7,6 +7,11 @@ import CcPromptButton from '@/components/cc-prompt-button';
 import { Alert } from '@/components/ui/alert';
 import { Badge } from '@/components/ui/badge';
 import { Input, Select, Textarea } from '@/components/ui/field';
+import {
+  buildStoredImageMessageContent,
+  isStoredFlexMessageContent,
+  parseStoredImageMessageContent,
+} from '@/lib/stored-message-content';
 
 type Template = Readonly<{
   id: string;
@@ -112,6 +117,20 @@ export default function TemplatesPage() {
     if (!form.messageContent.trim()) {
       setFormError('メッセージ内容を入力してください');
       return;
+    }
+    if (form.messageType === 'image') {
+      if (parseStoredImageMessageContent(form.messageContent) === null) {
+        setFormError(
+          '画像メッセージはURLを入力してください（originalContentUrl / previewImageUrl）',
+        );
+        return;
+      }
+    }
+    if (form.messageType === 'flex') {
+      if (!isStoredFlexMessageContent(form.messageContent)) {
+        setFormError('FlexメッセージはJSONオブジェクトである必要があります');
+        return;
+      }
     }
     setSaving(true);
     setFormError('');
@@ -249,14 +268,87 @@ export default function TemplatesPage() {
             <div>
               <label className="block text-xs font-medium text-gray-600 mb-1">
                 メッセージ内容 <span className="text-[var(--color-error)]">*</span>
+                {(form.messageType === 'flex' || form.messageType === 'image') && (
+                  <span className="ml-1 text-gray-400">(JSON形式)</span>
+                )}
               </label>
+
+              {form.messageType === 'image' &&
+                (() => {
+                  const parsed =
+                    parseStoredImageMessageContent(form.messageContent) ??
+                    ({
+                      originalContentUrl: '',
+                      previewImageUrl: '',
+                    } as const);
+                  return (
+                    <div className="space-y-2 mb-2">
+                      <div>
+                        <label className="block text-xs text-gray-500 mb-1">
+                          元画像URL (originalContentUrl)
+                        </label>
+                        <Input
+                          type="url"
+                          className=""
+                          placeholder="https://example.com/image.png"
+                          value={parsed.originalContentUrl}
+                          onChange={(e) => {
+                            const orig = e.target.value;
+                            const prev = parsed.previewImageUrl || orig;
+                            setForm({
+                              ...form,
+                              messageContent: buildStoredImageMessageContent({
+                                originalContentUrl: orig,
+                                previewImageUrl: prev,
+                              }),
+                            });
+                          }}
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-xs text-gray-500 mb-1">
+                          プレビュー画像URL (previewImageUrl)
+                        </label>
+                        <Input
+                          type="url"
+                          className=""
+                          placeholder="https://example.com/preview.png (空欄で元画像と同じ)"
+                          value={parsed.previewImageUrl}
+                          onChange={(e) => {
+                            const prev = e.target.value;
+                            const orig = parsed.originalContentUrl;
+                            setForm({
+                              ...form,
+                              messageContent: buildStoredImageMessageContent({
+                                originalContentUrl: orig,
+                                previewImageUrl: prev,
+                              }),
+                            });
+                          }}
+                        />
+                      </div>
+                    </div>
+                  );
+                })()}
               <Textarea
                 className="resize-none"
-                rows={4}
-                placeholder="メッセージ内容を入力してください"
+                rows={form.messageType === 'flex' ? 8 : form.messageType === 'image' ? 3 : 4}
+                placeholder={
+                  form.messageType === 'text'
+                    ? 'メッセージ内容を入力してください'
+                    : form.messageType === 'image'
+                      ? '{"originalContentUrl":"...","previewImageUrl":"..."}'
+                      : '{"type":"bubble","body":{...}}'
+                }
                 value={form.messageContent}
                 onChange={(e) => setForm({ ...form, messageContent: e.target.value })}
+                style={{ fontFamily: form.messageType !== 'text' ? 'monospace' : 'inherit' }}
               />
+              {form.messageType === 'image' && (
+                <p className="text-xs text-gray-400 mt-1">
+                  上のURLフォームから入力すると自動でJSONが作られます
+                </p>
+              )}
             </div>
 
             {formError && <p className="text-xs text-[var(--color-error)]">{formError}</p>}
