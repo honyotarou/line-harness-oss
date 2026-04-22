@@ -304,7 +304,7 @@ export default function DashboardPage() {
         <div className="flex-1" />
 
         {/* Quick links */}
-        <div className="-mx-4 mt-auto bg-black/95 pb-6 pt-6 shadow-[0_18px_60px_rgb(0_0_0/0.28)] backdrop-blur-md sm:-mx-6 sm:pb-6 sm:pt-6 lg:-mx-8 lg:pb-8 lg:pt-6">
+        <div className="-mx-4 -mb-6 mt-auto bg-black/95 pb-6 pt-6 shadow-[0_18px_60px_rgb(0_0_0/0.28)] backdrop-blur-md sm:-mx-6 sm:pb-6 sm:pt-6 lg:-mx-8 lg:-mb-8 lg:pb-8 lg:pt-6">
           <div className="px-4 sm:px-6 lg:px-8">
             <h2 className="mb-4 text-sm font-semibold text-white">クイックアクション</h2>
             <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
