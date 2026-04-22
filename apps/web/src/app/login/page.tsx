@@ -44,7 +44,7 @@ function LoginPageFallback() {
             <p className="text-sm text-gray-500 mt-1">セッションを確認しています</p>
           </div>
           <div className="py-10 flex justify-center">
-            <div className="animate-spin w-8 h-8 border-[3px] border-gray-200 border-t-[var(--color-marketing-orange)] rounded-full" />
+            <div className="animate-spin w-8 h-8 border-[3px] border-gray-200 border-t-[var(--color-primary)] rounded-full" />
           </div>
         </div>
       </div>
@@ -185,7 +185,7 @@ function LoginPageInner() {
 
           {!hydrated ? (
             <div className="py-10 flex justify-center">
-              <div className="animate-spin w-8 h-8 border-[3px] border-gray-200 border-t-[var(--color-marketing-orange)] rounded-full" />
+              <div className="animate-spin w-8 h-8 border-[3px] border-gray-200 border-t-[var(--color-primary)] rounded-full" />
             </div>
           ) : (
             <form onSubmit={handleLogin}>
@@ -213,7 +213,7 @@ function LoginPageInner() {
               {accessLogin ? (
                 <a
                   href={accessStartHref}
-                  className="block w-full py-3 text-white text-center font-medium rounded-lg transition-colors bg-[var(--color-marketing-orange)] hover:bg-[var(--color-marketing-orange-deep)]"
+                  className="block w-full py-3 text-[var(--color-primary-foreground)] text-center font-semibold rounded-lg transition-colors bg-[var(--color-primary)] hover:bg-[var(--color-primary-hover)]"
                 >
                   Access ログインへ
                 </a>
@@ -221,7 +221,7 @@ function LoginPageInner() {
                 <button
                   type="submit"
                   disabled={loading || (!accessLogin && !apiKey)}
-                  className="w-full py-3 text-white font-medium rounded-lg transition-colors bg-[var(--color-marketing-orange)] hover:bg-[var(--color-marketing-orange-deep)] disabled:opacity-50"
+                  className="w-full py-3 text-[var(--color-primary-foreground)] font-semibold rounded-lg transition-colors bg-[var(--color-primary)] hover:bg-[var(--color-primary-hover)] disabled:opacity-50"
                 >
                   {loading ? 'ログイン中...' : 'ログイン'}
                 </button>
