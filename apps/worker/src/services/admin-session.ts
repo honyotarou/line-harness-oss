@@ -25,16 +25,15 @@ function allowsApiKeyAsAdminSessionSigner(env: {
   RELAX_DEPLOYED_SECURITY_CONFIRM?: string;
 }): boolean {
   // Never allow signing admin sessions with API_KEY on strict public HTTPS surfaces.
-  // To migrate a deployed Worker before setting ADMIN_SESSION_SECRET, use the global relax pair.
+  // On relaxed HTTPS, still require explicit ALLOW_LEGACY_API_KEY_SESSION_SIGNER (not RELAX alone).
   if (isNonLocalHttpsWorkerUrl(env.WORKER_URL ?? '') && !isRelaxedDeployedSecurityDefaults(env)) {
     return false;
   }
   if (isTruthyEnvFlag(env.ALLOW_LEGACY_API_KEY_SESSION_SIGNER)) {
     return true;
   }
-  if (isRelaxedDeployedSecurityDefaults(env) && isNonLocalHttpsWorkerUrl(env.WORKER_URL ?? '')) {
-    return true;
-  }
+  // Global RELAX must not implicitly enable API_KEY as the session HMAC signer on public HTTPS;
+  // use ALLOW_LEGACY_API_KEY_SESSION_SIGNER=1 only during deliberate migration.
   return !isNonLocalHttpsWorkerUrl(env.WORKER_URL ?? '');
 }
 
@@ -78,8 +77,12 @@ export function isAdminSessionSecretRequired(env: {
   return effectiveRequireDedicatedAdminSessionSecret(env);
 }
 
+/** Bound into every admin session JWT so tokens are not confused with other HMAC payloads. */
+export const ADMIN_SESSION_JWT_SUB = 'lh_admin' as const;
+
 export type AdminSessionPayload = Readonly<{
   scope: 'admin';
+  sub: typeof ADMIN_SESSION_JWT_SUB;
   iat: number;
   exp: number;
   /** Present on newly issued tokens; used with D1 `admin_session_revocations` for logout. */
@@ -177,6 +180,7 @@ export async function issueAdminSessionToken(
   const jti = options?.jti ?? crypto.randomUUID();
   const payload: AdminSessionPayload = {
     scope: 'admin',
+    sub: ADMIN_SESSION_JWT_SUB,
     iat,
     exp,
     jti,
@@ -206,6 +210,7 @@ export async function verifyAdminSessionToken(
     const now = options?.now ?? Math.floor(Date.now() / 1000);
     if (
       payload.scope !== 'admin' ||
+      payload.sub !== ADMIN_SESSION_JWT_SUB ||
       typeof payload.iat !== 'number' ||
       typeof payload.exp !== 'number'
     ) {
@@ -231,6 +236,7 @@ export async function verifyAdminSessionToken(
     }
     return {
       scope: 'admin',
+      sub: ADMIN_SESSION_JWT_SUB,
       iat: payload.iat,
       exp: payload.exp,
       ...(jti !== undefined ? { jti } : {}),

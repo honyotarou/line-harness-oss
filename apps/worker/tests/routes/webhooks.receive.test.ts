@@ -1,6 +1,7 @@
 import { createHmac } from 'node:crypto';
 import { Hono } from 'hono';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { buildTimestampedSignedPayload } from '../../src/services/signed-payload.js';
 import { resetRequestRateLimits } from '../../src/services/request-rate-limit.js';
 
 const dbMocks = vi.hoisted(() => ({
@@ -26,6 +27,20 @@ vi.mock('../../src/services/event-bus.js', () => eventBusMocks);
 
 function sign(secret: string, body: string): string {
   return createHmac('sha256', secret).update(body).digest('hex');
+}
+
+/** Incoming receive requires `X-Webhook-Timestamp` + HMAC over `ts + "." + body`. */
+function signIncomingReceive(
+  secret: string,
+  body: string,
+  unixSec: number,
+): Record<string, string> {
+  const ts = String(unixSec);
+  const message = buildTimestampedSignedPayload(ts, body);
+  return {
+    'X-Webhook-Timestamp': ts,
+    'X-Webhook-Signature': createHmac('sha256', secret).update(message).digest('hex'),
+  };
 }
 
 /** In-memory D1: request_rate_limits + incoming_webhook_processed_payloads (matches production SQL shape). */
@@ -223,6 +238,37 @@ describe('incoming webhook receive route', () => {
     app.route('/', webhooks);
 
     const body = JSON.stringify({ ok: true });
+    const ts = Math.floor(Date.now() / 1000);
+    const response = await app.fetch(
+      new Request('http://localhost/api/webhooks/incoming/incoming-1/receive', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          ...signIncomingReceive('top-secret', body, ts),
+        },
+        body,
+      }),
+      { DB: createReceiveTestDb() } as never,
+    );
+
+    expect(response.status).toBe(200);
+    expect(eventBusMocks.fireEvent).toHaveBeenCalledOnce();
+  });
+
+  it('rejects legacy body-only HMAC when X-Webhook-Timestamp is omitted (replay hardening)', async () => {
+    dbMocks.getIncomingWebhookById.mockResolvedValue({
+      id: 'incoming-1',
+      source_type: 'custom',
+      secret: 'top-secret',
+      line_account_id: null,
+      is_active: 1,
+    });
+
+    const { webhooks } = await import('../../src/routes/webhooks.js');
+    const app = new Hono();
+    app.route('/', webhooks);
+
+    const body = JSON.stringify({ ok: true });
     const response = await app.fetch(
       new Request('http://localhost/api/webhooks/incoming/incoming-1/receive', {
         method: 'POST',
@@ -235,8 +281,8 @@ describe('incoming webhook receive route', () => {
       { DB: createReceiveTestDb() } as never,
     );
 
-    expect(response.status).toBe(200);
-    expect(eventBusMocks.fireEvent).toHaveBeenCalledOnce();
+    expect(response.status).toBe(401);
+    expect(eventBusMocks.fireEvent).not.toHaveBeenCalled();
   });
 
   it('sanitizes the incoming JSON payload before passing to the event bus (poisoning guard)', async () => {
@@ -259,12 +305,13 @@ describe('incoming webhook receive route', () => {
       huge: 'x'.repeat(3000),
     };
     const body = JSON.stringify(bodyObj);
+    const ts = Math.floor(Date.now() / 1000);
     const response = await app.fetch(
       new Request('http://localhost/api/webhooks/incoming/incoming-1/receive', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'X-Webhook-Signature': sign('top-secret', body),
+          ...signIncomingReceive('top-secret', body, ts),
         },
         body,
       }),
@@ -298,9 +345,10 @@ describe('incoming webhook receive route', () => {
 
     const db = createReceiveTestDb();
     const body = JSON.stringify({ ok: true });
+    const ts = Math.floor(Date.now() / 1000);
     const headers = {
       'Content-Type': 'application/json',
-      'X-Webhook-Signature': sign('top-secret', body),
+      ...signIncomingReceive('top-secret', body, ts),
     };
 
     const req = () =>
@@ -360,12 +408,13 @@ describe('incoming webhook receive route', () => {
     app.route('/', webhooks);
 
     for (const body of ['null', '42', '"x"']) {
+      const ts = Math.floor(Date.now() / 1000);
       const response = await app.fetch(
         new Request('http://localhost/api/webhooks/incoming/incoming-1/receive', {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
-            'X-Webhook-Signature': sign('top-secret', body),
+            ...signIncomingReceive('top-secret', body, ts),
           },
           body,
         }),
@@ -411,6 +460,7 @@ describe('incoming webhook receive route', () => {
     // D1-backed limits key by floor(Date.now()/windowMs). Freeze time so a slow CI/coverage
     // run cannot span a window boundary and reset the global counter mid-loop.
     const frozenMs = Date.UTC(2026, 3, 15, 12, 0, 0, 0);
+    const frozenUnixSec = Math.floor(frozenMs / 1000);
     vi.useFakeTimers({ now: frozenMs, toFake: ['Date'] });
     try {
       dbMocks.getIncomingWebhookById.mockImplementation(async (_db: unknown, id: string) => ({
@@ -438,7 +488,7 @@ describe('incoming webhook receive route', () => {
             headers: {
               'Content-Type': 'application/json',
               'CF-Connecting-IP': '203.0.113.99',
-              'X-Webhook-Signature': sign('top-secret', body),
+              ...signIncomingReceive('top-secret', body, frozenUnixSec),
             },
             body,
           }),
@@ -471,6 +521,7 @@ describe('incoming webhook receive route', () => {
     app.route('/', webhooks);
 
     const db = createReceiveTestDb();
+    const unixSec = Math.floor(Date.now() / 1000);
     let response: Response | undefined;
     for (let attempt = 0; attempt < 21; attempt += 1) {
       const body = JSON.stringify({ ok: true, attempt });
@@ -480,7 +531,7 @@ describe('incoming webhook receive route', () => {
           headers: {
             'Content-Type': 'application/json',
             'CF-Connecting-IP': '198.51.100.30',
-            'X-Webhook-Signature': sign('top-secret', body),
+            ...signIncomingReceive('top-secret', body, unixSec),
           },
           body,
         }),

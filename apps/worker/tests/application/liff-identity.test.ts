@@ -73,6 +73,17 @@ describe('resolveLiffOAuthStateSecret', () => {
     ).toBeNull();
   });
 
+  it('returns null on relaxed HTTPS when LIFF is unset (global RELAX does not enable API_KEY OAuth state)', () => {
+    expect(
+      resolveLiffOAuthStateSecret({
+        API_KEY: 'api',
+        WORKER_URL: 'https://api.example.com',
+        RELAX_DEPLOYED_SECURITY_DEFAULTS: '1',
+        RELAX_DEPLOYED_SECURITY_CONFIRM: 'YES_I_ACCEPT_REDUCED_SECURITY',
+      } as never),
+    ).toBeNull();
+  });
+
   it('returns null when REQUIRE_LIFF overrides ALLOW_LIFF without LIFF_STATE_SECRET', () => {
     expect(
       resolveLiffOAuthStateSecret({

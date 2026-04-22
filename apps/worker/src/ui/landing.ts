@@ -1,3 +1,4 @@
+import { sanitizeLandingEnvHtmlFragmentAllowBrOnly } from '../services/landing-env-html-fragment.js';
 import { qrPayloadToSvgDataUrl } from '../services/qr-svg-data-url.js';
 
 export type LandingEnv = Readonly<{
@@ -23,15 +24,6 @@ function escapeHtml(value: string): string {
     .replace(/>/g, '&gt;')
     .replace(/"/g, '&quot;')
     .replace(/'/g, '&#39;');
-}
-
-/**
- * For a few fields we intentionally allow HTML (line breaks).
- * Keep it small and limited to trusted admin-provided values (Worker vars).
- */
-function allowSimpleHtml(value: string | undefined, fallback: string): string {
-  const v = (value ?? '').trim();
-  return v === '' ? fallback : v;
 }
 
 function nonceAttr(nonce: string | undefined): string {
@@ -73,7 +65,7 @@ h1{font-size:28px;font-weight:800;margin-bottom:8px}
   const title = escapeHtml((env.LANDING_TITLE ?? '').trim() || 'LINE Harness');
   const subtitle = escapeHtml((env.LANDING_SUBTITLE ?? '').trim() || 'LINE 公式アカウントのCRM');
   const buttonText = escapeHtml((env.LANDING_BUTTON_TEXT ?? '').trim() || 'LINE で友だち追加');
-  const noteHtml = allowSimpleHtml(
+  const noteHtml = sanitizeLandingEnvHtmlFragmentAllowBrOnly(
     env.LANDING_NOTE_HTML,
     '友だち追加するだけで<br>ステップ配信・フォーム・自動返信を体験できます',
   );
@@ -146,7 +138,7 @@ export function renderAuthQrPage(env: LandingEnv, scanTarget: string, cspNonce?:
   const qrSubtitle = escapeHtml(
     (env.LANDING_QR_SUBTITLE ?? '').trim() || 'スマートフォンで QR コードを読み取ってください',
   );
-  const qrHintHtml = allowSimpleHtml(
+  const qrHintHtml = sanitizeLandingEnvHtmlFragmentAllowBrOnly(
     env.LANDING_QR_HINT_HTML,
     'LINE アプリのカメラまたは<br>スマートフォンのカメラで読み取れます',
   );

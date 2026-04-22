@@ -490,7 +490,7 @@ describe('auth routes', () => {
       verifyAdminSessionToken('only-for-sessions', sessionToken!, {
         now: Math.floor(Date.now() / 1000),
       }),
-    ).resolves.toMatchObject({ scope: 'admin' });
+    ).resolves.toMatchObject({ scope: 'admin', sub: 'lh_admin' });
 
     const sessionResponse = await app.fetch(
       new Request('http://localhost/api/auth/session', {

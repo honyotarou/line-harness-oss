@@ -75,6 +75,12 @@ POST /api/webhooks/incoming/:id/receive
 
 認証不要（公開エンドポイント）。Webhook ID で識別し、レート制限のあと DB 参照・署名検証を行う。
 
+**署名（必須）**
+
+- **`X-Webhook-Timestamp`**: Unix 時刻の **10 進 ASCII 数字のみ**（例 `1700000000`）。**省略・空・非数字は不可**（いずれも **401**）。
+- **`X-Webhook-Signature`**: 共有シークレットに対する **SHA-256 HMAC（hex）**。署名対象の文字列は **`{timestamp}.{RAW_BODY}`**（`RAW_BODY` はリクエストボディの生テキスト）。サーバ時刻との差が **300 秒**を超えるタイムスタンプは **401**（リプレイ窓）。
+- ボディだけを HMAC する旧形式は **受け付けない**（常にタイムスタンプ付き）。
+
 **HTTP（列挙耐性のため、失敗系は同一の 401 + 本文を返すことがある）**
 
 | 状況 | ステータス | 備考 |
@@ -164,6 +170,7 @@ curl -X DELETE "https://line-crm-worker.line-crm-api.workers.dev/api/webhooks/in
 #### 外部からのWebhook受信（公開）
 
 ```bash
+# 外部からの JSON を受信（認証不要）。実運用では上記の X-Webhook-* ヘッダに正しい署名を付ける。
 # Stripeからの決済通知を受信（認証不要）
 curl -X POST "https://line-crm-worker.line-crm-api.workers.dev/api/webhooks/incoming/WH_UUID/receive" \
   -H "Content-Type: application/json" \

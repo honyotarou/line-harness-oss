@@ -222,6 +222,10 @@ describe('deployed-security-defaults', () => {
         }),
       ).toBe(true);
     });
+
+    it('is true on relaxed HTTPS without explicit LIFF OAuth API_KEY fallback', () => {
+      expect(effectiveRequireLiffStateSecret(httpsRelaxPair)).toBe(true);
+    });
   });
 
   describe('effectiveRequireTrackingLinkDedicatedSecret', () => {
@@ -229,8 +233,8 @@ describe('deployed-security-defaults', () => {
       expect(effectiveRequireTrackingLinkDedicatedSecret(httpsWorker)).toBe(true);
     });
 
-    it('is false when full RELAX pair is set', () => {
-      expect(effectiveRequireTrackingLinkDedicatedSecret(httpsRelaxPair)).toBe(false);
+    it('is still true on HTTPS when full RELAX pair is set (RELAX does not waive dedicated tracking secret)', () => {
+      expect(effectiveRequireTrackingLinkDedicatedSecret(httpsRelaxPair)).toBe(true);
     });
 
     it('is true when REQUIRE overrides ALLOW_TRACKING', () => {
@@ -266,6 +270,10 @@ describe('deployed-security-defaults', () => {
           ALLOW_LEGACY_API_KEY_SESSION_SIGNER: '1',
         }),
       ).toBe(true);
+    });
+
+    it('is true on relaxed HTTPS (global relax no longer waives dedicated admin session secret policy)', () => {
+      expect(effectiveRequireDedicatedAdminSessionSecret(httpsRelaxPair)).toBe(true);
     });
   });
 });

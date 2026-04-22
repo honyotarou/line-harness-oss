@@ -336,6 +336,7 @@ describe('攻撃者サイクル 301–350（セキュリティバッチ）', () 
     const t = await issueAdminSessionToken('k', { issuedAt: 1_710_000_000, expiresInSeconds: 60 });
     const p = await verifyAdminSessionToken('k', t, { now: 1_710_000_030 });
     expect(p?.scope).toBe('admin');
+    expect(p?.sub).toBe('lh_admin');
   });
 
   it('cycle 343: tryParseJsonArray empty string yields empty array', async () => {

@@ -3,6 +3,10 @@
  * On non-local HTTPS, `RELAX_DEPLOYED_SECURITY_DEFAULTS=1` alone is ignored; also set
  * `RELAX_DEPLOYED_SECURITY_CONFIRM` to {@link RELAX_SECURITY_CONFIRM_PHRASE} (two-step) so staging
  * relax cannot be enabled by a single mis-set variable.
+ *
+ * Global relax still eases automation allowlists, multi-account query rules, calendar encryption, etc.,
+ * but it does **not** implicitly allow `API_KEY` as the HMAC secret for admin sessions, LIFF OAuth
+ * `state`, or tracked-link `?f=` tokens — use explicit `ALLOW_*` flags for those narrow exceptions.
  */
 
 import { isNonLocalHttpsWorkerUrl } from './production-cloud-policy.js';
@@ -144,9 +148,6 @@ export function effectiveRequireLiffStateSecret(env: LiffOAuthStateSecurityEnv):
   if (explicitLiffOAuthApiKeyFallbackEnabled(env)) {
     return false;
   }
-  if (isRelaxedDeployedSecurityDefaults(env)) {
-    return false;
-  }
   return isNonLocalHttpsWorkerUrl(env.WORKER_URL ?? '');
 }
 
@@ -163,9 +164,6 @@ export function effectiveRequireTrackingLinkDedicatedSecret(
     return true;
   }
   if (isTruthyEnvFlag(env.ALLOW_TRACKING_LINK_API_KEY_FALLBACK)) {
-    return false;
-  }
-  if (isRelaxedDeployedSecurityDefaults(env)) {
     return false;
   }
   return isNonLocalHttpsWorkerUrl(env.WORKER_URL ?? '');
@@ -192,9 +190,6 @@ export function effectiveRequireDedicatedAdminSessionSecret(
     return true;
   }
   if (isTruthyEnvFlag(env.ALLOW_LEGACY_API_KEY_SESSION_SIGNER)) {
-    return false;
-  }
-  if (isRelaxedDeployedSecurityDefaults(env)) {
     return false;
   }
   return isNonLocalHttpsWorkerUrl(env.WORKER_URL ?? '');
