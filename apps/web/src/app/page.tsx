@@ -6,6 +6,7 @@ import { api, getApiBaseUrl } from '@/lib/api';
 import CcPromptButton from '@/components/cc-prompt-button';
 import { useAccount } from '@/contexts/account-context';
 import { SpringFieldBackdrop } from '@/components/layout/spring-field-backdrop';
+import { RaCheckLogo } from '@/components/racheck-logo';
 import { Alert } from '@/components/ui/alert';
 
 const ccPrompts = [
@@ -143,20 +144,13 @@ export default function DashboardPage() {
   }, [selectedAccountId]);
 
   return (
-    <div className="relative isolate -mx-4 min-h-[calc(100dvh-5.5rem)] sm:-mx-6 lg:-mx-8">
-      <SpringFieldBackdrop variant="absolute" position="center 36%" className="rounded-xl" />
-      <div className="relative z-10 space-y-6 pb-8 pt-1">
+    <div className="relative isolate -mx-4 -mt-[72px] -mb-6 min-h-screen px-4 pb-6 pt-[72px] sm:-mx-6 sm:px-6 lg:-mx-8 lg:-mt-8 lg:-mb-8 lg:px-8 lg:pb-8 lg:pt-8">
+      <SpringFieldBackdrop variant="absolute" position="center 36%" />
+      <div className="relative z-10 space-y-6 pb-2 pt-1">
         <div className="rounded-2xl border border-white/55 bg-white/92 p-6 shadow-[var(--shadow-token-lg)] backdrop-blur-md sm:p-8">
           <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
             <div className="flex items-center gap-4">
-              <img
-                src="/racheck-logo.png"
-                alt="らチェック"
-                width={88}
-                height={88}
-                className="h-14 w-auto shrink-0 object-contain drop-shadow-[0_2px_10px_rgb(0_0_0/0.12)] sm:h-16"
-                decoding="async"
-              />
+              <RaCheckLogo variant="dashboard" />
               <div className="min-w-0">
                 <p className="text-xs font-semibold uppercase tracking-[0.12em] text-[var(--color-foreground-muted)]">
                   LINE公式アカウント CRM
@@ -308,12 +302,12 @@ export default function DashboardPage() {
         </div>
 
         {/* Quick links */}
-        <div className="rounded-xl border border-white/55 bg-white/95 p-6 shadow-md backdrop-blur-sm">
-          <h2 className="text-sm font-semibold text-gray-800 mb-4">クイックアクション</h2>
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+        <div className="rounded-xl border border-white/15 bg-black/90 p-6 shadow-lg backdrop-blur-md">
+          <h2 className="mb-4 text-sm font-semibold text-white">クイックアクション</h2>
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
             <SafeLink
               href="/friends"
-              className="flex items-center gap-3 p-3 rounded-lg border border-gray-200 hover:border-gray-300 hover:bg-[var(--color-primary-muted)] transition-colors group"
+              className="group flex items-center gap-3 rounded-lg border border-gray-200 bg-white/95 p-3 transition-colors hover:border-gray-300 hover:bg-white"
             >
               <div className="w-8 h-8 rounded-lg flex items-center justify-center shrink-0 bg-[var(--color-primary-muted)] text-[var(--color-primary)]">
                 <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -335,7 +329,7 @@ export default function DashboardPage() {
 
             <SafeLink
               href="/scenarios"
-              className="flex items-center gap-3 p-3 rounded-lg border border-gray-200 hover:border-gray-300 hover:bg-[var(--color-primary-muted)] transition-colors group"
+              className="group flex items-center gap-3 rounded-lg border border-gray-200 bg-white/95 p-3 transition-colors hover:border-gray-300 hover:bg-white"
             >
               <div className="w-8 h-8 rounded-lg flex items-center justify-center shrink-0 bg-[var(--color-primary-muted)] text-[var(--color-primary)]">
                 <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -357,7 +351,7 @@ export default function DashboardPage() {
 
             <SafeLink
               href="/broadcasts"
-              className="flex items-center gap-3 p-3 rounded-lg border border-gray-200 hover:border-gray-300 hover:bg-[var(--color-primary-muted)] transition-colors group"
+              className="group flex items-center gap-3 rounded-lg border border-gray-200 bg-white/95 p-3 transition-colors hover:border-gray-300 hover:bg-white"
             >
               <div className="w-8 h-8 rounded-lg flex items-center justify-center shrink-0 bg-[var(--color-primary-muted)] text-[var(--color-primary)]">
                 <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -379,7 +373,7 @@ export default function DashboardPage() {
 
             <SafeLink
               href="/chats"
-              className="flex items-center gap-3 p-3 rounded-lg border border-gray-200 hover:border-gray-300 hover:bg-[var(--color-primary-muted)] transition-colors group"
+              className="group flex items-center gap-3 rounded-lg border border-gray-200 bg-white/95 p-3 transition-colors hover:border-gray-300 hover:bg-white"
             >
               <div className="w-8 h-8 rounded-lg flex items-center justify-center shrink-0 bg-[var(--color-primary-muted)] text-[var(--color-primary)]">
                 <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -401,7 +395,7 @@ export default function DashboardPage() {
 
             <SafeLink
               href="/health"
-              className="flex items-center gap-3 p-3 rounded-lg border border-gray-200 hover:border-gray-300 hover:bg-[var(--color-primary-muted)] transition-colors group"
+              className="group flex items-center gap-3 rounded-lg border border-gray-200 bg-white/95 p-3 transition-colors hover:border-gray-300 hover:bg-white"
             >
               <div className="w-8 h-8 rounded-lg flex items-center justify-center shrink-0 bg-[var(--color-primary-muted)] text-[var(--color-primary)]">
                 <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">

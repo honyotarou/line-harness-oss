@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useRef } from 'react';
 import SafeLink from '@/components/safe-link';
+import { RaCheckLogo } from '@/components/racheck-logo';
 import { usePathname } from 'next/navigation';
 import { api } from '@/lib/api';
 import { useAccount } from '@/contexts/account-context';
@@ -302,14 +303,7 @@ export default function Sidebar() {
       {/* ロゴ */}
       <div className="px-6 py-5 border-b border-gray-200">
         <div className="flex items-center gap-2.5">
-          <img
-            src="/racheck-logo.png"
-            alt="らチェック"
-            width={40}
-            height={40}
-            className="h-9 w-9 shrink-0 object-contain"
-            decoding="async"
-          />
+          <RaCheckLogo variant="sidebar" />
           <div>
             <p className="text-sm font-bold text-gray-900 leading-tight">らチェク</p>
             <p className="text-xs text-gray-400">LINE Harness OSS</p>
@@ -423,14 +417,7 @@ export default function Sidebar() {
           </svg>
         </button>
         <div className="flex items-center gap-2">
-          <img
-            src="/racheck-logo.png"
-            alt=""
-            width={32}
-            height={32}
-            className="h-8 w-8 shrink-0 object-contain"
-            decoding="async"
-          />
+          <RaCheckLogo variant="sidebar-mobile" alt="" />
           <p className="text-sm font-bold text-gray-900">らチェク</p>
         </div>
       </div>
