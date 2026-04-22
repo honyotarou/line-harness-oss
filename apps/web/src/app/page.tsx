@@ -146,7 +146,7 @@ export default function DashboardPage() {
   return (
     <div className="relative isolate -mx-4 -mt-[72px] -mb-6 min-h-screen px-4 pb-6 pt-[72px] sm:-mx-6 sm:px-6 lg:-mx-8 lg:-mt-8 lg:-mb-8 lg:px-8 lg:pb-8 lg:pt-8">
       <SpringFieldBackdrop variant="absolute" position="center 36%" />
-      <div className="relative z-10 space-y-6 pb-2 pt-1">
+      <div className="relative z-10 flex min-h-full flex-col gap-6 pb-2 pt-1">
         <div className="rounded-2xl border border-white/55 bg-white/92 p-6 shadow-[var(--shadow-token-lg)] backdrop-blur-md sm:p-8">
           <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
             <div className="flex items-center gap-4">
@@ -189,7 +189,7 @@ export default function DashboardPage() {
               </p>
             </div>
             <span
-              className="text-xs px-3 py-1.5 rounded-full text-white font-medium"
+              className="text-xs px-3 py-1.5 rounded-full text-[var(--color-primary-foreground)] font-semibold"
               style={{ backgroundColor: 'var(--color-primary)' }}
             >
               友だち追加
@@ -301,123 +301,129 @@ export default function DashboardPage() {
           />
         </div>
 
+        <div className="flex-1" />
+
         {/* Quick links */}
-        <div className="rounded-xl border border-white/15 bg-black/90 p-6 shadow-lg backdrop-blur-md">
-          <h2 className="mb-4 text-sm font-semibold text-white">クイックアクション</h2>
-          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-            <SafeLink
-              href="/friends"
-              className="group flex items-center gap-3 rounded-lg border border-gray-200 bg-white/95 p-3 transition-colors hover:border-gray-300 hover:bg-white"
-            >
-              <div className="w-8 h-8 rounded-lg flex items-center justify-center shrink-0 bg-[var(--color-primary-muted)] text-[var(--color-primary)]">
-                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z"
-                  />
-                </svg>
-              </div>
-              <div>
-                <p className="text-sm font-medium text-gray-900 group-hover:text-[var(--color-primary-hover)] transition-colors">
-                  友だち管理
-                </p>
-                <p className="text-xs text-gray-400">友だちの一覧・タグ管理</p>
-              </div>
-            </SafeLink>
+        <div className="-mx-4 mt-auto bg-black/95 py-8 shadow-[0_18px_60px_rgb(0_0_0/0.28)] backdrop-blur-md sm:-mx-6 lg:-mx-8">
+          <div className="px-4 sm:px-6 lg:px-8">
+            <h2 className="mb-4 text-sm font-semibold text-white">クイックアクション</h2>
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+              <SafeLink
+                href="/friends"
+                className="group flex items-center gap-3 rounded-lg border border-gray-200 bg-white/95 p-3 transition-colors hover:border-gray-300 hover:bg-white"
+              >
+                <div className="w-8 h-8 rounded-lg flex items-center justify-center shrink-0 bg-[var(--color-primary-muted)] text-[var(--color-primary)]">
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z"
+                    />
+                  </svg>
+                </div>
+                <div>
+                  <p className="text-sm font-medium text-gray-900 group-hover:text-[var(--color-primary-hover)] transition-colors">
+                    友だち管理
+                  </p>
+                  <p className="text-xs text-gray-400">友だちの一覧・タグ管理</p>
+                </div>
+              </SafeLink>
 
-            <SafeLink
-              href="/scenarios"
-              className="group flex items-center gap-3 rounded-lg border border-gray-200 bg-white/95 p-3 transition-colors hover:border-gray-300 hover:bg-white"
-            >
-              <div className="w-8 h-8 rounded-lg flex items-center justify-center shrink-0 bg-[var(--color-primary-muted)] text-[var(--color-primary)]">
-                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"
-                  />
-                </svg>
-              </div>
-              <div>
-                <p className="text-sm font-medium text-gray-900 group-hover:text-[var(--color-primary-hover)] transition-colors">
-                  シナリオ配信
-                </p>
-                <p className="text-xs text-gray-400">自動配信シナリオの作成・編集</p>
-              </div>
-            </SafeLink>
+              <SafeLink
+                href="/scenarios"
+                className="group flex items-center gap-3 rounded-lg border border-gray-200 bg-white/95 p-3 transition-colors hover:border-gray-300 hover:bg-white"
+              >
+                <div className="w-8 h-8 rounded-lg flex items-center justify-center shrink-0 bg-[var(--color-primary-muted)] text-[var(--color-primary)]">
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"
+                    />
+                  </svg>
+                </div>
+                <div>
+                  <p className="text-sm font-medium text-gray-900 group-hover:text-[var(--color-primary-hover)] transition-colors">
+                    シナリオ配信
+                  </p>
+                  <p className="text-xs text-gray-400">自動配信シナリオの作成・編集</p>
+                </div>
+              </SafeLink>
 
-            <SafeLink
-              href="/broadcasts"
-              className="group flex items-center gap-3 rounded-lg border border-gray-200 bg-white/95 p-3 transition-colors hover:border-gray-300 hover:bg-white"
-            >
-              <div className="w-8 h-8 rounded-lg flex items-center justify-center shrink-0 bg-[var(--color-primary-muted)] text-[var(--color-primary)]">
-                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M11 5.882V19.24a1.76 1.76 0 01-3.417.592l-2.147-6.15M18 13a3 3 0 100-6M5.436 13.683A4.001 4.001 0 017 6h1.832c4.1 0 7.625-1.234 9.168-3v14c-1.543-1.766-5.067-3-9.168-3H7a3.988 3.988 0 01-1.564-.317z"
-                  />
-                </svg>
-              </div>
-              <div>
-                <p className="text-sm font-medium text-gray-900 group-hover:text-[var(--color-primary-hover)] transition-colors">
-                  一斉配信
-                </p>
-                <p className="text-xs text-gray-400">メッセージの一斉送信・予約</p>
-              </div>
-            </SafeLink>
+              <SafeLink
+                href="/broadcasts"
+                className="group flex items-center gap-3 rounded-lg border border-gray-200 bg-white/95 p-3 transition-colors hover:border-gray-300 hover:bg-white"
+              >
+                <div className="w-8 h-8 rounded-lg flex items-center justify-center shrink-0 bg-[var(--color-primary-muted)] text-[var(--color-primary)]">
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M11 5.882V19.24a1.76 1.76 0 01-3.417.592l-2.147-6.15M18 13a3 3 0 100-6M5.436 13.683A4.001 4.001 0 017 6h1.832c4.1 0 7.625-1.234 9.168-3v14c-1.543-1.766-5.067-3-9.168-3H7a3.988 3.988 0 01-1.564-.317z"
+                    />
+                  </svg>
+                </div>
+                <div>
+                  <p className="text-sm font-medium text-gray-900 group-hover:text-[var(--color-primary-hover)] transition-colors">
+                    一斉配信
+                  </p>
+                  <p className="text-xs text-gray-400">メッセージの一斉送信・予約</p>
+                </div>
+              </SafeLink>
 
-            <SafeLink
-              href="/chats"
-              className="group flex items-center gap-3 rounded-lg border border-gray-200 bg-white/95 p-3 transition-colors hover:border-gray-300 hover:bg-white"
-            >
-              <div className="w-8 h-8 rounded-lg flex items-center justify-center shrink-0 bg-[var(--color-primary-muted)] text-[var(--color-primary)]">
-                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"
-                  />
-                </svg>
-              </div>
-              <div>
-                <p className="text-sm font-medium text-gray-900 group-hover:text-[var(--color-primary-hover)] transition-colors">
-                  チャット
-                </p>
-                <p className="text-xs text-gray-400">オペレーターチャット管理</p>
-              </div>
-            </SafeLink>
+              <SafeLink
+                href="/chats"
+                className="group flex items-center gap-3 rounded-lg border border-gray-200 bg-white/95 p-3 transition-colors hover:border-gray-300 hover:bg-white"
+              >
+                <div className="w-8 h-8 rounded-lg flex items-center justify-center shrink-0 bg-[var(--color-primary-muted)] text-[var(--color-primary)]">
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"
+                    />
+                  </svg>
+                </div>
+                <div>
+                  <p className="text-sm font-medium text-gray-900 group-hover:text-[var(--color-primary-hover)] transition-colors">
+                    チャット
+                  </p>
+                  <p className="text-xs text-gray-400">オペレーターチャット管理</p>
+                </div>
+              </SafeLink>
 
-            <SafeLink
-              href="/health"
-              className="group flex items-center gap-3 rounded-lg border border-gray-200 bg-white/95 p-3 transition-colors hover:border-gray-300 hover:bg-white"
-            >
-              <div className="w-8 h-8 rounded-lg flex items-center justify-center shrink-0 bg-[var(--color-primary-muted)] text-[var(--color-primary)]">
-                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"
-                  />
-                </svg>
-              </div>
-              <div>
-                <p className="text-sm font-medium text-gray-900 group-hover:text-[var(--color-primary-hover)] transition-colors">
-                  BAN検知
-                </p>
-                <p className="text-xs text-gray-400">アカウント健康度ダッシュボード</p>
-              </div>
-            </SafeLink>
+              <SafeLink
+                href="/health"
+                className="group flex items-center gap-3 rounded-lg border border-gray-200 bg-white/95 p-3 transition-colors hover:border-gray-300 hover:bg-white"
+              >
+                <div className="w-8 h-8 rounded-lg flex items-center justify-center shrink-0 bg-[var(--color-primary-muted)] text-[var(--color-primary)]">
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"
+                    />
+                  </svg>
+                </div>
+                <div>
+                  <p className="text-sm font-medium text-gray-900 group-hover:text-[var(--color-primary-hover)] transition-colors">
+                    BAN検知
+                  </p>
+                  <p className="text-xs text-gray-400">アカウント健康度ダッシュボード</p>
+                </div>
+              </SafeLink>
+            </div>
+
+            <div className="mt-6">
+              <CcPromptButton prompts={ccPrompts} />
+            </div>
           </div>
         </div>
-
-        <CcPromptButton prompts={ccPrompts} />
       </div>
     </div>
   );
