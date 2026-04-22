@@ -20,18 +20,18 @@ function errorMessageFromApi(err: unknown): string | undefined {
   return undefined;
 }
 
-function LoginBrandBlock() {
+function LoginLogoMark() {
   return (
-    <div className="text-center border-b border-[var(--color-border)] pb-6 mb-6">
+    <div className="mb-6 text-center">
       <img
         src="/racheck-logo.png"
         alt="らチェック"
         width={220}
         height={220}
-        className="mx-auto h-[clamp(4.25rem,22vw,7.5rem)] w-auto max-w-[min(100%,220px)] object-contain"
+        className="mx-auto h-[clamp(4.5rem,24vw,8.25rem)] w-auto max-w-[min(100%,240px)] object-contain drop-shadow-[0_2px_14px_rgb(0_0_0/0.18)]"
         decoding="async"
       />
-      <p className="mt-3 text-xs text-[var(--color-foreground-muted)]">
+      <p className="mt-3 text-xs font-medium text-[var(--color-foreground)] drop-shadow-[0_1px_0_rgb(255_255_255/0.9)]">
         LINE Harness OSS · 管理コンソール
       </p>
     </div>
@@ -41,11 +41,11 @@ function LoginBrandBlock() {
 function LoginPageFallback() {
   return (
     <div className="relative flex min-h-screen flex-col">
-      <SpringFieldBackdrop variant="fixed" position="center 42%" />
+      <SpringFieldBackdrop variant="fixed" position="center 40%" />
       <div className="relative z-10 flex flex-1 flex-col items-center justify-center px-4 py-10">
+        <LoginLogoMark />
         <div className="w-full max-w-sm rounded-2xl border border-[var(--color-border)] bg-white/92 p-8 shadow-[var(--shadow-token-lg)] backdrop-blur-md">
-          <LoginBrandBlock />
-          <div className="text-center mb-2">
+          <div className="text-center mb-4">
             <h1 className="text-lg font-bold text-gray-900">ログイン</h1>
             <p className="text-sm text-gray-500 mt-1">セッションを確認しています</p>
           </div>
@@ -180,10 +180,10 @@ function LoginPageInner() {
 
   return (
     <div className="relative flex min-h-screen flex-col">
-      <SpringFieldBackdrop variant="fixed" position="center 42%" />
+      <SpringFieldBackdrop variant="fixed" position="center 40%" />
       <div className="relative z-10 flex flex-1 flex-col items-center justify-center px-4 py-10">
+        <LoginLogoMark />
         <div className="w-full max-w-sm rounded-2xl border border-[var(--color-border)] bg-white/92 p-8 shadow-[var(--shadow-token-lg)] backdrop-blur-md">
-          <LoginBrandBlock />
           <div className="text-center mb-4">
             <h1 className="text-xl font-bold text-gray-900">ログイン</h1>
             <p className="text-sm text-gray-500 mt-1">API キーまたは Cloudflare Access</p>
