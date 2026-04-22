@@ -19,24 +19,43 @@ function errorMessageFromApi(err: unknown): string | undefined {
   return undefined;
 }
 
+function LoginHeroBand() {
+  return (
+    <header className="relative isolate w-full shrink-0 overflow-hidden min-h-[min(52vh,440px)] bg-[center_22%] bg-cover">
+      <div
+        className="absolute inset-0 bg-cover bg-[center_22%]"
+        style={{ backgroundImage: "url('/hero-spring-field.png')" }}
+        aria-hidden
+      />
+      <div className="pointer-events-none absolute inset-0 bg-gradient-to-b from-black/[0.06] via-transparent via-50% to-[var(--color-canvas)]" />
+      <div className="relative flex min-h-[min(52vh,440px)] flex-col items-center justify-center px-4 pb-12 pt-10">
+        <div className="rounded-2xl bg-white/90 px-6 py-5 shadow-[var(--shadow-token-lg)] ring-1 ring-[var(--color-border)] backdrop-blur-md">
+          <img
+            src="/racheck-logo.png"
+            alt="らチェック"
+            width={220}
+            height={220}
+            className="mx-auto h-[clamp(5.25rem,26vw,9rem)] w-auto max-w-[min(100%,220px)] object-contain"
+            decoding="async"
+          />
+        </div>
+        <p className="mt-5 text-center text-sm font-medium text-[var(--color-foreground)] drop-shadow-[0_1px_0_rgb(255_255_255/0.85)]">
+          LINE Harness OSS · 管理コンソール
+        </p>
+      </div>
+    </header>
+  );
+}
+
 function LoginPageFallback() {
   return (
     <div className="min-h-screen flex flex-col bg-[var(--color-canvas)]">
-      <div
-        className="relative shrink-0 h-[min(40vh,280px)] min-h-[180px] bg-cover bg-[center_32%]"
-        style={{ backgroundImage: "url('/hero-spring-field.png')" }}
-        aria-hidden
-      >
-        <div className="absolute inset-0 bg-gradient-to-b from-white/15 via-transparent to-[var(--color-canvas)] pointer-events-none" />
-      </div>
-      <div className="flex-1 flex flex-col items-center px-4 -mt-16 md:-mt-20 relative z-10 pb-6">
+      <LoginHeroBand />
+      <div className="flex-1 flex flex-col items-center px-4 -mt-14 sm:-mt-16 relative z-10 pb-6">
         <div className="bg-white rounded-2xl shadow-xl p-8 w-full max-w-sm border border-[var(--color-border)]">
           <div className="text-center mb-6">
-            <div className="w-12 h-12 rounded-xl flex items-center justify-center text-white font-bold text-lg mx-auto mb-3 bg-[var(--color-marketing-orange)]">
-              H
-            </div>
-            <h1 className="text-xl font-bold text-gray-900">LINE Harness</h1>
-            <p className="text-sm text-gray-500 mt-1">管理画面にログイン</p>
+            <h1 className="text-lg font-bold text-gray-900">ログイン</h1>
+            <p className="text-sm text-gray-500 mt-1">セッションを確認しています</p>
           </div>
           <div className="py-10 flex justify-center">
             <div className="animate-spin w-8 h-8 border-[3px] border-gray-200 border-t-[var(--color-marketing-orange)] rounded-full" />
@@ -169,21 +188,12 @@ function LoginPageInner() {
 
   return (
     <div className="min-h-screen flex flex-col bg-[var(--color-canvas)]">
-      <div
-        className="relative shrink-0 h-[min(40vh,280px)] min-h-[180px] bg-cover bg-[center_32%]"
-        style={{ backgroundImage: "url('/hero-spring-field.png')" }}
-        aria-hidden
-      >
-        <div className="absolute inset-0 bg-gradient-to-b from-white/15 via-transparent to-[var(--color-canvas)] pointer-events-none" />
-      </div>
-      <div className="flex-1 flex flex-col items-center px-4 -mt-16 md:-mt-20 relative z-10 pb-6">
+      <LoginHeroBand />
+      <div className="flex-1 flex flex-col items-center px-4 -mt-14 sm:-mt-16 relative z-10 pb-6">
         <div className="bg-white rounded-2xl shadow-xl p-8 w-full max-w-sm border border-[var(--color-border)]">
           <div className="text-center mb-6">
-            <div className="w-12 h-12 rounded-xl flex items-center justify-center text-white font-bold text-lg mx-auto mb-3 bg-[var(--color-marketing-orange)]">
-              H
-            </div>
-            <h1 className="text-xl font-bold text-gray-900">LINE Harness</h1>
-            <p className="text-sm text-gray-500 mt-1">管理画面にログイン</p>
+            <h1 className="text-xl font-bold text-gray-900">ログイン</h1>
+            <p className="text-sm text-gray-500 mt-1">API キーまたは Cloudflare Access</p>
           </div>
 
           {!hydrated ? (
