@@ -53,30 +53,32 @@ describe('design tokens enforcement (web)', () => {
     expect(offenders).toEqual([]);
   });
 
-  it('remaps colorful Tailwind palette to calm semantic tokens', () => {
+  it('remaps colorful Tailwind palette to semantic tokens (spring-warm)', () => {
     const css = readText('app/globals.css');
 
-    // Blues / purples / oranges / reds should not be vivid in the admin UI.
-    // We intentionally collapse them to slate/primary + muted surfaces.
+    // Raw Tailwind chroma should not leak: blues/purples stay muted (slate / sky / sakura),
+    // orange/amber route through marketing + yellow tokens, reds through error.*.
+    // Contract must match `app/globals.css` @theme remap block.
     const required = [
       '--color-blue-50: var(--color-slate-muted);',
-      '--color-blue-100: var(--color-slate-muted);',
-      '--color-blue-500: var(--color-slate);',
-      '--color-blue-600: var(--color-slate-hover);',
+      '--color-blue-100: var(--color-accent-pink-muted);',
+      '--color-blue-500: var(--color-sky-tint);',
+      '--color-blue-600: #8fa8bc;',
 
       '--color-purple-50: var(--color-slate-muted);',
-      '--color-purple-100: var(--color-slate-muted);',
-      '--color-purple-500: var(--color-slate);',
-      '--color-purple-600: var(--color-slate-hover);',
+      '--color-purple-100: var(--color-accent-pink-muted);',
+      '--color-purple-500: var(--color-accent-pink);',
+      '--color-purple-600: #c97b8c;',
 
-      '--color-orange-50: var(--color-warning-muted);',
-      '--color-orange-100: var(--color-warning-muted);',
-      '--color-orange-500: var(--color-warning);',
-      '--color-orange-600: var(--color-warning);',
+      '--color-orange-50: var(--color-marketing-yellow-soft);',
+      '--color-orange-100: var(--color-marketing-yellow-soft);',
+      '--color-orange-500: var(--color-marketing-orange);',
+      '--color-orange-600: var(--color-marketing-orange-deep);',
 
-      '--color-amber-50: var(--color-warning-muted);',
-      '--color-amber-100: var(--color-warning-muted);',
-      '--color-amber-500: var(--color-warning);',
+      '--color-amber-50: var(--color-marketing-yellow-soft);',
+      '--color-amber-100: var(--color-marketing-yellow-soft);',
+      '--color-amber-400: var(--color-marketing-yellow);',
+      '--color-amber-500: var(--color-marketing-yellow);',
 
       '--color-red-50: var(--color-error-muted);',
       '--color-red-100: var(--color-error-muted);',

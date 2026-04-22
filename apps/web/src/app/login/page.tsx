@@ -21,25 +21,31 @@ function errorMessageFromApi(err: unknown): string | undefined {
 
 function LoginPageFallback() {
   return (
-    <div
-      className="min-h-screen flex items-center justify-center"
-      style={{ backgroundColor: 'var(--color-primary)' }}
-    >
-      <div className="bg-white rounded-2xl shadow-xl p-8 w-full max-w-sm">
-        <div className="text-center mb-6">
-          <div
-            className="w-12 h-12 rounded-xl flex items-center justify-center text-white font-bold text-lg mx-auto mb-3"
-            style={{ backgroundColor: 'var(--color-primary)' }}
-          >
-            H
+    <div className="min-h-screen flex flex-col bg-[var(--color-canvas)]">
+      <div
+        className="relative shrink-0 h-[min(40vh,280px)] min-h-[180px] bg-cover bg-[center_32%]"
+        style={{ backgroundImage: "url('/hero-spring-field.png')" }}
+        aria-hidden
+      >
+        <div className="absolute inset-0 bg-gradient-to-b from-white/15 via-transparent to-[var(--color-canvas)] pointer-events-none" />
+      </div>
+      <div className="flex-1 flex flex-col items-center px-4 -mt-16 md:-mt-20 relative z-10 pb-6">
+        <div className="bg-white rounded-2xl shadow-xl p-8 w-full max-w-sm border border-[var(--color-border)]">
+          <div className="text-center mb-6">
+            <div className="w-12 h-12 rounded-xl flex items-center justify-center text-white font-bold text-lg mx-auto mb-3 bg-[var(--color-marketing-orange)]">
+              H
+            </div>
+            <h1 className="text-xl font-bold text-gray-900">LINE Harness</h1>
+            <p className="text-sm text-gray-500 mt-1">管理画面にログイン</p>
           </div>
-          <h1 className="text-xl font-bold text-gray-900">LINE Harness</h1>
-          <p className="text-sm text-gray-500 mt-1">管理画面にログイン</p>
-        </div>
-        <div className="py-10 flex justify-center">
-          <div className="animate-spin w-8 h-8 border-[3px] border-gray-200 border-t-green-500 rounded-full" />
+          <div className="py-10 flex justify-center">
+            <div className="animate-spin w-8 h-8 border-[3px] border-gray-200 border-t-[var(--color-marketing-orange)] rounded-full" />
+          </div>
         </div>
       </div>
+      <footer className="mt-auto shrink-0 py-3 text-center text-xs sm:text-sm text-[var(--color-foreground-muted)] bg-[var(--color-marketing-yellow)] border-t border-black/10">
+        LINE Harness OSS — 管理コンソール
+      </footer>
     </div>
   );
 }
@@ -162,70 +168,74 @@ function LoginPageInner() {
   };
 
   return (
-    <div
-      className="min-h-screen flex items-center justify-center"
-      style={{ backgroundColor: 'var(--color-primary)' }}
-    >
-      <div className="bg-white rounded-2xl shadow-xl p-8 w-full max-w-sm">
-        <div className="text-center mb-6">
-          <div
-            className="w-12 h-12 rounded-xl flex items-center justify-center text-white font-bold text-lg mx-auto mb-3"
-            style={{ backgroundColor: 'var(--color-primary)' }}
-          >
-            H
-          </div>
-          <h1 className="text-xl font-bold text-gray-900">LINE Harness</h1>
-          <p className="text-sm text-gray-500 mt-1">管理画面にログイン</p>
-        </div>
-
-        {!hydrated ? (
-          <div className="py-10 flex justify-center">
-            <div className="animate-spin w-8 h-8 border-[3px] border-gray-200 border-t-green-500 rounded-full" />
-          </div>
-        ) : (
-          <form onSubmit={handleLogin}>
-            {accessLogin ? (
-              <p className="text-sm text-gray-600 mb-4">
-                Cloudflare Access のログインを開始します。IdP（Google
-                など）での認証後、このページに戻ります。
-              </p>
-            ) : (
-              <div className="mb-4">
-                <label className="block text-sm font-medium text-gray-700 mb-1">API Key</label>
-                <Input
-                  type="password"
-                  value={apiKey}
-                  onChange={(e) => setApiKey(e.target.value)}
-                  placeholder="APIキーを入力"
-                  className="px-4 py-3 focus:border-transparent"
-                  autoFocus
-                />
-              </div>
-            )}
-
-            {error && <p className="text-sm text-[var(--color-error)] mb-4">{error}</p>}
-
-            {accessLogin ? (
-              <a
-                href={accessStartHref}
-                className="block w-full py-3 text-white text-center font-medium rounded-lg transition-opacity hover:opacity-90"
-                style={{ backgroundColor: 'var(--color-primary)' }}
-              >
-                Access ログインへ
-              </a>
-            ) : (
-              <button
-                type="submit"
-                disabled={loading || (!accessLogin && !apiKey)}
-                className="w-full py-3 text-white font-medium rounded-lg transition-opacity hover:opacity-90 disabled:opacity-50"
-                style={{ backgroundColor: 'var(--color-primary)' }}
-              >
-                {loading ? 'ログイン中...' : 'ログイン'}
-              </button>
-            )}
-          </form>
-        )}
+    <div className="min-h-screen flex flex-col bg-[var(--color-canvas)]">
+      <div
+        className="relative shrink-0 h-[min(40vh,280px)] min-h-[180px] bg-cover bg-[center_32%]"
+        style={{ backgroundImage: "url('/hero-spring-field.png')" }}
+        aria-hidden
+      >
+        <div className="absolute inset-0 bg-gradient-to-b from-white/15 via-transparent to-[var(--color-canvas)] pointer-events-none" />
       </div>
+      <div className="flex-1 flex flex-col items-center px-4 -mt-16 md:-mt-20 relative z-10 pb-6">
+        <div className="bg-white rounded-2xl shadow-xl p-8 w-full max-w-sm border border-[var(--color-border)]">
+          <div className="text-center mb-6">
+            <div className="w-12 h-12 rounded-xl flex items-center justify-center text-white font-bold text-lg mx-auto mb-3 bg-[var(--color-marketing-orange)]">
+              H
+            </div>
+            <h1 className="text-xl font-bold text-gray-900">LINE Harness</h1>
+            <p className="text-sm text-gray-500 mt-1">管理画面にログイン</p>
+          </div>
+
+          {!hydrated ? (
+            <div className="py-10 flex justify-center">
+              <div className="animate-spin w-8 h-8 border-[3px] border-gray-200 border-t-[var(--color-marketing-orange)] rounded-full" />
+            </div>
+          ) : (
+            <form onSubmit={handleLogin}>
+              {accessLogin ? (
+                <p className="text-sm text-gray-600 mb-4">
+                  Cloudflare Access のログインを開始します。IdP（Google
+                  など）での認証後、このページに戻ります。
+                </p>
+              ) : (
+                <div className="mb-4">
+                  <label className="block text-sm font-medium text-gray-700 mb-1">API Key</label>
+                  <Input
+                    type="password"
+                    value={apiKey}
+                    onChange={(e) => setApiKey(e.target.value)}
+                    placeholder="APIキーを入力"
+                    className="px-4 py-3 focus:border-transparent"
+                    autoFocus
+                  />
+                </div>
+              )}
+
+              {error && <p className="text-sm text-[var(--color-error)] mb-4">{error}</p>}
+
+              {accessLogin ? (
+                <a
+                  href={accessStartHref}
+                  className="block w-full py-3 text-white text-center font-medium rounded-lg transition-colors bg-[var(--color-marketing-orange)] hover:bg-[var(--color-marketing-orange-deep)]"
+                >
+                  Access ログインへ
+                </a>
+              ) : (
+                <button
+                  type="submit"
+                  disabled={loading || (!accessLogin && !apiKey)}
+                  className="w-full py-3 text-white font-medium rounded-lg transition-colors bg-[var(--color-marketing-orange)] hover:bg-[var(--color-marketing-orange-deep)] disabled:opacity-50"
+                >
+                  {loading ? 'ログイン中...' : 'ログイン'}
+                </button>
+              )}
+            </form>
+          )}
+        </div>
+      </div>
+      <footer className="mt-auto shrink-0 py-3 text-center text-xs sm:text-sm text-[var(--color-foreground-muted)] bg-[var(--color-marketing-yellow)] border-t border-black/10">
+        LINE Harness OSS — 管理コンソール
+      </footer>
     </div>
   );
 }

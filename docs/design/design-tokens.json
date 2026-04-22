@@ -1,39 +1,47 @@
 {
   "meta": {
-    "accent": "sage-slate",
-    "mood": "Japandi / calm neutral — 運用者 PC・エンドユーザー スマホ両対応"
+    "accent": "spring-warm",
+    "mood": "菜の花・桜の春景 — 黄・ピンク・空の淡青をヒントに、UI は緑なしの暖色（橙・珊瑚・クリーム）。ヒーロー写真: apps/web/public/hero-spring-field.png"
   },
   "color": {
-    "canvas": "#F5F4F0",
-    "surface": "#FCFBF9",
+    "canvas": "#FFF4EC",
+    "surface": "#FFFCF8",
     "surface-elevated": "#FFFFFF",
-    "border": "#E6E4DF",
-    "border-strong": "#C9C5BE",
-    "foreground": "#2B2F2E",
-    "foreground-muted": "#5A605E",
-    "foreground-subtle": "#8A918F",
-    "primary": "#5B7268",
-    "primary-hover": "#4A5E56",
-    "primary-foreground": "#FAFAF8",
-    "primary-muted": "#E9EFEC",
-    "slate": "#5E6E78",
-    "slate-hover": "#4D5A62",
-    "slate-muted": "#E8ECEE",
-    "success": "#3F6B5E",
-    "success-muted": "#E8F2EE",
-    "success-border": "#B8D4CA",
-    "warning": "#9E7A3A",
-    "warning-muted": "#F8F1E4",
-    "warning-border": "#E5D4B0",
-    "error": "#9B5C5C",
-    "error-muted": "#F7EDED",
-    "error-border": "#E0B4B4",
-    "focus-ring": "#5B7268"
+    "border": "#F0E0D6",
+    "border-strong": "#E5CEC0",
+    "foreground": "#2A221E",
+    "foreground-muted": "#6B5E56",
+    "foreground-subtle": "#95877C",
+    "primary": "#D94E28",
+    "primary-hover": "#B84020",
+    "primary-foreground": "#FFFBF8",
+    "primary-muted": "#FFE8DC",
+    "accent-pink": "#E89AA8",
+    "accent-pink-muted": "#FCE4E8",
+    "slate": "#8B7269",
+    "slate-hover": "#6E5A52",
+    "slate-muted": "#F5E8E4",
+    "success": "#9D6229",
+    "success-muted": "#FFF1E0",
+    "success-border": "#E8C9A0",
+    "warning": "#C45C12",
+    "warning-muted": "#FFF2E5",
+    "warning-border": "#F0C9A8",
+    "error": "#B54A4A",
+    "error-muted": "#FCEEED",
+    "error-border": "#E8B4B4",
+    "focus-ring": "#D94E28",
+    "marketing-orange": "#D94E28",
+    "marketing-orange-deep": "#B84020",
+    "marketing-yellow": "#F0C14A",
+    "marketing-yellow-soft": "#FFECBF",
+    "marketing-hero-mid": "#F4A88C",
+    "sky-tint": "#B8D4E8"
   },
   "radius": {
     "sm": "6px",
-    "md": "10px",
-    "lg": "14px",
+    "md": "12px",
+    "lg": "18px",
     "full": "9999px"
   },
   "spacing": {
@@ -47,13 +55,16 @@
     "lineHeightHeading": 1.25
   },
   "shadow": {
-    "sm": "0 1px 2px rgb(43 47 46 / 0.06)",
-    "md": "0 4px 12px rgb(43 47 46 / 0.08)",
-    "lg": "0 12px 40px rgb(43 47 46 / 0.12)"
+    "sm": "0 1px 2px rgb(42 34 30 / 0.06)",
+    "md": "0 6px 20px rgb(42 34 30 / 0.08)",
+    "lg": "0 14px 44px rgb(42 34 30 / 0.12)"
   },
   "motion": {
     "durationFast": "150ms",
     "duration": "200ms",
     "easing": "cubic-bezier(0, 0, 0.2, 1)"
+  },
+  "asset": {
+    "heroSpringField": "/hero-spring-field.png"
   }
 }

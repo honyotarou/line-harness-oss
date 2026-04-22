@@ -1,40 +1,48 @@
 @import "tailwindcss";
 
-/* Semantic tokens — 正本: docs/design/design-tokens.json（セージ／スレート） */
+/* Semantic tokens — 正本: docs/design/design-tokens.json（春景ムードボード・緑なし暖色） */
 @theme {
-  --color-canvas: #f5f4f0;
-  --color-surface: #fcfbf9;
+  --color-canvas: #fff4ec;
+  --color-surface: #fffcf8;
   --color-surface-elevated: #ffffff;
-  --color-border: #e6e4df;
-  --color-border-strong: #c9c5be;
-  --color-foreground: #2b2f2e;
-  --color-foreground-muted: #5a605e;
-  --color-foreground-subtle: #8a918f;
-  --color-primary: #5b7268;
-  --color-primary-hover: #4a5e56;
-  --color-primary-foreground: #fafaf8;
-  --color-primary-muted: #e9efec;
-  --color-slate: #5e6e78;
-  --color-slate-hover: #4d5a62;
-  --color-slate-muted: #e8ecee;
-  --color-success: #3f6b5e;
-  --color-success-muted: #e8f2ee;
-  --color-success-border: #b8d4ca;
-  --color-warning: #9e7a3a;
-  --color-warning-muted: #f8f1e4;
-  --color-warning-border: #e5d4b0;
-  --color-error: #9b5c5c;
-  --color-error-muted: #f7eded;
-  --color-error-border: #e0b4b4;
-  --color-focus-ring: #5b7268;
+  --color-border: #f0e0d6;
+  --color-border-strong: #e5cec0;
+  --color-foreground: #2a221e;
+  --color-foreground-muted: #6b5e56;
+  --color-foreground-subtle: #95877c;
+  --color-primary: #d94e28;
+  --color-primary-hover: #b84020;
+  --color-primary-foreground: #fffbf8;
+  --color-primary-muted: #ffe8dc;
+  --color-accent-pink: #e89aa8;
+  --color-accent-pink-muted: #fce4e8;
+  --color-slate: #8b7269;
+  --color-slate-hover: #6e5a52;
+  --color-slate-muted: #f5e8e4;
+  --color-success: #9d6229;
+  --color-success-muted: #fff1e0;
+  --color-success-border: #e8c9a0;
+  --color-warning: #c45c12;
+  --color-warning-muted: #fff2e5;
+  --color-warning-border: #f0c9a8;
+  --color-error: #b54a4a;
+  --color-error-muted: #fceeed;
+  --color-error-border: #e8b4b4;
+  --color-focus-ring: #d94e28;
+  --color-marketing-orange: #d94e28;
+  --color-marketing-orange-deep: #b84020;
+  --color-marketing-yellow: #f0c14a;
+  --color-marketing-yellow-soft: #ffecbf;
+  --color-marketing-hero-mid: #f4a88c;
+  --color-sky-tint: #b8d4e8;
   --radius-token-sm: 6px;
-  --radius-token-md: 10px;
-  --radius-token-lg: 14px;
-  --shadow-token-sm: 0 1px 2px rgb(43 47 46 / 0.06);
-  --shadow-token-md: 0 4px 12px rgb(43 47 46 / 0.08);
-  --shadow-token-lg: 0 12px 40px rgb(43 47 46 / 0.12);
+  --radius-token-md: 12px;
+  --radius-token-lg: 18px;
+  --shadow-token-sm: 0 1px 2px rgb(42 34 30 / 0.06);
+  --shadow-token-md: 0 6px 20px rgb(42 34 30 / 0.08);
+  --shadow-token-lg: 0 14px 44px rgb(42 34 30 / 0.12);
 
-  /* Tailwind default palette remap (so existing templates pick up tokens). */
+  /* Tailwind default palette remap（`green-*` は暖色 primary へ寄せ、実 UI に緑を出さない） */
   --color-white: var(--color-surface-elevated);
   --color-black: #000;
   --color-gray-50: var(--color-canvas);
@@ -48,29 +56,30 @@
   --color-gray-800: var(--color-foreground);
   --color-gray-900: var(--color-foreground);
 
-  /* Keep LINE green accents aligned with primary by default. */
+  --color-green-50: var(--color-primary-muted);
+  --color-green-100: var(--color-primary-muted);
   --color-green-500: var(--color-primary);
   --color-green-600: var(--color-primary-hover);
 
-  /* Collapse vivid palettes into calm tokens (admin UI should not be rainbow). */
   --color-blue-50: var(--color-slate-muted);
-  --color-blue-100: var(--color-slate-muted);
-  --color-blue-500: var(--color-slate);
-  --color-blue-600: var(--color-slate-hover);
+  --color-blue-100: var(--color-accent-pink-muted);
+  --color-blue-500: var(--color-sky-tint);
+  --color-blue-600: #8fa8bc;
 
   --color-purple-50: var(--color-slate-muted);
-  --color-purple-100: var(--color-slate-muted);
-  --color-purple-500: var(--color-slate);
-  --color-purple-600: var(--color-slate-hover);
+  --color-purple-100: var(--color-accent-pink-muted);
+  --color-purple-500: var(--color-accent-pink);
+  --color-purple-600: #c97b8c;
 
-  --color-orange-50: var(--color-warning-muted);
-  --color-orange-100: var(--color-warning-muted);
-  --color-orange-500: var(--color-warning);
-  --color-orange-600: var(--color-warning);
+  --color-orange-50: var(--color-marketing-yellow-soft);
+  --color-orange-100: var(--color-marketing-yellow-soft);
+  --color-orange-500: var(--color-marketing-orange);
+  --color-orange-600: var(--color-marketing-orange-deep);
 
-  --color-amber-50: var(--color-warning-muted);
-  --color-amber-100: var(--color-warning-muted);
-  --color-amber-500: var(--color-warning);
+  --color-amber-50: var(--color-marketing-yellow-soft);
+  --color-amber-100: var(--color-marketing-yellow-soft);
+  --color-amber-400: var(--color-marketing-yellow);
+  --color-amber-500: var(--color-marketing-yellow);
 
   --color-red-50: var(--color-error-muted);
   --color-red-100: var(--color-error-muted);
