@@ -49,24 +49,24 @@ function StatCard({ title, value, loading, icon, href }: StatCardProps) {
   return (
     <SafeLink
       href={href}
-      className="group block rounded-xl border border-white/60 bg-white/95 p-6 shadow-md backdrop-blur-sm transition-shadow hover:shadow-lg"
+      className="group block rounded-xl border border-white/60 bg-white/95 p-4 shadow-md backdrop-blur-sm transition-shadow hover:shadow-lg"
     >
       <div className="flex items-start justify-between">
         <div>
-          <p className="text-sm font-medium text-gray-500 mb-2">{title}</p>
+          <p className="text-sm font-medium text-gray-500 mb-1.5">{title}</p>
           {loading ? (
             <div className="h-8 w-20 bg-gray-100 rounded animate-pulse" />
           ) : (
-            <p className="text-3xl font-bold text-gray-900">
+            <p className="text-2xl font-bold text-gray-900">
               {value !== null ? value.toLocaleString('ja-JP') : '-'}
             </p>
           )}
         </div>
-        <div className="w-10 h-10 rounded-lg flex items-center justify-center shrink-0 bg-[var(--color-primary-muted)] text-[var(--color-primary)]">
+        <div className="w-9 h-9 rounded-lg flex items-center justify-center shrink-0 bg-[var(--color-primary-muted)] text-[var(--color-primary)]">
           {icon}
         </div>
       </div>
-      <p className="text-xs text-gray-400 mt-3 group-hover:text-[var(--color-primary-hover)] transition-colors">
+      <p className="text-xs text-gray-400 mt-2.5 group-hover:text-[var(--color-primary-hover)] transition-colors">
         詳細を見る →
       </p>
     </SafeLink>
@@ -144,10 +144,10 @@ export default function DashboardPage() {
   }, [selectedAccountId]);
 
   return (
-    <div className="relative isolate -mx-4 -mt-[72px] -mb-6 min-h-screen px-4 pb-6 pt-[72px] sm:-mx-6 sm:px-6 lg:-mx-8 lg:-mt-8 lg:-mb-8 lg:px-8 lg:pb-8 lg:pt-8">
+    <div className="relative isolate -mx-4 -mt-[72px] -mb-6 min-h-screen px-4 pb-0 pt-[72px] sm:-mx-6 sm:px-6 lg:-mx-8 lg:-mt-8 lg:-mb-8 lg:px-8 lg:pb-0 lg:pt-8">
       <SpringFieldBackdrop variant="absolute" position="center 36%" />
-      <div className="relative z-10 flex min-h-full flex-col gap-6 pb-2 pt-1">
-        <div className="rounded-2xl border border-white/55 bg-white/92 p-6 shadow-[var(--shadow-token-lg)] backdrop-blur-md sm:p-8">
+      <div className="relative z-10 flex min-h-full flex-col gap-4 pb-0 pt-1">
+        <div className="rounded-2xl border border-white/55 bg-white/92 p-5 shadow-[var(--shadow-token-lg)] backdrop-blur-md sm:p-6">
           <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
             <div className="flex items-center gap-4">
               <RaCheckLogo variant="dashboard" />
@@ -198,7 +198,7 @@ export default function DashboardPage() {
         </a>
 
         {/* Summary cards */}
-        <div className="mb-8 grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3">
+        <div className="mb-5 grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3">
           <StatCard
             title="友だち数"
             value={stats.friendCount}
@@ -250,7 +250,7 @@ export default function DashboardPage() {
         </div>
 
         {/* Round 3 summary cards */}
-        <div className="mb-8 grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3">
+        <div className="mb-5 grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3">
           <StatCard
             title="テンプレート数"
             value={stats.templateCount}
@@ -304,7 +304,7 @@ export default function DashboardPage() {
         <div className="flex-1" />
 
         {/* Quick links */}
-        <div className="-mx-4 mt-auto bg-black/95 py-8 shadow-[0_18px_60px_rgb(0_0_0/0.28)] backdrop-blur-md sm:-mx-6 lg:-mx-8">
+        <div className="-mx-4 mt-auto bg-black/95 pb-6 pt-6 shadow-[0_18px_60px_rgb(0_0_0/0.28)] backdrop-blur-md sm:-mx-6 sm:pb-6 sm:pt-6 lg:-mx-8 lg:pb-8 lg:pt-6">
           <div className="px-4 sm:px-6 lg:px-8">
             <h2 className="mb-4 text-sm font-semibold text-white">クイックアクション</h2>
             <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
