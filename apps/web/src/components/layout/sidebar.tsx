@@ -301,16 +301,18 @@ export default function Sidebar() {
     <>
       {/* ロゴ */}
       <div className="px-6 py-5 border-b border-gray-200">
-        <div className="flex items-center gap-2">
-          <div
-            className="w-8 h-8 rounded-lg flex items-center justify-center text-white font-bold text-sm"
-            style={{ backgroundColor: 'var(--color-primary)' }}
-          >
-            H
-          </div>
+        <div className="flex items-center gap-2.5">
+          <img
+            src="/racheck-logo.png"
+            alt="らチェック"
+            width={40}
+            height={40}
+            className="h-9 w-9 shrink-0 object-contain"
+            decoding="async"
+          />
           <div>
-            <p className="text-sm font-bold text-gray-900 leading-tight">LINE Harness</p>
-            <p className="text-xs text-gray-400">管理画面</p>
+            <p className="text-sm font-bold text-gray-900 leading-tight">らチェク</p>
+            <p className="text-xs text-gray-400">LINE Harness OSS</p>
           </div>
         </div>
       </div>
@@ -362,7 +364,7 @@ export default function Sidebar() {
 
       {/* フッター */}
       <div className="px-6 py-4 border-t border-gray-200 space-y-3">
-        <p className="text-xs text-gray-400">LINE Harness v0.1</p>
+        <p className="text-xs text-gray-400">らチェク v0.1</p>
         <button
           onClick={() => {
             void api.auth
@@ -421,13 +423,15 @@ export default function Sidebar() {
           </svg>
         </button>
         <div className="flex items-center gap-2">
-          <div
-            className="w-7 h-7 rounded-lg flex items-center justify-center text-white font-bold text-xs"
-            style={{ backgroundColor: 'var(--color-primary)' }}
-          >
-            H
-          </div>
-          <p className="text-sm font-bold text-gray-900">LINE Harness</p>
+          <img
+            src="/racheck-logo.png"
+            alt=""
+            width={32}
+            height={32}
+            className="h-8 w-8 shrink-0 object-contain"
+            decoding="async"
+          />
+          <p className="text-sm font-bold text-gray-900">らチェク</p>
         </div>
       </div>
 
