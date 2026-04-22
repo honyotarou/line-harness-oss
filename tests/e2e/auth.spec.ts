@@ -8,7 +8,7 @@ test('redirects unauthenticated users to the login page', async ({ page }) => {
 
   await expect(page).toHaveURL(/\/login$/);
   await expect(page.getByRole('heading', { name: 'ログイン' })).toBeVisible();
-  await expect(page.getByRole('img', { name: 'らチェック' })).toBeVisible();
+  await expect(page.getByRole('img', { name: 'らチェク' })).toBeVisible();
 });
 
 test('shows an error when the API key is invalid', async ({ page }) => {

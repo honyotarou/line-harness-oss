@@ -7,6 +7,7 @@ import {
 } from '@line-crm/shared';
 import { api, isApiError, setAdminSessionToken, useCloudflareAccessLoginMode } from '@/lib/api';
 import { SpringFieldBackdrop } from '@/components/layout/spring-field-backdrop';
+import { RaCheckLogo } from '@/components/racheck-logo';
 import { Input } from '@/components/ui/field';
 import { buildAdminAccessBootstrapStartHref } from '@/lib/admin-access-bootstrap-start';
 
@@ -23,14 +24,7 @@ function errorMessageFromApi(err: unknown): string | undefined {
 function LoginLogoMark() {
   return (
     <div className="mb-6 text-center">
-      <img
-        src="/racheck-logo.png"
-        alt="らチェック"
-        width={220}
-        height={220}
-        className="mx-auto h-[clamp(4.5rem,24vw,8.25rem)] w-auto max-w-[min(100%,240px)] object-contain drop-shadow-[0_2px_14px_rgb(0_0_0/0.18)]"
-        decoding="async"
-      />
+      <RaCheckLogo variant="login" />
       <p className="mt-3 text-xs font-medium text-[var(--color-foreground)] drop-shadow-[0_1px_0_rgb(255_255_255/0.9)]">
         LINE Harness OSS · 管理コンソール
       </p>
