@@ -33,6 +33,7 @@ import { mergeFriendMetadataPatch } from '../services/friend-metadata-merge.js';
 import { sanitizeLineProfilePictureUrlForHtml } from '../services/safe-line-picture-url.js';
 import { clampListLimit, clampOffset } from '../services/query-limits.js';
 import {
+  jsonBodyForLineAccountScopeFailure,
   resolveLineAccountScopeForRequest,
   resourceLineAccountVisibleInScope,
   validateScopedLineAccountQueryParam,
@@ -47,7 +48,7 @@ async function jsonIfLineAccountQueryInvalid(
   const scope = await resolveLineAccountScopeForRequest(c.env.DB, c);
   const r = validateScopedLineAccountQueryParam(scope, lineAccountId);
   if (!r.ok) {
-    return c.json({ success: false, error: r.error }, r.status);
+    return c.json(jsonBodyForLineAccountScopeFailure(r), r.status);
   }
   return null;
 }

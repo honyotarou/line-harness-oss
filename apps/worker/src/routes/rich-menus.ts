@@ -17,6 +17,7 @@ import {
   readJsonBodyWithLimit,
 } from '../services/request-body.js';
 import {
+  jsonBodyForLineAccountScopeFailure,
   resolveLineAccountScopeForRequest,
   resourceLineAccountVisibleInScope,
   validateScopedLineAccountBody,
@@ -32,7 +33,7 @@ richMenus.get('/api/rich-menus', async (c) => {
     const lineAccountId = c.req.query('lineAccountId');
     const q = validateScopedLineAccountQueryParam(scope, lineAccountId);
     if (!q.ok) {
-      return c.json({ success: false, error: q.error }, q.status);
+      return c.json(jsonBodyForLineAccountScopeFailure(q), q.status);
     }
     const accessToken = await resolveLineAccessTokenForLineAccountId(
       c.env.DB,
@@ -62,7 +63,7 @@ richMenus.post('/api/rich-menus', async (c) => {
       typeof body.lineAccountId === 'string' ? body.lineAccountId : null;
     const scopedBody = validateScopedLineAccountBody(scopePost, lineAccountIdFromBody);
     if (!scopedBody.ok) {
-      return c.json({ success: false, error: scopedBody.error }, scopedBody.status);
+      return c.json(jsonBodyForLineAccountScopeFailure(scopedBody), scopedBody.status);
     }
     const effectiveLineAccountId = scopedBody.lineAccountId;
     const { lineAccountId: _discard, ...menuRest } = body;
@@ -112,7 +113,7 @@ richMenus.delete('/api/rich-menus/:id', async (c) => {
     const lineAccountId = c.req.query('lineAccountId');
     const qDel = validateScopedLineAccountQueryParam(scopeDel, lineAccountId);
     if (!qDel.ok) {
-      return c.json({ success: false, error: qDel.error }, qDel.status);
+      return c.json(jsonBodyForLineAccountScopeFailure(qDel), qDel.status);
     }
     const accessToken = await resolveLineAccessTokenForLineAccountId(
       c.env.DB,
@@ -138,7 +139,7 @@ richMenus.post('/api/rich-menus/:id/default', async (c) => {
     const lineAccountId = c.req.query('lineAccountId');
     const qDef = validateScopedLineAccountQueryParam(scopeDef, lineAccountId);
     if (!qDef.ok) {
-      return c.json({ success: false, error: qDef.error }, qDef.status);
+      return c.json(jsonBodyForLineAccountScopeFailure(qDef), qDef.status);
     }
     const accessToken = await resolveLineAccessTokenForLineAccountId(
       c.env.DB,
@@ -306,7 +307,7 @@ richMenus.post('/api/rich-menus/:id/image', async (c) => {
     const lineAccountId = c.req.query('lineAccountId');
     const qImg = validateScopedLineAccountQueryParam(scopeImg, lineAccountId);
     if (!qImg.ok) {
-      return c.json({ success: false, error: qImg.error }, qImg.status);
+      return c.json(jsonBodyForLineAccountScopeFailure(qImg), qImg.status);
     }
     const accessToken = await resolveLineAccessTokenForLineAccountId(
       c.env.DB,

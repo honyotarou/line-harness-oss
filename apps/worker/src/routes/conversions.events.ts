@@ -8,6 +8,7 @@ import {
 import type { Env } from '../index.js';
 import { clampListLimit, clampOffset } from '../services/query-limits.js';
 import {
+  jsonBodyForLineAccountScopeFailure,
   resolveLineAccountScopeForRequest,
   resourceLineAccountVisibleInScope,
   validateScopedLineAccountQueryParam,
@@ -80,7 +81,7 @@ conversionEvents.get('/api/conversions/events', async (c) => {
     const lineAccountId = c.req.query('lineAccountId') ?? null;
     const q = validateScopedLineAccountQueryParam(scope, lineAccountId ?? undefined);
     if (!q.ok) {
-      return c.json({ success: false, error: q.error }, q.status);
+      return c.json(jsonBodyForLineAccountScopeFailure(q), q.status);
     }
     const events = await getConversionEvents(c.env.DB, {
       conversionPointId: c.req.query('conversionPointId'),
@@ -118,7 +119,7 @@ conversionEvents.get('/api/conversions/report', async (c) => {
     const lineAccountId = c.req.query('lineAccountId') ?? null;
     const q = validateScopedLineAccountQueryParam(scope, lineAccountId ?? undefined);
     if (!q.ok) {
-      return c.json({ success: false, error: q.error }, q.status);
+      return c.json(jsonBodyForLineAccountScopeFailure(q), q.status);
     }
     const report = await getConversionReport(c.env.DB, {
       startDate: c.req.query('startDate'),

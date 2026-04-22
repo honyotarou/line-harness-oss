@@ -18,6 +18,7 @@ import { tryParseJsonArray, tryParseJsonLoose, tryParseJsonRecord } from '../ser
 import { validateAutomationActions } from '../services/automation-actions.js';
 import { clampListLimit } from '../services/query-limits.js';
 import {
+  jsonBodyForLineAccountScopeFailure,
   resolveLineAccountScopeForRequest,
   resourceLineAccountVisibleInScope,
   validateScopedLineAccountBody,
@@ -34,7 +35,7 @@ automations.get('/api/automations', async (c) => {
     const lineAccountId = c.req.query('lineAccountId');
     const q = validateScopedLineAccountQueryParam(scope, lineAccountId);
     if (!q.ok) {
-      return c.json({ success: false, error: q.error }, q.status);
+      return c.json(jsonBodyForLineAccountScopeFailure(q), q.status);
     }
 
     let items;
@@ -130,7 +131,7 @@ automations.post('/api/automations', async (c) => {
 
     const scoped = validateScopedLineAccountBody(scope, body.lineAccountId ?? null);
     if (!scoped.ok) {
-      return c.json({ success: false, error: scoped.error }, scoped.status);
+      return c.json(jsonBodyForLineAccountScopeFailure(scoped), scoped.status);
     }
     if (scope.mode === 'restricted' && !scoped.lineAccountId) {
       return c.json({ success: false, error: 'lineAccountId is required for this principal' }, 400);
@@ -213,7 +214,7 @@ automations.put('/api/automations/:id', async (c) => {
         rawLa === null ? null : typeof rawLa === 'string' ? rawLa : null,
       );
       if (!scopedLa.ok) {
-        return c.json({ success: false, error: scopedLa.error }, scopedLa.status);
+        return c.json(jsonBodyForLineAccountScopeFailure(scopedLa), scopedLa.status);
       }
       body.lineAccountId = scopedLa.lineAccountId;
     }

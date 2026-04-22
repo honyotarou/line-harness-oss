@@ -17,6 +17,28 @@ export type LineAccountScope =
   | Readonly<{ mode: 'all' }>
   | Readonly<{ mode: 'restricted'; ids: Set<string> }>;
 
+/** Stable API `code` for admin `lineAccountId` scope failures (BFF + human JWT + service token). */
+export const LineAccountScopeErrorCode = {
+  queryLineAccountIdRequired: 'LINE_ACCOUNT_SCOPE_QUERY_LINE_ACCOUNT_ID_REQUIRED',
+  queryLineAccountIdForbidden: 'LINE_ACCOUNT_SCOPE_QUERY_LINE_ACCOUNT_ID_FORBIDDEN',
+  bodyLineAccountIdRequired: 'LINE_ACCOUNT_SCOPE_BODY_LINE_ACCOUNT_ID_REQUIRED',
+  bodyLineAccountIdForbidden: 'LINE_ACCOUNT_SCOPE_BODY_LINE_ACCOUNT_ID_FORBIDDEN',
+} as const satisfies Record<string, string>;
+
+export type LineAccountScopeFailure = Readonly<{
+  ok: false;
+  status: 400 | 403;
+  error: string;
+  code: string;
+}>;
+
+/** JSON body for `c.json(..., q.status)` — keeps routes thin. */
+export function jsonBodyForLineAccountScopeFailure(
+  q: LineAccountScopeFailure,
+): Readonly<{ success: false; error: string; code: string }> {
+  return { success: false, error: q.error, code: q.code };
+}
+
 function isTruthyEnvFlag(raw: string | undefined): boolean {
   const v = raw?.trim().toLowerCase();
   return v === '1' || v === 'true' || v === 'yes' || v === 'on';
@@ -60,9 +82,7 @@ export async function resolveLineAccountScopeForRequest(
   return { mode: 'all' };
 }
 
-export type ScopedLineAccountQueryResult =
-  | Readonly<{ ok: true }>
-  | Readonly<{ ok: false; status: 400 | 403; error: string }>;
+export type ScopedLineAccountQueryResult = Readonly<{ ok: true }> | LineAccountScopeFailure;
 
 /** Validates `lineAccountId` query param when the principal has LINE account restrictions. */
 export function validateScopedLineAccountQueryParam(
@@ -78,6 +98,7 @@ export function validateScopedLineAccountQueryParam(
       ok: false,
       status: 400,
       error: 'lineAccountId query parameter is required for this principal',
+      code: LineAccountScopeErrorCode.queryLineAccountIdRequired,
     };
   }
   if (!scope.ids.has(q)) {
@@ -85,6 +106,7 @@ export function validateScopedLineAccountQueryParam(
       ok: false,
       status: 403,
       error: 'Forbidden: LINE account not allowed for this principal',
+      code: LineAccountScopeErrorCode.queryLineAccountIdForbidden,
     };
   }
   return { ok: true };
@@ -107,7 +129,7 @@ export function resourceLineAccountVisibleInScope(
 
 export type BodyLineAccountResult =
   | Readonly<{ ok: true; lineAccountId: string | null }>
-  | Readonly<{ ok: false; status: 400 | 403; error: string }>;
+  | LineAccountScopeFailure;
 
 /**
  * For POST create: restricted principals must send `lineAccountId` and it must be allowed.
@@ -127,6 +149,7 @@ export function validateScopedLineAccountBody(
       ok: false,
       status: 400,
       error: 'lineAccountId is required for this principal',
+      code: LineAccountScopeErrorCode.bodyLineAccountIdRequired,
     };
   }
   if (!scope.ids.has(q)) {
@@ -134,6 +157,7 @@ export function validateScopedLineAccountBody(
       ok: false,
       status: 403,
       error: 'Forbidden: LINE account not allowed for this principal',
+      code: LineAccountScopeErrorCode.bodyLineAccountIdForbidden,
     };
   }
   return { ok: true, lineAccountId: q };

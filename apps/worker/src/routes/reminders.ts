@@ -20,6 +20,7 @@ import {
   readJsonBodyWithLimit,
 } from '../services/request-body.js';
 import {
+  jsonBodyForLineAccountScopeFailure,
   resolveLineAccountScopeForRequest,
   resourceLineAccountVisibleInScope,
   validateScopedLineAccountBody,
@@ -36,7 +37,7 @@ reminders.get('/api/reminders', async (c) => {
     const lineAccountId = c.req.query('lineAccountId');
     const qRem = validateScopedLineAccountQueryParam(scope, lineAccountId);
     if (!qRem.ok) {
-      return c.json({ success: false, error: qRem.error }, qRem.status);
+      return c.json(jsonBodyForLineAccountScopeFailure(qRem), qRem.status);
     }
     let items: Awaited<ReturnType<typeof getReminders>>;
     if (lineAccountId) {
@@ -117,7 +118,7 @@ reminders.post('/api/reminders', async (c) => {
 
     const scoped = validateScopedLineAccountBody(scopePost, body.lineAccountId ?? null);
     if (!scoped.ok) {
-      return c.json({ success: false, error: scoped.error }, scoped.status);
+      return c.json(jsonBodyForLineAccountScopeFailure(scoped), scoped.status);
     }
 
     const item = await createReminder(c.env.DB, {
@@ -170,7 +171,7 @@ reminders.put('/api/reminders/:id', async (c) => {
         rawLa === null ? null : typeof rawLa === 'string' ? rawLa : null,
       );
       if (!scopedLa.ok) {
-        return c.json({ success: false, error: scopedLa.error }, scopedLa.status);
+        return c.json(jsonBodyForLineAccountScopeFailure(scopedLa), scopedLa.status);
       }
       body.lineAccountId = scopedLa.lineAccountId;
     }

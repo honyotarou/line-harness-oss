@@ -1,5 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
+  jsonBodyForLineAccountScopeFailure,
+  LineAccountScopeErrorCode,
   lineAccountWriteForbiddenForScope,
   resourceLineAccountVisibleInScope,
   validateScopedLineAccountBody,
@@ -19,6 +21,7 @@ describe('admin-line-account-scope', () => {
     if (!r.ok) {
       expect(r.status).toBe(400);
       expect(r.error).toMatch(/lineAccountId/i);
+      expect(r.code).toBe(LineAccountScopeErrorCode.queryLineAccountIdRequired);
     }
   });
 
@@ -28,6 +31,8 @@ describe('admin-line-account-scope', () => {
     expect(r.ok).toBe(false);
     if (!r.ok) {
       expect(r.status).toBe(403);
+      expect(r.code).toBe(LineAccountScopeErrorCode.queryLineAccountIdForbidden);
+      expect(jsonBodyForLineAccountScopeFailure(r).code).toBe(r.code);
     }
   });
 

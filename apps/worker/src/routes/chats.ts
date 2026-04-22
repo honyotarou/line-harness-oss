@@ -10,6 +10,7 @@ import {
 } from '../services/request-body.js';
 import { clampListLimit, clampOffset } from '../services/query-limits.js';
 import {
+  jsonBodyForLineAccountScopeFailure,
   resolveLineAccountScopeForRequest,
   resourceLineAccountVisibleInScope,
   validateScopedLineAccountBody,
@@ -30,7 +31,7 @@ chats.get('/api/chats', async (c) => {
     const lineAccountId = c.req.query('lineAccountId') ?? undefined;
     const qList = validateScopedLineAccountQueryParam(scope, lineAccountId);
     if (!qList.ok) {
-      return c.json({ success: false, error: qList.error }, qList.status);
+      return c.json(jsonBodyForLineAccountScopeFailure(qList), qList.status);
     }
 
     // JOIN friends to get display_name and picture_url
@@ -159,7 +160,7 @@ chats.post('/api/chats', async (c) => {
 
     const scoped = validateScopedLineAccountBody(scopePost, body.lineAccountId ?? null);
     if (!scoped.ok) {
-      return c.json({ success: false, error: scoped.error }, scoped.status);
+      return c.json(jsonBodyForLineAccountScopeFailure(scoped), scoped.status);
     }
     if (scopePost.mode === 'restricted' && !scoped.lineAccountId) {
       return c.json({ success: false, error: 'lineAccountId is required for this principal' }, 400);
