@@ -16,6 +16,7 @@ import {
   readJsonBodyWithLimit,
 } from '../services/request-body.js';
 import {
+  jsonBodyForLineAccountScopeFailure,
   lineAccountWriteForbiddenForScope,
   resolveLineAccountScopeForRequest,
   resourceLineAccountVisibleInScope,
@@ -77,7 +78,7 @@ lineAccounts.get('/api/line-accounts', async (c) => {
     const scope = await resolveLineAccountScopeForRequest(db, c);
     const q = validateScopedLineAccountQueryParam(scope, lineAccountId);
     if (!q.ok) {
-      return c.json({ success: false, error: q.error }, q.status);
+      return c.json(jsonBodyForLineAccountScopeFailure(q), q.status);
     }
 
     let items = await getLineAccounts(db, lineAccountDbOptions(c.env));

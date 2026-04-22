@@ -8,6 +8,7 @@ import {
 } from '@line-crm/db';
 import type { Env } from '../index.js';
 import {
+  jsonBodyForLineAccountScopeFailure,
   resolveLineAccountScopeForRequest,
   resourceLineAccountVisibleInScope,
   validateScopedLineAccountBody,
@@ -27,7 +28,7 @@ operators.get('/api/operators', async (c) => {
     const lineAccountId = c.req.query('lineAccountId') ?? null;
     const q = validateScopedLineAccountQueryParam(scope, lineAccountId ?? undefined);
     if (!q.ok) {
-      return c.json({ success: false, error: q.error }, q.status);
+      return c.json(jsonBodyForLineAccountScopeFailure(q), q.status);
     }
     const items = await getOperators(c.env.DB, { lineAccountId });
     return c.json({
@@ -63,7 +64,7 @@ operators.post('/api/operators', async (c) => {
 
     const scoped = validateScopedLineAccountBody(scope, body.lineAccountId ?? null);
     if (!scoped.ok) {
-      return c.json({ success: false, error: scoped.error }, scoped.status);
+      return c.json(jsonBodyForLineAccountScopeFailure(scoped), scoped.status);
     }
     if (scope.mode === 'restricted' && !scoped.lineAccountId) {
       return c.json({ success: false, error: 'lineAccountId is required for this principal' }, 400);
@@ -119,7 +120,7 @@ operators.put('/api/operators/:id', async (c) => {
         raw === null || raw === undefined ? null : String(raw),
       );
       if (!scoped.ok) {
-        return c.json({ success: false, error: scoped.error }, scoped.status);
+        return c.json(jsonBodyForLineAccountScopeFailure(scoped), scoped.status);
       }
       body.lineAccountId = scoped.lineAccountId;
     }

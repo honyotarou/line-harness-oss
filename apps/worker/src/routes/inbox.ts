@@ -3,6 +3,7 @@ import { listInboxThreads } from '@line-crm/db';
 import type { Env } from '../index.js';
 import { clampListLimit, clampOffset } from '../services/query-limits.js';
 import {
+  jsonBodyForLineAccountScopeFailure,
   resolveLineAccountScopeForRequest,
   validateScopedLineAccountQueryParam,
 } from '../services/admin-line-account-scope.js';
@@ -18,7 +19,7 @@ inbox.get('/api/inbox/threads', async (c) => {
     const lineAccountId = c.req.query('lineAccountId') ?? undefined;
     const q = validateScopedLineAccountQueryParam(scope, lineAccountId);
     if (!q.ok) {
-      return c.json({ success: false, error: q.error }, q.status);
+      return c.json(jsonBodyForLineAccountScopeFailure(q), q.status);
     }
 
     const limit = clampListLimit(c.req.query('limit'), 50, 200);

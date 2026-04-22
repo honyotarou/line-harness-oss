@@ -16,6 +16,7 @@ import {
 import { parseStringArrayJson, tryParseJsonRecord } from '../services/safe-json.js';
 import { clampListLimit } from '../services/query-limits.js';
 import {
+  jsonBodyForLineAccountScopeFailure,
   resolveLineAccountScopeForRequest,
   resourceLineAccountVisibleInScope,
   validateScopedLineAccountBody,
@@ -36,7 +37,7 @@ notifications.get('/api/notifications/rules', async (c) => {
     const lineAccountId = c.req.query('lineAccountId');
     const qRules = validateScopedLineAccountQueryParam(scope, lineAccountId);
     if (!qRules.ok) {
-      return c.json({ success: false, error: qRules.error }, qRules.status);
+      return c.json(jsonBodyForLineAccountScopeFailure(qRules), qRules.status);
     }
     let items;
     if (lineAccountId) {
@@ -111,7 +112,7 @@ notifications.post('/api/notifications/rules', async (c) => {
 
     const scoped = validateScopedLineAccountBody(scopePost, body.lineAccountId ?? null);
     if (!scoped.ok) {
-      return c.json({ success: false, error: scoped.error }, scoped.status);
+      return c.json(jsonBodyForLineAccountScopeFailure(scoped), scoped.status);
     }
     if (scopePost.mode === 'restricted' && !scoped.lineAccountId) {
       return c.json({ success: false, error: 'lineAccountId is required for this principal' }, 400);
@@ -168,7 +169,7 @@ notifications.put('/api/notifications/rules/:id', async (c) => {
         rawLa === null ? null : typeof rawLa === 'string' ? rawLa : null,
       );
       if (!scopedLa.ok) {
-        return c.json({ success: false, error: scopedLa.error }, scopedLa.status);
+        return c.json(jsonBodyForLineAccountScopeFailure(scopedLa), scopedLa.status);
       }
       body.lineAccountId = scopedLa.lineAccountId;
     }
@@ -222,7 +223,7 @@ notifications.get('/api/notifications', async (c) => {
     const lineAccountId = c.req.query('lineAccountId') ?? undefined;
     const qN = validateScopedLineAccountQueryParam(scopeList, lineAccountId);
     if (!qN.ok) {
-      return c.json({ success: false, error: qN.error }, qN.status);
+      return c.json(jsonBodyForLineAccountScopeFailure(qN), qN.status);
     }
     let items;
     if (lineAccountId) {

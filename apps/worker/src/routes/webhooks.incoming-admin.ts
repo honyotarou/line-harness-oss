@@ -14,6 +14,7 @@ import {
   readJsonBodyWithLimit,
 } from '../services/request-body.js';
 import {
+  jsonBodyForLineAccountScopeFailure,
   resolveLineAccountScopeForRequest,
   resourceLineAccountVisibleInScope,
   validateScopedLineAccountBody,
@@ -60,7 +61,7 @@ incomingWebhooksAdmin.get('/api/webhooks/incoming', async (c) => {
     const lineAccountId = c.req.query('lineAccountId') ?? null;
     const q = validateScopedLineAccountQueryParam(scope, lineAccountId ?? undefined);
     if (!q.ok) {
-      return c.json({ success: false, error: q.error }, q.status);
+      return c.json(jsonBodyForLineAccountScopeFailure(q), q.status);
     }
     const items = await getIncomingWebhooks(
       c.env.DB,
@@ -110,7 +111,7 @@ incomingWebhooksAdmin.post('/api/webhooks/incoming', async (c) => {
 
     const scoped = validateScopedLineAccountBody(scope, body.lineAccountId ?? null);
     if (!scoped.ok) {
-      return c.json({ success: false, error: scoped.error }, scoped.status);
+      return c.json(jsonBodyForLineAccountScopeFailure(scoped), scoped.status);
     }
 
     const item = await createIncomingWebhook(
@@ -186,7 +187,7 @@ incomingWebhooksAdmin.put('/api/webhooks/incoming/:id', async (c) => {
     if (updates.lineAccountId !== undefined) {
       const scoped = validateScopedLineAccountBody(scopePut, updates.lineAccountId);
       if (!scoped.ok) {
-        return c.json({ success: false, error: scoped.error }, scoped.status);
+        return c.json(jsonBodyForLineAccountScopeFailure(scoped), scoped.status);
       }
       updates.lineAccountId = scoped.lineAccountId;
     }

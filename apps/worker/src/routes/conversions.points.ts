@@ -2,6 +2,7 @@ import { Hono } from 'hono';
 import { createConversionPoint, deleteConversionPoint, getConversionPoints } from '@line-crm/db';
 import type { Env } from '../index.js';
 import {
+  jsonBodyForLineAccountScopeFailure,
   resolveLineAccountScopeForRequest,
   validateScopedLineAccountBody,
   validateScopedLineAccountQueryParam,
@@ -20,7 +21,7 @@ conversionPoints.get('/api/conversions/points', async (c) => {
     const lineAccountId = c.req.query('lineAccountId') ?? null;
     const q = validateScopedLineAccountQueryParam(scope, lineAccountId ?? undefined);
     if (!q.ok) {
-      return c.json({ success: false, error: q.error }, q.status);
+      return c.json(jsonBodyForLineAccountScopeFailure(q), q.status);
     }
     const items = await getConversionPoints(c.env.DB, { lineAccountId });
     return c.json({
@@ -56,7 +57,7 @@ conversionPoints.post('/api/conversions/points', async (c) => {
 
     const scoped = validateScopedLineAccountBody(scope, body.lineAccountId ?? null);
     if (!scoped.ok) {
-      return c.json({ success: false, error: scoped.error }, scoped.status);
+      return c.json(jsonBodyForLineAccountScopeFailure(scoped), scoped.status);
     }
 
     const point = await createConversionPoint(c.env.DB, {

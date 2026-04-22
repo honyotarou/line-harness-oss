@@ -26,6 +26,7 @@ import {
   readJsonBodyWithLimit,
 } from '../services/request-body.js';
 import {
+  jsonBodyForLineAccountScopeFailure,
   resolveLineAccountScopeForRequest,
   resourceLineAccountVisibleInScope,
   validateScopedLineAccountBody,
@@ -87,7 +88,7 @@ scenarios.get('/api/scenarios', async (c) => {
     const scope = await resolveLineAccountScopeForRequest(c.env.DB, c);
     const q = validateScopedLineAccountQueryParam(scope, lineAccountId);
     if (!q.ok) {
-      return c.json({ success: false, error: q.error }, q.status);
+      return c.json(jsonBodyForLineAccountScopeFailure(q), q.status);
     }
 
     let items: DbScenarioWithStepCount[];
@@ -164,7 +165,7 @@ scenarios.post('/api/scenarios', async (c) => {
     const scopeCreate = await resolveLineAccountScopeForRequest(c.env.DB, c);
     const bodyLine = validateScopedLineAccountBody(scopeCreate, body.lineAccountId);
     if (!bodyLine.ok) {
-      return c.json({ success: false, error: bodyLine.error }, bodyLine.status);
+      return c.json(jsonBodyForLineAccountScopeFailure(bodyLine), bodyLine.status);
     }
 
     let scenario = await createScenario(c.env.DB, {

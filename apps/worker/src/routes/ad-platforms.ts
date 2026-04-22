@@ -18,6 +18,7 @@ import {
   readJsonBodyWithLimit,
 } from '../services/request-body.js';
 import {
+  jsonBodyForLineAccountScopeFailure,
   resolveLineAccountScopeForRequest,
   resourceLineAccountVisibleInScope,
   validateScopedLineAccountBody,
@@ -53,7 +54,7 @@ adPlatforms.get('/api/ad-platforms', async (c) => {
     const lineAccountId = c.req.query('lineAccountId') ?? undefined;
     const q = validateScopedLineAccountQueryParam(scope, lineAccountId);
     if (!q.ok) {
-      return c.json({ success: false, error: q.error }, q.status);
+      return c.json(jsonBodyForLineAccountScopeFailure(q), q.status);
     }
     const acc =
       scope.mode === 'restricted'
@@ -104,7 +105,7 @@ adPlatforms.post('/api/ad-platforms', async (c) => {
 
     const scoped = validateScopedLineAccountBody(scope, body.lineAccountId ?? null);
     if (!scoped.ok) {
-      return c.json({ success: false, error: scoped.error }, scoped.status);
+      return c.json(jsonBodyForLineAccountScopeFailure(scoped), scoped.status);
     }
     if (scope.mode === 'restricted' && !scoped.lineAccountId) {
       return c.json({ success: false, error: 'lineAccountId is required for this principal' }, 400);

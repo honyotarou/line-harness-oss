@@ -8,14 +8,18 @@ import {
 } from '@line-crm/db';
 import type { Env } from '../index.js';
 import { assertHttpsOutboundUrlResolvedSafe } from '../services/outbound-url-resolve.js';
-import { maskSigningSecretForList } from '../services/signing-secret-display.js';
-import { parseStringArrayJson } from '../services/safe-json.js';
+import {
+  mapOutgoingWebhookAdminCreated,
+  mapOutgoingWebhookAdminListItem,
+  mapOutgoingWebhookAdminUpdated,
+} from '../services/outgoing-webhook-admin-dto.js';
 import {
   DEFAULT_ADMIN_JSON_BODY_LIMIT_BYTES,
   jsonBodyReadErrorResponse,
   readJsonBodyWithLimit,
 } from '../services/request-body.js';
 import {
+  jsonBodyForLineAccountScopeFailure,
   resolveLineAccountScopeForRequest,
   resourceLineAccountVisibleInScope,
   validateScopedLineAccountBody,
@@ -31,7 +35,7 @@ outgoingWebhooksAdmin.get('/api/webhooks/outgoing', async (c) => {
     const lineAccountId = c.req.query('lineAccountId');
     const q = validateScopedLineAccountQueryParam(scope, lineAccountId);
     if (!q.ok) {
-      return c.json({ success: false, error: q.error }, q.status);
+      return c.json(jsonBodyForLineAccountScopeFailure(q), q.status);
     }
     let items = await getOutgoingWebhooks(c.env.DB, lineAccountDbOptions(c.env));
     if (lineAccountId) {
@@ -40,17 +44,7 @@ outgoingWebhooksAdmin.get('/api/webhooks/outgoing', async (c) => {
 
     return c.json({
       success: true,
-      data: items.map((w) => ({
-        id: w.id,
-        name: w.name,
-        url: w.url,
-        eventTypes: parseStringArrayJson(w.event_types) ?? [],
-        secret: maskSigningSecretForList(w.secret),
-        lineAccountId: w.line_account_id ?? null,
-        isActive: Boolean(w.is_active),
-        createdAt: w.created_at,
-        updatedAt: w.updated_at,
-      })),
+      data: items.map(mapOutgoingWebhookAdminListItem),
     });
   } catch (err) {
     console.error('GET /api/webhooks/outgoing error:', err);
@@ -85,7 +79,7 @@ outgoingWebhooksAdmin.post('/api/webhooks/outgoing', async (c) => {
 
     const scoped = validateScopedLineAccountBody(scope, body.lineAccountId ?? null);
     if (!scoped.ok) {
-      return c.json({ success: false, error: scoped.error }, scoped.status);
+      return c.json(jsonBodyForLineAccountScopeFailure(scoped), scoped.status);
     }
     if (scope.mode === 'restricted' && !scoped.lineAccountId) {
       return c.json({ success: false, error: 'lineAccountId is required for this principal' }, 400);
@@ -112,21 +106,7 @@ outgoingWebhooksAdmin.post('/api/webhooks/outgoing', async (c) => {
       resourceId: item.id,
       metadata: { name: body.name },
     });
-    return c.json(
-      {
-        success: true,
-        data: {
-          id: item.id,
-          name: item.name,
-          url: item.url,
-          eventTypes: parseStringArrayJson(item.event_types) ?? [],
-          lineAccountId: item.line_account_id ?? null,
-          isActive: Boolean(item.is_active),
-          createdAt: item.created_at,
-        },
-      },
-      201,
-    );
+    return c.json({ success: true, data: mapOutgoingWebhookAdminCreated(item) }, 201);
   } catch (err) {
     const jr = jsonBodyReadErrorResponse(err);
     if (jr) return c.json(jr.body, jr.status);
@@ -190,7 +170,7 @@ outgoingWebhooksAdmin.put('/api/webhooks/outgoing/:id', async (c) => {
         rawLa === null ? null : typeof rawLa === 'string' ? rawLa : null,
       );
       if (!scopedLa.ok) {
-        return c.json({ success: false, error: scopedLa.error }, scopedLa.status);
+        return c.json(jsonBodyForLineAccountScopeFailure(scopedLa), scopedLa.status);
       }
       updates.lineAccountId = scopedLa.lineAccountId;
     }
@@ -204,17 +184,7 @@ outgoingWebhooksAdmin.put('/api/webhooks/outgoing/:id', async (c) => {
       resourceId: id,
       metadata: { keys: Object.keys(updates) },
     });
-    return c.json({
-      success: true,
-      data: {
-        id: updated.id,
-        name: updated.name,
-        url: updated.url,
-        eventTypes: parseStringArrayJson(updated.event_types) ?? [],
-        lineAccountId: updated.line_account_id ?? null,
-        isActive: Boolean(updated.is_active),
-      },
-    });
+    return c.json({ success: true, data: mapOutgoingWebhookAdminUpdated(updated) });
   } catch (err) {
     const jr = jsonBodyReadErrorResponse(err);
     if (jr) return c.json(jr.body, jr.status);
