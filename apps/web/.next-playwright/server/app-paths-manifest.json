@@ -1,21 +1,4 @@
 {
-  "/page": "app/page.js",
   "/login/page": "app/login/page.js",
-  "/notifications/page": "app/notifications/page.js",
-  "/users/page": "app/users/page.js",
-  "/friends/page": "app/friends/page.js",
-  "/scenarios/page": "app/scenarios/page.js",
-  "/templates/page": "app/templates/page.js",
-  "/broadcasts/page": "app/broadcasts/page.js",
-  "/scoring/page": "app/scoring/page.js",
-  "/chats/page": "app/chats/page.js",
-  "/automations/page": "app/automations/page.js",
-  "/reminders/page": "app/reminders/page.js",
-  "/accounts/page": "app/accounts/page.js",
-  "/affiliates/page": "app/affiliates/page.js",
-  "/conversions/page": "app/conversions/page.js",
-  "/webhooks/page": "app/webhooks/page.js",
-  "/traffic-pools/page": "app/traffic-pools/page.js",
-  "/health/page": "app/health/page.js",
-  "/emergency/page": "app/emergency/page.js"
+  "/page": "app/page.js"
 }

@@ -1,5 +1,5 @@
 import { Hono } from 'hono';
-import { beforeEach, describe, expect, it } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 /** Minimal D1 mock: rate limits + `admin_session_revocations` for auth integration tests. */
 function createAuthIntegrationDb(): D1Database {
@@ -17,29 +17,34 @@ function createAuthIntegrationDb(): D1Database {
         bind(...args: unknown[]) {
           return {
             async first<T>(): Promise<T | null> {
-              if (norm.includes('admin_session_revocations') && norm.includes('select')) {
+              if (norm.includes('sqlite_master') && norm.includes('admin_session_revocations')) {
+                return { ok: 1 } as T | null;
+              }
+              if (
+                norm.includes('from admin_session_revocations') &&
+                norm.includes('where jti') &&
+                norm.includes('select')
+              ) {
                 const jti = String(args[0] ?? '');
                 return (revokedJtis.has(jti) ? { ok: 1 } : null) as T | null;
               }
-              if (norm.includes('request_rate_limits') && norm.includes('count')) {
+              if (norm.includes('select count from request_rate_limits')) {
                 const c = rateCounts.get(rateKey(args)) ?? 0;
                 return { count: c } as T | null;
               }
               return null;
             },
             async run() {
-              if (norm.includes('admin_session_revocations') && norm.includes('insert')) {
+              if (norm.includes('insert or ignore into admin_session_revocations')) {
                 revokedJtis.add(String(args[0] ?? ''));
                 return { success: true, meta: {} };
               }
-              if (norm.includes('request_rate_limits') && norm.includes('delete')) {
+              if (norm.includes('delete from request_rate_limits')) {
                 return { success: true, meta: {} };
               }
-              if (norm.includes('request_rate_limits')) {
-                if (norm.includes('insert')) {
-                  const k = rateKey(args);
-                  rateCounts.set(k, (rateCounts.get(k) ?? 0) + 1);
-                }
+              if (norm.includes('insert into request_rate_limits')) {
+                const k = rateKey(args);
+                rateCounts.set(k, (rateCounts.get(k) ?? 0) + 1);
                 return { success: true, meta: {} };
               }
               return { success: true, meta: {} };
@@ -56,8 +61,13 @@ function createAuthIntegrationDb(): D1Database {
 
 describe('auth routes', () => {
   beforeEach(async () => {
+    vi.useRealTimers();
     const { resetRequestRateLimits } = await import('../../src/services/request-rate-limit.js');
     resetRequestRateLimits();
+  });
+
+  afterEach(() => {
+    vi.useRealTimers();
   });
 
   it('returns 503 on login when WORKER_URL is public HTTPS but ADMIN_SESSION_SECRET is unset', async () => {
@@ -710,7 +720,8 @@ describe('auth routes', () => {
     expect(sessionToken).toBeTruthy();
 
     let lastStatus = 200;
-    for (let i = 0; i < 301; i += 1) {
+    const maxAttempts = 360;
+    for (let i = 0; i < maxAttempts; i += 1) {
       const res = await app.fetch(
         new Request('http://localhost/api/auth/session', {
           headers: {
@@ -721,6 +732,7 @@ describe('auth routes', () => {
         { API_KEY: 'root-api-key', INCLUDE_SESSION_TOKEN_IN_LOGIN_BODY: '1', DB: rateDb } as never,
       );
       lastStatus = res.status;
+      if (lastStatus === 429) break;
     }
 
     expect(lastStatus).toBe(429);

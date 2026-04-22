@@ -72,10 +72,28 @@ type LayoutConfig<Route extends LayoutRoutes = LayoutRoutes> = {
   type __Unused = __Check
 }
 
+// Validate ../../src/app/ad-platforms/page.tsx
+{
+  type __IsExpected<Specific extends AppPageConfig<"/ad-platforms">> = Specific
+  const handler = {} as typeof import("../../src/app/ad-platforms/page.js")
+  type __Check = __IsExpected<typeof handler>
+  // @ts-ignore
+  type __Unused = __Check
+}
+
 // Validate ../../src/app/affiliates/page.tsx
 {
   type __IsExpected<Specific extends AppPageConfig<"/affiliates">> = Specific
   const handler = {} as typeof import("../../src/app/affiliates/page.js")
+  type __Check = __IsExpected<typeof handler>
+  // @ts-ignore
+  type __Unused = __Check
+}
+
+// Validate ../../src/app/auto-replies/page.tsx
+{
+  type __IsExpected<Specific extends AppPageConfig<"/auto-replies">> = Specific
+  const handler = {} as typeof import("../../src/app/auto-replies/page.js")
   type __Check = __IsExpected<typeof handler>
   // @ts-ignore
   type __Unused = __Check
@@ -153,10 +171,28 @@ type LayoutConfig<Route extends LayoutRoutes = LayoutRoutes> = {
   type __Unused = __Check
 }
 
+// Validate ../../src/app/inbox/page.tsx
+{
+  type __IsExpected<Specific extends AppPageConfig<"/inbox">> = Specific
+  const handler = {} as typeof import("../../src/app/inbox/page.js")
+  type __Check = __IsExpected<typeof handler>
+  // @ts-ignore
+  type __Unused = __Check
+}
+
 // Validate ../../src/app/login/page.tsx
 {
   type __IsExpected<Specific extends AppPageConfig<"/login">> = Specific
   const handler = {} as typeof import("../../src/app/login/page.js")
+  type __Check = __IsExpected<typeof handler>
+  // @ts-ignore
+  type __Unused = __Check
+}
+
+// Validate ../../src/app/media/page.tsx
+{
+  type __IsExpected<Specific extends AppPageConfig<"/media">> = Specific
+  const handler = {} as typeof import("../../src/app/media/page.js")
   type __Check = __IsExpected<typeof handler>
   // @ts-ignore
   type __Unused = __Check
