@@ -146,7 +146,7 @@ export default function DashboardPage() {
   return (
     <div className="relative isolate -mx-4 -mt-[72px] -mb-6 min-h-screen px-4 pb-0 pt-[72px] sm:-mx-6 sm:px-6 lg:-mx-8 lg:-mt-8 lg:-mb-8 lg:px-8 lg:pb-0 lg:pt-8">
       <SpringFieldBackdrop variant="absolute" position="center 36%" />
-      <div className="relative z-10 flex min-h-full flex-col gap-4 pb-0 pt-1">
+      <div className="relative z-10 flex min-h-screen flex-col gap-4 pb-0 pt-1">
         <div className="rounded-2xl border border-white/55 bg-white/92 p-5 shadow-[var(--shadow-token-lg)] backdrop-blur-md sm:p-6">
           <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
             <div className="flex items-center gap-4">
