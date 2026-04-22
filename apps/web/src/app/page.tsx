@@ -143,13 +143,24 @@ export default function DashboardPage() {
 
   return (
     <div>
-      <div className="mb-6">
-        <h1 className="text-xl sm:text-2xl font-bold text-gray-900">ダッシュボード</h1>
-        <p className="text-sm text-gray-500 mt-1">
-          {selectedAccount
-            ? `${selectedAccount.displayName || selectedAccount.name} の管理画面`
-            : 'LINE公式アカウント CRM 管理画面'}
-        </p>
+      <div
+        className="relative -mx-4 sm:-mx-6 lg:-mx-8 -mt-2 mb-8 overflow-hidden rounded-b-3xl border-b border-[var(--color-border-strong)] bg-cover bg-[center_28%] px-6 py-8 sm:px-8 shadow-[var(--shadow-token-md)]"
+        style={{ backgroundImage: "url('/hero-spring-field.png')" }}
+      >
+        <div className="absolute inset-0 bg-gradient-to-r from-[var(--color-marketing-orange)]/90 via-[var(--color-marketing-orange-deep)]/82 to-[var(--color-marketing-hero-mid)]/55" />
+        <div className="relative z-10">
+          <p className="text-xs font-semibold uppercase tracking-[0.12em] text-white/90">
+            LINE公式アカウント CRM
+          </p>
+          <h1 className="mt-1 text-2xl sm:text-3xl font-black tracking-tight text-white drop-shadow-sm">
+            ダッシュボード
+          </h1>
+          <p className="mt-2 max-w-xl text-sm text-white/95">
+            {selectedAccount
+              ? `${selectedAccount.displayName || selectedAccount.name} の管理画面`
+              : '友だち・配信・シナリオをひとつの画面から管理'}
+          </p>
+        </div>
       </div>
 
       {error && (
