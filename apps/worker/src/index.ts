@@ -131,6 +131,16 @@ export type Env = Readonly<{
      */
     ALLOW_LIFF_OAUTH_API_KEY_FALLBACK?: string;
     /**
+     * `1` / `true`: on non-local HTTPS `WORKER_URL`, allow `?account=` on GET /auth/line (pivots LINE Login to another
+     * `line_accounts` row). Off by default — reduces cross-tenant OAuth phishing when channel ids leak.
+     */
+    ALLOW_LIFF_OAUTH_QUERY_ACCOUNT?: string;
+    /**
+     * `1` / `true`: on non-local HTTPS `WORKER_URL`, allow `?uid=` in OAuth state (recovery / linking hint).
+     * Off by default — avoids cross-account binding when combined with other identity signals.
+     */
+    ALLOW_LIFF_OAUTH_QUERY_UID?: string;
+    /**
      * Base64 (standard or URL-safe) of 32 raw bytes — seals `line_accounts` tokens/secrets at rest in D1 (`lh1:` prefix).
      */
     LINE_ACCOUNT_SECRETS_KEY?: string;

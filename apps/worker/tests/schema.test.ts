@@ -70,6 +70,11 @@ const migration029Path = resolve(
   '../../packages/db/migrations/029_media_assets_ad_platforms.sql',
 );
 
+const migration030Path = resolve(
+  process.cwd(),
+  '../../packages/db/migrations/030_liff_oauth_state_jtis.sql',
+);
+
 describe('schema.sql', () => {
   it('migration 011 matches admin_principal_roles DDL', () => {
     const m011 = readFileSync(migration011Path, 'utf8');
@@ -110,6 +115,7 @@ describe('schema.sql', () => {
     expect(schema).toContain('CREATE TABLE IF NOT EXISTS pool_accounts');
     expect(schema).toContain('CREATE TABLE IF NOT EXISTS media_assets');
     expect(schema).toContain('CREATE TABLE IF NOT EXISTS ad_platform_connections');
+    expect(schema).toContain('CREATE TABLE IF NOT EXISTS liff_oauth_state_jtis');
   });
 
   it('defines friend columns required by runtime code', () => {
@@ -181,6 +187,12 @@ describe('schema.sql', () => {
     expect(m029).toContain('CREATE TABLE IF NOT EXISTS media_assets');
     expect(m029).toContain('CREATE TABLE IF NOT EXISTS ad_platform_connections');
     expect(m029).toContain("CHECK (provider IN ('meta', 'google', 'tiktok', 'x'))");
+  });
+
+  it('migration 030 adds liff_oauth_state_jtis for one-time OAuth state', () => {
+    const m030 = readFileSync(migration030Path, 'utf8');
+    expect(m030).toContain('CREATE TABLE IF NOT EXISTS liff_oauth_state_jtis');
+    expect(m030).toContain('expires_at_ms');
   });
 
   it('defines tracked link template ref columns for campaign messaging', () => {

@@ -23,16 +23,16 @@
         <div class='clearfix'>
             
             <div class='fl pad1y space-right2'>
-                <span class="strong">67.75% </span>
+                <span class="strong">68.13% </span>
                 <span class="quiet">Statements</span>
-                <span class='fraction'>248/366</span>
+                <span class='fraction'>248/364</span>
             </div>
         
             
             <div class='fl pad1y space-right2'>
-                <span class="strong">59.74% </span>
+                <span class="strong">60.52% </span>
                 <span class="quiet">Branches</span>
-                <span class='fraction'>46/77</span>
+                <span class='fraction'>46/76</span>
             </div>
         
             
@@ -44,9 +44,9 @@
         
             
             <div class='fl pad1y space-right2'>
-                <span class="strong">67.75% </span>
+                <span class="strong">68.13% </span>
                 <span class="quiet">Lines</span>
-                <span class='fraction'>248/366</span>
+                <span class='fraction'>248/364</span>
             </div>
         
             
@@ -554,11 +554,7 @@
 <a name='L489'></a><a href='#L489'>489</a>
 <a name='L490'></a><a href='#L490'>490</a>
 <a name='L491'></a><a href='#L491'>491</a>
-<a name='L492'></a><a href='#L492'>492</a>
-<a name='L493'></a><a href='#L493'>493</a>
-<a name='L494'></a><a href='#L494'>494</a>
-<a name='L495'></a><a href='#L495'>495</a></td><td class="line-coverage quiet"><span class="cline-any cline-yes">1x</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
+<a name='L492'></a><a href='#L492'>492</a></td><td class="line-coverage quiet"><span class="cline-any cline-yes">1x</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
@@ -1043,8 +1039,6 @@
 <span class="cline-any cline-yes">1x</span>
 <span class="cline-any cline-yes">1x</span>
 <span class="cline-any cline-yes">1x</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
@@ -1075,12 +1069,11 @@ import {
 } from '../services/admin-session.js';
 import { parseBearerAuthorization } from '../services/bearer-authorization.js';
 import { collectLineLoginChannelIds, verifyLineIdToken } from '../services/line-id-token.js';
+import { lineLoginChannelMatchesFriendLineAccount } from '../services/line-login-id-token.js';
 import { lineAccountDbOptions } from '../services/line-account-at-rest-key.js';
 import { resolveLineAccessTokenForFriend } from '../services/line-account-routing.js';
 import {
-  BodyTooLargeError,
   DEFAULT_ADMIN_JSON_BODY_LIMIT_BYTES,
-  InvalidJsonBodyError,
   jsonBodyReadErrorResponse,
   readJsonBodyWithLimit,
 } from '../services/request-body.js';
@@ -1435,14 +1428,14 @@ forms.post('/api/forms/:id/submit', async (c) =&gt; {
 <span class="cstat-no" title="statement not covered" >          return;</span>
 <span class="cstat-no" title="statement not covered" >        }</span>
         console.log('Form reply: sending to', refreshedFriend.line_user_id);
-        const { LineClient } = await import('@line-crm/line-sdk');
+        const { createLineClient } = await import('@line-crm/line-sdk');
         const accessToken = await resolveLineAccessTokenForFriend(
           db,
           c.env.LINE_CHANNEL_ACCESS_TOKEN,
           friendId,
           lineAccountDbOptions(c.env),
         );
-        const lineClient = new LineClient(accessToken);
+        const lineClient = createLineClient(accessToken);
 &nbsp;
         // Build Flex card showing their answers
         const entries = Object.entries(submissionData as Record&lt;string, unknown&gt;);
@@ -1533,12 +1526,10 @@ forms.post('/api/forms/:id/submit', async (c) =&gt; {
 &nbsp;
     return c.json({ success: true, data: serializeSubmission(submission) }, 201);
   } catch (err) {
-    if (err instanceof Error &amp;&amp; err.name === 'BodyTooLargeError') {
-      return c.json({ success: false, error: 'Request body too large' }, 413);
+    const bodyErr = jsonBodyReadErrorResponse(err);
+    if (bodyErr) {
+      return c.json(bodyErr.body, bodyErr.status);
 <span class="branch-0 cbranch-no" title="branch not covered" >    }</span>
-    if (err instanceof Error &amp;&amp; err.name === 'InvalidJsonBodyError') <span class="branch-0 cbranch-no" title="branch not covered" >{</span>
-<span class="cstat-no" title="statement not covered" >      return c.json({ success: false, error: 'Invalid JSON body' }, 400);</span>
-<span class="cstat-no" title="statement not covered" >    }</span>
 <span class="cstat-no" title="statement not covered" >    console.error('POST /api/forms/:id/submit error:', err);</span>
 <span class="cstat-no" title="statement not covered" >    return c.json({ success: false, error: 'Internal server error' }, 500);</span>
 <span class="cstat-no" title="statement not covered" >  }</span>
@@ -1552,7 +1543,7 @@ export { forms };
             <div class='footer quiet pad2 space-top1 center small'>
                 Code coverage generated by
                 <a href="https://istanbul.js.org/" target="_blank" rel="noopener noreferrer">istanbul</a>
-                at 2026-04-15T12:32:18.814Z
+                at 2026-04-22T23:34:33.799Z
             </div>
         <script src="../prettify.js"></script>
         <script>

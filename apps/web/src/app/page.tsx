@@ -417,8 +417,8 @@ export default function DashboardPage() {
               </SafeLink>
             </div>
 
-            <div className="mt-6">
-              <CcPromptButton prompts={ccPrompts} />
+            <div className="mt-6 flex w-full justify-end">
+              <CcPromptButton prompts={ccPrompts} dock="inline-end" />
             </div>
           </div>
         </div>

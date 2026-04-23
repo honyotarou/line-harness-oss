@@ -173,6 +173,7 @@ describe('攻撃者サイクル 151–200（セキュリティバッチ）', () 
         pool: '',
         account: '',
         uid: 'u',
+        jti: 'jti-cycle-161',
       },
       'secret-151',
     );
@@ -424,6 +425,7 @@ describe('攻撃者サイクル 151–200（セキュリティバッチ）', () 
         pool: '',
         account: '',
         uid: '',
+        jti: 'jti-cycle-190',
       },
       'good',
     );

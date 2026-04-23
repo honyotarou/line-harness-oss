@@ -4,7 +4,7 @@
 
 ## 必読（オンデマンド）
 
-- **スラッシュコマンド（チャットで `/`）**: プロジェクト直下 [`.cursor/commands/`](.cursor/commands/) — 例 **`/line`**（統合メニュー）、**`/pentest-tdd-loop`**（ペネトレ→TDD 自走ループ；**フェーズ1＋フェーズ2**の固定順で全チェックリスト相当を踏み、その後変種ラウンド。**最大 100 ラウンド**または P1 が 2 連続ゼロまで確認なしで回せる）。中身はエージェントへの指示プロンプト。
+- **スラッシュコマンド（チャットで `/`）**: プロジェクト直下 [`.cursor/commands/`](.cursor/commands/) — 例 **`/line`**（統合メニュー）、**`/pentest-tdd-loop`**（ペネトレ→TDD 自走ループ；**フェーズ1＋フェーズ2**の固定順で全チェックリスト相当を踏み、その後変種ラウンド。**最大 100 ラウンド**または P1 が 2 連続ゼロまで確認なしで回せる）、**`/shuusei`**（プロンプト／skill の empirical 評価手順；正本 [`.cursor/skills/shuusei/SKILL.md`](.cursor/skills/shuusei/SKILL.md)）。中身はエージェントへの指示プロンプト。
 - **LINE 統合スキル（デザイン・壁打ち・TDD・ハーネス・デプロイ）**: [`.cursor/skills/line/SKILL.md`](.cursor/skills/line/SKILL.md)（**`/line`** コマンドまたは **Agent Skills** の `line` — デザイン・要件は **親 0（ビジュアル・任意リッチ）** と **親 1（8 Round＋ブランド）** の2段；リッチ枝は [`steps-rich-menu-wallball.md`](.cursor/skills/line/steps-rich-menu-wallball.md)、ほか `steps-*.md`）
 - **ペネトレ枝（Skills でも検出可）**: [`.cursor/skills/pentest-tdd-loop/SKILL.md`](.cursor/skills/pentest-tdd-loop/SKILL.md)（正本の手順は [`.cursor/skills/line/steps-pentest-tdd-loop.md`](.cursor/skills/line/steps-pentest-tdd-loop.md)）
 - **意思決定の履歴**: [`docs/adr/`](docs/adr/)（テスト層: [`0001`](docs/adr/0001-testing-and-harness-layers.md)、ハーネス方針: [`0002`](docs/adr/0002-harness-engineering.md)）

@@ -391,7 +391,9 @@
 <a name='L326'></a><a href='#L326'>326</a>
 <a name='L327'></a><a href='#L327'>327</a>
 <a name='L328'></a><a href='#L328'>328</a>
-<a name='L329'></a><a href='#L329'>329</a></td><td class="line-coverage quiet"><span class="cline-any cline-yes">1x</span>
+<a name='L329'></a><a href='#L329'>329</a>
+<a name='L330'></a><a href='#L330'>330</a></td><td class="line-coverage quiet"><span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
@@ -720,7 +722,7 @@
 <span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-yes">4x</span>
 <span class="cline-any cline-neutral">&nbsp;</span></td><td class="text"><pre class="prettyprint lang-js">import { Hono } from 'hono';
-import { LineClient, type RichMenuObject } from '@line-crm/line-sdk';
+import { createLineClient, type RichMenuObject } from '@line-crm/line-sdk';
 import { getFriendById } from '@line-crm/db';
 import type { Env } from '../index.js';
 import { lineAccountDbOptions } from '../services/line-account-at-rest-key.js';
@@ -738,6 +740,7 @@ import {
   readJsonBodyWithLimit,
 } from '../services/request-body.js';
 import {
+  jsonBodyForLineAccountScopeFailure,
   resolveLineAccountScopeForRequest,
   resourceLineAccountVisibleInScope,
   validateScopedLineAccountBody,
@@ -753,7 +756,7 @@ richMenus.get('/api/rich-menus', async (c) =&gt; {
     const lineAccountId = c.req.query('lineAccountId');
     const q = validateScopedLineAccountQueryParam(scope, lineAccountId);
     if (!q.ok) {
-      return c.json({ success: false, error: q.error }, q.status);
+      return c.json(jsonBodyForLineAccountScopeFailure(q), q.status);
     }
     const accessToken = await resolveLineAccessTokenForLineAccountId(
       c.env.DB,
@@ -761,7 +764,7 @@ richMenus.get('/api/rich-menus', async (c) =&gt; {
 <span class="branch-0 cbranch-no" title="branch not covered" >      lineAccountId ?? null,</span>
       lineAccountDbOptions(c.env),
     );
-    const lineClient = new LineClient(accessToken);
+    const lineClient = createLineClient(accessToken);
     const result = await lineClient.getRichMenuList();
     return c.json({ success: true, data: result.<span class="branch-0 cbranch-no" title="branch not covered" >richmenus ?? [] }</span>);
 <span class="branch-0 cbranch-no" title="branch not covered" >  } catch (err) {</span>
@@ -783,7 +786,7 @@ richMenus.post('/api/rich-menus', async (c) =&gt; {
       typeof body.lineAccountId === 'string' ? body.lineAccountId : null;
     const scopedBody = validateScopedLineAccountBody(scopePost, lineAccountIdFromBody);
     if (!scopedBody.ok) {
-      return c.json({ success: false, error: scopedBody.error }, scopedBody.status);
+      return c.json(jsonBodyForLineAccountScopeFailure(scopedBody), scopedBody.status);
     }
     const effectiveLineAccountId = scopedBody.lineAccountId;
     const { lineAccountId: _discard, ...menuRest } = body;
@@ -813,7 +816,7 @@ richMenus.post('/api/rich-menus', async (c) =&gt; {
       effectiveLineAccountId,
       lineAccountDbOptions(c.env),
     );
-    const lineClient = new LineClient(accessToken);
+    const lineClient = createLineClient(accessToken);
     const result = await lineClient.createRichMenu(menuPayload);
     return c.json({ success: true, data: result }, 201);
   } catch (err) {
@@ -833,7 +836,7 @@ richMenus.delete('/api/rich-menus/:id', async (c) =&gt; {
     const lineAccountId = c.req.query('lineAccountId');
     const qDel = validateScopedLineAccountQueryParam(scopeDel, lineAccountId);
     if (!qDel.ok) <span class="branch-0 cbranch-no" title="branch not covered" >{</span>
-<span class="cstat-no" title="statement not covered" >      return c.json({ success: false, error: qDel.error }, qDel.status);</span>
+<span class="cstat-no" title="statement not covered" >      return c.json(jsonBodyForLineAccountScopeFailure(qDel), qDel.status);</span>
 <span class="cstat-no" title="statement not covered" >    }</span>
     const accessToken = await resolveLineAccessTokenForLineAccountId(
       c.env.DB,
@@ -841,7 +844,7 @@ richMenus.delete('/api/rich-menus/:id', async (c) =&gt; {
       lineAccountId ?? null,
       lineAccountDbOptions(c.env),
     );
-    const lineClient = new LineClient(accessToken);
+    const lineClient = createLineClient(accessToken);
     await lineClient.deleteRichMenu(richMenuId);
     return c.json({ success: true, data: null });
 <span class="branch-0 cbranch-no" title="branch not covered" >  } catch (err) {</span>
@@ -859,7 +862,7 @@ richMenus.post('/api/rich-menus/:id/default', async (c) =&gt; {
     const lineAccountId = c.req.query('lineAccountId');
     const qDef = validateScopedLineAccountQueryParam(scopeDef, lineAccountId);
     if (!qDef.ok) <span class="branch-0 cbranch-no" title="branch not covered" >{</span>
-<span class="cstat-no" title="statement not covered" >      return c.json({ success: false, error: qDef.error }, qDef.status);</span>
+<span class="cstat-no" title="statement not covered" >      return c.json(jsonBodyForLineAccountScopeFailure(qDef), qDef.status);</span>
 <span class="cstat-no" title="statement not covered" >    }</span>
     const accessToken = await resolveLineAccessTokenForLineAccountId(
       c.env.DB,
@@ -867,7 +870,7 @@ richMenus.post('/api/rich-menus/:id/default', async (c) =&gt; {
       lineAccountId ?? null,
       lineAccountDbOptions(c.env),
     );
-    const lineClient = new LineClient(accessToken);
+    const lineClient = createLineClient(accessToken);
     await lineClient.setDefaultRichMenu(richMenuId);
     return c.json({ success: true, data: null });
 <span class="branch-0 cbranch-no" title="branch not covered" >  } catch (err) {</span>
@@ -906,7 +909,7 @@ richMenus.post('/api/friends/:friendId/rich-menu', async (c) =&gt; {
       friendId,
       lineAccountDbOptions(c.env),
     );
-    const lineClient = new LineClient(accessToken);
+    const lineClient = createLineClient(accessToken);
     await lineClient.linkRichMenuToUser(friend.line_user_id, body.richMenuId);
 &nbsp;
     return c.json({ success: true, data: null });
@@ -940,7 +943,7 @@ richMenus.delete('/api/friends/:friendId/rich-menu', async (c) =&gt; {
       friendId,
       lineAccountDbOptions(c.env),
     );
-    const lineClient = new LineClient(accessToken);
+    const lineClient = createLineClient(accessToken);
     await lineClient.unlinkRichMenuFromUser(friend.line_user_id);
 &nbsp;
     return c.json({ success: true, data: null });
@@ -1027,7 +1030,7 @@ richMenus.post('/api/rich-menus/:id/image', async (c) =&gt; {
     const lineAccountId = c.req.query('lineAccountId');
     const qImg = validateScopedLineAccountQueryParam(scopeImg, lineAccountId);
     if (!qImg.ok) <span class="branch-0 cbranch-no" title="branch not covered" >{</span>
-<span class="cstat-no" title="statement not covered" >      return c.json({ success: false, error: qImg.error }, qImg.status);</span>
+<span class="cstat-no" title="statement not covered" >      return c.json(jsonBodyForLineAccountScopeFailure(qImg), qImg.status);</span>
 <span class="cstat-no" title="statement not covered" >    }</span>
     const accessToken = await resolveLineAccessTokenForLineAccountId(
       c.env.DB,
@@ -1035,7 +1038,7 @@ richMenus.post('/api/rich-menus/:id/image', async (c) =&gt; {
       lineAccountId ?? null,
       lineAccountDbOptions(c.env),
     );
-    const lineClient = new LineClient(accessToken);
+    const lineClient = createLineClient(accessToken);
     await lineClient.uploadRichMenuImage(richMenuId, imageData, imageContentType);
 &nbsp;
     return c.json({ success: true, data: null });
@@ -1054,7 +1057,7 @@ richMenus.post('/api/rich-menus/:id/image', async (c) =&gt; {
             <div class='footer quiet pad2 space-top1 center small'>
                 Code coverage generated by
                 <a href="https://istanbul.js.org/" target="_blank" rel="noopener noreferrer">istanbul</a>
-                at 2026-04-15T12:32:18.814Z
+                at 2026-04-22T23:34:33.799Z
             </div>
         <script src="../prettify.js"></script>
         <script>

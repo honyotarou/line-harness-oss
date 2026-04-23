@@ -5,7 +5,10 @@ import {
   effectiveRequireLiffStateSecret,
   explicitLiffOAuthApiKeyFallbackEnabled,
 } from '../services/deployed-security-defaults.js';
-import { verifyLineLoginIdToken } from '../services/line-login-id-token.js';
+import {
+  lineLoginChannelMatchesFriendLineAccount,
+  verifyLineLoginIdToken,
+} from '../services/line-login-id-token.js';
 
 export function isRequireLiffStateSecretEnabled(env: Env['Bindings']): boolean {
   return effectiveRequireLiffStateSecret(env);
@@ -77,6 +80,16 @@ export async function verifyLiffIdTokenAndLoadFriend(
   const friend = await getFriendByLineUserId(db, lineUserId);
   if (!friend) {
     return { ok: false, status: 404, body: { success: false, error: 'Friend not found' } };
+  }
+  if (
+    !(await lineLoginChannelMatchesFriendLineAccount(
+      db,
+      verified.loginChannelId,
+      friend,
+      lineAccountOpts,
+    ))
+  ) {
+    return { ok: false, status: 401, body: { success: false, error: 'Invalid ID token' } };
   }
   return { ok: true, friend };
 }

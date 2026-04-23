@@ -11,7 +11,10 @@ import {
 import type { Env } from '../index.js';
 import { assertHttpsOutboundUrlResolvedSafe } from '../services/outbound-url-resolve.js';
 import { resolveSafeRedirectUrl, type LiffRedirectEnv } from '../services/liff-redirect.js';
-import { verifyLineLoginIdToken } from '../services/line-login-id-token.js';
+import {
+  lineLoginChannelMatchesFriendLineAccount,
+  verifyLineLoginIdToken,
+} from '../services/line-login-id-token.js';
 import {
   BOOKING_PHONE_FALLBACK_MESSAGE,
   emailsMatchForRecovery,
@@ -129,6 +132,17 @@ export async function liffLinkPost(
   const friend = await getFriendByLineUserId(db, lineUserId);
   if (!friend) {
     return { status: 404, body: { success: false, error: 'Friend not found' } };
+  }
+
+  if (
+    !(await lineLoginChannelMatchesFriendLineAccount(
+      db,
+      verified.loginChannelId,
+      friend,
+      lineAccountOpts,
+    ))
+  ) {
+    return { status: 401, body: { success: false, error: 'Invalid ID token' } };
   }
 
   if ((friend as unknown as Record<string, unknown>).user_id) {

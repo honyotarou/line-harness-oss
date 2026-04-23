@@ -19,6 +19,7 @@ describe('liff-oauth-state', () => {
         pool: '',
         account: '',
         uid: 'u1',
+        jti: 'jti-roundtrip-1',
       },
       secret,
     );
@@ -28,6 +29,7 @@ describe('liff-oauth-state', () => {
         ref: 'r1',
         redirect: 'https://a.example/x',
         uid: 'u1',
+        jti: 'jti-roundtrip-1',
       }),
     );
   });
@@ -47,6 +49,7 @@ describe('liff-oauth-state', () => {
         pool: '',
         account: '',
         uid: '',
+        jti: 'jti-wrong-secret',
       },
       secret,
     );

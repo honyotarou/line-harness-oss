@@ -6,7 +6,12 @@ import {
 } from '@line-crm/db';
 import type { Env } from '../index.js';
 import { lineAccountDbOptions } from '../services/line-account-at-rest-key.js';
-import { signLiffOAuthState } from '../services/liff-oauth-state.js';
+import { insertLiffOAuthStateJti } from '../services/liff-oauth-state-jti.js';
+import {
+  effectiveAllowLiffOAuthQueryAccount,
+  effectiveAllowLiffOAuthQueryUid,
+} from '../services/liff-oauth-query-policy.js';
+import { signLiffOAuthState, STATE_TTL_SEC } from '../services/liff-oauth-state.js';
 import { resolveSafeRedirectUrl, type LiffRedirectEnv } from '../services/liff-redirect.js';
 import { isRequireLiffStateSecretEnabled, resolveLiffOAuthStateSecret } from './liff-identity.js';
 
@@ -74,6 +79,21 @@ export async function runAuthLineStart(input: AuthLineStartInput): Promise<AuthL
   }
 
   try {
+    if (accountParam.trim() && !effectiveAllowLiffOAuthQueryAccount(bindings)) {
+      return {
+        kind: 'generic_error',
+        userHtmlMessage:
+          'このログイン導線は現在利用できません（account 指定が許可されていません）。管理者に連絡してください。',
+      };
+    }
+    if (uidParam.trim() && !effectiveAllowLiffOAuthQueryUid(bindings)) {
+      return {
+        kind: 'generic_error',
+        userHtmlMessage:
+          'このログイン導線は現在利用できません（uid 指定が許可されていません）。管理者に連絡してください。',
+      };
+    }
+
     const redirect =
       redirectRaw.trim() === ''
         ? ''
@@ -159,6 +179,10 @@ export async function runAuthLineStart(input: AuthLineStartInput): Promise<AuthL
     if (poolSlugForState) liffParams.set('pool', poolSlugForState);
     const liffTarget = liffParams.toString() ? `${liffUrl}?${liffParams.toString()}` : liffUrl;
 
+    const jti = crypto.randomUUID();
+    const nowSec = Math.floor(Date.now() / 1000);
+    await insertLiffOAuthStateJti(db, jti, (nowSec + STATE_TTL_SEC) * 1000);
+
     const encodedState = await signLiffOAuthState(
       {
         ref,
@@ -173,6 +197,7 @@ export async function runAuthLineStart(input: AuthLineStartInput): Promise<AuthL
         pool: poolSlugForState,
         account: accountForState,
         uid: uidParam,
+        jti,
       },
       stateSecret,
     );
