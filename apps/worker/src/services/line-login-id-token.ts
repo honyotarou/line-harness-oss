@@ -1,5 +1,6 @@
 import type { Friend, LineAccountDbOptions } from '@line-crm/db';
 import { getLineAccountById, getLineAccounts } from '@line-crm/db';
+import type { LineLoginChannelId, LineLoginSub } from '@line-crm/shared';
 import { collectLineLoginChannelIds, verifyLineIdToken } from './line-id-token.js';
 
 /**
@@ -8,10 +9,10 @@ import { collectLineLoginChannelIds, verifyLineIdToken } from './line-id-token.j
 export const MAX_LINE_LOGIN_CHANNEL_IDS = 10;
 
 export type VerifiedLineLoginIdToken = Readonly<{
-  sub: string;
+  sub: LineLoginSub;
   email?: string;
   name?: string;
-  loginChannelId: string;
+  loginChannelId: LineLoginChannelId;
 }>;
 
 export async function verifyLineLoginIdToken(
@@ -39,7 +40,7 @@ export async function verifyLineLoginIdToken(
 /** When the friend is scoped to a line_account, the token must have been verified for that account's login channel. */
 export async function lineLoginChannelMatchesFriendLineAccount(
   db: D1Database,
-  verifiedLoginChannelId: string,
+  verifiedLoginChannelId: LineLoginChannelId,
   friend: Pick<Friend, 'line_account_id'>,
   lineAccountOpts?: LineAccountDbOptions,
 ): Promise<boolean> {

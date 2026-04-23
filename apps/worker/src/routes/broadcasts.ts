@@ -1,111 +1,61 @@
 import { Hono } from 'hono';
-import {
-  getBroadcasts,
-  getBroadcastById,
-  createBroadcast,
-  updateBroadcast,
-  deleteBroadcast,
-  claimBroadcastForSending,
-} from '@line-crm/db';
-import type {
-  Broadcast as DbBroadcast,
-  BroadcastMessageType,
-  BroadcastTargetType,
-} from '@line-crm/db';
-import { createLineClient } from '@line-crm/line-sdk';
-import { processBroadcastSend } from '../services/broadcast.js';
-import { processSegmentSend } from '../services/segment-send.js';
+import type { BroadcastMessageType, BroadcastTargetType } from '@line-crm/db';
 import type { SegmentCondition } from '../services/segment-query.js';
 import type { Env } from '../index.js';
-import { lineAccountDbOptions } from '../services/line-account-at-rest-key.js';
-import { resolveLineAccessTokenForLineAccountId } from '../services/line-account-routing.js';
 import {
   DEFAULT_ADMIN_JSON_BODY_LIMIT_BYTES,
   jsonBodyReadErrorResponse,
   readJsonBodyWithLimit,
 } from '../services/request-body.js';
-import {
-  jsonBodyForLineAccountScopeFailure,
-  resolveLineAccountScopeForRequest,
-  resourceLineAccountVisibleInScope,
-  validateScopedLineAccountBody,
-  validateScopedLineAccountQueryParam,
-} from '../services/admin-line-account-scope.js';
+import { resolveLineAccountScopeForRequest } from '../services/admin-line-account-scope.js';
 import { denyIfBroadcastSendSecretMissing } from '../services/broadcast-send-guard.js';
 import { enforceBroadcastMassSendRateLimit } from '../services/broadcast-mass-send-rate-limit.js';
 import { fireAdminAuditLog } from '../services/admin-audit-log.js';
+import {
+  createAdminBroadcast,
+  deleteAdminBroadcast,
+  getAdminBroadcast,
+  listAdminBroadcasts,
+  sendAdminBroadcastNow,
+  sendAdminBroadcastSegment,
+  updateAdminBroadcast,
+} from '../application/admin-broadcasts.js';
 
 const broadcasts = new Hono<Env>();
 
-function serializeBroadcast(row: DbBroadcast) {
-  return {
-    id: row.id,
-    title: row.title,
-    messageType: row.message_type,
-    messageContent: row.message_content,
-    targetType: row.target_type,
-    targetTagId: row.target_tag_id,
-    status: row.status,
-    lineAccountId: row.line_account_id,
-    scheduledAt: row.scheduled_at,
-    sentAt: row.sent_at,
-    totalCount: row.total_count,
-    successCount: row.success_count,
-    createdAt: row.created_at,
-  };
+function jsonBroadcastFailure(
+  c: { json: (body: unknown, status: 400 | 403 | 404 | 502) => Response },
+  failure: Readonly<{ status: 400 | 403 | 404 | 502; body: unknown }>,
+): Response {
+  return c.json(failure.body, failure.status);
 }
 
-// GET /api/broadcasts - list all
 broadcasts.get('/api/broadcasts', async (c) => {
   try {
     const lineAccountId = c.req.query('lineAccountId');
     const scope = await resolveLineAccountScopeForRequest(c.env.DB, c);
-    const q = validateScopedLineAccountQueryParam(scope, lineAccountId);
-    if (!q.ok) {
-      return c.json(jsonBodyForLineAccountScopeFailure(q), q.status);
-    }
-
-    let items: DbBroadcast[];
-    if (lineAccountId) {
-      const result = await c.env.DB.prepare(
-        `SELECT * FROM broadcasts WHERE line_account_id = ? ORDER BY created_at DESC`,
-      )
-        .bind(lineAccountId)
-        .all<DbBroadcast>();
-      items = result.results;
-    } else {
-      items = await getBroadcasts(c.env.DB);
-    }
-    return c.json({ success: true, data: items.map(serializeBroadcast) });
+    const result = await listAdminBroadcasts(c.env.DB, scope, lineAccountId);
+    if (!result.ok) return jsonBroadcastFailure(c, result);
+    return c.json({ success: true, data: result.data });
   } catch (err) {
     console.error('GET /api/broadcasts error:', err);
     return c.json({ success: false, error: 'Internal server error' }, 500);
   }
 });
 
-// GET /api/broadcasts/:id - get single
 broadcasts.get('/api/broadcasts/:id', async (c) => {
   try {
     const id = c.req.param('id');
-    const broadcast = await getBroadcastById(c.env.DB, id);
-
-    if (!broadcast) {
-      return c.json({ success: false, error: 'Broadcast not found' }, 404);
-    }
-
     const scope = await resolveLineAccountScopeForRequest(c.env.DB, c);
-    if (!resourceLineAccountVisibleInScope(scope, broadcast.line_account_id)) {
-      return c.json({ success: false, error: 'Broadcast not found' }, 404);
-    }
-
-    return c.json({ success: true, data: serializeBroadcast(broadcast) });
+    const result = await getAdminBroadcast(c.env.DB, scope, id);
+    if (!result.ok) return jsonBroadcastFailure(c, result);
+    return c.json({ success: true, data: result.data });
   } catch (err) {
     console.error('GET /api/broadcasts/:id error:', err);
     return c.json({ success: false, error: 'Internal server error' }, 500);
   }
 });
 
-// POST /api/broadcasts - create
 broadcasts.post('/api/broadcasts', async (c) => {
   try {
     const body = await readJsonBodyWithLimit<{
@@ -117,90 +67,25 @@ broadcasts.post('/api/broadcasts', async (c) => {
       scheduledAt?: string | null;
       lineAccountId?: string | null;
     }>(c.req.raw, DEFAULT_ADMIN_JSON_BODY_LIMIT_BYTES);
-
-    if (!body.title || !body.messageType || !body.messageContent || !body.targetType) {
-      return c.json(
-        {
-          success: false,
-          error: 'title, messageType, messageContent, and targetType are required',
-        },
-        400,
-      );
-    }
-
-    if (body.targetType === 'tag' && !body.targetTagId) {
-      return c.json(
-        { success: false, error: 'targetTagId is required when targetType is "tag"' },
-        400,
-      );
-    }
-
     const scope = await resolveLineAccountScopeForRequest(c.env.DB, c);
-    const bodyLine = validateScopedLineAccountBody(scope, body.lineAccountId);
-    if (!bodyLine.ok) {
-      return c.json(jsonBodyForLineAccountScopeFailure(bodyLine), bodyLine.status);
-    }
-
-    const broadcast = await createBroadcast(c.env.DB, {
-      title: body.title,
-      messageType: body.messageType,
-      messageContent: body.messageContent,
-      targetType: body.targetType,
-      targetTagId: body.targetTagId ?? null,
-      scheduledAt: body.scheduledAt ?? null,
-    });
-
-    // Save line_account_id if provided
-    if (bodyLine.lineAccountId) {
-      await c.env.DB.prepare(`UPDATE broadcasts SET line_account_id = ? WHERE id = ?`)
-        .bind(bodyLine.lineAccountId, broadcast.id)
-        .run();
-    }
-
+    const result = await createAdminBroadcast(c.env.DB, scope, body);
+    if (!result.ok) return jsonBroadcastFailure(c, result);
     fireAdminAuditLog(c, {
       action: 'broadcast.create',
       resourceType: 'broadcast',
-      resourceId: broadcast.id,
+      resourceId: result.data.id,
       metadata: { title: body.title, targetType: body.targetType },
     });
-    return c.json(
-      {
-        success: true,
-        data: {
-          ...serializeBroadcast(broadcast),
-          lineAccountId: bodyLine.lineAccountId ?? broadcast.line_account_id ?? null,
-        },
-      },
-      201,
-    );
+    return c.json({ success: true, data: result.data }, 201);
   } catch (err) {
     console.error('POST /api/broadcasts error:', err);
     return c.json({ success: false, error: 'Internal server error' }, 500);
   }
 });
 
-// PUT /api/broadcasts/:id - update draft
 broadcasts.put('/api/broadcasts/:id', async (c) => {
   try {
     const id = c.req.param('id');
-    const existing = await getBroadcastById(c.env.DB, id);
-
-    if (!existing) {
-      return c.json({ success: false, error: 'Broadcast not found' }, 404);
-    }
-
-    const scopePut = await resolveLineAccountScopeForRequest(c.env.DB, c);
-    if (!resourceLineAccountVisibleInScope(scopePut, existing.line_account_id)) {
-      return c.json({ success: false, error: 'Broadcast not found' }, 404);
-    }
-
-    if (existing.status !== 'draft' && existing.status !== 'scheduled') {
-      return c.json(
-        { success: false, error: 'Only draft or scheduled broadcasts can be updated' },
-        400,
-      );
-    }
-
     const body = await readJsonBodyWithLimit<{
       title?: string;
       messageType?: BroadcastMessageType;
@@ -209,29 +94,15 @@ broadcasts.put('/api/broadcasts/:id', async (c) => {
       targetTagId?: string | null;
       scheduledAt?: string | null;
     }>(c.req.raw, DEFAULT_ADMIN_JSON_BODY_LIMIT_BYTES);
-
-    // Keep status in sync with scheduledAt changes
-    let statusUpdate: 'draft' | 'scheduled' | undefined;
-    if (body.scheduledAt !== undefined) {
-      statusUpdate = body.scheduledAt ? 'scheduled' : 'draft';
-    }
-
-    const updated = await updateBroadcast(c.env.DB, id, {
-      title: body.title,
-      message_type: body.messageType,
-      message_content: body.messageContent,
-      target_type: body.targetType,
-      target_tag_id: body.targetTagId,
-      scheduled_at: body.scheduledAt,
-      ...(statusUpdate !== undefined ? { status: statusUpdate } : {}),
-    });
-
+    const scope = await resolveLineAccountScopeForRequest(c.env.DB, c);
+    const result = await updateAdminBroadcast(c.env.DB, scope, id, body);
+    if (!result.ok) return jsonBroadcastFailure(c, result);
     fireAdminAuditLog(c, {
       action: 'broadcast.update',
       resourceType: 'broadcast',
       resourceId: id,
     });
-    return c.json({ success: true, data: updated ? serializeBroadcast(updated) : null });
+    return c.json({ success: true, data: result.data });
   } catch (err) {
     const jr = jsonBodyReadErrorResponse(err);
     if (jr) return c.json(jr.body, jr.status);
@@ -240,42 +111,30 @@ broadcasts.put('/api/broadcasts/:id', async (c) => {
   }
 });
 
-// DELETE /api/broadcasts/:id - delete
 broadcasts.delete('/api/broadcasts/:id', async (c) => {
   try {
     const id = c.req.param('id');
-    const existingDel = await getBroadcastById(c.env.DB, id);
-    if (!existingDel) {
-      return c.json({ success: false, error: 'Broadcast not found' }, 404);
-    }
-    const scopeDel = await resolveLineAccountScopeForRequest(c.env.DB, c);
-    if (!resourceLineAccountVisibleInScope(scopeDel, existingDel.line_account_id)) {
-      return c.json({ success: false, error: 'Broadcast not found' }, 404);
-    }
-    await deleteBroadcast(c.env.DB, id);
+    const scope = await resolveLineAccountScopeForRequest(c.env.DB, c);
+    const result = await deleteAdminBroadcast(c.env.DB, scope, id);
+    if (!result.ok) return jsonBroadcastFailure(c, result);
     fireAdminAuditLog(c, {
       action: 'broadcast.delete',
       resourceType: 'broadcast',
       resourceId: id,
     });
-    return c.json({ success: true, data: null });
+    return c.json({ success: true, data: result.data });
   } catch (err) {
     console.error('DELETE /api/broadcasts/:id error:', err);
     return c.json({ success: false, error: 'Internal server error' }, 500);
   }
 });
 
-// POST /api/broadcasts/:id/send - send now
 broadcasts.post('/api/broadcasts/:id/send', async (c) => {
   try {
     const denied = await denyIfBroadcastSendSecretMissing(c);
-    if (denied) {
-      return denied;
-    }
-
+    if (denied) return denied;
     const limitedSend = await enforceBroadcastMassSendRateLimit(c, 'broadcast-send');
     if (limitedSend) return limitedSend;
-
     let confirmSend: { confirm?: boolean };
     try {
       confirmSend = await readJsonBodyWithLimit<{ confirm?: boolean }>(
@@ -296,50 +155,16 @@ broadcasts.post('/api/broadcasts/:id/send', async (c) => {
         400,
       );
     }
-
     const id = c.req.param('id');
-    const existing = await getBroadcastById(c.env.DB, id);
-
-    if (!existing) {
-      return c.json({ success: false, error: 'Broadcast not found' }, 404);
-    }
-
-    const scopeSend = await resolveLineAccountScopeForRequest(c.env.DB, c);
-    if (!resourceLineAccountVisibleInScope(scopeSend, existing.line_account_id)) {
-      return c.json({ success: false, error: 'Broadcast not found' }, 404);
-    }
-
-    const claimedSend = await claimBroadcastForSending(c.env.DB, id);
-    if (!claimedSend) {
-      return c.json({ success: false, error: 'Broadcast is already sent or sending' }, 400);
-    }
-
-    const accessToken = await resolveLineAccessTokenForLineAccountId(
-      c.env.DB,
-      c.env.LINE_CHANNEL_ACCESS_TOKEN,
-      existing.line_account_id,
-      lineAccountDbOptions(c.env),
-    );
-    const lineClient = createLineClient(accessToken);
-    await processBroadcastSend(c.env.DB, lineClient, id, { skipMarkSending: true });
-
-    const result = await getBroadcastById(c.env.DB, id);
-    if (result && result.status !== 'sent') {
-      return c.json(
-        {
-          success: false,
-          error: 'Broadcast delivery failed',
-          data: serializeBroadcast(result),
-        },
-        502,
-      );
-    }
+    const scope = await resolveLineAccountScopeForRequest(c.env.DB, c);
+    const result = await sendAdminBroadcastNow(c.env.DB, c.env, scope, id);
+    if (!result.ok) return jsonBroadcastFailure(c, result);
     fireAdminAuditLog(c, {
       action: 'broadcast.send',
       resourceType: 'broadcast',
       resourceId: id,
     });
-    return c.json({ success: true, data: result ? serializeBroadcast(result) : null });
+    return c.json({ success: true, data: result.data });
   } catch (err) {
     const jr = jsonBodyReadErrorResponse(err);
     if (jr) return c.json(jr.body, jr.status);
@@ -348,34 +173,17 @@ broadcasts.post('/api/broadcasts/:id/send', async (c) => {
   }
 });
 
-// POST /api/broadcasts/:id/send-segment - send to a filtered segment
 broadcasts.post('/api/broadcasts/:id/send-segment', async (c) => {
   try {
     const deniedSeg = await denyIfBroadcastSendSecretMissing(c);
-    if (deniedSeg) {
-      return deniedSeg;
-    }
-
+    if (deniedSeg) return deniedSeg;
     const limitedSeg = await enforceBroadcastMassSendRateLimit(c, 'broadcast-send-segment');
     if (limitedSeg) return limitedSeg;
-
     const id = c.req.param('id');
-    const existing = await getBroadcastById(c.env.DB, id);
-
-    if (!existing) {
-      return c.json({ success: false, error: 'Broadcast not found' }, 404);
-    }
-
-    const scopeSeg = await resolveLineAccountScopeForRequest(c.env.DB, c);
-    if (!resourceLineAccountVisibleInScope(scopeSeg, existing.line_account_id)) {
-      return c.json({ success: false, error: 'Broadcast not found' }, 404);
-    }
-
     const body = await readJsonBodyWithLimit<{
       confirm?: boolean;
       conditions: SegmentCondition;
     }>(c.req.raw, DEFAULT_ADMIN_JSON_BODY_LIMIT_BYTES);
-
     if (body.confirm !== true) {
       return c.json(
         {
@@ -385,35 +193,15 @@ broadcasts.post('/api/broadcasts/:id/send-segment', async (c) => {
         400,
       );
     }
-
-    if (!body.conditions || !body.conditions.operator || !Array.isArray(body.conditions.rules)) {
-      return c.json(
-        { success: false, error: 'conditions with operator and rules array is required' },
-        400,
-      );
-    }
-
-    const claimedSeg = await claimBroadcastForSending(c.env.DB, id);
-    if (!claimedSeg) {
-      return c.json({ success: false, error: 'Broadcast is already sent or sending' }, 400);
-    }
-
-    const accessToken = await resolveLineAccessTokenForLineAccountId(
-      c.env.DB,
-      c.env.LINE_CHANNEL_ACCESS_TOKEN,
-      existing.line_account_id,
-      lineAccountDbOptions(c.env),
-    );
-    const lineClient = createLineClient(accessToken);
-    await processSegmentSend(c.env.DB, lineClient, id, body.conditions, { skipMarkSending: true });
-
-    const result = await getBroadcastById(c.env.DB, id);
+    const scope = await resolveLineAccountScopeForRequest(c.env.DB, c);
+    const result = await sendAdminBroadcastSegment(c.env.DB, c.env, scope, id, body);
+    if (!result.ok) return jsonBroadcastFailure(c, result);
     fireAdminAuditLog(c, {
       action: 'broadcast.send_segment',
       resourceType: 'broadcast',
       resourceId: id,
     });
-    return c.json({ success: true, data: result ? serializeBroadcast(result) : null });
+    return c.json({ success: true, data: result.data });
   } catch (err) {
     const jr = jsonBodyReadErrorResponse(err);
     if (jr) return c.json(jr.body, jr.status);

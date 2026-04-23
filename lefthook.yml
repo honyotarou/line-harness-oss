@@ -1,9 +1,24 @@
 # https://github.com/evilmartians/lefthook
 # After clone: pnpm exec lefthook install
+#
+# Layered cadence (editor-neutral — works for Cursor agents, Claude Code hooks, and CLI users):
+#   pre-commit → pnpm harness:fast (~7s; Biome + encapsulation + worker typecheck + worker tests)
+#     - SQL / schema.sql changes escalate to full `pnpm harness` so Rule D drift runs end-to-end
+#       with lib builds.
+#   pre-push  → pnpm harness (~18s; adds LIFF build + all-package tests; safety net before sharing)
+#
+# CI is still the ultimate gate (`pnpm harness:ci` on PR). This cadence keeps the inner loop fast
+# without letting LIFF / web / sdk regressions slip past commit.
 pre-commit:
   commands:
-    harness:
-      run: pnpm harness
+    harness-fast:
+      # If any SQL / schema file is staged, escalate to full harness so Rule D exercises lib builds.
+      run: |
+        if git diff --cached --name-only | grep -qE '^packages/db/(migrations/|schema\.sql$)'; then
+          pnpm harness
+        else
+          pnpm harness:fast
+        fi
       glob:
         - apps/**/*
         - packages/**/*
@@ -17,3 +32,10 @@ pre-commit:
       glob:
         - "**/*.{ts,tsx,js,jsx,json}"
         - biome.json
+
+pre-push:
+  commands:
+    harness-full:
+      # Full harness before sharing: picks up LIFF build + web/sdk/liff tests that pre-commit's
+      # fast path skips. Still excludes Playwright / Hurl — those run in CI or via `pnpm harness:full`.
+      run: pnpm harness

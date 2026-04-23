@@ -58,6 +58,18 @@ export async function getFriendByLineUserId(
     .first<Friend>();
 }
 
+/** All friend rows for a LINE user id (multi–LINE-account installs may have more than one). */
+export async function listFriendsByLineUserId(
+  db: D1Database,
+  lineUserId: string,
+): Promise<Friend[]> {
+  const result = await db
+    .prepare(`SELECT * FROM friends WHERE line_user_id = ? ORDER BY created_at ASC`)
+    .bind(lineUserId)
+    .all<Friend>();
+  return result.results ?? [];
+}
+
 export async function getFriendById(db: D1Database, id: string): Promise<Friend | null> {
   return db.prepare(`SELECT * FROM friends WHERE id = ?`).bind(id).first<Friend>();
 }
@@ -120,14 +132,29 @@ export async function updateFriendFollowStatus(
   db: D1Database,
   lineUserId: string,
   isFollowing: boolean,
+  /** When set, only that LINE official account’s friend row is updated (multi-account isolation). */
+  lineAccountId?: string | null,
 ): Promise<void> {
+  const now = jstNow();
+  const flag = isFollowing ? 1 : 0;
+  if (lineAccountId && lineAccountId.trim().length > 0) {
+    await db
+      .prepare(
+        `UPDATE friends
+         SET is_following = ?, updated_at = ?
+         WHERE line_user_id = ? AND line_account_id = ?`,
+      )
+      .bind(flag, now, lineUserId, lineAccountId.trim())
+      .run();
+    return;
+  }
   await db
     .prepare(
       `UPDATE friends
        SET is_following = ?, updated_at = ?
-       WHERE line_user_id = ?`,
+       WHERE line_user_id = ? AND line_account_id IS NULL`,
     )
-    .bind(isFollowing ? 1 : 0, jstNow(), lineUserId)
+    .bind(flag, now, lineUserId)
     .run();
 }
 

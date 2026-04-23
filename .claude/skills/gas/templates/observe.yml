@@ -1,0 +1,85 @@
+name: Observe (scheduled)
+
+on:
+  workflow_dispatch:
+  schedule:
+    # Monthly, 1st day 02:30 UTC (adjust as needed)
+    - cron: '30 2 1 * *'
+
+concurrency:
+  group: observe-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  observe:
+    runs-on: ubuntu-latest
+
+    strategy:
+      # Speed is optional; stability is mandatory.
+      max-parallel: 2
+      fail-fast: false
+      matrix:
+        slice:
+          - name: unit-coverage
+            command: npx vitest run --coverage
+          - name: e2e
+            command: npx playwright test
+          - name: build-gas
+            command: npm run build:gas
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install
+        run: npm ci
+
+      - name: Install Playwright Chromium (for e2e slice)
+        if: matrix.slice.name == 'e2e'
+        run: npx playwright install chromium --with-deps
+
+      - name: Run (with retry)
+        run: |
+          set -euo pipefail
+          echo "slice=${{ matrix.slice.name }}"
+          echo "cmd=${{ matrix.slice.command }}"
+
+          # Retry once to absorb transient failures (network, flaky infra).
+          attempt=1
+          until [ "$attempt" -gt 2 ]; do
+            echo "Attempt ${attempt}/2"
+            if ${{ matrix.slice.command }}; then
+              exit 0
+            fi
+            attempt=$((attempt+1))
+            sleep 5
+          done
+          exit 1
+
+      - name: Upload artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: observe-${{ matrix.slice.name }}-${{ github.run_id }}
+          if-no-files-found: ignore
+          path: |
+            coverage/**
+            playwright-report/**
+            test-results/**
+            gas/Code.gs
+
+      - name: Summary
+        if: always()
+        run: |
+          {
+            echo "## Observe run"
+            echo ""
+            echo "- slice: \`${{ matrix.slice.name }}\`"
+            echo "- command: \`${{ matrix.slice.command }}\`"
+            echo "- run: \`${{ github.run_id }}\`"
+          } >> "$GITHUB_STEP_SUMMARY"
+

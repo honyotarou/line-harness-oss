@@ -34,9 +34,20 @@ function toAutoReply(row: AutoReplyRow): AutoReply {
 
 export async function getAutoReplies(db: D1Database, lineAccountId?: string): Promise<AutoReply[]> {
   if (lineAccountId) {
+    // When more than one LINE account is active, `line_account_id IS NULL` rules are not
+    // cross-applied to other accounts (tenant isolation). Single-active keeps legacy NULL = global.
     const result = await db
       .prepare(
-        `SELECT * FROM auto_replies WHERE (line_account_id IS NULL OR line_account_id = ?) ORDER BY created_at DESC`,
+        `SELECT ar.*
+         FROM auto_replies ar
+         WHERE (
+           ar.line_account_id = ?
+           OR (
+             ar.line_account_id IS NULL
+             AND (SELECT COUNT(*) FROM line_accounts WHERE is_active = 1) <= 1
+           )
+         )
+         ORDER BY ar.created_at DESC`,
       )
       .bind(lineAccountId)
       .all<AutoReplyRow>();

@@ -75,6 +75,12 @@ export async function getStripeEventByStripeId(
     .first<StripeEventRow>();
 }
 
+export type CreateStripeEventResult = Readonly<{
+  row: StripeEventRow;
+  /** False when another concurrent webhook inserted the same `stripe_event_id` first. */
+  inserted: boolean;
+}>;
+
 export async function createStripeEvent(
   db: D1Database,
   input: {
@@ -85,12 +91,12 @@ export async function createStripeEvent(
     currency?: string;
     metadata?: string;
   },
-): Promise<StripeEventRow> {
+): Promise<CreateStripeEventResult> {
   const id = crypto.randomUUID();
   const now = jstNow();
   await db
     .prepare(
-      `INSERT INTO stripe_events (id, stripe_event_id, event_type, friend_id, amount, currency, metadata, processed_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+      `INSERT OR IGNORE INTO stripe_events (id, stripe_event_id, event_type, friend_id, amount, currency, metadata, processed_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
     )
     .bind(
       id,
@@ -103,8 +109,9 @@ export async function createStripeEvent(
       now,
     )
     .run();
-  return (await db
-    .prepare(`SELECT * FROM stripe_events WHERE id = ?`)
-    .bind(id)
-    .first<StripeEventRow>())!;
+  const row = await getStripeEventByStripeId(db, input.stripeEventId);
+  if (!row) {
+    throw new Error('stripe_event_row_missing_after_insert');
+  }
+  return { row, inserted: row.id === id };
 }

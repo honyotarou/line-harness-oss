@@ -1,6 +1,7 @@
 import { Hono } from 'hono';
 import { listAdminAuditLogs } from '@line-crm/db';
 import type { Env } from '../index.js';
+import { resolveLineAccountScopeForRequest } from '../services/admin-line-account-scope.js';
 import {
   deepEscapeHtmlStringLeaves,
   escapeHtmlTextForJsonApi,
@@ -11,6 +12,20 @@ const adminAudit = new Hono<Env>();
 
 adminAudit.get('/api/admin/audit-log', async (c) => {
   try {
+    // F5b: admin_audit_log has no per-tenant column and contains cross-tenant
+    // operator / resource / email data. Treat it as owner-only: a restricted
+    // (per-tenant) principal must not enumerate other tenants' audit trail.
+    const scope = await resolveLineAccountScopeForRequest(c.env.DB, c);
+    if (scope.mode !== 'all') {
+      return c.json(
+        {
+          success: false,
+          error: 'Forbidden: admin audit log requires an unrestricted admin principal',
+        },
+        403,
+      );
+    }
+
     const rawLimit = Number(c.req.query('limit') ?? '50');
     const limit = Number.isFinite(rawLimit) ? rawLimit : 50;
     const rawOffset = Number(c.req.query('offset') ?? '0');

@@ -255,6 +255,40 @@ describe('incoming webhook receive route', () => {
     expect(eventBusMocks.fireEvent).toHaveBeenCalledOnce();
   });
 
+  it('forwards the webhook line_account_id to fireEvent (cross-tenant automation guard)', async () => {
+    dbMocks.getIncomingWebhookById.mockResolvedValue({
+      id: 'incoming-A',
+      source_type: 'custom',
+      secret: 'top-secret',
+      line_account_id: 'acc-A',
+      is_active: 1,
+    });
+
+    const { webhooks } = await import('../../src/routes/webhooks.js');
+    const app = new Hono();
+    app.route('/', webhooks);
+
+    const body = JSON.stringify({ ok: true });
+    const ts = Math.floor(Date.now() / 1000);
+    const response = await app.fetch(
+      new Request('http://localhost/api/webhooks/incoming/incoming-A/receive', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          ...signIncomingReceive('top-secret', body, ts),
+        },
+        body,
+      }),
+      { DB: createReceiveTestDb() } as never,
+    );
+
+    expect(response.status).toBe(200);
+    expect(eventBusMocks.fireEvent).toHaveBeenCalledOnce();
+    // Signature: fireEvent(db, eventType, payload, lineAccessToken, lineAccountId, options)
+    const call = eventBusMocks.fireEvent.mock.calls[0]!;
+    expect(call[4]).toBe('acc-A');
+  });
+
   it('rejects legacy body-only HMAC when X-Webhook-Timestamp is omitted (replay hardening)', async () => {
     dbMocks.getIncomingWebhookById.mockResolvedValue({
       id: 'incoming-1',

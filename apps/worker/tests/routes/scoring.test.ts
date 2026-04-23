@@ -10,9 +10,14 @@ const dbMocks = vi.hoisted(() => ({
   getFriendScore: vi.fn(),
   getFriendScoreHistory: vi.fn(),
   addScore: vi.fn(),
+  getFriendById: vi.fn(),
+  listPrincipalLineAccountIdsForEmail: vi.fn(),
 }));
 
-vi.mock('@line-crm/db', () => dbMocks);
+vi.mock('@line-crm/db', async (importOriginal) => {
+  const o = await importOriginal<typeof import('@line-crm/db')>();
+  return { ...o, ...dbMocks };
+});
 
 describe('scoring routes', () => {
   beforeEach(() => {
@@ -111,6 +116,84 @@ describe('scoring routes', () => {
     );
 
     expect(response.status).toBe(400);
+    expect(dbMocks.addScore).not.toHaveBeenCalled();
+  });
+
+  it('GET /api/friends/:id/score returns 404 when the friend belongs to another tenant (F5a)', async () => {
+    dbMocks.getFriendById.mockResolvedValue({
+      id: 'friend-B',
+      line_account_id: 'acc-B',
+      line_user_id: 'U',
+      display_name: 'B',
+      metadata: '{}',
+      picture_url: null,
+      status_message: null,
+      is_following: 1,
+      user_id: null,
+      created_at: '2026-03-26T10:00:00+09:00',
+      updated_at: '2026-03-26T10:00:00+09:00',
+    });
+    dbMocks.listPrincipalLineAccountIdsForEmail.mockResolvedValue(['acc-A']);
+
+    const { scoring } = await import('../../src/routes/scoring.js');
+    const app = new Hono();
+    app.use('*', async (c, next) => {
+      c.set('cfAccessJwtPayload', { email: 'scoped@example.com' });
+      await next();
+    });
+    app.route('/', scoring);
+
+    const response = await app.fetch(new Request('http://localhost/api/friends/friend-B/score'), {
+      DB: {} as D1Database,
+      API_KEY: 'k',
+      REQUIRE_CLOUDFLARE_ACCESS_JWT: '1',
+      CLOUDFLARE_ACCESS_TEAM_DOMAIN: 'team.cloudflareaccess.com',
+    } as never);
+
+    expect(response.status).toBe(404);
+    expect(dbMocks.getFriendScore).not.toHaveBeenCalled();
+    expect(dbMocks.getFriendScoreHistory).not.toHaveBeenCalled();
+  });
+
+  it('POST /api/friends/:id/score returns 404 and does NOT addScore on cross-tenant friend (F5a)', async () => {
+    dbMocks.getFriendById.mockResolvedValue({
+      id: 'friend-B',
+      line_account_id: 'acc-B',
+      line_user_id: 'U',
+      display_name: 'B',
+      metadata: '{}',
+      picture_url: null,
+      status_message: null,
+      is_following: 1,
+      user_id: null,
+      created_at: '2026-03-26T10:00:00+09:00',
+      updated_at: '2026-03-26T10:00:00+09:00',
+    });
+    dbMocks.listPrincipalLineAccountIdsForEmail.mockResolvedValue(['acc-A']);
+
+    const { scoring } = await import('../../src/routes/scoring.js');
+    const app = new Hono();
+    app.use('*', async (c, next) => {
+      c.set('cfAccessJwtPayload', { email: 'scoped@example.com' });
+      await next();
+    });
+    app.route('/', scoring);
+
+    const response = await app.fetch(
+      new Request('http://localhost/api/friends/friend-B/score', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ scoreChange: -500, reason: 'sabotage' }),
+      }),
+      {
+        DB: {} as D1Database,
+        API_KEY: 'k',
+        REQUIRE_CLOUDFLARE_ACCESS_JWT: '1',
+        CLOUDFLARE_ACCESS_TEAM_DOMAIN: 'team.cloudflareaccess.com',
+      } as never,
+    );
+
+    expect(response.status).toBe(404);
     expect(dbMocks.addScore).not.toHaveBeenCalled();
   });
 });

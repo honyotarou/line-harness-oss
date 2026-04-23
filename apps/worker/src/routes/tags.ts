@@ -1,53 +1,53 @@
 import { Hono } from 'hono';
-import { getTags, createTag, deleteTag } from '@line-crm/db';
-import type { Tag as DbTag } from '@line-crm/db';
+import {
+  createAdminTag,
+  deleteAdminTag,
+  listAdminTags,
+  type CreateAdminTagBody,
+} from '../application/admin-tags.js';
 import type { Env } from '../index.js';
 import {
   DEFAULT_ADMIN_JSON_BODY_LIMIT_BYTES,
   jsonBodyReadErrorResponse,
   readJsonBodyWithLimit,
 } from '../services/request-body.js';
+import { resolveLineAccountScopeForRequest } from '../services/admin-line-account-scope.js';
 
 const tags = new Hono<Env>();
 
-function serializeTag(row: DbTag) {
-  return {
-    id: row.id,
-    name: row.name,
-    color: row.color,
-    createdAt: row.created_at,
-  };
+function jsonTagFailure(
+  c: { json: (body: unknown, status?: 400 | 403 | 404) => Response },
+  failure: Readonly<{ body: unknown; status: number }>,
+) {
+  return c.json(failure.body, failure.status as 400 | 403 | 404);
 }
 
-// GET /api/tags - list all tags
 tags.get('/api/tags', async (c) => {
   try {
-    const items = await getTags(c.env.DB);
-    return c.json({ success: true, data: items.map(serializeTag) });
+    const scope = await resolveLineAccountScopeForRequest(c.env.DB, c);
+    const out = await listAdminTags(c.env.DB, scope, c.req.query('lineAccountId'));
+    if (!out.ok) {
+      return jsonTagFailure(c, out);
+    }
+    return c.json({ success: true, data: out.data });
   } catch (err) {
     console.error('GET /api/tags error:', err);
     return c.json({ success: false, error: 'Internal server error' }, 500);
   }
 });
 
-// POST /api/tags - create tag
 tags.post('/api/tags', async (c) => {
   try {
-    const body = await readJsonBodyWithLimit<{ name: string; color?: string }>(
+    const body = await readJsonBodyWithLimit<CreateAdminTagBody>(
       c.req.raw,
       DEFAULT_ADMIN_JSON_BODY_LIMIT_BYTES,
     );
-
-    if (!body.name) {
-      return c.json({ success: false, error: 'name is required' }, 400);
+    const scope = await resolveLineAccountScopeForRequest(c.env.DB, c);
+    const out = await createAdminTag(c.env.DB, scope, body);
+    if (!out.ok) {
+      return jsonTagFailure(c, out);
     }
-
-    const tag = await createTag(c.env.DB, {
-      name: body.name,
-      color: body.color,
-    });
-
-    return c.json({ success: true, data: serializeTag(tag) }, 201);
+    return c.json({ success: true, data: out.data }, 201);
   } catch (err) {
     const jr = jsonBodyReadErrorResponse(err);
     if (jr) return c.json(jr.body, jr.status);
@@ -56,12 +56,14 @@ tags.post('/api/tags', async (c) => {
   }
 });
 
-// DELETE /api/tags/:id - delete tag
 tags.delete('/api/tags/:id', async (c) => {
   try {
-    const id = c.req.param('id');
-    await deleteTag(c.env.DB, id);
-    return c.json({ success: true, data: null });
+    const scope = await resolveLineAccountScopeForRequest(c.env.DB, c);
+    const out = await deleteAdminTag(c.env.DB, scope, c.req.param('id'));
+    if (!out.ok) {
+      return jsonTagFailure(c, out);
+    }
+    return c.json({ success: true, data: out.data });
   } catch (err) {
     console.error('DELETE /api/tags/:id error:', err);
     return c.json({ success: false, error: 'Internal server error' }, 500);

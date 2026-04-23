@@ -29,11 +29,15 @@ CREATE INDEX IF NOT EXISTS idx_friends_line_account_id ON friends (line_account_
 -- Tags
 -- ============================================================
 CREATE TABLE IF NOT EXISTS tags (
-  id         TEXT PRIMARY KEY,
-  name       TEXT UNIQUE NOT NULL,
-  color      TEXT NOT NULL DEFAULT '#3B82F6',
-  created_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%f', 'now', '+9 hours'))
+  id               TEXT PRIMARY KEY,
+  name             TEXT NOT NULL,
+  color            TEXT NOT NULL DEFAULT '#3B82F6',
+  line_account_id  TEXT REFERENCES line_accounts (id) ON DELETE SET NULL,
+  created_at       TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%f', 'now', '+9 hours'))
 );
+
+CREATE UNIQUE INDEX IF NOT EXISTS idx_tags_scope_name ON tags (COALESCE(line_account_id, ''), name);
+CREATE INDEX IF NOT EXISTS idx_tags_line_account_id ON tags (line_account_id);
 
 -- ============================================================
 -- Friend <-> Tag join
@@ -362,16 +366,19 @@ CREATE INDEX IF NOT EXISTS idx_admin_audit_log_created_at ON admin_audit_log (cr
 -- access_token / refresh_token / api_key: values may be legacy plaintext or enc1.*/enc2.* AES-GCM
 -- ciphertext when CALENDAR_TOKEN_ENCRYPTION_SECRET is set (Worker calendar-tokens + calendar-integration).
 CREATE TABLE IF NOT EXISTS google_calendar_connections (
-  id            TEXT PRIMARY KEY,
-  calendar_id   TEXT NOT NULL,
-  access_token  TEXT,
-  refresh_token TEXT,
-  api_key       TEXT,
-  auth_type     TEXT NOT NULL DEFAULT 'api_key',
-  is_active     INTEGER NOT NULL DEFAULT 1,
-  created_at    TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%f', 'now', '+9 hours')),
-  updated_at    TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%f', 'now', '+9 hours'))
+  id              TEXT PRIMARY KEY,
+  calendar_id     TEXT NOT NULL,
+  access_token    TEXT,
+  refresh_token   TEXT,
+  api_key         TEXT,
+  auth_type       TEXT NOT NULL DEFAULT 'api_key',
+  is_active       INTEGER NOT NULL DEFAULT 1,
+  line_account_id TEXT REFERENCES line_accounts (id) ON DELETE SET NULL,
+  created_at      TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%f', 'now', '+9 hours')),
+  updated_at      TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%f', 'now', '+9 hours'))
 );
+
+CREATE INDEX IF NOT EXISTS idx_google_calendar_connections_line_account_id ON google_calendar_connections (line_account_id);
 
 CREATE TABLE IF NOT EXISTS calendar_bookings (
   id             TEXT PRIMARY KEY,
@@ -633,11 +640,14 @@ CREATE TABLE IF NOT EXISTS tracked_links (
   scenario_id          TEXT REFERENCES scenarios (id) ON DELETE SET NULL,
   intro_template_id    TEXT REFERENCES templates (id) ON DELETE SET NULL,
   reward_template_id   TEXT REFERENCES templates (id) ON DELETE SET NULL,
+  line_account_id      TEXT REFERENCES line_accounts (id) ON DELETE SET NULL,
   is_active            INTEGER NOT NULL DEFAULT 1,
   click_count          INTEGER NOT NULL DEFAULT 0,
   created_at           TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%f', 'now', '+9 hours')),
   updated_at           TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%f', 'now', '+9 hours'))
 );
+
+CREATE INDEX IF NOT EXISTS idx_tracked_links_line_account_id ON tracked_links (line_account_id);
 
 CREATE TABLE IF NOT EXISTS link_clicks (
   id              TEXT PRIMARY KEY,

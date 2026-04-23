@@ -12,6 +12,7 @@ export type TrackedLink = Readonly<{
   scenario_id: string | null;
   intro_template_id: string | null;
   reward_template_id: string | null;
+  line_account_id: string | null;
   is_active: number;
   click_count: number;
   created_at: string;
@@ -27,7 +28,28 @@ export type LinkClick = Readonly<{
 
 // ── CRUD ─────────────────────────────────────────────────────────────────────
 
-export async function getTrackedLinks(db: D1Database): Promise<TrackedLink[]> {
+export type GetTrackedLinksOptions = Readonly<{
+  lineAccountIds?: readonly string[];
+}>;
+
+export async function getTrackedLinks(
+  db: D1Database,
+  opts: GetTrackedLinksOptions = {},
+): Promise<TrackedLink[]> {
+  const ids = opts.lineAccountIds;
+  if (ids !== undefined) {
+    if (ids.length === 0) {
+      return [];
+    }
+    const ph = ids.map(() => '?').join(',');
+    const result = await db
+      .prepare(
+        `SELECT * FROM tracked_links WHERE line_account_id IS NOT NULL AND line_account_id IN (${ph}) ORDER BY created_at DESC`,
+      )
+      .bind(...ids)
+      .all<TrackedLink>();
+    return result.results;
+  }
   const result = await db
     .prepare(`SELECT * FROM tracked_links ORDER BY created_at DESC`)
     .all<TrackedLink>();
@@ -41,6 +63,7 @@ export async function getTrackedLinkById(db: D1Database, id: string): Promise<Tr
 export type CreateTrackedLinkInput = Readonly<{
   name: string;
   originalUrl: string;
+  lineAccountId?: string | null;
   tagId?: string | null;
   scenarioId?: string | null;
   introTemplateId?: string | null;
@@ -89,10 +112,12 @@ export async function createTrackedLink(
   const id = crypto.randomUUID();
   const now = jstNow();
 
+  const lineAccountId = input.lineAccountId?.trim() ? input.lineAccountId.trim() : null;
+
   await db
     .prepare(
-      `INSERT INTO tracked_links (id, name, original_url, tag_id, scenario_id, intro_template_id, reward_template_id, is_active, click_count, created_at, updated_at)
-       VALUES (?, ?, ?, ?, ?, ?, ?, 1, 0, ?, ?)`,
+      `INSERT INTO tracked_links (id, name, original_url, tag_id, scenario_id, intro_template_id, reward_template_id, line_account_id, is_active, click_count, created_at, updated_at)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, 1, 0, ?, ?)`,
     )
     .bind(
       id,
@@ -102,6 +127,7 @@ export async function createTrackedLink(
       input.scenarioId ?? null,
       introTemplateId,
       rewardTemplateId,
+      lineAccountId,
       now,
       now,
     )
@@ -113,6 +139,7 @@ export async function createTrackedLink(
 export type UpdateTrackedLinkInput = Partial<{
   name: string;
   originalUrl: string;
+  lineAccountId: string | null;
   tagId: string | null;
   scenarioId: string | null;
   introTemplateId: string | null;
@@ -135,6 +162,12 @@ export async function updateTrackedLink(
   }
   const tagId = 'tagId' in input ? (input.tagId ?? null) : existing.tag_id;
   const scenarioId = 'scenarioId' in input ? (input.scenarioId ?? null) : existing.scenario_id;
+  const lineAccountId =
+    'lineAccountId' in input
+      ? input.lineAccountId?.trim()
+        ? input.lineAccountId.trim()
+        : null
+      : existing.line_account_id;
   const introTemplateId =
     'introTemplateId' in input
       ? (input.introTemplateId ?? null)
@@ -152,7 +185,7 @@ export async function updateTrackedLink(
     .prepare(
       `UPDATE tracked_links
        SET name = ?, original_url = ?, tag_id = ?, scenario_id = ?,
-           intro_template_id = ?, reward_template_id = ?, is_active = ?, updated_at = ?
+           intro_template_id = ?, reward_template_id = ?, line_account_id = ?, is_active = ?, updated_at = ?
        WHERE id = ?`,
     )
     .bind(
@@ -162,6 +195,7 @@ export async function updateTrackedLink(
       scenarioId,
       introTemplateId,
       rewardTemplateId,
+      lineAccountId,
       isActive,
       now,
       id,

@@ -90,7 +90,7 @@ incomingWebhookReceive.post('/api/webhooks/incoming/:id/receive', async (c) => {
       },
       c.env,
       undefined,
-      undefined,
+      wh.line_account_id ?? null,
       { incomingWebhookTriggered: true },
     );
 

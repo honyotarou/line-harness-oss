@@ -7,6 +7,7 @@ const dbMocks = vi.hoisted(() => ({
   createAutoReply: vi.fn(),
   updateAutoReply: vi.fn(),
   deleteAutoReply: vi.fn(),
+  countActiveLineAccounts: vi.fn(),
 }));
 
 vi.mock('@line-crm/db', () => dbMocks);
@@ -14,6 +15,10 @@ vi.mock('@line-crm/db', () => dbMocks);
 describe('auto-replies routes', () => {
   afterEach(() => {
     vi.restoreAllMocks();
+  });
+
+  beforeEach(() => {
+    dbMocks.countActiveLineAccounts.mockResolvedValue(0);
   });
 
   it('GET /api/auto-replies returns serialized rows', async () => {
@@ -62,6 +67,25 @@ describe('auto-replies routes', () => {
       { DB: {} as D1Database } as never,
     );
     expect(res.status).toBe(400);
+  });
+
+  it('POST returns 400 when multiple active LINE accounts and lineAccountId is omitted', async () => {
+    const { autoReplies } = await import('../../src/routes/auto-replies.js');
+    const app = new Hono();
+    app.route('/', autoReplies);
+
+    dbMocks.countActiveLineAccounts.mockResolvedValue(2);
+
+    const res = await app.fetch(
+      new Request('http://w/api/auto-replies', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ keyword: 'k', responseContent: 'r' }),
+      }),
+      { DB: {} as D1Database } as never,
+    );
+    expect(res.status).toBe(400);
+    expect(dbMocks.createAutoReply).not.toHaveBeenCalled();
   });
 
   it('PUT /api/auto-replies/:id returns 404 when missing', async () => {

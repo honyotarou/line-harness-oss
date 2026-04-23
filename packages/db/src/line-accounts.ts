@@ -201,3 +201,10 @@ export async function updateLineAccount(
 export async function deleteLineAccount(db: D1Database, id: string): Promise<void> {
   await db.prepare(`DELETE FROM line_accounts WHERE id = ?`).bind(id).run();
 }
+
+export async function countActiveLineAccounts(db: D1Database): Promise<number> {
+  const row = await db
+    .prepare(`SELECT COUNT(*) AS n FROM line_accounts WHERE is_active = 1`)
+    .first<{ n: number }>();
+  return Number(row?.n ?? 0);
+}
