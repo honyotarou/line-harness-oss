@@ -18,6 +18,7 @@
     "audit:ci": "node scripts/npm-bulk-audit-ci.mjs --audit-level=high",
     "check:encapsulation": "node scripts/check-encapsulation.mjs",
     "harness": "bash scripts/harness-check.sh",
+    "harness:fast": "bash scripts/harness-fast.sh",
     "harness:ci": "bash scripts/harness-ci-parity.sh",
     "harness:full": "bash scripts/harness-full.sh",
     "db:migrate:worker-local": "pnpm --filter worker exec bash scripts/wrangler.sh d1 execute line-crm --local --file=../../packages/db/schema.sql",

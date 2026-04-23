@@ -72,7 +72,9 @@
 4. **新規 `routes/*.ts`** を追加したら **`scripts/check-encapsulation.mjs` の `ROUTE_LINE_CAPS`** にエントリを足す（忘れると CI / Step 7 で即失敗）。
 5. レイヤー・行数上限を触ったら **Green のあと再度** **`pnpm check:encapsulation`**（Step 7 まで待たない）。
 
-**DB スキーマを変える場合**: `packages/db/migrations/` と `schema.sql` の整合、`createUser` 等のコードパスを同じ PR で更新し、**Red は DB ヘルパーまたはルート経由**で表現する。
+**DB スキーマを変える場合**: `packages/db/migrations/` と `schema.sql` の整合、`createUser` 等のコードパスを同じ PR で更新し、**Red は DB ヘルパーまたはルート経由**で表現する。**Rule D（`scripts/check-encapsulation.mjs`）が drift を検知**するので、migration の `ALTER TABLE ADD COLUMN` / `CREATE TABLE` は必ず `schema.sql` に同じ列・同じ table を反映（忘れると `pnpm check:encapsulation` が即赤）。
+
+**TDD 反復の内ループ**（Step 4〜6 を回す間）: `pnpm harness:fast`（≒7s — Biome + encapsulation + worker typecheck + worker tests）を使う。**pre-commit に同じ fast が掛かる**ので commit 時に再発見されない。SQL / `schema.sql` を編集したコミットは Lefthook が **自動で full harness にエスカレート**（lib build 付きで Rule D を exercise する）。
 
 ---
 
@@ -96,3 +98,30 @@
 ## ステップ完了後
 
 必ず **Step 7**（層別ゲート）に進み、**`pnpm harness`** で緑を確認する（中に **カプセル化・LIFF 本番 build・全パッケージの unit** が入る。ルートだけの修正でもここで落ちうる）。**pentest 自走**でもラウンドごとに同じ（[steps-pentest-tdd-loop.md](steps-pentest-tdd-loop.md)）。
+
+---
+
+## よくある失敗（shuusei 流・TDD アンチパターン）
+
+**このサイクルで踏みがちな罠**。出たら直前のステップに戻る:
+
+| アンチパターン | 何が起きる | 戻るべき Step |
+|----------------|------------|----------------|
+| **Red なしで Green から書き始める** | 「既に通っているだけのテスト」を後付けして緑を装う。回帰が弱まる | Step 4（失敗を目視してから） |
+| **コンパイルエラーだけの Red** | 意図した理由で失敗していない。実装後に偶然緑になると仕様が固定されない | Step 4（アサーションが将来の振る舞いを表す形に） |
+| **1 Red に複数論点を詰める** | Green の最小差分が決まらず、何が効いたか追えない | Step 3（受け入れ条件を分割） |
+| **Green で無関係リファクタを同梱** | レビュー困難・回帰時に bisect 不能 | Step 5（最小差分のみ）→ Step 6 で別コミット |
+| **Green 後に `pnpm check:encapsulation` を Step 7 までサボる** | ルート肥大・レイヤー違反を CI で発覚し手戻り | Step 4〜5（変更中に毎回） |
+| **新規 `routes/*.ts` を足して `ROUTE_LINE_CAPS` に登録忘れ** | ゲートが即赤。「後で」で通らない | Step 5（追加と同じコミット） |
+| **route にロジックを足して cap 超過 → cap を上げる PR** | 設計劣化が蓄積。同じ route に次の変更が落ちにくくなる | Step 5（**`application/` / `services/` に抽出**してから） |
+| **Refactor で新しい振る舞いを入れる** | 緑が偽装される。Red なし Green と同じ | Step 6 を止め Step 3 に戻る（新規振る舞いは別サイクル） |
+| **`class` / `interface` を使って `check:encapsulation` を赤にする** | 設計ゲートで即停止。SKILL 5.4.1 で明示禁止 | Step 5（関数 + 型エイリアス + Readonly + Branded Type に作法統一） |
+| **テストを「合わせるだけ」緩めて緑にする** | 実装バグを緑で固定。要件変更ではないなら **禁止** | Step 5（実装を直す。要件変更ならユーザー確認 → Step 3 に戻る） |
+| **harness を `--no-verify` / ガード削除で通す** | セキュリティ不変を削る。本リポでは **禁止** | [steps-harness.md](steps-harness.md) の **「マージゲートが赤いとき」** |
+
+**1 ルール**: 「Red で失敗を目視 → 最小 Green → 緑のまま Refactor → `pnpm harness`」の **どれか 1 つを飛ばしたら**、直前のステップに戻る。**飛ばしたまま完了と呼ばない**。
+
+## 関連（出典）
+
+- **Empirical prompt tuning（本節の アンチパターン表・自己再読禁止原則の出典）**: [`shuusei/SKILL.md`](../shuusei/SKILL.md)。TDD の作法自体は t-wada 系、skill 改訂の評価ループは shuusei。
+- **pentest の各ラウンド末ゲート**: [steps-pentest-tdd-loop.md](steps-pentest-tdd-loop.md)（`pnpm harness` と報告フォーマットは同じ）

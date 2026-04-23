@@ -8,8 +8,11 @@ import {
   getFriendScore,
   getFriendScoreHistory,
   addScore,
+  getFriendById,
 } from '@line-crm/db';
 import type { Env } from '../index.js';
+import { resolveLineAccountScopeForRequest } from '../services/admin-line-account-scope.js';
+import { friendScopeGuardCheck } from '../services/friend-scope-guard.js';
 import {
   DEFAULT_ADMIN_JSON_BODY_LIMIT_BYTES,
   jsonBodyReadErrorResponse,
@@ -121,6 +124,12 @@ scoring.delete('/api/scoring-rules/:id', async (c) => {
 scoring.get('/api/friends/:id/score', async (c) => {
   try {
     const friendId = c.req.param('id');
+    const friend = await getFriendById(c.env.DB, friendId);
+    const scope = await resolveLineAccountScopeForRequest(c.env.DB, c);
+    const gate = friendScopeGuardCheck(scope, friend);
+    if (!gate.ok) {
+      return c.json(gate.body, gate.status);
+    }
     const [score, history] = await Promise.all([
       getFriendScore(c.env.DB, friendId),
       getFriendScoreHistory(c.env.DB, friendId),
@@ -167,6 +176,12 @@ scoring.post('/api/friends/:id/score', async (c) => {
         },
         400,
       );
+    }
+    const friend = await getFriendById(c.env.DB, friendId);
+    const scope = await resolveLineAccountScopeForRequest(c.env.DB, c);
+    const gate = friendScopeGuardCheck(scope, friend);
+    if (!gate.ok) {
+      return c.json(gate.body, gate.status);
     }
     await addScore(c.env.DB, { friendId, scoreChange: body.scoreChange, reason: body.reason });
     const newScore = await getFriendScore(c.env.DB, friendId);

@@ -14,7 +14,7 @@ import {
   writeAdminSessionCookie,
 } from '../services/admin-session.js';
 import { jsonBodyReadErrorResponse, readJsonBodyWithLimit } from '../services/request-body.js';
-import { enforceRateLimit } from '../services/request-rate-limit.js';
+import { enforceRateLimit, getRequestClientAddress } from '../services/request-rate-limit.js';
 import {
   hasValidAdminBrowserClientHeader,
   shouldRequireAdminBrowserClientHeader,
@@ -51,6 +51,11 @@ authRoutes.post('/api/auth/login', async (c) => {
         },
         503,
       );
+    }
+
+    if (getRequestClientAddress(c.req.raw) === 'anonymous') {
+      c.header('Retry-After', '60');
+      return c.json({ success: false, error: 'Too many requests' }, 429);
     }
 
     const limited = await enforceRateLimit(c, {

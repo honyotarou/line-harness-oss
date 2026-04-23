@@ -28,6 +28,7 @@ import {
 } from './automation-send-webhook-policy.js';
 import { fetchHttpsUrlAfterDnsAssertion } from './outbound-https-fetch.js';
 import { mergeFriendMetadataPatch } from './friend-metadata-merge.js';
+import { tenantScopedRuleMatches } from './tenant-scoped-rule-filter.js';
 import { parseStringArrayJson, tryParseJsonLoose, tryParseJsonRecord } from './safe-json.js';
 
 export type EventPayload = Readonly<{
@@ -232,10 +233,9 @@ async function processAutomations(
 ): Promise<void> {
   try {
     const allAutomations = await getActiveAutomationsByEvent(db, eventType);
-    // Filter by account: match this account's automations + unassigned (backward compat)
-    const filtered = allAutomations.filter(
-      (a) => !a.line_account_id || !lineAccountId || a.line_account_id === lineAccountId,
-    );
+    // Fail-closed: a scoped automation must match the caller's tenant exactly.
+    // A global automation (line_account_id=null) fires in any tenant context.
+    const filtered = allAutomations.filter((a) => tenantScopedRuleMatches(a, lineAccountId));
     if (filtered.length > MAX_AUTOMATIONS_PER_EVENT) {
       console.warn(
         `processAutomations: truncating ${filtered.length} automations to ${MAX_AUTOMATIONS_PER_EVENT} for event ${eventType}`,
@@ -511,9 +511,7 @@ async function processNotifications(
 ): Promise<void> {
   try {
     const allRules = await getActiveNotificationRulesByEvent(db, eventType);
-    const rules = allRules.filter(
-      (r) => !r.line_account_id || !lineAccountId || r.line_account_id === lineAccountId,
-    );
+    const rules = allRules.filter((r) => tenantScopedRuleMatches(r, lineAccountId));
 
     for (const rule of rules) {
       const channels = parseStringArrayJson(rule.channels);

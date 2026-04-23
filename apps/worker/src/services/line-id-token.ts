@@ -1,14 +1,17 @@
+import type { LineLoginChannelId, LineLoginSub } from '@line-crm/shared';
+import { verifiedLineLoginChannelId, verifiedLineLoginSub } from '@line-crm/shared';
+
 type LineLoginAccountLike = Readonly<{
   login_channel_id: string | null;
 }>;
 
 export type VerifiedLineIdToken = Readonly<{
-  sub: string;
+  sub: LineLoginSub;
   email?: string;
   name?: string;
   picture?: string;
   /** LINE Login channel id (`client_id` / token `aud`) that verified this token. */
-  loginChannelId: string;
+  loginChannelId: LineLoginChannelId;
 }>;
 
 export function collectLineLoginChannelIds(
@@ -57,11 +60,11 @@ export async function verifyLineIdToken(
       if (data.aud !== channelId) continue;
 
       return {
-        sub: data.sub,
+        sub: verifiedLineLoginSub(data.sub),
         name: data.name,
         picture: data.picture,
         email: data.email,
-        loginChannelId: channelId,
+        loginChannelId: verifiedLineLoginChannelId(channelId),
       } satisfies VerifiedLineIdToken;
     } catch {
       /* try next channel */

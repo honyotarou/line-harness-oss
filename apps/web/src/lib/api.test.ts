@@ -915,6 +915,15 @@ describe('api object (integration via global fetch)', () => {
       expect.anything(),
     );
   });
+
+  it('tags.list passes lineAccountId when accountId is set', async () => {
+    const { api } = await import('./api');
+    await api.tags.list({ accountId: 'acc-1' });
+    expect(globalThis.fetch).toHaveBeenCalledWith(
+      'https://worker.test/api/tags?lineAccountId=acc-1',
+      expect.anything(),
+    );
+  });
 });
 
 describe('api default base URL', () => {

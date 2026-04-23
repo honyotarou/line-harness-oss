@@ -11,6 +11,10 @@ export type ResolvedLineWebhookCredentials = Readonly<{
 /**
  * Multi-account LINE webhook verifier. When `destination` is present, checks all active accounts to
  * resolve which secret matches, without early break to reduce timing leakage about the account list.
+ *
+ * With **more than one active LINE account**, never falls back to `LINE_CHANNEL_SECRET` when the
+ * request cannot be tied to a matching DB account (missing `destination`, or signature does not
+ * match any stored secret).
  */
 export async function resolveLineWebhookCredentials(
   input: Readonly<{
@@ -25,18 +29,25 @@ export async function resolveLineWebhookCredentials(
     signature: string;
   }>,
 ): Promise<ResolvedLineWebhookCredentials> {
-  let channelSecret = input.env.LINE_CHANNEL_SECRET;
-  let channelAccessToken = input.env.LINE_CHANNEL_ACCESS_TOKEN;
-  let matchedAccountId: string | null = null;
+  const accounts = await getLineAccounts(input.db, lineAccountDbOptions(input.env));
+  const activeAccounts = accounts.filter((a) => a.is_active);
+  const activeCount = activeAccounts.length;
 
-  if (!input.destination) {
-    return { channelSecret, channelAccessToken, matchedAccountId };
+  const envCreds: ResolvedLineWebhookCredentials = {
+    channelSecret: input.env.LINE_CHANNEL_SECRET,
+    channelAccessToken: input.env.LINE_CHANNEL_ACCESS_TOKEN,
+    matchedAccountId: null,
+  };
+
+  if (!input.destination?.trim()) {
+    if (activeCount > 1) {
+      return { channelSecret: '', channelAccessToken: '', matchedAccountId: null };
+    }
+    return envCreds;
   }
 
-  const accounts = await getLineAccounts(input.db, lineAccountDbOptions(input.env));
   let matched: { id: string; channel_secret: string; channel_access_token: string } | null = null;
-  for (const account of accounts) {
-    if (!account.is_active) continue;
+  for (const account of activeAccounts) {
     const isValid = await verifySignature(account.channel_secret, input.rawBody, input.signature);
     if (isValid && !matched) {
       matched = {
@@ -48,10 +59,16 @@ export async function resolveLineWebhookCredentials(
   }
 
   if (matched) {
-    channelSecret = matched.channel_secret;
-    channelAccessToken = matched.channel_access_token;
-    matchedAccountId = matched.id;
+    return {
+      channelSecret: matched.channel_secret,
+      channelAccessToken: matched.channel_access_token,
+      matchedAccountId: matched.id,
+    };
   }
 
-  return { channelSecret, channelAccessToken, matchedAccountId };
+  if (activeCount > 1) {
+    return { channelSecret: '', channelAccessToken: '', matchedAccountId: null };
+  }
+
+  return envCreds;
 }

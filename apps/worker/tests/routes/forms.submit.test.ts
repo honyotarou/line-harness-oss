@@ -11,12 +11,15 @@ const dbMocks = vi.hoisted(() => ({
   getFormSubmissions: vi.fn(),
   createFormSubmission: vi.fn(),
   jstNow: vi.fn(() => '2026-03-25T10:00:00+09:00'),
-  getFriendByLineUserId: vi.fn(),
+  listFriendsByLineUserId: vi.fn(),
   getFriendById: vi.fn(),
   addTagToFriend: vi.fn(),
   enrollFriendInScenario: vi.fn(),
   getLineAccounts: vi.fn(),
   getLineAccountById: vi.fn(),
+  getTagById: vi.fn(),
+  getScenarioById: vi.fn(),
+  countActiveLineAccounts: vi.fn(),
 }));
 
 vi.mock('@line-crm/db', () => dbMocks);
@@ -91,12 +94,21 @@ describe('public form submit route', () => {
       updated_at: '2026-03-25T10:00:00+09:00',
     });
     dbMocks.getLineAccounts.mockResolvedValue([]);
-    dbMocks.getFriendByLineUserId.mockResolvedValue({
-      id: 'friend-real',
-      line_user_id: 'real-user-id',
-      display_name: 'Real User',
-      metadata: '{}',
-    });
+    dbMocks.listFriendsByLineUserId.mockResolvedValue([
+      {
+        id: 'friend-real',
+        line_user_id: 'real-user-id',
+        display_name: 'Real User',
+        metadata: '{}',
+        line_account_id: null,
+        picture_url: null,
+        status_message: null,
+        is_following: 1,
+        user_id: null,
+        created_at: '2026-03-25T10:00:00+09:00',
+        updated_at: '2026-03-25T10:00:00+09:00',
+      },
+    ]);
     dbMocks.getFriendById.mockResolvedValue({
       id: 'friend-real',
       line_user_id: 'real-user-id',
@@ -147,7 +159,7 @@ describe('public form submit route', () => {
     );
 
     expect(response.status).toBe(201);
-    expect(dbMocks.getFriendByLineUserId).toHaveBeenCalledWith(expect.anything(), 'real-user-id');
+    expect(dbMocks.listFriendsByLineUserId).toHaveBeenCalledWith(expect.anything(), 'real-user-id');
     expect(dbMocks.createFormSubmission).toHaveBeenCalledWith(
       expect.anything(),
       expect.objectContaining({
@@ -181,12 +193,21 @@ describe('public form submit route', () => {
       updated_at: '2026-03-25T10:00:00+09:00',
     });
     dbMocks.getLineAccounts.mockResolvedValue([]);
-    dbMocks.getFriendByLineUserId.mockResolvedValue({
-      id: 'friend-real',
-      line_user_id: 'real-user-id',
-      display_name: 'Real User',
-      metadata: '{}',
-    });
+    dbMocks.listFriendsByLineUserId.mockResolvedValue([
+      {
+        id: 'friend-real',
+        line_user_id: 'real-user-id',
+        display_name: 'Real User',
+        metadata: '{}',
+        line_account_id: null,
+        picture_url: null,
+        status_message: null,
+        is_following: 1,
+        user_id: null,
+        created_at: '2026-03-25T10:00:00+09:00',
+        updated_at: '2026-03-25T10:00:00+09:00',
+      },
+    ]);
     dbMocks.getFriendById.mockResolvedValue({
       id: 'friend-real',
       line_user_id: 'real-user-id',
@@ -286,12 +307,21 @@ describe('public form submit route', () => {
       updated_at: '2026-03-25T10:00:00+09:00',
     });
     dbMocks.getLineAccounts.mockResolvedValue([]);
-    dbMocks.getFriendByLineUserId.mockResolvedValue({
-      id: 'friend-real',
-      line_user_id: 'real-user-id',
-      display_name: 'Real User',
-      metadata: '{}',
-    });
+    dbMocks.listFriendsByLineUserId.mockResolvedValue([
+      {
+        id: 'friend-real',
+        line_user_id: 'real-user-id',
+        display_name: 'Real User',
+        metadata: '{}',
+        line_account_id: null,
+        picture_url: null,
+        status_message: null,
+        is_following: 1,
+        user_id: null,
+        created_at: '2026-03-25T10:00:00+09:00',
+        updated_at: '2026-03-25T10:00:00+09:00',
+      },
+    ]);
     dbMocks.getFriendById.mockResolvedValue({
       id: 'friend-real',
       line_user_id: 'real-user-id',
@@ -438,5 +468,441 @@ describe('public form submit route', () => {
 
     expect(response?.status).toBe(429);
     expect(fetchMock).not.toHaveBeenCalled();
+  });
+
+  it('returns 404 when the verified login channel does not match the friend LINE account', async () => {
+    dbMocks.getFormById.mockResolvedValue({
+      id: 'form-1',
+      name: '診断フォーム',
+      description: null,
+      fields: '[]',
+      on_submit_tag_id: null,
+      on_submit_scenario_id: null,
+      save_to_metadata: 0,
+      is_active: 1,
+      submit_count: 0,
+      created_at: '2026-03-25T10:00:00+09:00',
+      updated_at: '2026-03-25T10:00:00+09:00',
+    });
+    dbMocks.getLineAccounts.mockResolvedValue([]);
+    dbMocks.listFriendsByLineUserId.mockResolvedValue([
+      {
+        id: 'friend-acc',
+        line_user_id: 'real-user-id',
+        display_name: 'Real User',
+        metadata: '{}',
+        line_account_id: 'acc-1',
+        picture_url: null,
+        status_message: null,
+        is_following: 1,
+        user_id: null,
+        created_at: '2026-03-25T10:00:00+09:00',
+        updated_at: '2026-03-25T10:00:00+09:00',
+      },
+    ]);
+    dbMocks.getLineAccountById.mockResolvedValue({
+      id: 'acc-1',
+      channel_id: 'c',
+      name: 'A',
+      channel_access_token: 't',
+      channel_secret: 's',
+      login_channel_id: 'other-channel',
+      login_channel_secret: null,
+      liff_id: null,
+      is_active: 1,
+      created_at: '2026-03-25T10:00:00+09:00',
+      updated_at: '2026-03-25T10:00:00+09:00',
+    });
+
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockResolvedValue({
+        ok: true,
+        json: async () => ({ sub: 'real-user-id', aud: 'default-login-channel' }),
+      }),
+    );
+
+    const { forms } = await import('../../src/routes/forms.js');
+    const app = new Hono();
+    app.route('/', forms);
+
+    const response = await app.fetch(
+      new Request('http://localhost/api/forms/form-1/submit', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ idToken: 'valid-id-token', data: { name: 'A' } }),
+      }),
+      {
+        DB: createRateLimitD1Stub(),
+        LINE_LOGIN_CHANNEL_ID: 'default-login-channel',
+        LINE_CHANNEL_ACCESS_TOKEN: 'default-access-token',
+      } as never,
+    );
+
+    expect(response.status).toBe(404);
+    expect(dbMocks.createFormSubmission).not.toHaveBeenCalled();
+  });
+
+  it('returns 409 when two friend rows tie-break on the same LINE login channel', async () => {
+    dbMocks.getFormById.mockResolvedValue({
+      id: 'form-1',
+      name: '診断フォーム',
+      description: null,
+      fields: '[]',
+      on_submit_tag_id: null,
+      on_submit_scenario_id: null,
+      save_to_metadata: 0,
+      is_active: 1,
+      submit_count: 0,
+      created_at: '2026-03-25T10:00:00+09:00',
+      updated_at: '2026-03-25T10:00:00+09:00',
+    });
+    dbMocks.getLineAccounts.mockResolvedValue([]);
+    const row = {
+      line_user_id: 'real-user-id',
+      display_name: 'Real User',
+      metadata: '{}',
+      line_account_id: null,
+      picture_url: null,
+      status_message: null,
+      is_following: 1,
+      user_id: null,
+      created_at: '2026-03-25T10:00:00+09:00',
+      updated_at: '2026-03-25T10:00:00+09:00',
+    };
+    dbMocks.listFriendsByLineUserId.mockResolvedValue([
+      { ...row, id: 'friend-a' },
+      { ...row, id: 'friend-b' },
+    ]);
+
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockResolvedValue({
+        ok: true,
+        json: async () => ({ sub: 'real-user-id', aud: 'default-login-channel' }),
+      }),
+    );
+
+    const { forms } = await import('../../src/routes/forms.js');
+    const app = new Hono();
+    app.route('/', forms);
+
+    const response = await app.fetch(
+      new Request('http://localhost/api/forms/form-1/submit', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ idToken: 'valid-id-token', data: { name: 'A' } }),
+      }),
+      {
+        DB: createRateLimitD1Stub(),
+        LINE_LOGIN_CHANNEL_ID: 'default-login-channel',
+        LINE_CHANNEL_ACCESS_TOKEN: 'default-access-token',
+      } as never,
+    );
+
+    expect(response.status).toBe(409);
+    expect(dbMocks.createFormSubmission).not.toHaveBeenCalled();
+  });
+
+  it('skips cross-tenant on_submit_tag_id when tag belongs to a different LINE account', async () => {
+    dbMocks.getFormById.mockResolvedValue({
+      id: 'form-1',
+      name: '診断フォーム',
+      description: null,
+      fields: '[]',
+      on_submit_tag_id: 'tag-tenant-b',
+      on_submit_scenario_id: null,
+      save_to_metadata: 0,
+      is_active: 1,
+      submit_count: 0,
+      created_at: '2026-03-25T10:00:00+09:00',
+      updated_at: '2026-03-25T10:00:00+09:00',
+    });
+    dbMocks.getLineAccounts.mockResolvedValue([]);
+    dbMocks.countActiveLineAccounts.mockResolvedValue(2);
+    dbMocks.listFriendsByLineUserId.mockResolvedValue([
+      {
+        id: 'friend-in-a',
+        line_user_id: 'real-user-id',
+        display_name: 'Real User',
+        metadata: '{}',
+        line_account_id: 'acc-A',
+        picture_url: null,
+        status_message: null,
+        is_following: 1,
+        user_id: null,
+        created_at: '2026-03-25T10:00:00+09:00',
+        updated_at: '2026-03-25T10:00:00+09:00',
+      },
+    ]);
+    dbMocks.getLineAccountById.mockResolvedValue({
+      id: 'acc-A',
+      channel_id: 'c',
+      name: 'A',
+      channel_access_token: 't',
+      channel_secret: 's',
+      login_channel_id: 'default-login-channel',
+      login_channel_secret: null,
+      liff_id: null,
+      is_active: 1,
+      created_at: '2026-03-25T10:00:00+09:00',
+      updated_at: '2026-03-25T10:00:00+09:00',
+    });
+    dbMocks.getFriendById.mockResolvedValue({
+      id: 'friend-in-a',
+      line_user_id: 'real-user-id',
+      display_name: 'Real User',
+      metadata: '{}',
+      line_account_id: 'acc-A',
+    });
+    dbMocks.getTagById.mockResolvedValue({
+      id: 'tag-tenant-b',
+      name: 'VIP',
+      color: null,
+      line_account_id: 'acc-B',
+      created_at: '2026-03-25T10:00:00+09:00',
+    });
+    dbMocks.createFormSubmission.mockImplementation(
+      async (
+        _db: D1Database,
+        input: { formId: string; friendId: string | null; data: string },
+      ) => ({
+        id: 'submission-1',
+        form_id: input.formId,
+        friend_id: input.friendId,
+        data: input.data,
+        created_at: '2026-03-25T10:00:00+09:00',
+      }),
+    );
+
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockResolvedValue({
+        ok: true,
+        json: async () => ({ sub: 'real-user-id', aud: 'default-login-channel' }),
+      }),
+    );
+
+    const { forms } = await import('../../src/routes/forms.js');
+    const app = new Hono();
+    app.route('/', forms);
+
+    const response = await app.fetch(
+      new Request('http://localhost/api/forms/form-1/submit', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ idToken: 'valid-id-token', data: { name: 'A' } }),
+      }),
+      {
+        DB: createRateLimitD1Stub(),
+        LINE_LOGIN_CHANNEL_ID: 'default-login-channel',
+        LINE_CHANNEL_ACCESS_TOKEN: 'default-access-token',
+      } as never,
+    );
+
+    expect(response.status).toBe(201);
+    expect(dbMocks.addTagToFriend).not.toHaveBeenCalled();
+  });
+
+  it('skips cross-tenant on_submit_scenario_id when scenario belongs to a different LINE account', async () => {
+    dbMocks.getFormById.mockResolvedValue({
+      id: 'form-1',
+      name: '診断フォーム',
+      description: null,
+      fields: '[]',
+      on_submit_tag_id: null,
+      on_submit_scenario_id: 'scenario-tenant-b',
+      save_to_metadata: 0,
+      is_active: 1,
+      submit_count: 0,
+      created_at: '2026-03-25T10:00:00+09:00',
+      updated_at: '2026-03-25T10:00:00+09:00',
+    });
+    dbMocks.getLineAccounts.mockResolvedValue([]);
+    dbMocks.countActiveLineAccounts.mockResolvedValue(2);
+    dbMocks.listFriendsByLineUserId.mockResolvedValue([
+      {
+        id: 'friend-in-a',
+        line_user_id: 'real-user-id',
+        display_name: 'Real User',
+        metadata: '{}',
+        line_account_id: 'acc-A',
+        picture_url: null,
+        status_message: null,
+        is_following: 1,
+        user_id: null,
+        created_at: '2026-03-25T10:00:00+09:00',
+        updated_at: '2026-03-25T10:00:00+09:00',
+      },
+    ]);
+    dbMocks.getLineAccountById.mockResolvedValue({
+      id: 'acc-A',
+      channel_id: 'c',
+      name: 'A',
+      channel_access_token: 't',
+      channel_secret: 's',
+      login_channel_id: 'default-login-channel',
+      login_channel_secret: null,
+      liff_id: null,
+      is_active: 1,
+      created_at: '2026-03-25T10:00:00+09:00',
+      updated_at: '2026-03-25T10:00:00+09:00',
+    });
+    dbMocks.getFriendById.mockResolvedValue({
+      id: 'friend-in-a',
+      line_user_id: 'real-user-id',
+      display_name: 'Real User',
+      metadata: '{}',
+      line_account_id: 'acc-A',
+    });
+    dbMocks.getScenarioById.mockResolvedValue({
+      id: 'scenario-tenant-b',
+      name: 'Welcome B',
+      line_account_id: 'acc-B',
+    });
+    dbMocks.createFormSubmission.mockImplementation(
+      async (
+        _db: D1Database,
+        input: { formId: string; friendId: string | null; data: string },
+      ) => ({
+        id: 'submission-2',
+        form_id: input.formId,
+        friend_id: input.friendId,
+        data: input.data,
+        created_at: '2026-03-25T10:00:00+09:00',
+      }),
+    );
+
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockResolvedValue({
+        ok: true,
+        json: async () => ({ sub: 'real-user-id', aud: 'default-login-channel' }),
+      }),
+    );
+
+    const { forms } = await import('../../src/routes/forms.js');
+    const app = new Hono();
+    app.route('/', forms);
+
+    const response = await app.fetch(
+      new Request('http://localhost/api/forms/form-1/submit', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ idToken: 'valid-id-token', data: { name: 'A' } }),
+      }),
+      {
+        DB: createRateLimitD1Stub(),
+        LINE_LOGIN_CHANNEL_ID: 'default-login-channel',
+        LINE_CHANNEL_ACCESS_TOKEN: 'default-access-token',
+      } as never,
+    );
+
+    expect(response.status).toBe(201);
+    expect(dbMocks.enrollFriendInScenario).not.toHaveBeenCalled();
+  });
+
+  it('applies on_submit_tag_id when tag belongs to the same LINE account as the friend', async () => {
+    dbMocks.getFormById.mockResolvedValue({
+      id: 'form-1',
+      name: '診断フォーム',
+      description: null,
+      fields: '[]',
+      on_submit_tag_id: 'tag-tenant-a',
+      on_submit_scenario_id: null,
+      save_to_metadata: 0,
+      is_active: 1,
+      submit_count: 0,
+      created_at: '2026-03-25T10:00:00+09:00',
+      updated_at: '2026-03-25T10:00:00+09:00',
+    });
+    dbMocks.getLineAccounts.mockResolvedValue([]);
+    dbMocks.countActiveLineAccounts.mockResolvedValue(2);
+    dbMocks.listFriendsByLineUserId.mockResolvedValue([
+      {
+        id: 'friend-in-a',
+        line_user_id: 'real-user-id',
+        display_name: 'Real User',
+        metadata: '{}',
+        line_account_id: 'acc-A',
+        picture_url: null,
+        status_message: null,
+        is_following: 1,
+        user_id: null,
+        created_at: '2026-03-25T10:00:00+09:00',
+        updated_at: '2026-03-25T10:00:00+09:00',
+      },
+    ]);
+    dbMocks.getLineAccountById.mockResolvedValue({
+      id: 'acc-A',
+      channel_id: 'c',
+      name: 'A',
+      channel_access_token: 't',
+      channel_secret: 's',
+      login_channel_id: 'default-login-channel',
+      login_channel_secret: null,
+      liff_id: null,
+      is_active: 1,
+      created_at: '2026-03-25T10:00:00+09:00',
+      updated_at: '2026-03-25T10:00:00+09:00',
+    });
+    dbMocks.getFriendById.mockResolvedValue({
+      id: 'friend-in-a',
+      line_user_id: 'real-user-id',
+      display_name: 'Real User',
+      metadata: '{}',
+      line_account_id: 'acc-A',
+    });
+    dbMocks.getTagById.mockResolvedValue({
+      id: 'tag-tenant-a',
+      name: 'VIP',
+      color: null,
+      line_account_id: 'acc-A',
+      created_at: '2026-03-25T10:00:00+09:00',
+    });
+    dbMocks.createFormSubmission.mockImplementation(
+      async (
+        _db: D1Database,
+        input: { formId: string; friendId: string | null; data: string },
+      ) => ({
+        id: 'submission-ok',
+        form_id: input.formId,
+        friend_id: input.friendId,
+        data: input.data,
+        created_at: '2026-03-25T10:00:00+09:00',
+      }),
+    );
+
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockResolvedValue({
+        ok: true,
+        json: async () => ({ sub: 'real-user-id', aud: 'default-login-channel' }),
+      }),
+    );
+
+    const { forms } = await import('../../src/routes/forms.js');
+    const app = new Hono();
+    app.route('/', forms);
+
+    const response = await app.fetch(
+      new Request('http://localhost/api/forms/form-1/submit', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ idToken: 'valid-id-token', data: { name: 'A' } }),
+      }),
+      {
+        DB: createRateLimitD1Stub(),
+        LINE_LOGIN_CHANNEL_ID: 'default-login-channel',
+        LINE_CHANNEL_ACCESS_TOKEN: 'default-access-token',
+      } as never,
+    );
+
+    expect(response.status).toBe(201);
+    expect(dbMocks.addTagToFriend).toHaveBeenCalledWith(
+      expect.anything(),
+      'friend-in-a',
+      'tag-tenant-a',
+    );
   });
 });

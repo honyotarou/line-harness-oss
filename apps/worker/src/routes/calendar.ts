@@ -1,27 +1,20 @@
-import { Hono } from 'hono';
+import { Hono, type Context } from 'hono';
 import {
-  getCalendarConnections,
-  deleteCalendarConnection,
-  getCalendarBookings,
-  updateCalendarBookingStatus,
-} from '@line-crm/db';
-import {
-  computeCalendarAvailabilitySlots,
-  connectGoogleCalendar,
-  createBookingWithOptionalGoogleEvent,
-  mapBookingRowToApi,
-  mapCalendarConnectionListItem,
-  mapCreatedBookingToApi,
-  mapCreatedConnectionResponse,
-  tryDeleteGoogleEventForCancelledBooking,
-} from '../application/calendar-integration.js';
+  createAdminCalendarBooking,
+  createAdminCalendarConnection,
+  computeAdminCalendarSlots,
+  deleteAdminCalendarConnection,
+  listAdminCalendarBookings,
+  listAdminCalendarConnections,
+  updateAdminCalendarBookingStatus,
+} from '../application/admin-calendar.js';
 import type { Env } from '../index.js';
+import { resolveLineAccountScopeForRequest } from '../services/admin-line-account-scope.js';
 import {
   DEFAULT_ADMIN_JSON_BODY_LIMIT_BYTES,
   jsonBodyReadErrorResponse,
   readJsonBodyWithLimit,
 } from '../services/request-body.js';
-import { effectiveRequireCalendarTokenEncryption } from '../services/deployed-security-defaults.js';
 import { clampIntInRange } from '../services/query-limits.js';
 import { enforceRateLimit } from '../services/request-rate-limit.js';
 import { fireAdminAuditLog } from '../services/admin-audit-log.js';
@@ -36,34 +29,22 @@ calendar.use('*', async (c, next) => {
     limit: CALENDAR_API_RATE_LIMIT.limit,
     windowMs: CALENDAR_API_RATE_LIMIT.windowMs,
   });
-  if (limited) {
-    return limited;
-  }
+  if (limited) return limited;
   return next();
 });
 
-function isTruthyEnvFlag(raw: string | undefined): boolean {
-  const v = raw?.trim().toLowerCase();
-  return v === '1' || v === 'true' || v === 'yes' || v === 'on';
+function jsonForCalendarFailure(
+  c: Context<Env>,
+  failure: Readonly<{ body: unknown; status: number }>,
+) {
+  return c.json(failure.body, failure.status as 400 | 403 | 404);
 }
-
-function calendarDeps(c: { env: Env['Bindings'] }) {
-  return {
-    db: c.env.DB,
-    calendarTokenEncryptionSecret: c.env.CALENDAR_TOKEN_ENCRYPTION_SECRET,
-    requireCalendarTokenEncryption: effectiveRequireCalendarTokenEncryption(c.env),
-  };
-}
-
-// ========== 接続管理 ==========
 
 calendar.get('/api/integrations/google-calendar', async (c) => {
   try {
-    const items = await getCalendarConnections(c.env.DB);
-    return c.json({
-      success: true,
-      data: items.map(mapCalendarConnectionListItem),
-    });
+    const scope = await resolveLineAccountScopeForRequest(c.env.DB, c);
+    const out = await listAdminCalendarConnections(c.env.DB, scope);
+    return c.json({ success: true, data: out.data });
   } catch (err) {
     console.error('GET /api/integrations/google-calendar error:', err);
     return c.json({ success: false, error: 'Internal server error' }, 500);
@@ -78,28 +59,28 @@ calendar.post('/api/integrations/google-calendar/connect', async (c) => {
       accessToken?: string;
       refreshToken?: string;
       apiKey?: string;
+      lineAccountId?: string | null;
     }>(c.req.raw, DEFAULT_ADMIN_JSON_BODY_LIMIT_BYTES);
     if (!body.calendarId) return c.json({ success: false, error: 'calendarId is required' }, 400);
-    const conn = await connectGoogleCalendar(calendarDeps(c), body);
+
+    const scope = await resolveLineAccountScopeForRequest(c.env.DB, c);
+    const out = await createAdminCalendarConnection(c.env, scope, body);
+    if (!out.ok) return jsonForCalendarFailure(c, out);
+
     fireAdminAuditLog(c, {
       action: 'calendar.connection.create',
       resourceType: 'google_calendar_connection',
-      resourceId: conn.id,
+      resourceId: out.data.id,
       metadata: {
         calendarId: body.calendarId,
         authType: body.authType,
         hasAccessToken: Boolean(body.accessToken?.trim()),
         hasRefreshToken: Boolean(body.refreshToken?.trim()),
         hasApiKey: Boolean(body.apiKey?.trim()),
+        lineAccountId: out.lineAccountId,
       },
     });
-    return c.json(
-      {
-        success: true,
-        data: mapCreatedConnectionResponse(conn),
-      },
-      201,
-    );
+    return c.json({ success: true, data: out.data }, 201);
   } catch (err) {
     const jr = jsonBodyReadErrorResponse(err);
     if (jr) return c.json(jr.body, jr.status);
@@ -111,7 +92,9 @@ calendar.post('/api/integrations/google-calendar/connect', async (c) => {
 calendar.delete('/api/integrations/google-calendar/:id', async (c) => {
   try {
     const cid = c.req.param('id');
-    await deleteCalendarConnection(c.env.DB, cid);
+    const scope = await resolveLineAccountScopeForRequest(c.env.DB, c);
+    const out = await deleteAdminCalendarConnection(c.env.DB, scope, cid);
+    if (!out.ok) return jsonForCalendarFailure(c, out);
     fireAdminAuditLog(c, {
       action: 'calendar.connection.delete',
       resourceType: 'google_calendar_connection',
@@ -124,8 +107,6 @@ calendar.delete('/api/integrations/google-calendar/:id', async (c) => {
   }
 });
 
-// ========== 空きスロット取得 ==========
-
 calendar.get('/api/integrations/google-calendar/slots', async (c) => {
   try {
     const connectionId = c.req.query('connectionId');
@@ -133,45 +114,37 @@ calendar.get('/api/integrations/google-calendar/slots', async (c) => {
     const slotMinutes = clampIntInRange(c.req.query('slotMinutes'), 60, 15, 180);
     const startHour = clampIntInRange(c.req.query('startHour'), 9, 0, 23);
     let endHour = clampIntInRange(c.req.query('endHour'), 18, 0, 24);
-    if (endHour <= startHour) {
-      endHour = Math.min(startHour + 1, 24);
-    }
+    if (endHour <= startHour) endHour = Math.min(startHour + 1, 24);
 
     if (!connectionId || !date) {
       return c.json({ success: false, error: 'connectionId and date are required' }, 400);
     }
 
-    const result = await computeCalendarAvailabilitySlots(calendarDeps(c), {
+    const scope = await resolveLineAccountScopeForRequest(c.env.DB, c);
+    const out = await computeAdminCalendarSlots(c.env, scope, {
       connectionId,
       date,
       slotMinutes,
       startHour,
       endHour,
     });
-    if (!result.ok) {
-      return c.json({ success: false, error: result.error }, result.status);
-    }
-    return c.json({ success: true, data: result.slots });
+    if (!out.ok) return jsonForCalendarFailure(c, out);
+    return c.json({ success: true, data: out.slots });
   } catch (err) {
     console.error('GET /api/integrations/google-calendar/slots error:', err);
     return c.json({ success: false, error: 'Internal server error' }, 500);
   }
 });
 
-// ========== 予約管理 ==========
-
 calendar.get('/api/integrations/google-calendar/bookings', async (c) => {
   try {
-    const connectionId = c.req.query('connectionId');
-    const friendId = c.req.query('friendId');
-    const items = await getCalendarBookings(c.env.DB, {
-      connectionId: connectionId ?? undefined,
-      friendId: friendId ?? undefined,
+    const scope = await resolveLineAccountScopeForRequest(c.env.DB, c);
+    const out = await listAdminCalendarBookings(c.env.DB, scope, {
+      connectionId: c.req.query('connectionId') ?? undefined,
+      friendId: c.req.query('friendId') ?? undefined,
     });
-    return c.json({
-      success: true,
-      data: items.map(mapBookingRowToApi),
-    });
+    if (!out.ok) return jsonForCalendarFailure(c, out);
+    return c.json({ success: true, data: out.data });
   } catch (err) {
     console.error('GET /api/integrations/google-calendar/bookings error:', err);
     return c.json({ success: false, error: 'Internal server error' }, 500);
@@ -195,9 +168,10 @@ calendar.post('/api/integrations/google-calendar/book', async (c) => {
         400,
       );
     }
-
-    const booking = await createBookingWithOptionalGoogleEvent(calendarDeps(c), body);
-    return c.json({ success: true, data: mapCreatedBookingToApi(booking) }, 201);
+    const scope = await resolveLineAccountScopeForRequest(c.env.DB, c);
+    const out = await createAdminCalendarBooking(c.env, scope, body);
+    if (!out.ok) return jsonForCalendarFailure(c, out);
+    return c.json({ success: true, data: out.data }, 201);
   } catch (err) {
     const jr = jsonBodyReadErrorResponse(err);
     if (jr) return c.json(jr.body, jr.status);
@@ -213,9 +187,7 @@ calendar.put('/api/integrations/google-calendar/bookings/:id/status', async (c) 
       c.req.raw,
       DEFAULT_ADMIN_JSON_BODY_LIMIT_BYTES,
     );
-
-    await tryDeleteGoogleEventForCancelledBooking(calendarDeps(c), id, status);
-    await updateCalendarBookingStatus(c.env.DB, id, status);
+    await updateAdminCalendarBookingStatus(c.env, id, status);
     return c.json({ success: true, data: null });
   } catch (err) {
     const jr = jsonBodyReadErrorResponse(err);

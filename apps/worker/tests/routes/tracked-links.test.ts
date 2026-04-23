@@ -16,15 +16,60 @@ const dbMocks = vi.hoisted(() => ({
   getLinkClicks: vi.fn(),
   addTagToFriend: vi.fn(),
   enrollFriendInScenario: vi.fn(),
+  getFriendById: vi.fn(),
+  countActiveLineAccounts: vi.fn(),
+  getTagById: vi.fn(),
+  getScenarioById: vi.fn(),
 }));
 
 vi.mock('@line-crm/db', () => dbMocks);
+
+vi.mock('../../src/services/admin-line-account-scope.js', () => ({
+  resolveLineAccountScopeForRequest: vi.fn().mockResolvedValue({ mode: 'all' }),
+  validateScopedLineAccountQueryParam: vi.fn(() => ({ ok: true })),
+  validateScopedLineAccountBody: vi.fn(() => ({ ok: true, lineAccountId: null })),
+  resourceLineAccountVisibleInScope: vi.fn(() => true),
+  jsonBodyForLineAccountScopeFailure: vi.fn(),
+}));
 
 const API_KEY = 'test-api-key-for-tracking';
 
 describe('tracked link routes', () => {
   beforeEach(() => {
     Object.values(dbMocks).forEach((mockFn) => mockFn.mockReset());
+    dbMocks.countActiveLineAccounts.mockResolvedValue(1);
+    dbMocks.getFriendById.mockImplementation(async (_db: unknown, id: string) => ({
+      id,
+      line_user_id: 'U1',
+      display_name: null,
+      picture_url: null,
+      status_message: null,
+      is_following: 1,
+      user_id: null,
+      line_account_id: null,
+      metadata: '{}',
+      created_at: '2026-03-26T10:00:00+09:00',
+      updated_at: '2026-03-26T10:00:00+09:00',
+    }));
+    dbMocks.getTagById.mockResolvedValue({
+      id: 'tag-1',
+      name: 't',
+      color: '#000',
+      line_account_id: null,
+      created_at: '2026-03-26T10:00:00+09:00',
+    });
+    dbMocks.getScenarioById.mockResolvedValue({
+      id: 'scenario-1',
+      name: 's',
+      description: null,
+      trigger_type: 'manual' as const,
+      trigger_tag_id: null,
+      line_account_id: null,
+      is_active: 1,
+      created_at: '2026-03-26T10:00:00+09:00',
+      updated_at: '2026-03-26T10:00:00+09:00',
+      steps: [],
+    });
     vi.stubGlobal(
       'fetch',
       vi.fn().mockImplementation(async (input: RequestInfo) => {
@@ -53,6 +98,7 @@ describe('tracked link routes', () => {
       scenario_id: 'scenario-1',
       intro_template_id: null,
       reward_template_id: null,
+      line_account_id: null,
       is_active: 1,
       click_count: 0,
       created_at: '2026-03-26T10:00:00+09:00',
@@ -90,6 +136,7 @@ describe('tracked link routes', () => {
       scenario_id: null,
       intro_template_id: null,
       reward_template_id: null,
+      line_account_id: null,
       is_active: 1,
       click_count: 0,
       created_at: '2026-03-26T10:00:00+09:00',
@@ -124,6 +171,7 @@ describe('tracked link routes', () => {
       scenario_id: 'scenario-1',
       intro_template_id: null,
       reward_template_id: null,
+      line_account_id: null,
       is_active: 1,
       click_count: 0,
       created_at: '2026-03-26T10:00:00+09:00',
@@ -168,6 +216,7 @@ describe('tracked link routes', () => {
       scenario_id: 'scenario-1',
       intro_template_id: null,
       reward_template_id: null,
+      line_account_id: null,
       is_active: 1,
       click_count: 0,
       created_at: '2026-03-26T10:00:00+09:00',
@@ -204,6 +253,7 @@ describe('tracked link routes', () => {
       scenario_id: 'scenario-1',
       intro_template_id: null,
       reward_template_id: null,
+      line_account_id: null,
       is_active: 1,
       click_count: 0,
       created_at: '2026-03-26T10:00:00+09:00',
@@ -254,6 +304,7 @@ describe('tracked link routes', () => {
       scenario_id: null,
       intro_template_id: null,
       reward_template_id: null,
+      line_account_id: null,
       is_active: 1,
       click_count: 0,
       created_at: '2026-03-26T10:00:00+09:00',
@@ -288,6 +339,7 @@ describe('tracked link routes', () => {
       scenario_id: null,
       intro_template_id: null,
       reward_template_id: null,
+      line_account_id: null,
       is_active: 1,
       click_count: 0,
       created_at: '2026-03-26T10:00:00+09:00',
@@ -358,6 +410,7 @@ describe('tracked link routes', () => {
       scenario_id: null,
       intro_template_id: null,
       reward_template_id: null,
+      line_account_id: null,
       is_active: 1,
       click_count: 0,
       created_at: '2026-03-26T10:00:00+09:00',
@@ -387,6 +440,7 @@ describe('tracked link routes', () => {
     expect(dbMocks.createTrackedLink).toHaveBeenCalledWith(expect.anything(), {
       name: 'Ok',
       originalUrl: 'https://example.com/x',
+      lineAccountId: null,
       tagId: null,
       scenarioId: null,
       introTemplateId: null,
@@ -403,6 +457,7 @@ describe('tracked link routes', () => {
       scenario_id: null,
       intro_template_id: null,
       reward_template_id: null,
+      line_account_id: null,
       is_active: 1,
       click_count: 0,
       created_at: '2026-03-26T10:00:00+09:00',
@@ -445,6 +500,7 @@ describe('tracked link routes', () => {
       scenario_id: 'scenario-1',
       intro_template_id: null,
       reward_template_id: null,
+      line_account_id: null,
       is_active: 1,
       click_count: 0,
       created_at: '2026-03-26T10:00:00+09:00',

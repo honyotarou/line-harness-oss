@@ -101,10 +101,11 @@ description: >-
 設計は ADR・`steps-*` が正本。ここは **エージェントが誤解しやすい点**だけ短く固定する。
 
 - **E2E の意味**: `tests/e2e/` の Playwright は **管理 UI＋モック Worker**。フルスタックや本物の HTTP 契約の証明にはならない。Worker 境界は **`apps/worker/tests` の Vitest** と **`pnpm test:api`（Hurl）**。[ADR 0001](../../../docs/adr/0001-testing-and-harness-layers.md) と同趣旨を崩さない。
-- **`pnpm harness` と `harness:ci`**: ローカル **`pnpm harness`** は速いゲート中心。**Next 本番相当の `next build`（web）** は **`pnpm harness:ci`** / CI `unit` に寄せる。管理画面を触った変更で CI だけ落ちるパターンを疑う。
+- **`pnpm harness` と `harness:ci` と `harness:fast`**: ローカル **`pnpm harness`** は完全ゲート (~18s)、**`pnpm harness:fast`** (~7s) は **Lefthook pre-commit と TDD 反復の内ループ用**（LIFF build / 他パッケージ tests を skip、SQL/`schema.sql` 変更は自動で full にエスカレート）。**Next 本番相当の `next build`（web）** は **`pnpm harness:ci`** / CI `unit` に寄せる。管理画面を触った変更で CI だけ落ちるパターンを疑う。
 - **ルートの厚さ**: `ROUTE_LINE_CAPS` は **CI 用の行数上限**であり「ルートは十分薄い」の根拠にはしない。キャップを上げる前に **`application/` へ抽出**（[steps-0-3-red-green-refactor.md](steps-0-3-red-green-refactor.md) Step 4〜5 と整合）。
 - **攻撃面**: LIFF・受信 Webhook・公開フォーム・トラッキング・Stripe 等、**認可・署名・レート制限**に触れる変更は **`pentest`** 正本を見出しで素通りしない（必要なら [steps-pentest-tdd-loop.md](steps-pentest-tdd-loop.md) を 1 本目に）。
 - **本番結線**: Cloudflare Access／CORS／別オリジン管理画面／D1 運用は **`AGENTS.md`** が長文の正本。ハーネスが緑でも **エッジや環境変数**で失敗し得る — SKILL に手順を複製しない。
+- **テナント境界ヘルパ（第一選択）**: scope guard を新規に書き下ろす前に既存ヘルパを検討 — `resourceLineAccountVisibleInScope`（resource × scope）・`friendScopeGuardCheck`（friend-addressed route の 404 ゲート）・`resourceBelongsToFriendTenant`（副作用対象 × friend）・`tenantScopedRuleMatches`（event-bus filter の fail-closed）。詳細は [steps-pentest-tdd-loop.md](steps-pentest-tdd-loop.md) の **「新設ヘルパ」** 節。
 
 ---
 

@@ -10,6 +10,7 @@ import {
   completeFriendScenario,
   upsertChatOnMessage,
   getLineAccountById,
+  countActiveLineAccounts,
   jstNow,
 } from '@line-crm/db';
 import { buildAuthUrlChannelAllowlist } from '../services/auth-url-allowlist.js';
@@ -197,7 +198,7 @@ export async function handleLineWebhookEvent(
     const userId = event.source.type === 'user' ? event.source.userId : undefined;
     if (!userId) return;
 
-    await updateFriendFollowStatus(db, userId, false);
+    await updateFriendFollowStatus(db, userId, false, lineAccountId);
     return;
   }
 
@@ -356,15 +357,23 @@ export async function handleLineWebhookEvent(
     // 自動返信チェック（このアカウントのルール + グローバルルールのみ）
     // NOTE: Auto-replies use replyMessage (free, no quota) instead of pushMessage
     // The replyToken is only valid for ~1 minute after the message event
-    const autoReplyStmt = lineAccountId
-      ? db
-          .prepare(
-            'SELECT * FROM auto_replies WHERE is_active = 1 AND (line_account_id IS NULL OR line_account_id = ?) ORDER BY created_at ASC',
-          )
-          .bind(lineAccountId)
-      : db.prepare(
-          'SELECT * FROM auto_replies WHERE is_active = 1 AND line_account_id IS NULL ORDER BY created_at ASC',
-        );
+    const multiActive = (await countActiveLineAccounts(db)) > 1;
+    const autoReplyStmt =
+      lineAccountId && multiActive
+        ? db
+            .prepare(
+              'SELECT * FROM auto_replies WHERE is_active = 1 AND line_account_id = ? ORDER BY created_at ASC',
+            )
+            .bind(lineAccountId)
+        : lineAccountId
+          ? db
+              .prepare(
+                'SELECT * FROM auto_replies WHERE is_active = 1 AND (line_account_id IS NULL OR line_account_id = ?) ORDER BY created_at ASC',
+              )
+              .bind(lineAccountId)
+          : db.prepare(
+              'SELECT * FROM auto_replies WHERE is_active = 1 AND line_account_id IS NULL ORDER BY created_at ASC',
+            );
     const autoReplies = await autoReplyStmt.all<{
       id: string;
       keyword: string;

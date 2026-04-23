@@ -2,8 +2,11 @@ import type { ApiResponse, Tag } from '@line-crm/shared';
 import { fetchApi } from '../client.js';
 
 export const tags = {
-  list: () => fetchApi<ApiResponse<Tag[]>>('/api/tags'),
-  create: (data: { name: string; color: string }) =>
+  list: (params?: { accountId?: string }) => {
+    const q = params?.accountId ? `?lineAccountId=${encodeURIComponent(params.accountId)}` : '';
+    return fetchApi<ApiResponse<Tag[]>>(`/api/tags${q}`);
+  },
+  create: (data: { name: string; color?: string; lineAccountId?: string | null }) =>
     fetchApi<ApiResponse<Tag>>('/api/tags', {
       method: 'POST',
       body: JSON.stringify(data),

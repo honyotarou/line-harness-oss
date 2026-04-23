@@ -6,6 +6,7 @@ const dbMocks = vi.hoisted(() => ({
   upsertFriend: vi.fn(),
   updateFriendFollowStatus: vi.fn(),
   getFriendByLineUserId: vi.fn(),
+  countActiveLineAccounts: vi.fn(),
   getScenarios: vi.fn(),
   enrollFriendInScenario: vi.fn(),
   getScenarioSteps: vi.fn(),
@@ -139,6 +140,7 @@ describe('line webhook route', () => {
     vi.resetModules();
     Object.values(dbMocks).forEach((mockFn) => mockFn.mockReset());
     dbMocks.getLineAccounts.mockResolvedValue([]);
+    dbMocks.countActiveLineAccounts.mockResolvedValue(0);
     dbMocks.getLineAccountById.mockResolvedValue(null);
     lineSdkMocks.verifySignature.mockClear();
     lineSdkMocks.verifySignature.mockResolvedValue(true);
@@ -372,6 +374,60 @@ describe('line webhook route', () => {
     expect(handlerSpy.mock.calls[1]?.[2]).toMatchObject({ type: 'message' });
   });
 
+  it('does not fall back to LINE_CHANNEL_SECRET when multiple active accounts omit destination', async () => {
+    dbMocks.getLineAccounts.mockResolvedValue([
+      {
+        id: 'acc-db-1',
+        is_active: 1,
+        channel_secret: 'secret-from-db',
+        channel_access_token: 'token-from-db',
+      },
+      {
+        id: 'acc-db-2',
+        is_active: 1,
+        channel_secret: 'secret-2',
+        channel_access_token: 'token-2',
+      },
+    ]);
+    lineSdkMocks.verifySignature.mockImplementation(
+      async (secret: string) => secret === 'line-secret',
+    );
+
+    const pending: Promise<unknown>[] = [];
+    const executionCtx = {
+      waitUntil: (p: Promise<unknown>) => {
+        pending.push(p);
+      },
+    } as ExecutionContext;
+
+    const { webhook } = await import('../../src/routes/webhook.js');
+    const app = new Hono();
+    app.route('/', webhook);
+
+    const body = JSON.stringify({ events: [] });
+    const response = await app.fetch(
+      new Request('http://localhost/webhook', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-Line-Signature': 'ok',
+        },
+        body,
+      }),
+      {
+        DB: {} as D1Database,
+        LINE_CHANNEL_SECRET: 'line-secret',
+        LINE_CHANNEL_ACCESS_TOKEN: 'line-access-token',
+        WORKER_URL: 'https://worker.example.com',
+      } as never,
+      executionCtx,
+    );
+
+    expect(response.status).toBe(200);
+    await Promise.all(pending);
+    expect(lineSdkMocks.verifySignature).toHaveBeenCalledWith('', body, 'ok');
+  });
+
   it('resolves credentials from DB when destination matches an account signature', async () => {
     dbMocks.getLineAccounts.mockResolvedValue([
       {
@@ -466,6 +522,7 @@ describe('line webhook route', () => {
       expect.anything(),
       'Uunfollow',
       false,
+      null,
     );
   });
 
@@ -884,6 +941,7 @@ describe('line webhook route', () => {
       expect.anything(),
       'UreplayX',
       false,
+      null,
     );
   });
 

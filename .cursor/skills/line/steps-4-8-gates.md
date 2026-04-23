@@ -11,12 +11,15 @@
 ### マージ相当の一本化（推奨）
 
 ```bash
-pnpm harness
+pnpm harness          # full ≒ 18s: pre-push / Stop / Step 7 ゲート
+pnpm harness:fast     # ≒ 7s: TDD 反復の内ループ / Lefthook pre-commit
 ```
 
-中身は **`scripts/harness-check.sh`** 固定順: **Biome format** → **`node scripts/check-encapsulation.mjs`**（= `pnpm check:encapsulation`; ルート薄化に加えて **`class` / `interface` 禁止**の TS 設計ゲートを含む）→ Worker typecheck → LIFF typecheck → LIFF 本番 build（dummy `VITE_API_URL`）→ **`pnpm test`**（worker → web → sdk → liff）。
+**full**（`pnpm harness`）の中身は **`scripts/harness-check.sh`** 固定順: **Biome format** → **`node scripts/check-encapsulation.mjs`**（= `pnpm check:encapsulation`; ルート薄化 + **`class` / `interface` 禁止** + **F1/F4/F5 scope guard 契約** + **Rule D（migration ↔ schema.sql drift）**）→ **lib build（`@line-crm/shared` + `@line-crm/line-sdk`）** → Worker typecheck → LIFF typecheck → LIFF 本番 build（dummy `VITE_API_URL`）→ **`pnpm test`**（worker → web → sdk → liff）。
 
-**PR の CI**（`.github/workflows/ci.yml`）も **Biome の直後**に同じ `pnpm check:encapsulation` を実行する（TDD 中と同じ基準をマージ前に強制）。
+**fast**（`pnpm harness:fast`）は Biome + encapsulation + worker typecheck + worker tests のみ。LIFF build / 他パッケージ tests を skip して反復速度を優先。Step 7 の完了判定には **full** を使う（fast は Step 4〜6 の内ループ用）。
+
+**Lefthook**（editor 中立）: `pre-commit` = `pnpm harness:fast`（SQL / `schema.sql` 変更時は **自動で full にエスカレート**）、`pre-push` = `pnpm harness`（LIFF / 他パッケージ分を網羅）。**PR の CI**（`.github/workflows/ci.yml`）も **Biome の直後**に `pnpm check:encapsulation` を実行する（TDD 中と同じ基準をマージ前に強制）。
 
 ### 狭い反復（開発中）
 

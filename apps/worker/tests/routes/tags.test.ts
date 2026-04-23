@@ -5,13 +5,28 @@ const dbMocks = vi.hoisted(() => ({
   getTags: vi.fn(),
   createTag: vi.fn(),
   deleteTag: vi.fn(),
+  getTagById: vi.fn(),
+  countActiveLineAccounts: vi.fn(),
 }));
 
 vi.mock('@line-crm/db', () => dbMocks);
 
+vi.mock('../../src/services/admin-line-account-scope.js', () => ({
+  resolveLineAccountScopeForRequest: vi.fn().mockResolvedValue({ mode: 'all' }),
+  validateScopedLineAccountQueryParam: vi.fn(() => ({ ok: true })),
+  validateScopedLineAccountBody: vi.fn(() => ({ ok: true, lineAccountId: null })),
+  resourceLineAccountVisibleInScope: vi.fn(() => true),
+  jsonBodyForLineAccountScopeFailure: vi.fn((q: { error: string; code: string }) => ({
+    success: false,
+    error: q.error,
+    code: q.code,
+  })),
+}));
+
 describe('tag routes', () => {
   beforeEach(() => {
     Object.values(dbMocks).forEach((mockFn) => mockFn.mockReset());
+    dbMocks.countActiveLineAccounts.mockResolvedValue(1);
   });
 
   it('lists tags with serialized fields', async () => {
@@ -20,6 +35,7 @@ describe('tag routes', () => {
         id: 'tag-1',
         name: 'VIP',
         color: '#ff0000',
+        line_account_id: 'acc-1',
         created_at: '2026-03-26T10:00:00+09:00',
       },
     ]);
@@ -40,6 +56,7 @@ describe('tag routes', () => {
           id: 'tag-1',
           name: 'VIP',
           color: '#ff0000',
+          lineAccountId: 'acc-1',
           createdAt: '2026-03-26T10:00:00+09:00',
         },
       ],
@@ -100,6 +117,7 @@ describe('tag routes', () => {
       id: 'new-tag',
       name: 'News',
       color: '#00ff00',
+      line_account_id: null,
       created_at: '2026-03-26T12:00:00+09:00',
     });
 
@@ -123,12 +141,40 @@ describe('tag routes', () => {
         id: 'new-tag',
         name: 'News',
         color: '#00ff00',
+        lineAccountId: null,
         createdAt: '2026-03-26T12:00:00+09:00',
       },
     });
   });
 
+  it('returns 400 when multiple LINE accounts are active and lineAccountId is omitted on create', async () => {
+    dbMocks.countActiveLineAccounts.mockResolvedValue(2);
+
+    const { tags } = await import('../../src/routes/tags.js');
+    const app = new Hono();
+    app.route('/', tags);
+
+    const response = await app.fetch(
+      new Request('http://localhost/api/tags', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name: 'X', color: '#000' }),
+      }),
+      { DB: {} as D1Database } as never,
+    );
+
+    expect(response.status).toBe(400);
+    expect(dbMocks.createTag).not.toHaveBeenCalled();
+  });
+
   it('deletes a tag', async () => {
+    dbMocks.getTagById.mockResolvedValue({
+      id: 'tag-9',
+      name: 'T',
+      color: '#000',
+      line_account_id: 'acc-1',
+      created_at: '2026-03-26T10:00:00+09:00',
+    });
     dbMocks.deleteTag.mockResolvedValue(undefined);
 
     const { tags } = await import('../../src/routes/tags.js');
@@ -165,6 +211,13 @@ describe('tag routes', () => {
   });
 
   it('returns 500 when deleteTag throws', async () => {
+    dbMocks.getTagById.mockResolvedValue({
+      id: 'tag-9',
+      name: 'T',
+      color: '#000',
+      line_account_id: 'acc-1',
+      created_at: '2026-03-26T10:00:00+09:00',
+    });
     dbMocks.deleteTag.mockRejectedValue(new Error('db down'));
 
     const { tags } = await import('../../src/routes/tags.js');

@@ -1,63 +1,54 @@
-import { Hono } from 'hono';
+import { Hono, type Context } from 'hono';
 import {
-  getTrackedLinks,
-  getTrackedLinkById,
-  createTrackedLink,
-  updateTrackedLink,
-  deleteTrackedLink,
-  recordLinkClick,
-  getLinkClicks,
-} from '@line-crm/db';
-import { addTagToFriend, enrollFriendInScenario } from '@line-crm/db';
-import type { TrackedLink, UpdateTrackedLinkInput } from '@line-crm/db';
+  createAdminTrackedLink,
+  deleteAdminTrackedLink,
+  getAdminTrackedLinkDetail,
+  issueAdminTrackedLinkPersonalizedUrl,
+  listAdminTrackedLinks,
+  updateAdminTrackedLink,
+} from '../application/admin-tracked-links.js';
+import type {
+  AdminTrackedLinkCreateBody,
+  AdminTrackedLinkUpdateBody,
+} from '../application/admin-tracked-links.js';
+import { resolvePublicTrackedLinkRedirect } from '../application/public-tracked-link-redirect.js';
 import type { Env } from '../index.js';
-import {
-  DEFAULT_TRACKED_LINK_TTL_SECONDS,
-  issueTrackedLinkFriendToken,
-  trackingLinkHmacSecret,
-  verifyTrackedLinkFriendToken,
-} from '../services/tracking-friend-token.js';
-import { assertHttpsOutboundUrlResolvedSafe } from '../services/outbound-url-resolve.js';
-import { isSafeHttpsRedirectUrl } from '../services/safe-redirect-url.js';
+import { trackingLinkHmacSecret } from '../services/tracking-friend-token.js';
 import {
   DEFAULT_ADMIN_JSON_BODY_LIMIT_BYTES,
   jsonBodyReadErrorResponse,
   readJsonBodyWithLimit,
 } from '../services/request-body.js';
+import { resolveLineAccountScopeForRequest } from '../services/admin-line-account-scope.js';
 
 const trackedLinks = new Hono<Env>();
-
-const TRACKED_LINK_ORIGINAL_URL_ERROR =
-  'originalUrl must be a public https URL (private IPs and localhost are not allowed)';
-
-function serializeTrackedLink(row: TrackedLink, baseUrl: string) {
-  return {
-    id: row.id,
-    name: row.name,
-    originalUrl: row.original_url,
-    trackingUrl: `${baseUrl}/t/${row.id}`,
-    tagId: row.tag_id,
-    scenarioId: row.scenario_id,
-    introTemplateId: row.intro_template_id,
-    rewardTemplateId: row.reward_template_id,
-    isActive: Boolean(row.is_active),
-    clickCount: row.click_count,
-    createdAt: row.created_at,
-    updatedAt: row.updated_at,
-  };
-}
 
 function getBaseUrl(c: { req: { url: string } }): string {
   const url = new URL(c.req.url);
   return `${url.protocol}//${url.host}`;
 }
 
-// GET /api/tracked-links — list all
+function jsonTrackedLinkFailure(
+  c: Pick<Context<Env>, 'json'>,
+  failure: Readonly<{ body: unknown; status: number }>,
+) {
+  return c.json(failure.body, failure.status as 400 | 403 | 404 | 500 | 503);
+}
+
+// GET /api/tracked-links — list (scoped)
 trackedLinks.get('/api/tracked-links', async (c) => {
   try {
-    const items = await getTrackedLinks(c.env.DB);
-    const base = getBaseUrl(c);
-    return c.json({ success: true, data: items.map((item) => serializeTrackedLink(item, base)) });
+    const scope = await resolveLineAccountScopeForRequest(c.env.DB, c);
+    const out = await listAdminTrackedLinks(
+      c.env.DB,
+      scope,
+      c.req.query('lineAccountId'),
+      getBaseUrl(c),
+    );
+    if (!out.ok) {
+      return jsonTrackedLinkFailure(c, out);
+    }
+    return c.json({ success: true, data: out.data });
   } catch (err) {
     console.error('GET /api/tracked-links error:', err);
     return c.json({ success: false, error: 'Internal server error' }, 500);
@@ -71,36 +62,19 @@ trackedLinks.get('/api/tracked-links/:id/personalized-url', async (c) => {
     if (!friendId) {
       return c.json({ success: false, error: 'friendId query parameter is required' }, 400);
     }
-
-    const id = c.req.param('id');
-    const link = await getTrackedLinkById(c.env.DB, id);
-    if (!link) {
-      return c.json({ success: false, error: 'Tracked link not found' }, 404);
-    }
-
-    const secret = trackingLinkHmacSecret(c.env);
-    if (secret === null) {
-      return c.json(
-        {
-          success: false,
-          error:
-            'Tracked link signing is disabled: set TRACKING_LINK_SECRET (REQUIRE_TRACKING_LINK_SECRET=1)',
-        },
-        503,
-      );
-    }
-    const token = await issueTrackedLinkFriendToken(secret, {
-      linkId: id,
+    const scope = await resolveLineAccountScopeForRequest(c.env.DB, c);
+    const out = await issueAdminTrackedLinkPersonalizedUrl(
+      c.env.DB,
+      scope,
+      trackingLinkHmacSecret(c.env),
+      getBaseUrl(c),
+      c.req.param('id'),
       friendId,
-    });
-    const base = getBaseUrl(c);
-    const url = `${base}/t/${encodeURIComponent(id)}?f=${encodeURIComponent(token)}`;
-    const expiresAt = new Date(Date.now() + DEFAULT_TRACKED_LINK_TTL_SECONDS * 1000).toISOString();
-
-    return c.json({
-      success: true,
-      data: { url, expiresAt },
-    });
+    );
+    if (!out.ok) {
+      return jsonTrackedLinkFailure(c, out);
+    }
+    return c.json({ success: true, data: out.data });
   } catch (err) {
     console.error('GET /api/tracked-links/:id/personalized-url error:', err);
     return c.json({ success: false, error: 'Internal server error' }, 500);
@@ -110,25 +84,12 @@ trackedLinks.get('/api/tracked-links/:id/personalized-url', async (c) => {
 // GET /api/tracked-links/:id — get single with click details
 trackedLinks.get('/api/tracked-links/:id', async (c) => {
   try {
-    const id = c.req.param('id');
-    const link = await getTrackedLinkById(c.env.DB, id);
-    if (!link) {
-      return c.json({ success: false, error: 'Tracked link not found' }, 404);
+    const scope = await resolveLineAccountScopeForRequest(c.env.DB, c);
+    const out = await getAdminTrackedLinkDetail(c.env.DB, scope, c.req.param('id'), getBaseUrl(c));
+    if (!out.ok) {
+      return jsonTrackedLinkFailure(c, out);
     }
-    const clicks = await getLinkClicks(c.env.DB, id);
-    const base = getBaseUrl(c);
-    return c.json({
-      success: true,
-      data: {
-        ...serializeTrackedLink(link, base),
-        clicks: clicks.map((click) => ({
-          id: click.id,
-          friendId: click.friend_id,
-          friendDisplayName: click.friend_display_name,
-          clickedAt: click.clicked_at,
-        })),
-      },
-    });
+    return c.json({ success: true, data: out.data });
   } catch (err) {
     console.error('GET /api/tracked-links/:id error:', err);
     return c.json({ success: false, error: 'Internal server error' }, 500);
@@ -138,50 +99,19 @@ trackedLinks.get('/api/tracked-links/:id', async (c) => {
 // POST /api/tracked-links — create
 trackedLinks.post('/api/tracked-links', async (c) => {
   try {
-    const body = await readJsonBodyWithLimit<{
-      name: string;
-      originalUrl: string;
-      tagId?: string | null;
-      scenarioId?: string | null;
-      introTemplateId?: string | null;
-      rewardTemplateId?: string | null;
-    }>(c.req.raw, DEFAULT_ADMIN_JSON_BODY_LIMIT_BYTES);
-
-    const originalUrl = body.originalUrl?.trim() ?? '';
-    if (!body.name || !originalUrl) {
-      return c.json({ success: false, error: 'name and originalUrl are required' }, 400);
+    const body = await readJsonBodyWithLimit<AdminTrackedLinkCreateBody>(
+      c.req.raw,
+      DEFAULT_ADMIN_JSON_BODY_LIMIT_BYTES,
+    );
+    const scope = await resolveLineAccountScopeForRequest(c.env.DB, c);
+    const out = await createAdminTrackedLink(c.env.DB, scope, body, getBaseUrl(c), fetch);
+    if (!out.ok) {
+      return jsonTrackedLinkFailure(c, out);
     }
-
-    const outboundOk = await assertHttpsOutboundUrlResolvedSafe(originalUrl, fetch);
-    if (!outboundOk.ok) {
-      return c.json({ success: false, error: TRACKED_LINK_ORIGINAL_URL_ERROR }, 400);
-    }
-
-    const link = await createTrackedLink(c.env.DB, {
-      name: body.name,
-      originalUrl,
-      tagId: body.tagId ?? null,
-      scenarioId: body.scenarioId ?? null,
-      introTemplateId: body.introTemplateId ?? null,
-      rewardTemplateId: body.rewardTemplateId ?? null,
-    });
-
-    const base = getBaseUrl(c);
-    return c.json({ success: true, data: serializeTrackedLink(link, base) }, 201);
+    return c.json({ success: true, data: out.data }, 201);
   } catch (err) {
     const jr = jsonBodyReadErrorResponse(err);
     if (jr) return c.json(jr.body, jr.status);
-    if (err instanceof Error) {
-      if (
-        err.message === 'intro_template_not_found' ||
-        err.message === 'reward_template_not_found'
-      ) {
-        return c.json(
-          { success: false, error: 'Unknown introTemplateId or rewardTemplateId' },
-          400,
-        );
-      }
-    }
     console.error('POST /api/tracked-links error:', err);
     return c.json({ success: false, error: 'Internal server error' }, 500);
   }
@@ -190,57 +120,26 @@ trackedLinks.post('/api/tracked-links', async (c) => {
 // PUT /api/tracked-links/:id — partial update (name, URLs, tags, templates, active)
 trackedLinks.put('/api/tracked-links/:id', async (c) => {
   try {
-    const id = c.req.param('id');
-    const body = await readJsonBodyWithLimit<{
-      name?: string;
-      originalUrl?: string;
-      tagId?: string | null;
-      scenarioId?: string | null;
-      introTemplateId?: string | null;
-      rewardTemplateId?: string | null;
-      isActive?: boolean;
-    }>(c.req.raw, DEFAULT_ADMIN_JSON_BODY_LIMIT_BYTES);
-
-    const existing = await getTrackedLinkById(c.env.DB, id);
-    if (!existing) {
-      return c.json({ success: false, error: 'Tracked link not found' }, 404);
+    const body = await readJsonBodyWithLimit<AdminTrackedLinkUpdateBody>(
+      c.req.raw,
+      DEFAULT_ADMIN_JSON_BODY_LIMIT_BYTES,
+    );
+    const scope = await resolveLineAccountScopeForRequest(c.env.DB, c);
+    const out = await updateAdminTrackedLink(
+      c.env.DB,
+      scope,
+      c.req.param('id'),
+      body,
+      getBaseUrl(c),
+      fetch,
+    );
+    if (!out.ok) {
+      return jsonTrackedLinkFailure(c, out);
     }
-
-    const input: UpdateTrackedLinkInput = {};
-    if (body.name !== undefined) input.name = body.name;
-    if (body.originalUrl !== undefined) {
-      const outboundOk = await assertHttpsOutboundUrlResolvedSafe(body.originalUrl.trim(), fetch);
-      if (!outboundOk.ok) {
-        return c.json({ success: false, error: TRACKED_LINK_ORIGINAL_URL_ERROR }, 400);
-      }
-      input.originalUrl = body.originalUrl.trim();
-    }
-    if ('tagId' in body) input.tagId = body.tagId ?? null;
-    if ('scenarioId' in body) input.scenarioId = body.scenarioId ?? null;
-    if ('introTemplateId' in body) input.introTemplateId = body.introTemplateId ?? null;
-    if ('rewardTemplateId' in body) input.rewardTemplateId = body.rewardTemplateId ?? null;
-    if (body.isActive !== undefined) input.isActive = body.isActive;
-
-    const link = await updateTrackedLink(c.env.DB, id, input);
-    if (!link) {
-      return c.json({ success: false, error: 'Tracked link not found' }, 404);
-    }
-    const base = getBaseUrl(c);
-    return c.json({ success: true, data: serializeTrackedLink(link, base) });
+    return c.json({ success: true, data: out.data });
   } catch (err) {
     const jr = jsonBodyReadErrorResponse(err);
     if (jr) return c.json(jr.body, jr.status);
-    if (err instanceof Error) {
-      if (
-        err.message === 'intro_template_not_found' ||
-        err.message === 'reward_template_not_found'
-      ) {
-        return c.json(
-          { success: false, error: 'Unknown introTemplateId or rewardTemplateId' },
-          400,
-        );
-      }
-    }
     console.error('PUT /api/tracked-links/:id error:', err);
     return c.json({ success: false, error: 'Internal server error' }, 500);
   }
@@ -249,13 +148,12 @@ trackedLinks.put('/api/tracked-links/:id', async (c) => {
 // DELETE /api/tracked-links/:id
 trackedLinks.delete('/api/tracked-links/:id', async (c) => {
   try {
-    const id = c.req.param('id');
-    const link = await getTrackedLinkById(c.env.DB, id);
-    if (!link) {
-      return c.json({ success: false, error: 'Tracked link not found' }, 404);
+    const scope = await resolveLineAccountScopeForRequest(c.env.DB, c);
+    const out = await deleteAdminTrackedLink(c.env.DB, scope, c.req.param('id'));
+    if (!out.ok) {
+      return jsonTrackedLinkFailure(c, out);
     }
-    await deleteTrackedLink(c.env.DB, id);
-    return c.json({ success: true, data: null });
+    return c.json({ success: true, data: out.data });
   } catch (err) {
     console.error('DELETE /api/tracked-links/:id error:', err);
     return c.json({ success: false, error: 'Internal server error' }, 500);
@@ -264,69 +162,25 @@ trackedLinks.delete('/api/tracked-links/:id', async (c) => {
 
 // GET /t/:linkId — click tracking redirect (no auth, fast redirect)
 trackedLinks.get('/t/:linkId', async (c) => {
-  const linkId = c.req.param('linkId');
-  const fParam = c.req.query('f')?.trim() ?? '';
-
-  // Look up the link first
-  const link = await getTrackedLinkById(c.env.DB, linkId);
-
-  if (!link || !link.is_active) {
-    return c.json({ success: false, error: 'Link not found' }, 404);
+  const out = await resolvePublicTrackedLinkRedirect({
+    db: c.env.DB,
+    linkId: c.req.param('linkId'),
+    fParam: c.req.query('f')?.trim() ?? '',
+    secret: trackingLinkHmacSecret(c.env),
+    fetchFn: fetch,
+  });
+  if (!out.ok) {
+    return jsonTrackedLinkFailure(c, out);
   }
-
-  if (!isSafeHttpsRedirectUrl(link.original_url)) {
-    return c.json(
-      { success: false, error: 'Tracked link destination is not an allowed https URL' },
-      400,
-    );
-  }
-
-  const outboundOk = await assertHttpsOutboundUrlResolvedSafe(link.original_url, fetch);
-  if (!outboundOk.ok) {
-    return c.json({ success: false, error: 'Link not found' }, 404);
-  }
-
-  const secret = trackingLinkHmacSecret(c.env);
-  let verifiedFriendId: string | null = null;
-  if (fParam) {
-    verifiedFriendId = await verifyTrackedLinkFriendToken(secret, linkId, fParam);
-  }
-
-  // Redirect immediately, run side-effects async
-  const trackClick = async () => {
-    try {
-      // Record the click (friend only when cryptographically bound to this link)
-      await recordLinkClick(c.env.DB, linkId, verifiedFriendId);
-
-      // Run automatic actions if a friend is identified
-      if (verifiedFriendId) {
-        const actions: Promise<unknown>[] = [];
-
-        if (link.tag_id) {
-          actions.push(addTagToFriend(c.env.DB, verifiedFriendId, link.tag_id));
-        }
-
-        if (link.scenario_id) {
-          actions.push(enrollFriendInScenario(c.env.DB, verifiedFriendId, link.scenario_id));
-        }
-
-        if (actions.length > 0) {
-          await Promise.allSettled(actions);
-        }
-      }
-    } catch (err) {
-      console.error(`/t/${linkId} async tracking error:`, err);
-    }
-  };
 
   try {
     const executionCtx = c.executionCtx as ExecutionContext;
-    executionCtx.waitUntil(trackClick());
+    executionCtx.waitUntil(out.trackClick());
   } catch {
-    await trackClick();
+    await out.trackClick();
   }
 
-  return c.redirect(link.original_url, 302);
+  return c.redirect(out.redirectUrl, 302);
 });
 
 export { trackedLinks };

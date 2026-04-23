@@ -257,6 +257,7 @@ export type TrackedLink = Readonly<{
   trackingUrl: string;
   tagId: TagId | null;
   scenarioId: ScenarioId | null;
+  lineAccountId: LineAccountId | null;
   isActive: boolean;
   clickCount: number;
   createdAt: string;
@@ -278,6 +279,7 @@ export type TrackedLinkWithClicks = TrackedLink &
 export type CreateTrackedLinkInput = Readonly<{
   name: string;
   originalUrl: string;
+  lineAccountId?: LineAccountId | null;
   tagId?: string | null;
   scenarioId?: string | null;
 }>;

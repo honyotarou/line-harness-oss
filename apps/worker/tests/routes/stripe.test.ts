@@ -6,15 +6,18 @@ const dbMocks = vi.hoisted(() => ({
   getStripeEvents: vi.fn(),
   getStripeEventByStripeId: vi.fn(),
   createStripeEvent: vi.fn(),
-  jstNow: vi.fn(),
-  applyScoring: vi.fn(),
+  jstNow: vi.fn(() => '2026-03-26T10:00:00+09:00'),
+  applyScoring: vi.fn().mockResolvedValue(undefined),
+  findTagForFriendByName: vi.fn().mockResolvedValue(null),
+  getFriendById: vi.fn(),
 }));
 
 vi.mock('@line-crm/db', () => dbMocks);
 
-vi.mock('../../src/services/event-bus.js', () => ({
-  fireEvent: vi.fn(),
+const eventBusMocks = vi.hoisted(() => ({
+  fireEvent: vi.fn().mockResolvedValue(undefined),
 }));
+vi.mock('../../src/services/event-bus.js', () => eventBusMocks);
 
 async function stripeWebhookSignature(
   secret: string,
@@ -265,14 +268,17 @@ describe('stripe routes', () => {
   it('records stripe webhook events when signature is valid', async () => {
     dbMocks.getStripeEventByStripeId.mockResolvedValue(null);
     dbMocks.createStripeEvent.mockResolvedValue({
-      id: 'db-event-1',
-      stripe_event_id: 'evt_1',
-      event_type: 'charge.succeeded',
-      friend_id: null,
-      amount: 1200,
-      currency: 'jpy',
-      metadata: '{"source":"test"}',
-      processed_at: '2026-03-26T10:00:00+09:00',
+      inserted: true,
+      row: {
+        id: 'db-event-1',
+        stripe_event_id: 'evt_1',
+        event_type: 'charge.succeeded',
+        friend_id: null,
+        amount: 1200,
+        currency: 'jpy',
+        metadata: '{"source":"test"}',
+        processed_at: '2026-03-26T10:00:00+09:00',
+      },
     });
 
     const { stripe } = await import('../../src/routes/stripe.js');
@@ -323,6 +329,126 @@ describe('stripe routes', () => {
         processedAt: '2026-03-26T10:00:00+09:00',
       },
     });
+  });
+
+  it('returns already processed without side effects when createStripeEvent loses insert race', async () => {
+    dbMocks.getStripeEventByStripeId.mockResolvedValue(null);
+    dbMocks.createStripeEvent.mockResolvedValue({
+      inserted: false,
+      row: {
+        id: 'db-event-existing',
+        stripe_event_id: 'evt_1',
+        event_type: 'payment_intent.succeeded',
+        friend_id: 'friend-1',
+        amount: 100,
+        currency: 'jpy',
+        metadata: '{"line_friend_id":"friend-1","product_id":"p1"}',
+        processed_at: '2026-03-26T10:00:00+09:00',
+      },
+    });
+
+    const { stripe } = await import('../../src/routes/stripe.js');
+    const app = new Hono();
+    app.route('/', stripe);
+
+    const rawBody = JSON.stringify({
+      id: 'evt_1',
+      type: 'payment_intent.succeeded',
+      data: {
+        object: {
+          id: 'pi_1',
+          amount: 100,
+          currency: 'jpy',
+          metadata: { line_friend_id: 'friend-1', product_id: 'p1' },
+        },
+      },
+    });
+    const sig = await stripeWebhookSignature('whsec_test_secret', rawBody);
+
+    const response = await app.fetch(
+      new Request('http://localhost/api/integrations/stripe/webhook', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Stripe-Signature': sig,
+        },
+        body: rawBody,
+      }),
+      makeEnv(),
+    );
+
+    expect(response.status).toBe(200);
+    await expect(response.json()).resolves.toEqual({
+      success: true,
+      data: { message: 'Already processed' },
+    });
+  });
+
+  it('forwards friend.line_account_id to fireEvent on payment_intent.succeeded (F1 cross-tenant guard)', async () => {
+    dbMocks.getStripeEventByStripeId.mockResolvedValue(null);
+    dbMocks.createStripeEvent.mockResolvedValue({
+      inserted: true,
+      row: {
+        id: 'db-event-2',
+        stripe_event_id: 'evt_2',
+        event_type: 'payment_intent.succeeded',
+        friend_id: 'friend-A',
+        amount: 2000,
+        currency: 'jpy',
+        metadata: '{"line_friend_id":"friend-A"}',
+        processed_at: '2026-03-26T10:00:00+09:00',
+      },
+    });
+    dbMocks.getFriendById.mockResolvedValue({
+      id: 'friend-A',
+      line_user_id: 'U-A',
+      display_name: 'A',
+      metadata: '{}',
+      line_account_id: 'acc-A',
+      picture_url: null,
+      status_message: null,
+      is_following: 1,
+      user_id: null,
+      created_at: '2026-03-26T10:00:00+09:00',
+      updated_at: '2026-03-26T10:00:00+09:00',
+    });
+
+    const { stripe } = await import('../../src/routes/stripe.js');
+    const app = new Hono();
+    app.route('/', stripe);
+
+    const rawBody = JSON.stringify({
+      id: 'evt_2',
+      type: 'payment_intent.succeeded',
+      data: {
+        object: {
+          id: 'pi_1',
+          amount: 2000,
+          currency: 'jpy',
+          metadata: { line_friend_id: 'friend-A' },
+        },
+      },
+    });
+    const sig = await stripeWebhookSignature('whsec_test_secret', rawBody);
+
+    const response = await app.fetch(
+      new Request('http://localhost/api/integrations/stripe/webhook', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Stripe-Signature': sig,
+        },
+        body: rawBody,
+      }),
+      makeEnv(),
+    );
+
+    expect(response.status).toBe(200);
+    expect(eventBusMocks.fireEvent).toHaveBeenCalledOnce();
+    // Signature: fireEvent(db, eventType, payload, lineAccessToken, lineAccountId, options)
+    const call = eventBusMocks.fireEvent.mock.calls[0]!;
+    expect(call[1]).toBe('cv_fire');
+    expect(call[4]).toBe('acc-A');
   });
 
   it('rate limits excessive Stripe webhook POSTs from a single client IP', async () => {

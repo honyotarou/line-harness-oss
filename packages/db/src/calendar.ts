@@ -9,6 +9,7 @@ export type GoogleCalendarConnectionRow = Readonly<{
   api_key: string | null;
   auth_type: string;
   is_active: number;
+  line_account_id: string | null;
   created_at: string;
   updated_at: string;
 }>;
@@ -50,19 +51,20 @@ export async function getCalendarConnectionById(
 
 export async function createCalendarConnection(
   db: D1Database,
-  input: {
+  input: Readonly<{
     calendarId: string;
     authType: string;
     accessToken?: string;
     refreshToken?: string;
     apiKey?: string;
-  },
+    lineAccountId?: string | null;
+  }>,
 ): Promise<GoogleCalendarConnectionRow> {
   const id = crypto.randomUUID();
   const now = jstNow();
   await db
-    .prepare(`INSERT INTO google_calendar_connections (id, calendar_id, auth_type, access_token, refresh_token, api_key, created_at, updated_at)
-              VALUES (?, ?, ?, ?, ?, ?, ?, ?)`)
+    .prepare(`INSERT INTO google_calendar_connections (id, calendar_id, auth_type, access_token, refresh_token, api_key, line_account_id, created_at, updated_at)
+              VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`)
     .bind(
       id,
       input.calendarId,
@@ -70,6 +72,7 @@ export async function createCalendarConnection(
       input.accessToken ?? null,
       input.refreshToken ?? null,
       input.apiKey ?? null,
+      input.lineAccountId?.trim() ? input.lineAccountId.trim() : null,
       now,
       now,
     )

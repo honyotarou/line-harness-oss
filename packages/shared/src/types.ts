@@ -18,6 +18,17 @@ export type FriendScenarioId = import('./brand').Branded<string, 'FriendScenario
 export type BroadcastId = import('./brand').Branded<string, 'BroadcastId'>;
 export type MessageLogId = import('./brand').Branded<string, 'MessageLogId'>;
 export type LineAccountId = import('./brand').Branded<string, 'LineAccountId'>;
+export type FormId = import('./brand').Branded<string, 'FormId'>;
+export type FormSubmissionId = import('./brand').Branded<string, 'FormSubmissionId'>;
+
+/** LINE Login OpenID Connect `sub` (verified at api.line.me/oauth2/v2.1/verify). Compile-time nominal tag only. */
+export type LineLoginSub = import('./brand').Branded<string, 'LineLoginSub'>;
+
+/** LINE Login channel id (`client_id` / token `aud`) that verified the id_token. */
+export type LineLoginChannelId = import('./brand').Branded<string, 'LineLoginChannelId'>;
+
+/** `auto_replies.id` (UUID). */
+export type AutoReplyId = import('./brand').Branded<string, 'AutoReplyId'>;
 
 export type Friend = Readonly<{
   /** 主キー (UUIDv4) */
@@ -59,6 +70,8 @@ export type Tag = Readonly<{
   name: string;
   /** 表示色 (HEX: #RRGGBB) */
   color: string;
+  /** 所属 LINE アカウント（マルチテナント時は必須運用） */
+  lineAccountId: string | null;
   /** 作成日時 (ISO 8601) */
   createdAt: string;
 }>;

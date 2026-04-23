@@ -34,6 +34,7 @@ export function mapCalendarConnectionListItem(conn: GoogleCalendarConnectionRow)
     calendarId: conn.calendar_id,
     authType: conn.auth_type,
     isActive: Boolean(conn.is_active),
+    lineAccountId: conn.line_account_id,
     createdAt: conn.created_at,
     updatedAt: conn.updated_at,
   };
@@ -45,6 +46,7 @@ export type CalendarConnectInput = Readonly<{
   accessToken?: string;
   refreshToken?: string;
   apiKey?: string;
+  lineAccountId?: string | null;
 }>;
 
 export async function connectGoogleCalendar(
@@ -68,6 +70,7 @@ export async function connectGoogleCalendar(
     accessToken: accessToken ?? undefined,
     refreshToken: refreshToken ?? undefined,
     apiKey: apiKey ?? undefined,
+    lineAccountId: input.lineAccountId ?? null,
   });
 }
 
@@ -77,6 +80,7 @@ export function mapCreatedConnectionResponse(conn: GoogleCalendarConnectionRow) 
     calendarId: conn.calendar_id,
     authType: conn.auth_type,
     isActive: Boolean(conn.is_active),
+    lineAccountId: conn.line_account_id,
     createdAt: conn.created_at,
   };
 }

@@ -152,14 +152,14 @@ const ROUTE_LINE_CAPS = {
   'auth.ts': 251,
   'automations.ts': 310,
   'broadcasts-ops.ts': 180,
-  'broadcasts.ts': 430,
+  'broadcasts.ts': 240,
   'calendar.ts': 230,
   'chats.ts': 430,
   'conversions.ts': 208,
   'conversions.events.ts': 160,
   'conversions.points.ts': 120,
   'env-probe.ts': 55,
-  'forms.ts': 497,
+  'forms.ts': 260,
   'friends.ts': 498,
   'images.ts': 200,
   'health.ts': 174,
@@ -170,14 +170,16 @@ const ROUTE_LINE_CAPS = {
   'notifications.ts': 270,
   'openapi.ts': 92,
   'operators.ts': 190,
-  'reminders.ts': 400,
+  'reminders.ts': 220,
   'rich-menus.ts': 330,
   'scenarios.ts': 462,
   'scoring.ts': 207,
-  'stripe.ts': 211,
-  'tags.ts': 96,
+  'stripe.ts': 140,
+  // Tags: LINE account scope + multi-account create validation (pentest H3).
+  'tags.ts': 100,
   'templates.ts': 141,
-  'tracked-links.ts': 340,
+  // Tracked links: admin CRUD + public /t redirect with multi-tenant friend/tag/scenario alignment (pentest C3).
+  'tracked-links.ts': 360,
   'traffic-pools.ts': 240,
   'users.ts': 240,
   'webhook.ts': 129,
@@ -440,6 +442,219 @@ if (fs.existsSync(adminAccessProxyIndex)) {
     errors.push(
       'apps/admin-access-proxy-worker/src/index.ts: must rewrite upstream Set-Cookie via rewriteSetCookieLineForAdminBrowserOrigin (@line-crm/shared) so admin cookies are not scoped to the upstream Worker hostname.',
     );
+  }
+}
+
+// ── F1 regression guard: event-bus filter must be fail-closed ──────────────
+// The pre-F1 filter `!rule.line_account_id || !lineAccountId || a.line_account_id === lineAccountId`
+// was fail-OPEN: an undefined tenant id matched every scoped rule, so callers forgetting to
+// forward lineAccountId leaked automations/notifications across tenants. The canonical filter
+// is `tenantScopedRuleMatches(rule, lineAccountId)` in services/tenant-scoped-rule-filter.ts.
+const eventBusPath = path.join(ROOT, 'apps/worker/src/services/event-bus.ts');
+if (fs.existsSync(eventBusPath)) {
+  const src = readUtf8(eventBusPath);
+  // Forbid the old inline short-circuit pattern on scoped-rule filters.
+  // Match either `!rule.line_account_id || !lineAccountId` or the snake/camel variants.
+  const failOpen = /!\s*\w+\.line_account_id\s*\|\|\s*!\s*lineAccountId/;
+  if (failOpen.test(src)) {
+    errors.push(
+      'apps/worker/src/services/event-bus.ts: fail-open tenant filter detected (`!rule.line_account_id || !lineAccountId ...`). Use `tenantScopedRuleMatches(rule, lineAccountId)` from services/tenant-scoped-rule-filter.ts (F1 regression guard).',
+    );
+  }
+  // Require the helper import to survive even if someone rewrites the filter in a different shape.
+  if (!src.includes('tenantScopedRuleMatches')) {
+    errors.push(
+      'apps/worker/src/services/event-bus.ts: must import `tenantScopedRuleMatches` (F1 contract — scoped rule filter lives in services/tenant-scoped-rule-filter.ts).',
+    );
+  }
+}
+
+// ── F1 regression guard: fireEventRespectingAutomationWebhookHosts callers forward tenant ──
+// Every file that dispatches to the event bus must also reference `line_account_id` or
+// `lineAccountId` somewhere (caller-side forwarding). An uncaller-aware dispatch passing only
+// 4 positional args (db, eventType, payload, bindings) trips the fail-closed filter as intended,
+// but also means scoped rules will silently not fire. The lint makes the forwarding deliberate.
+const fireEventCallerDirs = [
+  path.join(ROOT, 'apps/worker/src/routes'),
+  path.join(ROOT, 'apps/worker/src/application'),
+];
+for (const dir of fireEventCallerDirs) {
+  if (!fs.existsSync(dir)) continue;
+  for (const f of listFilesRecursive(dir, (p) => p.endsWith('.ts') && !p.endsWith('.test.ts'))) {
+    const rel = path.relative(ROOT, f);
+    const src = readUtf8(f);
+    if (!src.includes('fireEventRespectingAutomationWebhookHosts')) continue;
+    // The helper module itself is allowed not to forward (it is the forwarder).
+    if (rel === 'apps/worker/src/services/fire-event-outbound.ts') continue;
+    if (!/(line_account_id|lineAccountId)/.test(src)) {
+      errors.push(
+        `${rel}: calls fireEventRespectingAutomationWebhookHosts but does not reference line_account_id / lineAccountId in the same file (F1 contract — forward the tenant to event-bus so scoped automations match).`,
+      );
+    }
+  }
+}
+
+// ── F4/F5a regression guard: friend-addressed routes must use a scope guard ────────────────
+// Any route that resolves a friend via `getFriendById` must also gate with one of the known
+// scope helpers; otherwise cross-tenant reads/writes slip through (F4 = users/:id/link,
+// F5a = scoring friend score). See services/friend-scope-guard.ts and services/admin-line-account-scope.ts.
+const friendScopeGuardTokens = [
+  'friendScopeGuardCheck',
+  'jsonIfFriendOutOfScope',
+  'resourceLineAccountVisibleInScope',
+];
+if (fs.existsSync(routesDir)) {
+  for (const f of listFilesRecursive(routesDir, (p) => p.endsWith('.ts'))) {
+    const rel = path.relative(ROOT, f);
+    const src = readUtf8(f);
+    if (!src.includes('getFriendById')) continue;
+    const hasGuard = friendScopeGuardTokens.some((t) => src.includes(t));
+    if (!hasGuard) {
+      errors.push(
+        `${rel}: route calls getFriendById but does not reference any friend scope guard (${friendScopeGuardTokens.join(' | ')}). Add friendScopeGuardCheck(scope, friend) from services/friend-scope-guard.ts (F4/F5a contract).`,
+      );
+    }
+  }
+}
+
+// ── Rule D: migrations ↔ schema.sql drift ────────────────────────────────────
+// For each migration's `ALTER TABLE X ADD COLUMN Y ...` and `CREATE TABLE [IF NOT EXISTS] X (...)`,
+// confirm the canonical schema.sql reflects the change. Prevents F3-style drift (column added to
+// a migration but forgotten in schema.sql, so new env-bootstrap diverges from migrated deployments).
+//
+// Intermediate recreate-pattern tables (suffixes like `_new`, `_old`, `__NNN`) are skipped —
+// their final RENAME TO target is what must exist in schema.sql, which is checked separately.
+const migrationsDir = path.join(ROOT, 'packages/db/migrations');
+const schemaSqlPath = path.join(ROOT, 'packages/db/schema.sql');
+if (fs.existsSync(migrationsDir) && fs.existsSync(schemaSqlPath)) {
+  const schemaSrc = readUtf8(schemaSqlPath);
+
+  /**
+   * Extract the column list body of `CREATE TABLE [IF NOT EXISTS] <name> ( ... )` from SQL text.
+   * Returns the parenthesized body (without outer parens), or null if the table is absent.
+   */
+  function extractCreateTableBody(sql, tableName) {
+    const re = new RegExp(
+      `CREATE\\s+TABLE\\s+(?:IF\\s+NOT\\s+EXISTS\\s+)?${tableName}\\s*\\(`,
+      'i',
+    );
+    const m = re.exec(sql);
+    if (!m) return null;
+    // Walk forward tracking paren depth to find the matching `)`.
+    let depth = 1;
+    let i = m.index + m[0].length;
+    const start = i;
+    while (i < sql.length && depth > 0) {
+      const ch = sql[i];
+      if (ch === '(') depth += 1;
+      else if (ch === ')') depth -= 1;
+      i += 1;
+    }
+    if (depth !== 0) return null;
+    return sql.slice(start, i - 1);
+  }
+
+  function columnExistsInBody(body, columnName) {
+    // Column references in body look like `  <colname> TYPE ...,` at line start
+    // (after optional leading whitespace). Match as word boundary to avoid substring hits.
+    const re = new RegExp(`(^|\\n)\\s*${columnName}\\b`, 'i');
+    return re.test(body);
+  }
+
+  // Intermediate rebuild-pattern tables: `_new` / `_old` suffix, plus recreate-suffix
+  // styles like `__031` (purely numeric) or `__m025` (letter-prefixed). These are never
+  // the long-term canonical shape, so schema.sql is not required to contain them.
+  const isIntermediateTable = (name) => /(_new|_old|__[a-z]*\d+)$/i.test(name);
+
+  const migrationFiles = listFilesRecursive(migrationsDir, (p) => p.endsWith('.sql')).sort();
+
+  const addColumnRe = /ALTER\s+TABLE\s+([a-z_][a-z0-9_]*)\s+ADD\s+COLUMN\s+([a-z_][a-z0-9_]*)\b/gi;
+  const createTableRe = /CREATE\s+TABLE\s+(?:IF\s+NOT\s+EXISTS\s+)?([a-z_][a-z0-9_]*)\s*\(/gi;
+  const dropTableRe = /DROP\s+TABLE\s+(?:IF\s+EXISTS\s+)?([a-z_][a-z0-9_]*)/gi;
+  const renameRe = /ALTER\s+TABLE\s+([a-z_][a-z0-9_]*)\s+RENAME\s+TO\s+([a-z_][a-z0-9_]*)/gi;
+
+  // First pass: gather every table dropped across ALL migrations (so an earlier CREATE
+  // is not flagged just because a later migration removed the table entirely, e.g.
+  // admin_users dropped by 017).
+  const globallyDroppedTables = new Set();
+  for (const f of migrationFiles) {
+    const clean = readUtf8(f)
+      .split(/\r?\n/)
+      .map((line) => line.replace(/--.*$/, ''))
+      .join('\n');
+    let dm;
+    dropTableRe.lastIndex = 0;
+    while ((dm = dropTableRe.exec(clean)) !== null) {
+      globallyDroppedTables.add(dm[1]);
+    }
+    let rm;
+    renameRe.lastIndex = 0;
+    while ((rm = renameRe.exec(clean)) !== null) {
+      // `ALTER TABLE foo_new RENAME TO foo` means foo_new is consumed; treat as dropped.
+      globallyDroppedTables.add(rm[1]);
+    }
+  }
+
+  for (const f of migrationFiles) {
+    const rel = path.relative(ROOT, f);
+    const src = readUtf8(f);
+
+    // Strip SQL comments to avoid false positives.
+    const clean = src
+      .split(/\r?\n/)
+      .map((line) => line.replace(/--.*$/, ''))
+      .join('\n');
+
+    // Tables dropped in this migration — columns/tables may have been removed intentionally.
+    const droppedTables = new Set();
+    let dm;
+    dropTableRe.lastIndex = 0;
+    while ((dm = dropTableRe.exec(clean)) !== null) {
+      droppedTables.add(dm[1]);
+    }
+    // Rename targets — the source is usually a `_new`/`_old` intermediate; the target is what
+    // must exist in schema.sql. Track targets to cross-check.
+    const renameTargets = new Set();
+    let rm;
+    renameRe.lastIndex = 0;
+    while ((rm = renameRe.exec(clean)) !== null) {
+      renameTargets.add(rm[2]);
+    }
+
+    // ADD COLUMN checks
+    let am;
+    addColumnRe.lastIndex = 0;
+    while ((am = addColumnRe.exec(clean)) !== null) {
+      const [, table, column] = am;
+      if (droppedTables.has(table) || globallyDroppedTables.has(table)) continue;
+      const body = extractCreateTableBody(schemaSrc, table);
+      if (!body) {
+        errors.push(
+          `${rel}: migration adds column to table \`${table}\` but schema.sql has no CREATE TABLE for \`${table}\` (Rule D — schema.sql must reflect the migrated shape).`,
+        );
+        continue;
+      }
+      if (!columnExistsInBody(body, column)) {
+        errors.push(
+          `${rel}: migration adds \`${table}.${column}\` but schema.sql CREATE TABLE \`${table}\` does not list the column (Rule D — update packages/db/schema.sql alongside the migration).`,
+        );
+      }
+    }
+
+    // CREATE TABLE checks — new tables must also appear in schema.sql (excluding intermediates
+    // and tables dropped later in migration history).
+    let cm;
+    createTableRe.lastIndex = 0;
+    while ((cm = createTableRe.exec(clean)) !== null) {
+      const table = cm[1];
+      if (isIntermediateTable(table)) continue;
+      if (globallyDroppedTables.has(table) && !renameTargets.has(table)) continue;
+      if (!extractCreateTableBody(schemaSrc, table)) {
+        errors.push(
+          `${rel}: migration creates table \`${table}\` but schema.sql has no matching CREATE TABLE (Rule D — mirror new tables into packages/db/schema.sql).`,
+        );
+      }
+    }
   }
 }
 

@@ -9,9 +9,12 @@ import {
   getUserFriends,
   getUserByEmail,
   getUserByPhone,
+  getFriendById,
 } from '@line-crm/db';
 import type { User as DbUser } from '@line-crm/db';
 import type { Env } from '../index.js';
+import { resolveLineAccountScopeForRequest } from '../services/admin-line-account-scope.js';
+import { friendScopeGuardCheck } from '../services/friend-scope-guard.js';
 import {
   DEFAULT_ADMIN_JSON_BODY_LIMIT_BYTES,
   jsonBodyReadErrorResponse,
@@ -144,11 +147,11 @@ users.post('/api/users/:id/link', async (c) => {
       return c.json({ success: false, error: 'User not found' }, 404);
     }
 
-    const friend = await c.env.DB.prepare(`SELECT id FROM friends WHERE id = ?`)
-      .bind(body.friendId)
-      .first<{ id: string }>();
-    if (!friend) {
-      return c.json({ success: false, error: 'Friend not found' }, 404);
+    const friend = await getFriendById(c.env.DB, body.friendId);
+    const scope = await resolveLineAccountScopeForRequest(c.env.DB, c);
+    const gate = friendScopeGuardCheck(scope, friend);
+    if (!gate.ok) {
+      return c.json(gate.body, gate.status);
     }
 
     await linkFriendToUser(c.env.DB, body.friendId, userId);

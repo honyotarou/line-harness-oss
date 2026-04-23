@@ -1,18 +1,17 @@
-import { Hono } from 'hono';
-import {
-  addPoolAccount,
-  createTrafficPool,
-  deleteTrafficPool,
-  getPoolAccounts,
-  getTrafficPoolById,
-  getTrafficPoolBySlug,
-  getTrafficPools,
-  removePoolAccount,
-  togglePoolAccount,
-  updateTrafficPool,
-} from '@line-crm/db';
-import type { PoolAccountWithDetails, TrafficPoolWithAccount } from '@line-crm/db';
+import { Hono, type Context } from 'hono';
+import { getTrafficPoolBySlug } from '@line-crm/db';
 import type { Env } from '../index.js';
+import {
+  addAdminPoolAccount,
+  createAdminTrafficPool,
+  deleteAdminPoolAccount,
+  deleteAdminTrafficPool,
+  listAdminPoolAccounts,
+  listAdminTrafficPools,
+  toggleAdminPoolAccount,
+  updateAdminTrafficPool,
+} from '../application/admin-traffic-pools.js';
+import { resolveLineAccountScopeForRequest } from '../services/admin-line-account-scope.js';
 import {
   DEFAULT_ADMIN_JSON_BODY_LIMIT_BYTES,
   jsonBodyReadErrorResponse,
@@ -21,41 +20,15 @@ import {
 
 const trafficPools = new Hono<Env>();
 
-function serialize(pool: TrafficPoolWithAccount) {
-  return {
-    id: pool.id,
-    slug: pool.slug,
-    name: pool.name,
-    activeAccountId: pool.active_account_id,
-    accountName: pool.account_name,
-    liffId: pool.liff_id,
-    isActive: Boolean(pool.is_active),
-    createdAt: pool.created_at,
-    updatedAt: pool.updated_at,
-  };
-}
-
-function serializePoolAccount(pa: PoolAccountWithDetails) {
-  return {
-    id: pa.id,
-    poolId: pa.pool_id,
-    lineAccountId: pa.line_account_id,
-    accountName: pa.account_name,
-    liffId: pa.liff_id,
-    isActive: Boolean(pa.is_active),
-    createdAt: pa.created_at,
-  };
+function jsonForPoolFailure(c: Context<Env>, failure: Readonly<{ body: unknown; status: number }>) {
+  return c.json(failure.body, failure.status as 400 | 403 | 404 | 409);
 }
 
 // ── Public: GET /pool/:slug → 302 redirect to LIFF auth URL ────────────────
-
 trafficPools.get('/pool/:slug', async (c) => {
   const slug = c.req.param('slug');
   const pool = await getTrafficPoolBySlug(c.env.DB, slug);
-
-  if (!pool) {
-    return c.json({ success: false, error: 'Pool not found' }, 404);
-  }
+  if (!pool) return c.json({ success: false, error: 'Pool not found' }, 404);
 
   const baseUrl = new URL(c.req.url).origin;
   const params = new URLSearchParams();
@@ -71,8 +44,9 @@ trafficPools.get('/pool/:slug', async (c) => {
 
 trafficPools.get('/api/traffic-pools', async (c) => {
   try {
-    const pools = await getTrafficPools(c.env.DB);
-    return c.json({ success: true, data: pools.map(serialize) });
+    const scope = await resolveLineAccountScopeForRequest(c.env.DB, c);
+    const out = await listAdminTrafficPools(c.env.DB, scope);
+    return c.json({ success: true, data: out.data });
   } catch (err) {
     console.error('GET /api/traffic-pools error:', err);
     return c.json({ success: false, error: 'Internal server error' }, 500);
@@ -86,17 +60,13 @@ trafficPools.post('/api/traffic-pools', async (c) => {
       name: string;
       activeAccountId: string;
     }>(c.req.raw, DEFAULT_ADMIN_JSON_BODY_LIMIT_BYTES);
-
     if (!body.slug || !body.name || !body.activeAccountId) {
       return c.json({ success: false, error: 'slug, name, and activeAccountId are required' }, 400);
     }
-
-    const pool = await createTrafficPool(c.env.DB, {
-      slug: body.slug,
-      name: body.name,
-      activeAccountId: body.activeAccountId,
-    });
-    return c.json({ success: true, data: serialize(pool) }, 201);
+    const scope = await resolveLineAccountScopeForRequest(c.env.DB, c);
+    const out = await createAdminTrafficPool(c.env.DB, scope, body);
+    if (!out.ok) return jsonForPoolFailure(c, out);
+    return c.json({ success: true, data: out.data }, 201);
   } catch (err) {
     const jr = jsonBodyReadErrorResponse(err);
     if (jr) return c.json(jr.body, jr.status);
@@ -107,23 +77,15 @@ trafficPools.post('/api/traffic-pools', async (c) => {
 
 trafficPools.put('/api/traffic-pools/:id', async (c) => {
   try {
-    const id = c.req.param('id');
     const body = await readJsonBodyWithLimit<{
       name?: string;
       activeAccountId?: string;
       isActive?: boolean;
     }>(c.req.raw, DEFAULT_ADMIN_JSON_BODY_LIMIT_BYTES);
-
-    const updated = await updateTrafficPool(c.env.DB, id, {
-      name: body.name,
-      activeAccountId: body.activeAccountId,
-      isActive: body.isActive,
-    });
-
-    if (!updated) {
-      return c.json({ success: false, error: 'Traffic pool not found' }, 404);
-    }
-    return c.json({ success: true, data: serialize(updated) });
+    const scope = await resolveLineAccountScopeForRequest(c.env.DB, c);
+    const out = await updateAdminTrafficPool(c.env.DB, scope, c.req.param('id'), body);
+    if (!out.ok) return jsonForPoolFailure(c, out);
+    return c.json({ success: true, data: out.data });
   } catch (err) {
     const jr = jsonBodyReadErrorResponse(err);
     if (jr) return c.json(jr.body, jr.status);
@@ -134,12 +96,9 @@ trafficPools.put('/api/traffic-pools/:id', async (c) => {
 
 trafficPools.delete('/api/traffic-pools/:id', async (c) => {
   try {
-    const id = c.req.param('id');
-    const existing = await getTrafficPoolById(c.env.DB, id);
-    if (!existing) {
-      return c.json({ success: false, error: 'Traffic pool not found' }, 404);
-    }
-    await deleteTrafficPool(c.env.DB, id);
+    const scope = await resolveLineAccountScopeForRequest(c.env.DB, c);
+    const out = await deleteAdminTrafficPool(c.env.DB, scope, c.req.param('id'));
+    if (!out.ok) return jsonForPoolFailure(c, out);
     return c.json({ success: true, data: null });
   } catch (err) {
     console.error('DELETE /api/traffic-pools/:id error:', err);
@@ -149,8 +108,10 @@ trafficPools.delete('/api/traffic-pools/:id', async (c) => {
 
 trafficPools.get('/api/traffic-pools/:id/accounts', async (c) => {
   try {
-    const accounts = await getPoolAccounts(c.env.DB, c.req.param('id'));
-    return c.json({ success: true, data: accounts.map(serializePoolAccount) });
+    const scope = await resolveLineAccountScopeForRequest(c.env.DB, c);
+    const out = await listAdminPoolAccounts(c.env.DB, scope, c.req.param('id'));
+    if (!out.ok) return jsonForPoolFailure(c, out);
+    return c.json({ success: true, data: out.data });
   } catch (err) {
     console.error('GET /api/traffic-pools/:id/accounts error:', err);
     return c.json({ success: false, error: 'Internal server error' }, 500);
@@ -166,15 +127,13 @@ trafficPools.post('/api/traffic-pools/:id/accounts', async (c) => {
     if (!body.lineAccountId) {
       return c.json({ success: false, error: 'lineAccountId is required' }, 400);
     }
-    const account = await addPoolAccount(c.env.DB, c.req.param('id'), body.lineAccountId);
-    return c.json({ success: true, data: account }, 201);
-  } catch (err: unknown) {
+    const scope = await resolveLineAccountScopeForRequest(c.env.DB, c);
+    const out = await addAdminPoolAccount(c.env.DB, scope, c.req.param('id'), body);
+    if (!out.ok) return jsonForPoolFailure(c, out);
+    return c.json({ success: true, data: out.data }, 201);
+  } catch (err) {
     const jr = jsonBodyReadErrorResponse(err);
     if (jr) return c.json(jr.body, jr.status);
-    const msg = err instanceof Error ? err.message : '';
-    if (msg.includes('UNIQUE constraint')) {
-      return c.json({ success: false, error: 'Account already in this pool' }, 409);
-    }
     console.error('POST /api/traffic-pools/:id/accounts error:', err);
     return c.json({ success: false, error: 'Internal server error' }, 500);
   }
@@ -186,9 +145,16 @@ trafficPools.put('/api/traffic-pools/:id/accounts/:accountId', async (c) => {
       c.req.raw,
       DEFAULT_ADMIN_JSON_BODY_LIMIT_BYTES,
     );
-    const result = await togglePoolAccount(c.env.DB, c.req.param('accountId'), body.isActive);
-    if (!result) return c.json({ success: false, error: 'Not found' }, 404);
-    return c.json({ success: true, data: result });
+    const scope = await resolveLineAccountScopeForRequest(c.env.DB, c);
+    const out = await toggleAdminPoolAccount(
+      c.env.DB,
+      scope,
+      c.req.param('id'),
+      c.req.param('accountId'),
+      body.isActive,
+    );
+    if (!out.ok) return jsonForPoolFailure(c, out);
+    return c.json({ success: true, data: out.data });
   } catch (err) {
     const jr = jsonBodyReadErrorResponse(err);
     if (jr) return c.json(jr.body, jr.status);
@@ -199,8 +165,14 @@ trafficPools.put('/api/traffic-pools/:id/accounts/:accountId', async (c) => {
 
 trafficPools.delete('/api/traffic-pools/:id/accounts/:accountId', async (c) => {
   try {
-    const deleted = await removePoolAccount(c.env.DB, c.req.param('accountId'));
-    if (!deleted) return c.json({ success: false, error: 'Not found' }, 404);
+    const scope = await resolveLineAccountScopeForRequest(c.env.DB, c);
+    const out = await deleteAdminPoolAccount(
+      c.env.DB,
+      scope,
+      c.req.param('id'),
+      c.req.param('accountId'),
+    );
+    if (!out.ok) return jsonForPoolFailure(c, out);
     return c.json({ success: true });
   } catch (err) {
     console.error('DELETE /api/traffic-pools/:id/accounts/:accountId error:', err);

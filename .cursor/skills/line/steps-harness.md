@@ -15,7 +15,7 @@
 | **§1 テストはドキュメントより腐敗に強い** | 期待動作は Vitest / Playwright / Hurl で表現；同じミスが二度出たら **テストか ADR**（[ADR 0002](../../../docs/adr/0002-harness-engineering.md)） |
 | リンターの仕事を LLM にさせない（§2） | 型（Worker + **LIFF `tsc`**）+ Vitest + **Biome format**；Web 本番は **`harness:ci` / CI で `next build`** |
 | **§2 アーキテクチャをガードレールに** | `scripts/check-encapsulation.mjs`（レイヤー・薄いルート）；**PR CI** は Biome 直後に実行してビルド前に強制 |
-| フィードバックは速い層へ（§2・まとめ） | **PostToolUse**（ms 級）→ **Lefthook**（秒）→ **`pnpm harness` / CI**（分）の順で寄せる |
+| フィードバックは速い層へ（§2・まとめ） | **Lefthook pre-commit**（`pnpm harness:fast` ≒ 7s: Biome + encapsulation + worker typecheck + worker tests、SQL/schema 変更時は自動で full にエスカレート）→ **Lefthook pre-push**（`pnpm harness` ≒ 18s: LIFF build + 全パッケージ tests）→ **CI**（`pnpm harness:ci`）の 3 段。editor 中立なので Cursor / Claude Code / CLI すべてに効く |
 | PostToolUse / Stop の品質ループ（§2） | `.claude/settings.json` + `.claude/hooks/*`（Claude Code 利用者向け） |
 | **§4 計画と実行の分離** | 下記「§4 ワークフロー」；TDD の観点は [steps-0-3-red-green-refactor.md](steps-0-3-red-green-refactor.md) Step 3 |
 | E2E の層分け（§5・API は専用ツール） | Playwright = UI+モック；`pnpm test:api` = 実 Worker + [Hurl](https://hurl.dev) |
@@ -35,7 +35,7 @@
 
 | 記事の段階 | このリポでの状態 |
 |------------|------------------|
-| **Week 1**（ポインタ・pre-commit・PostToolUse format・最初の ADR） | `AGENTS.md` + [SKILL.md](SKILL.md)；Lefthook で `pnpm harness`；Claude 利用者は PostToolUse format → harness；ADR `docs/adr/0001` `0002` |
+| **Week 1**（ポインタ・pre-commit・PostToolUse format・最初の ADR） | `AGENTS.md` + [SKILL.md](SKILL.md)；**Lefthook pre-commit = `pnpm harness:fast`**（SQL/schema 時は full にエスカレート）、**pre-push = `pnpm harness`**；Claude 利用者は PostToolUse でも fast を即時適用；ADR `docs/adr/0001` `0002` |
 | **Week 2–4**（ミスごとにテスト追加・E2E・Stop hook・起動ルーチン） | Playwright `pnpm test:e2e`；Claude **Stop** で harness；`pnpm harness:ci` / `harness:full` で層を足す |
 | **Month 2–3**（カスタムゲート・PreToolUse 安全） | **`check-encapsulation.mjs`** がアーキテクチャゲート；**PreToolUse** `pre-protect-config.sh` でハーネス正本の改竄ブロック |
 | **Month 3+**（高度なループ・GC） | 任意：Modifius 型 CI（`modifius-ci.yml`）は **補助の定点観測**；ガベージコレクションは **決定論ルール**に基づく運用を推奨 |
@@ -90,7 +90,7 @@
 
 **ペネトレ自走**（攻撃仮説・フェーズ順）は [steps-pentest-tdd-loop.md](steps-pentest-tdd-loop.md)。**「なぜ harness が赤いか」の分岐はこの小節が正本**。
 
-**Lefthook**: `pnpm exec lefthook install` で pre-commit に `pnpm harness`（[evilmartians/lefthook](https://github.com/evilmartians/lefthook)）。
+**Lefthook**: `pnpm exec lefthook install` でフックを有効化（[evilmartians/lefthook](https://github.com/evilmartians/lefthook)）。このリポの `lefthook.yml` は **pre-commit = `pnpm harness:fast` / pre-push = `pnpm harness`** の 2 段。pre-commit で SQL / `schema.sql` が含まれるコミットは **自動で full にエスカレート**（Rule D drift を lib build 経由で exercise するため）。editor 中立なので **Cursor・Claude Code・CLI** すべてに同じゲートが効く。
 
 **Biome** は formatter のみ（`biome.json`）。リント ON にする場合は人間の PR で CI / `harness-check.sh` を合わせて更新する。
 
@@ -98,8 +98,9 @@
 
 | コマンド | 内容 |
 |----------|------|
-| `pnpm check:encapsulation` | Worker/Web のレイヤー違反・薄いルートの行数のみ（単体でも可） |
-| `pnpm harness` | Biome + **カプセル化** + Worker 型 + LIFF 型 + LIFF build + 全ユニット |
+| `pnpm check:encapsulation` | Worker/Web のレイヤー違反・薄いルートの行数・**F1/F4/F5 scope guard 契約**・**Rule D（migration ↔ schema.sql drift）**のみ。単体でも可、≒0.1s |
+| `pnpm harness:fast` | 上記 encapsulation + Biome + worker typecheck + worker tests。**pre-commit と TDD 反復中の内ループ**。≒7s |
+| `pnpm harness` | `harness:fast` + **lib build + LIFF typecheck + LIFF build + 全パッケージ tests**。pre-push と Stop gate。≒18s |
 | `pnpm harness:ci` | Biome + LIFF 型 + `build:libs` + `next build`（web）+ カバレッジ + SDK |
 | `pnpm harness:full` | harness + Playwright + Hurl |
 
