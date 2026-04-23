@@ -831,3 +831,14 @@ CREATE TABLE IF NOT EXISTS ad_platform_connections (
 
 CREATE INDEX IF NOT EXISTS idx_ad_platform_connections_line_account_id ON ad_platform_connections (line_account_id);
 CREATE INDEX IF NOT EXISTS idx_ad_platform_connections_provider ON ad_platform_connections (provider);
+
+-- ============================================================
+-- LINE Login OAuth state — single-use jti (D1)
+-- ============================================================
+CREATE TABLE IF NOT EXISTS liff_oauth_state_jtis (
+  jti            TEXT PRIMARY KEY,
+  expires_at_ms  INTEGER NOT NULL
+);
+
+CREATE INDEX IF NOT EXISTS idx_liff_oauth_state_jtis_expires_at_ms
+  ON liff_oauth_state_jtis (expires_at_ms);

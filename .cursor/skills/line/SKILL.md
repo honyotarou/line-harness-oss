@@ -1,12 +1,15 @@
 ---
 name: line
 description: >-
-  LINE Harness OSS の統合ワークフロー（/line）。番号メニューでデザイン0・1→ハーネス2→TDD3〜7→ゲート8〜11→デプロイ12。
+  LINE Harness OSS の統合ワークフロー（/line）。入口は番号 0〜12・`check`・キーワード `pentest` / `orthopedics`（セクション 1 と同列）。デザイン 0・1→ハーネス 2→TDD 3〜6→ゲート 7〜11（`check` は harness→e2e→test:api）→デプロイ 12。
   Cloudflare Worker、LIFF、Next 管理画面、カプセル化、pnpm harness、TDD、ペネトレ（steps-pentest-tdd-loop）、デプロイ。
-  Use when: /line, /tdd, LINE CRM, line-harness-oss, デザイン壁打ち, リッチメニュー, harness, pentest, ペネトレ.
+  Playwright E2E はモック API（本物の Worker 契約は Vitest + test:api）。Use when: /line, /tdd, /pentest-tdd-loop, LINE CRM, line-harness-oss, デザイン壁打ち, リッチメニュー, harness, pentest, ペネトレ, orthopedics, check, deploy, e2e, test:api.
+  Major edits: Iteration 0（description とセクション 1 の整合）→ 任意で empirical 評価は ../shuusei/SKILL.md（/shuusei、別 subagent・シナリオ）。
 ---
 
 # LINE Harness OSS（`/line`）
+
+**Cursor**: 正本は **`.cursor/skills/line/SKILL.md`**。スラッシュ **`/line`** から来た場合もここを Read する。**最初に読む `steps-*` はセクション 6.2 の表だけで決める**（`steps-*.md` を glob 列挙してから選ばない）。
 
 **やること**: 下のメニューから **番号**または **キーワード**（`pentest` / `orthopedics`）を選ぶ → **対応する `steps-*.md` を Read**（このファイルは索引。長文は置かない）。
 
@@ -56,7 +59,7 @@ description: >-
 | [steps-brand-1-5.md](steps-brand-1-5.md) | 親 1・ブランド |
 | [steps-orthopedics-wallball.md](steps-orthopedics-wallball.md) | orthopedics |
 | [steps-pentest-tdd-loop.md](steps-pentest-tdd-loop.md) | **pentest 正本**（チェックリスト・自走）。分岐表は [steps-harness.md](steps-harness.md) へ |
-| [steps-harness.md](steps-harness.md) | Step **2**・ゲート一覧・**マージゲートが赤いとき**・E2E 層・Modifius §4.1 |
+| [steps-harness.md](steps-harness.md) | Step **2**・ゲート一覧・**マージゲートが赤いとき**・E2E 層・[4.1 定期観測](steps-harness.md)（Modifius 型 CI テンプレ） |
 | [steps-0-3-red-green-refactor.md](steps-0-3-red-green-refactor.md) | Step **3〜6** |
 | [steps-4-8-gates.md](steps-4-8-gates.md) | Step **7〜11**・check |
 | [steps-deploy.md](steps-deploy.md) | Step **12** |
@@ -77,7 +80,7 @@ description: >-
 | `apps/liff/src/` | LIFF（API 基底・build 時ガード） |
 | `tests/e2e/` | Playwright（**API モック**） |
 | `tests/hurl/` | `pnpm test:api`（実 Worker） |
-| `packages/db`, `packages/shared`, `docs/design/` | DB・共有・デザイントークン |
+| `packages/db`, `packages/shared`, `packages/sdk`, `packages/line-sdk`, `docs/design/` | DB・共有・公開 SDK（`@line-harness/sdk`）・LINE プラットフォーム SDK・デザイントークン |
 
 ---
 
@@ -93,6 +96,16 @@ description: >-
 | カプセル化 | `pnpm check:encapsulation`。新規 `routes/*.ts` は **`ROUTE_LINE_CAPS`**。加えて **`class` / `interface` 禁止**の TS 設計ゲートも毎回走る |
 | **harness が赤い** | 分岐の正本 → [steps-harness.md](steps-harness.md) **「マージゲートが赤いとき」** |
 
+### 4.1 批判レビューで固定した注意点（このリポの現状）
+
+設計は ADR・`steps-*` が正本。ここは **エージェントが誤解しやすい点**だけ短く固定する。
+
+- **E2E の意味**: `tests/e2e/` の Playwright は **管理 UI＋モック Worker**。フルスタックや本物の HTTP 契約の証明にはならない。Worker 境界は **`apps/worker/tests` の Vitest** と **`pnpm test:api`（Hurl）**。[ADR 0001](../../../docs/adr/0001-testing-and-harness-layers.md) と同趣旨を崩さない。
+- **`pnpm harness` と `harness:ci`**: ローカル **`pnpm harness`** は速いゲート中心。**Next 本番相当の `next build`（web）** は **`pnpm harness:ci`** / CI `unit` に寄せる。管理画面を触った変更で CI だけ落ちるパターンを疑う。
+- **ルートの厚さ**: `ROUTE_LINE_CAPS` は **CI 用の行数上限**であり「ルートは十分薄い」の根拠にはしない。キャップを上げる前に **`application/` へ抽出**（[steps-0-3-red-green-refactor.md](steps-0-3-red-green-refactor.md) Step 4〜5 と整合）。
+- **攻撃面**: LIFF・受信 Webhook・公開フォーム・トラッキング・Stripe 等、**認可・署名・レート制限**に触れる変更は **`pentest`** 正本を見出しで素通りしない（必要なら [steps-pentest-tdd-loop.md](steps-pentest-tdd-loop.md) を 1 本目に）。
+- **本番結線**: Cloudflare Access／CORS／別オリジン管理画面／D1 運用は **`AGENTS.md`** が長文の正本。ハーネスが緑でも **エッジや環境変数**で失敗し得る — SKILL に手順を複製しない。
+
 ---
 
 ## 5. 共通ルール（短く）
@@ -100,7 +113,7 @@ description: >-
 ### 5.1 よく使う経路
 
 - **UI・ブランドから**: `0 → 1 → 2 → 3`。**API だけ**: `2`（必要なら）→ `3`。
-- **TDD**: `3→4→5→6` のあと **`7` で `pnpm harness` 緑** → 必要なら 8〜9。**リリース相当**: `11` または `check`。
+- **TDD**: `3→4→5→6` のあと **`7` で `pnpm harness` 緑** → 必要なら 8〜11。**リリース相当**: `11` または `check`。
 - **pentest**: [steps-pentest-tdd-loop.md](steps-pentest-tdd-loop.md)。Red／Green／harness の Step 対応は同ファイル先頭の表。
 
 ### 5.2 デザイン完了の意味
@@ -135,7 +148,8 @@ description: >-
 
 ### 5.5 テスト階層
 
-- Playwright ＝ UI ＋ **モック API**。本物の Worker HTTP は **`pnpm test:api`**。
+- Playwright（`tests/e2e/`）＝ UI ＋ **モック API**。**「E2E が緑」＝ API が本番相当に正しい**ではない。
+- Worker のルート契約・ミドルウェアは **`apps/worker/tests`**（Vitest）が主戦場。実 HTTP の浅い統合は **`pnpm test:api`**（Hurl）。ステージング相当の秘密・本番挙動は **別途**（ADR 0001 の境界）。
 
 ### 5.6 完了・その他
 
@@ -145,7 +159,43 @@ description: >-
 
 ---
 
-## 6. 参照リンク
+## 6. エージェント向け: 実行順と品質（empirical prompt tuning 観点）
+
+本節は **SKILL.md を読んだ実行者**が、参照ファイルを漁らずに着手できるようにする。**Task / 別セッションの subagent で実測評価**するときは、正本 **[shuusei / empirical-prompt-tuning](../shuusei/SKILL.md)** のワークフロー（シナリオ 2〜3、要件チェックリスト、`[critical]` 付き最低 1 項目、毎回新規実行者）に乗せる。スラッシュ **`/shuusei`** でも同ファイルを指す。
+
+### 6.1 Iteration 0（静的・dispatch 不要）
+
+- **frontmatter `description`**（入口の 1 行目・**Use when**）が、セクション 1 の **番号 0〜12**・**`check`**・**`pentest` / `orthopedics`**・リッチ枝（親 0 の下位）に対応するトリガーを **漏れなく列挙できているか**確認する。
+- **長い手順は SKILL に書かない**（索引＋早見表＋本節）。詳細は常に `steps-*.md` 側。
+
+### 6.2 最小 Read ルール（decision index）
+
+**[critical] `pnpm harness` / CI が赤い**: メニュー番号に関係なく、先に [steps-harness.md の「マージゲートが赤いとき」](steps-harness.md) を Read する（pentest フェーズに入る前も同様）。
+
+| ユーザーが選んだ入口 | 1 本目に Read する `steps-*` | 2 本目が典型なら |
+|----------------------|------------------------------|------------------|
+| **0**（ビジュアル） | [steps-design-0-1.md](steps-design-0-1.md)（Step 0） | リッチ枝 → [steps-rich-menu-wallball.md](steps-rich-menu-wallball.md) |
+| **1**（要件・8 Round） | [steps-design-0-1.md](steps-design-0-1.md)（Step 1） | [steps-brand-1-5.md](steps-brand-1-5.md) |
+| **orthopedics** | [steps-orthopedics-wallball.md](steps-orthopedics-wallball.md) | — |
+| **pentest** | [steps-pentest-tdd-loop.md](steps-pentest-tdd-loop.md) | 上記 [critical] のとき [steps-harness.md](steps-harness.md) を先 |
+| **2** | [steps-harness.md](steps-harness.md) | — |
+| **3〜6** | [steps-0-3-red-green-refactor.md](steps-0-3-red-green-refactor.md) | — |
+| **7〜11** / **check** | [steps-4-8-gates.md](steps-4-8-gates.md) | — |
+| **12** | [steps-deploy.md](steps-deploy.md) | 運用は [AGENTS.md](../../../AGENTS.md) |
+
+原則: **`steps-*.md` を glob / キーワードだけで列挙してから選ばない**。上表で 1 本目を決め、そのファイル内リンクを辿る（参照 descent を避ける）。
+
+### 6.3 実測が無いときの明示
+
+**新規 subagent を dispatch できない**環境では、実測に代えて **構造審査**（6.1 + 表の整合・リンク切れ）に留める。結果を「収束済み」と扱わず、可能なら別セッションで empirical 評価を依頼する旨をユーザーに伝える。
+
+### 6.4 メトリクスの読み方（補助）
+
+精度だけでは skill の問題が隠れる。シナリオ間で **ツール呼び出し数が他比 3〜5 倍以上**なら、decision index が足りず参照探索が起きているサイン。対処は **6.2 の表を SKILL 先頭付近に保つ**、または該当 `steps-*.md` 冒頭に「いつどのファイルを読むか」を 1 段落で足すこと。
+
+---
+
+## 7. 参照リンク
 
 - [Harness Engineering（2026）](https://nyosegawa.com/posts/harness-engineering-best-practices-2026/) — このリポとの対応は [steps-harness.md](steps-harness.md) 冒頭
 - [ADR 0001](../../../docs/adr/0001-testing-and-harness-layers.md) / [ADR 0002](../../../docs/adr/0002-harness-engineering.md)

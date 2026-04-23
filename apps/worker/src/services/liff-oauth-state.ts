@@ -17,11 +17,13 @@ export type LiffOAuthStateFields = Readonly<{
   pool: string;
   account: string;
   uid: string;
+  /** Server-issued one-time id; must be consumed from D1 on callback. */
+  jti: string;
 }>;
 
 type LiffOAuthStatePayload = LiffOAuthStateFields & { iat: number; exp: number };
 
-const STATE_TTL_SEC = 60 * 60;
+export const STATE_TTL_SEC = 60 * 60;
 
 function base64UrlEncode(bytes: Uint8Array): string {
   let bin = '';
@@ -108,6 +110,10 @@ export async function verifyLiffOAuthState(
   const now = Math.floor(Date.now() / 1000);
   if (typeof parsed.exp !== 'number' || now > parsed.exp) return null;
 
+  const jtiRaw = (parsed as Record<string, unknown>).jti;
+  const jti = typeof jtiRaw === 'string' ? jtiRaw.trim() : '';
+  if (!jti) return null;
+
   return {
     ref: typeof parsed.ref === 'string' ? parsed.ref : '',
     redirect: typeof parsed.redirect === 'string' ? parsed.redirect : '',
@@ -121,5 +127,6 @@ export async function verifyLiffOAuthState(
     pool: typeof (parsed as Record<string, unknown>).pool === 'string' ? String(parsed.pool) : '',
     account: typeof parsed.account === 'string' ? parsed.account : '',
     uid: typeof parsed.uid === 'string' ? parsed.uid : '',
+    jti,
   };
 }

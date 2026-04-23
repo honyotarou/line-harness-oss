@@ -7,6 +7,8 @@ export type VerifiedLineIdToken = Readonly<{
   email?: string;
   name?: string;
   picture?: string;
+  /** LINE Login channel id (`client_id` / token `aud`) that verified this token. */
+  loginChannelId: string;
 }>;
 
 export function collectLineLoginChannelIds(
@@ -31,45 +33,39 @@ export async function verifyLineIdToken(
   idToken: string,
   channelIds: string[],
 ): Promise<VerifiedLineIdToken | null> {
-  try {
-    return await Promise.any(
-      channelIds.map(async (channelId) => {
-        const response = await fetch('https://api.line.me/oauth2/v2.1/verify', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-          body: new URLSearchParams({
-            id_token: idToken,
-            client_id: channelId,
-          }),
-        });
+  for (const channelId of channelIds) {
+    try {
+      const response = await fetch('https://api.line.me/oauth2/v2.1/verify', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+        body: new URLSearchParams({
+          id_token: idToken,
+          client_id: channelId,
+        }),
+      });
 
-        if (!response.ok) {
-          throw new Error(`LINE ID token verification failed for ${channelId}`);
-        }
+      if (!response.ok) continue;
 
-        const data = (await response.json()) as {
-          sub?: string;
-          aud?: string;
-          name?: string;
-          picture?: string;
-          email?: string;
-        };
-        if (typeof data.sub !== 'string' || data.sub.length === 0) {
-          throw new Error('LINE ID token missing sub');
-        }
-        if (data.aud !== channelId) {
-          throw new Error('LINE ID token aud does not match channel');
-        }
+      const data = (await response.json()) as {
+        sub?: string;
+        aud?: string;
+        name?: string;
+        picture?: string;
+        email?: string;
+      };
+      if (typeof data.sub !== 'string' || data.sub.length === 0) continue;
+      if (data.aud !== channelId) continue;
 
-        return {
-          sub: data.sub,
-          name: data.name,
-          picture: data.picture,
-          email: data.email,
-        } satisfies VerifiedLineIdToken;
-      }),
-    );
-  } catch {
-    return null;
+      return {
+        sub: data.sub,
+        name: data.name,
+        picture: data.picture,
+        email: data.email,
+        loginChannelId: channelId,
+      } satisfies VerifiedLineIdToken;
+    } catch {
+      /* try next channel */
+    }
   }
+  return null;
 }

@@ -52,7 +52,10 @@ describe('GET /api/forms/:id', () => {
   };
 
   it('returns empty fields array when stored form.fields JSON is corrupt', async () => {
-    vi.mocked(verifyLineIdToken).mockResolvedValue({ sub: 'Uxxx' });
+    vi.mocked(verifyLineIdToken).mockResolvedValue({
+      sub: 'Uxxx',
+      loginChannelId: 'login-channel',
+    });
     dbMocks.getFormById.mockResolvedValue({ ...formRow, fields: '{not-json' });
 
     const { forms } = await import('../../src/routes/forms.js');
@@ -112,7 +115,10 @@ describe('GET /api/forms/:id', () => {
   });
 
   it('accepts lowercase bearer scheme for LINE ID token on GET /api/forms/:id', async () => {
-    vi.mocked(verifyLineIdToken).mockResolvedValue({ sub: 'Uxxx' });
+    vi.mocked(verifyLineIdToken).mockResolvedValue({
+      sub: 'Uxxx',
+      loginChannelId: 'login-channel',
+    });
     dbMocks.getFormById.mockResolvedValue(formRow);
 
     const { forms } = await import('../../src/routes/forms.js');
@@ -134,7 +140,10 @@ describe('GET /api/forms/:id', () => {
   });
 
   it('returns a public-safe payload for a valid LINE ID token', async () => {
-    vi.mocked(verifyLineIdToken).mockResolvedValue({ sub: 'Uxxx' });
+    vi.mocked(verifyLineIdToken).mockResolvedValue({
+      sub: 'Uxxx',
+      loginChannelId: 'login-channel',
+    });
     dbMocks.getFormById.mockResolvedValue(formRow);
 
     const { forms } = await import('../../src/routes/forms.js');
@@ -166,7 +175,10 @@ describe('GET /api/forms/:id', () => {
   });
 
   it('escapes HTML metacharacters in form name, description, and field JSON for LINE token reads', async () => {
-    vi.mocked(verifyLineIdToken).mockResolvedValue({ sub: 'Uxxx' });
+    vi.mocked(verifyLineIdToken).mockResolvedValue({
+      sub: 'Uxxx',
+      loginChannelId: 'login-channel',
+    });
     dbMocks.getFormById.mockResolvedValue({
       ...formRow,
       name: 'T<form>',
@@ -200,7 +212,10 @@ describe('GET /api/forms/:id', () => {
   });
 
   it('returns 404 for LINE ID token when the form is inactive (IDOR / draft hardening)', async () => {
-    vi.mocked(verifyLineIdToken).mockResolvedValue({ sub: 'Uxxx' });
+    vi.mocked(verifyLineIdToken).mockResolvedValue({
+      sub: 'Uxxx',
+      loginChannelId: 'login-channel',
+    });
     dbMocks.getFormById.mockResolvedValue({ ...formRow, is_active: 0 });
 
     const { forms } = await import('../../src/routes/forms.js');

@@ -2,7 +2,9 @@
 
 リポジトリの **`.cursor/skills/line/SKILL.md` を全文 Read** し、冒頭の番号メニューに従うこと。
 
-- ユーザーが **番号・キーワード**（例: `2` harness、`pentest`、`orthopedics`、`0` ムードボード）を既に言っているなら、その枝を優先して実行する。
+- **最初に Read する `steps-*` は SKILL のセクション 6.2 の表で 1 本決める**（glob 列挙で選ばない）。**`pnpm harness` / CI が赤い**ときは表より先に [steps-harness.md の「マージゲートが赤いとき」](../skills/line/steps-harness.md)。
+- **本 SKILL を大きく直した直後**は [`.cursor/skills/shuusei/SKILL.md`](../skills/shuusei/SKILL.md)（**`/shuusei`**）で empirical 評価（別 subagent・シナリオに decision index を含める）を推奨。
+- ユーザーが **番号・キーワード**（例: `2` harness、`pentest`、`orthopedics`、`check`、`0` ムードボード）を既に言っているなら、その枝を優先して実行する。
 - メニューだけでは足りない詳細は、SKILL 内のリンク先 `steps-*.md` を都度 Read する。
 - **TDD とカプセル化は同時進行**: Step **4〜5** の途中で **`pnpm check:encapsulation`** を回す（Step 7 や「全部終わってから」にしない）。PR の **CI は Biome の直後**にカプセル化が走る。
 - **Step 7** では必ず **`pnpm harness`** で緑（Biome・カプセル化・型・LIFF build・全 unit）。ルート追加時は **`ROUTE_LINE_CAPS`** を忘れない。

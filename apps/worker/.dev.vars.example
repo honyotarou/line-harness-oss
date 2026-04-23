@@ -24,6 +24,9 @@ ENABLE_PUBLIC_OPENAPI=1
 # REQUIRE_LIFF_STATE_SECRET=1
 # Local convenience: allow OAuth `state` HMAC with API_KEY when LIFF_STATE_SECRET is unset (do not use in production).
 ALLOW_LIFF_OAUTH_API_KEY_FALLBACK=1
+# On non-local https WORKER_URL, GET /auth/line rejects ?account= / ?uid= unless explicitly allowed (reduces tenant pivot + binding abuse).
+# ALLOW_LIFF_OAUTH_QUERY_ACCOUNT=1
+# ALLOW_LIFF_OAUTH_QUERY_UID=1
 # Staging only (non-local HTTPS): global relax needs BOTH — single RELAX=1 is ignored on https Workers.
 # RELAX_DEPLOYED_SECURITY_DEFAULTS=1
 # RELAX_DEPLOYED_SECURITY_CONFIRM=YES_I_ACCEPT_REDUCED_SECURITY

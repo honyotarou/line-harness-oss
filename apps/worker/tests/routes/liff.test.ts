@@ -8,6 +8,7 @@ const dbMocks = vi.hoisted(() => ({
   getUserByEmailCaseInsensitive: vi.fn(),
   getUserById: vi.fn(),
   getLineAccounts: vi.fn(),
+  getLineAccountById: vi.fn(),
   linkFriendToUser: vi.fn(),
   upsertFriend: vi.fn(),
   getEntryRouteByRefCode: vi.fn(),
@@ -46,13 +47,26 @@ vi.mock('../../src/services/step-delivery.js', () => ({
   expandVariables: vi.fn((content: string) => content),
 }));
 
+const primedOAuthJtis = new Set<string>();
+
 function createLiffDb(): D1Database {
   return {
     prepare(sql: string) {
       return {
-        bind(..._args: unknown[]) {
+        bind(...args: unknown[]) {
           return {
-            run: vi.fn().mockResolvedValue(undefined),
+            run: vi.fn(async () => {
+              if (sql.includes('liff_oauth_state_jtis') && /\bINSERT\b/i.test(sql)) {
+                primedOAuthJtis.add(String(args[0]));
+                return { meta: { changes: 1 } };
+              }
+              if (sql.includes('liff_oauth_state_jtis') && /\bDELETE\b/i.test(sql)) {
+                const jti = String(args[0]);
+                const ok = primedOAuthJtis.delete(jti);
+                return { meta: { changes: ok ? 1 : 0 } };
+              }
+              return { meta: { changes: 1 } };
+            }),
             first: vi.fn(async <T>() => {
               if (sql.includes('metadata FROM friends')) {
                 return { metadata: '{}' } as T;
@@ -77,9 +91,20 @@ function createLiffDbCorruptFriendMetadata(): D1Database {
   return {
     prepare(sql: string) {
       return {
-        bind(..._args: unknown[]) {
+        bind(...args: unknown[]) {
           return {
-            run: vi.fn().mockResolvedValue(undefined),
+            run: vi.fn(async () => {
+              if (sql.includes('liff_oauth_state_jtis') && /\bINSERT\b/i.test(sql)) {
+                primedOAuthJtis.add(String(args[0]));
+                return { meta: { changes: 1 } };
+              }
+              if (sql.includes('liff_oauth_state_jtis') && /\bDELETE\b/i.test(sql)) {
+                const jti = String(args[0]);
+                const ok = primedOAuthJtis.delete(jti);
+                return { meta: { changes: ok ? 1 : 0 } };
+              }
+              return { meta: { changes: 1 } };
+            }),
             first: vi.fn(async <T>() => {
               if (sql.includes('metadata FROM friends')) {
                 return { metadata: '{bad' } as T;
@@ -166,6 +191,8 @@ const baseEnv = {
   DB: {} as D1Database,
   API_KEY: STATE_SECRET,
   ALLOW_LIFF_OAUTH_API_KEY_FALLBACK: '1',
+  ALLOW_LIFF_OAUTH_QUERY_ACCOUNT: '1',
+  ALLOW_LIFF_OAUTH_QUERY_UID: '1',
   LIFF_URL: 'https://liff.line.me/2009554425-4IMBmLQ9',
   LINE_LOGIN_CHANNEL_ID: 'login-channel-id',
   LINE_LOGIN_CHANNEL_SECRET: 'login-secret',
@@ -188,9 +215,16 @@ async function signedOAuthState(
     pool: string;
     account: string;
     uid: string;
+    jti: string;
   }> = {},
 ) {
   const { signLiffOAuthState } = await import('../../src/services/liff-oauth-state.js');
+  const { jti: jtiOverride, ...rest } = overrides;
+  const jti =
+    typeof jtiOverride === 'string' && jtiOverride.trim().length > 0
+      ? jtiOverride.trim()
+      : crypto.randomUUID();
+  primedOAuthJtis.add(jti);
   return signLiffOAuthState(
     {
       ref: '',
@@ -205,7 +239,8 @@ async function signedOAuthState(
       pool: '',
       account: '',
       uid: '',
-      ...overrides,
+      jti,
+      ...rest,
     },
     STATE_SECRET,
   );
@@ -213,7 +248,9 @@ async function signedOAuthState(
 
 describe('liff auth routes', () => {
   beforeEach(() => {
+    primedOAuthJtis.clear();
     Object.values(dbMocks).forEach((mockFn) => mockFn.mockReset());
+    dbMocks.getLineAccountById.mockResolvedValue(null);
     dbMocks.getLineAccounts.mockResolvedValue([]);
     dbMocks.getTrafficPoolBySlug.mockResolvedValue(null);
     dbMocks.getRandomPoolAccount.mockResolvedValue(null);
@@ -265,7 +302,7 @@ describe('liff auth routes', () => {
       ),
       {
         ...baseEnv,
-        DB: {} as D1Database,
+        DB: createLiffDb(),
       } as never,
     );
 
@@ -297,7 +334,7 @@ describe('liff auth routes', () => {
       }),
       {
         ...baseEnv,
-        DB: {} as D1Database,
+        DB: createLiffDb(),
       } as never,
     );
 
@@ -374,7 +411,7 @@ describe('liff auth routes', () => {
       ),
       {
         ...baseEnv,
-        DB: {} as D1Database,
+        DB: createLiffDb(),
       } as never,
     );
 
@@ -409,7 +446,7 @@ describe('liff auth routes', () => {
       new Request('http://localhost/auth/line?ref=lp1', {
         headers: { 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) Chrome/120' },
       }),
-      { ...baseEnv, DB: {} as D1Database } as never,
+      { ...baseEnv, DB: createLiffDb() } as never,
     );
 
     expect(response.status).toBe(200);
@@ -630,26 +667,8 @@ describe('liff auth routes', () => {
     expect(response.headers.get('Location')).toBe('https://client.example/after');
   });
 
-  it('skips redirect after /auth/callback when redirect target DNS resolves private', async () => {
-    const oauth = lineOAuthFetchSuccess({ sub: 'U-line-dns', name: 'Dns' });
-    vi.stubGlobal(
-      'fetch',
-      vi.fn(async (input: RequestInfo | URL) => {
-        const url =
-          typeof input === 'string'
-            ? input
-            : input instanceof Request
-              ? input.url
-              : input.toString();
-        if (url.includes('cloudflare-dns.com/dns-query')) {
-          return new Response(
-            JSON.stringify({ Status: 0, Answer: [{ type: 1, data: '192.168.77.1' }] }),
-            { status: 200, headers: { 'Content-Type': 'application/dns-json' } },
-          );
-        }
-        return oauth(input);
-      }),
-    );
+  it('redirects after /auth/callback when redirect is allowlisted (no outbound DNS gate on browser Location)', async () => {
+    vi.stubGlobal('fetch', lineOAuthFetchSuccess({ sub: 'U-line-dns', name: 'Dns' }));
 
     dbMocks.upsertFriend.mockResolvedValue({
       id: 'friend-dns',
@@ -679,8 +698,8 @@ describe('liff auth routes', () => {
       { ...baseEnv, DB: createLiffDb() } as never,
     );
 
-    expect(response.status).toBe(200);
-    expect(await response.text()).toContain('登録完了');
+    expect(response.status).toBe(302);
+    expect(response.headers.get('Location')).toBe('https://client.example/after');
   });
 
   it('returns an error HTML when token exchange fails on /auth/callback', async () => {
@@ -729,11 +748,70 @@ describe('liff auth routes', () => {
     expect(response.status).toBe(200);
     expect(await response.text()).toContain('Invalid or expired login state');
   });
+
+  it('rejects replaying the same OAuth state jti on /auth/callback', async () => {
+    vi.stubGlobal(
+      'fetch',
+      lineOAuthFetchSuccess({ sub: 'U-replay', email: 'r@example.com', name: 'Replay' }),
+    );
+
+    dbMocks.upsertFriend.mockResolvedValue({
+      id: 'friend-replay',
+      line_user_id: 'U-replay',
+      display_name: 'Replay',
+      picture_url: null,
+      status_message: null,
+      is_following: 1,
+      ref_code: null,
+      metadata: null,
+      user_id: null,
+      line_account_id: null,
+      created_at: '2026-03-26T10:00:00+09:00',
+      updated_at: '2026-03-26T10:00:00+09:00',
+    } as never);
+    dbMocks.createUser.mockResolvedValue({ id: 'user-replay' } as never);
+
+    const state = await signedOAuthState();
+    const { liffRoutes } = await import('../../src/routes/liff.js');
+    const app = new Hono();
+    app.route('/', liffRoutes);
+    const db = createLiffDb();
+
+    const url = `http://localhost/auth/callback?code=code-replay&state=${encodeURIComponent(state)}`;
+    const first = await app.fetch(new Request(url), { ...baseEnv, DB: db } as never);
+    expect(first.status).toBe(200);
+    expect(await first.text()).toContain('登録完了');
+
+    const second = await app.fetch(new Request(url), { ...baseEnv, DB: db } as never);
+    expect(second.status).toBe(200);
+    expect(await second.text()).toContain('Invalid or expired login state');
+  });
+
+  it('rejects /auth/line?account= on HTTPS when ALLOW_LIFF_OAUTH_QUERY_ACCOUNT is off', async () => {
+    const { liffRoutes } = await import('../../src/routes/liff.js');
+    const app = new Hono();
+    app.route('/', liffRoutes);
+
+    const response = await app.fetch(
+      new Request('http://localhost/auth/line?account=channel-1', {
+        headers: { 'User-Agent': 'Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X)' },
+      }),
+      {
+        ...baseEnv,
+        ALLOW_LIFF_OAUTH_QUERY_ACCOUNT: '0',
+        DB: createLiffDb(),
+      } as never,
+    );
+
+    expect(response.status).toBe(200);
+    expect(await response.text()).toMatch(/account|利用できません/);
+  });
 });
 
 describe('liff public API routes', () => {
   beforeEach(() => {
     Object.values(dbMocks).forEach((mockFn) => mockFn.mockReset());
+    dbMocks.getLineAccountById.mockResolvedValue(null);
     dbMocks.getLineAccounts.mockResolvedValue([]);
     dbMocks.getUserById.mockResolvedValue(null);
     wireUserEmailMocks();
@@ -856,6 +934,45 @@ describe('liff public API routes', () => {
         userId: 'uuid-1',
       },
     });
+  });
+
+  it('POST /api/liff/profile returns 401 when ID token channel does not match friend line_account', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockResolvedValue(
+        new Response(JSON.stringify({ sub: 'Ux', aud: 'login-channel-id' }), {
+          status: 200,
+          headers: { 'Content-Type': 'application/json' },
+        }),
+      ),
+    );
+    dbMocks.getFriendByLineUserId.mockResolvedValue({
+      id: 'f1',
+      line_user_id: 'Ux',
+      display_name: 'Alice',
+      is_following: 1,
+      user_id: 'uuid-1',
+      line_account_id: 'la-1',
+    } as never);
+    dbMocks.getLineAccountById.mockResolvedValue({
+      id: 'la-1',
+      login_channel_id: 'other-login-channel',
+    } as never);
+
+    const { liffRoutes } = await import('../../src/routes/liff.js');
+    const app = new Hono();
+    app.route('/', liffRoutes);
+
+    const res = await app.fetch(
+      new Request('http://localhost/api/liff/profile', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ lineUserId: 'Ux', idToken: 'tok' }),
+      }),
+      { ...baseEnv, DB: {} as D1Database } as never,
+    );
+
+    expect(res.status).toBe(401);
   });
 
   it('POST /api/liff/link requires idToken', async () => {

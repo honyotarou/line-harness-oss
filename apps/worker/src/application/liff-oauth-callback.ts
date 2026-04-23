@@ -7,7 +7,6 @@ import {
   getLineAccountByChannelId,
   getScenarioSteps,
   getScenarios,
-  getUserByEmailCaseInsensitive,
   getUserById,
   jstNow,
   linkFriendToUser,
@@ -16,7 +15,8 @@ import {
 } from '@line-crm/db';
 import type { Env } from '../index.js';
 import { lineAccountDbOptions } from '../services/line-account-at-rest-key.js';
-import { assertHttpsOutboundUrlResolvedSafe } from '../services/outbound-url-resolve.js';
+import { consumeLiffOAuthStateJti } from '../services/liff-oauth-state-jti.js';
+import { effectiveAllowLiffOAuthQueryUid } from '../services/liff-oauth-query-policy.js';
 import { resolveSafeRedirectUrl, type LiffRedirectEnv } from '../services/liff-redirect.js';
 import { verifyLiffOAuthState } from '../services/liff-oauth-state.js';
 import { buildMessage, expandVariables } from '../services/step-delivery.js';
@@ -62,6 +62,10 @@ export async function runLiffOAuthCallback(
     return { kind: 'html', html: errorPage('Invalid or expired login state', cspNonce) };
   }
 
+  if (!(await consumeLiffOAuthStateJti(db, parsedState.jti))) {
+    return { kind: 'html', html: errorPage('Invalid or expired login state', cspNonce) };
+  }
+
   const {
     ref,
     redirect,
@@ -104,7 +108,8 @@ export async function runLiffOAuthCallback(
 
     if (!tokenRes.ok) {
       const errText = await tokenRes.text();
-      console.error('Token exchange failed:', errText);
+      const redacted = errText.length > 160 ? `${errText.slice(0, 160)}…` : errText;
+      console.error('Token exchange failed:', redacted);
       return { kind: 'html', html: errorPage('Token exchange failed', cspNonce) };
     }
 
@@ -165,12 +170,7 @@ export async function runLiffOAuthCallback(
     if (existingUserId) {
       userId = existingUserId;
     } else {
-      if (verified.email) {
-        const existingUser = await getUserByEmailCaseInsensitive(db, verified.email);
-        if (existingUser) userId = existingUser.id;
-      }
-
-      const uidTrim = uidParam.trim();
+      const uidTrim = effectiveAllowLiffOAuthQueryUid(bindings) ? uidParam.trim() : '';
       if (!userId && uidTrim && verified.email) {
         const saved = await getUserById(db, uidTrim);
         if (saved && emailsMatchForRecovery(saved.email, verified.email)) {
@@ -286,10 +286,7 @@ export async function runLiffOAuthCallback(
     if (redirect) {
       const safe = resolveSafeRedirectUrl(redirect, bindings);
       if (safe) {
-        const dnsOk = await assertHttpsOutboundUrlResolvedSafe(safe, fetchImpl);
-        if (dnsOk.ok) {
-          return { kind: 'redirect', location: safe };
-        }
+        return { kind: 'redirect', location: safe };
       }
     }
 

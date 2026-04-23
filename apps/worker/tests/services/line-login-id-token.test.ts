@@ -28,7 +28,7 @@ describe('verifyLineLoginIdToken', () => {
 
     const { verifyLineLoginIdToken } = await import('../../src/services/line-login-id-token.js');
     const out = await verifyLineLoginIdToken({} as D1Database, 'chan-2', 'tok');
-    expect(out).toEqual({ sub: 'u1', name: 'Alice' });
+    expect(out).toEqual({ sub: 'u1', name: 'Alice', loginChannelId: 'chan-2' });
   });
 
   it('caps the number of channel ids to prevent verification DoS', async () => {

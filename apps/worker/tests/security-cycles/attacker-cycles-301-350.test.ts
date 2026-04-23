@@ -30,6 +30,7 @@ describe('攻撃者サイクル 301–350（セキュリティバッチ）', () 
         pool: '',
         account: '',
         uid: 'u',
+        jti: 'jti-cycle-301',
       },
       'secret-301',
     );
@@ -396,6 +397,7 @@ describe('攻撃者サイクル 301–350（セキュリティバッチ）', () 
         pool: '',
         account: '',
         uid: '',
+        jti: 'jti-cycle-349',
       },
       's349',
     );

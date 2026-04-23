@@ -22,6 +22,7 @@ import {
 } from '../services/admin-session.js';
 import { parseBearerAuthorization } from '../services/bearer-authorization.js';
 import { collectLineLoginChannelIds, verifyLineIdToken } from '../services/line-id-token.js';
+import { lineLoginChannelMatchesFriendLineAccount } from '../services/line-login-id-token.js';
 import { lineAccountDbOptions } from '../services/line-account-at-rest-key.js';
 import { resolveLineAccessTokenForFriend } from '../services/line-account-routing.js';
 import {

@@ -16,6 +16,7 @@ const dbMocks = vi.hoisted(() => ({
   addTagToFriend: vi.fn(),
   enrollFriendInScenario: vi.fn(),
   getLineAccounts: vi.fn(),
+  getLineAccountById: vi.fn(),
 }));
 
 vi.mock('@line-crm/db', () => dbMocks);
@@ -34,6 +35,7 @@ describe('public form submit route', () => {
   beforeEach(() => {
     vi.resetModules();
     Object.values(dbMocks).forEach((mockFn) => mockFn.mockReset());
+    dbMocks.getLineAccountById.mockResolvedValue(null);
     lineSdkMocks.pushMessage.mockClear();
     vi.unstubAllGlobals();
   });
