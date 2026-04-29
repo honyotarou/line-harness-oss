@@ -1,47 +1,47 @@
 {
   "meta": {
-    "accent": "spring-warm",
-    "mood": "菜の花・桜の春景 — 黄・ピンク・空の淡青をヒントに、UI は緑なしの暖色（橙・珊瑚・クリーム）。ヒーロー写真: apps/web/public/hero-spring-field.png"
+    "accent": "line-crm-clean",
+    "mood": "管理コンソール mock 準拠 — 白・スレート canvas、青 primary（#3B82F6）、成功は緑、警告オレンジ。装飾 PNG: apps/web/public/mock-design-elements/"
   },
   "color": {
-    "canvas": "#FFF4EC",
-    "surface": "#FFFCF8",
+    "canvas": "#F8FAFC",
+    "surface": "#FFFFFF",
     "surface-elevated": "#FFFFFF",
-    "border": "#F0E0D6",
-    "border-strong": "#E5CEC0",
-    "foreground": "#2A221E",
-    "foreground-muted": "#6B5E56",
-    "foreground-subtle": "#95877C",
-    "primary": "#F0C14A",
-    "primary-hover": "#D9A63A",
-    "primary-foreground": "#2A221E",
-    "primary-muted": "#FFECBF",
-    "accent-pink": "#E89AA8",
-    "accent-pink-muted": "#FCE4E8",
-    "slate": "#8B7269",
-    "slate-hover": "#6E5A52",
-    "slate-muted": "#F5E8E4",
-    "success": "#9D6229",
-    "success-muted": "#FFF1E0",
-    "success-border": "#E8C9A0",
-    "warning": "#C45C12",
-    "warning-muted": "#FFF2E5",
-    "warning-border": "#F0C9A8",
-    "error": "#B54A4A",
-    "error-muted": "#FCEEED",
-    "error-border": "#E8B4B4",
-    "focus-ring": "#F0C14A",
-    "marketing-orange": "#F0C14A",
-    "marketing-orange-deep": "#D9A63A",
-    "marketing-yellow": "#F0C14A",
-    "marketing-yellow-soft": "#FFECBF",
-    "marketing-hero-mid": "#F4A88C",
-    "sky-tint": "#B8D4E8"
+    "border": "rgba(42, 70, 112, 0.12)",
+    "border-strong": "rgba(42, 70, 112, 0.2)",
+    "foreground": "#172033",
+    "foreground-muted": "#6B7A90",
+    "foreground-subtle": "#8A96A8",
+    "primary": "#3B82F6",
+    "primary-hover": "#2563EB",
+    "primary-foreground": "#FFFFFF",
+    "primary-muted": "#EFF6FF",
+    "accent-pink": "#9B59D0",
+    "accent-pink-muted": "rgba(155, 89, 208, 0.12)",
+    "slate": "#64748B",
+    "slate-hover": "#475569",
+    "slate-muted": "#F1F5F9",
+    "success": "#16A05D",
+    "success-muted": "#EAF8F0",
+    "success-border": "#B8E0CC",
+    "warning": "#D79020",
+    "warning-muted": "#FFF6E2",
+    "warning-border": "#F0D4A8",
+    "error": "#D94A4A",
+    "error-muted": "#FFF0F0",
+    "error-border": "#F0B4B4",
+    "focus-ring": "#3B82F6",
+    "marketing-orange": "#F4A034",
+    "marketing-orange-deep": "#E89420",
+    "marketing-yellow": "#E7B929",
+    "marketing-yellow-soft": "rgba(231, 185, 41, 0.14)",
+    "marketing-hero-mid": "#93C5FD",
+    "sky-tint": "#93C5FD"
   },
   "radius": {
-    "sm": "6px",
-    "md": "12px",
-    "lg": "18px",
+    "sm": "8px",
+    "md": "14px",
+    "lg": "20px",
     "full": "9999px"
   },
   "spacing": {
@@ -55,9 +55,9 @@
     "lineHeightHeading": 1.25
   },
   "shadow": {
-    "sm": "0 1px 2px rgb(42 34 30 / 0.06)",
-    "md": "0 6px 20px rgb(42 34 30 / 0.08)",
-    "lg": "0 14px 44px rgb(42 34 30 / 0.12)"
+    "sm": "0 1px 2px rgba(31, 65, 118, 0.04)",
+    "md": "0 10px 30px rgba(31, 65, 118, 0.08)",
+    "lg": "0 14px 44px rgba(31, 65, 118, 0.1)"
   },
   "motion": {
     "durationFast": "150ms",
@@ -66,6 +66,7 @@
   },
   "asset": {
     "heroSpringField": "/hero-spring-field.png",
-    "racheckLogo": "/racheck-logo.png"
+    "racheckLogo": "/racheck-logo.png",
+    "dashboardDecor": "/mock-design-elements/"
   }
 }

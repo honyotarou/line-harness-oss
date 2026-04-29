@@ -16,7 +16,7 @@ export default function RootLayout({
   return (
     <html lang="ja">
       <body
-        className="bg-gray-50 text-gray-900 antialiased"
+        className="bg-[var(--color-canvas)] text-[var(--color-foreground)] antialiased"
         style={{
           fontFamily: "'Noto Sans JP', 'Hiragino Sans', 'Yu Gothic', system-ui, sans-serif",
         }}

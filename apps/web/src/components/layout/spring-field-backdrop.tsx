@@ -3,31 +3,32 @@
 type SpringFieldBackdropProps = Readonly<{
   /** `fixed` = viewport fill (e.g. login). `absolute` = fill a `relative` parent. */
   variant?: 'fixed' | 'absolute';
-  /** Passed to `background-position` (crop toward yellow field). */
+  /** Unused (kept for call-site compatibility). */
   position?: string;
   className?: string;
 }>;
 
 /**
- * Full-bleed rapeseed field. Overlay stays light so the photo reads across the whole area;
- * white cards on top provide contrast.
+ * Light CRM mesh background (青・白のソフトグラデーション)。
+ * 旧ヒーロー写真は撤去し、mock 系ダッシュボードと同じトーンに揃える。
  */
 export function SpringFieldBackdrop({
   variant = 'fixed',
-  position = 'center 40%',
   className = '',
 }: SpringFieldBackdropProps) {
   const box = variant === 'fixed' ? 'fixed inset-0' : 'absolute inset-0';
   return (
     <div className={`pointer-events-none -z-10 ${box} ${className}`.trim()} aria-hidden>
       <div
-        className="absolute inset-0 bg-cover"
+        className="absolute inset-0"
         style={{
-          backgroundImage: "url('/hero-spring-field.png')",
-          backgroundPosition: position,
+          background: `
+            radial-gradient(ellipse 120% 80% at 10% 0%, rgba(59, 130, 246, 0.09), transparent 50%),
+            radial-gradient(ellipse 90% 60% at 90% 10%, rgba(147, 197, 253, 0.12), transparent 45%),
+            linear-gradient(180deg, #ffffff 0%, #f8fafc 55%, #f1f5f9 100%)
+          `,
         }}
       />
-      <div className="absolute inset-0 bg-gradient-to-b from-black/[0.04] from-0% via-transparent via-50% to-white/18 to-100%" />
     </div>
   );
 }

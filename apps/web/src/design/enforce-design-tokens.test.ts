@@ -53,22 +53,20 @@ describe('design tokens enforcement (web)', () => {
     expect(offenders).toEqual([]);
   });
 
-  it('remaps colorful Tailwind palette to semantic tokens (spring-warm)', () => {
+  it('remaps colorful Tailwind palette to semantic tokens (line-crm-clean)', () => {
     const css = readText('app/globals.css');
 
-    // Raw Tailwind chroma should not leak: blues/purples stay muted (slate / sky / sakura),
-    // orange/amber route through marketing + yellow tokens, reds through error.*.
-    // Contract must match `app/globals.css` @theme remap block.
+    // Raw Tailwind chroma should not leak. Contract must match `app/globals.css` @theme remap block.
     const required = [
-      '--color-blue-50: var(--color-slate-muted);',
-      '--color-blue-100: var(--color-accent-pink-muted);',
-      '--color-blue-500: var(--color-sky-tint);',
-      '--color-blue-600: #8fa8bc;',
+      '--color-blue-50: var(--color-primary-muted);',
+      '--color-blue-100: #dbeafe;',
+      '--color-blue-500: var(--color-primary);',
+      '--color-blue-600: var(--color-primary-hover);',
 
       '--color-purple-50: var(--color-slate-muted);',
       '--color-purple-100: var(--color-accent-pink-muted);',
       '--color-purple-500: var(--color-accent-pink);',
-      '--color-purple-600: #c97b8c;',
+      '--color-purple-600: #7c3aed;',
 
       '--color-orange-50: var(--color-marketing-yellow-soft);',
       '--color-orange-100: var(--color-marketing-yellow-soft);',

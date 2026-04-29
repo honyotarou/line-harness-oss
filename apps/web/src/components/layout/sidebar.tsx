@@ -173,7 +173,7 @@ function AccountAvatar({ account, size = 32 }: { account: AccountWithStats; size
       style={{
         width: size,
         height: size,
-        backgroundColor: 'var(--color-primary)',
+        background: 'linear-gradient(140deg, #60a5fa, var(--color-primary))',
         fontSize: size * 0.4,
       }}
     >
@@ -200,17 +200,19 @@ function AccountSwitcher() {
   const displayName = selectedAccount?.displayName || selectedAccount?.name || '';
 
   return (
-    <div ref={ref} className="px-3 py-3 border-b border-gray-200">
+    <div ref={ref} className="px-3 py-3 border-b border-[var(--color-border)]">
       <button
         onClick={() => setOpen(!open)}
-        className="w-full flex items-center gap-2.5 px-2.5 py-2 rounded-lg hover:bg-gray-50 transition-colors"
+        className="w-full flex items-center gap-2.5 px-2.5 py-2 rounded-lg hover:bg-[var(--color-slate-muted)] transition-colors"
       >
         {selectedAccount && <AccountAvatar account={selectedAccount} size={28} />}
         <div className="flex-1 text-left min-w-0">
-          <p className="text-sm font-medium text-gray-900 truncate">{displayName}</p>
+          <p className="text-sm font-medium text-[var(--color-foreground)] truncate">
+            {displayName}
+          </p>
         </div>
         <svg
-          className={`w-4 h-4 text-gray-400 shrink-0 transition-transform ${open ? 'rotate-180' : ''}`}
+          className={`w-4 h-4 text-[var(--color-foreground-muted)] shrink-0 transition-transform ${open ? 'rotate-180' : ''}`}
           fill="none"
           stroke="currentColor"
           viewBox="0 0 24 24"
@@ -220,7 +222,7 @@ function AccountSwitcher() {
       </button>
 
       {open && (
-        <div className="mt-1 bg-white border border-gray-200 rounded-lg shadow-lg overflow-hidden">
+        <div className="mt-1 bg-[var(--color-surface)] border border-[var(--color-border)] rounded-lg shadow-lg overflow-hidden">
           {accounts.map((account) => {
             const isSelected = account.id === selectedAccount?.id;
             const name = account.displayName || account.name;
@@ -232,20 +234,26 @@ function AccountSwitcher() {
                   setOpen(false);
                 }}
                 className={`w-full flex items-center gap-2.5 px-3 py-2.5 text-left transition-colors ${
-                  isSelected ? 'bg-[var(--color-primary-muted)]' : 'hover:bg-gray-50'
+                  isSelected
+                    ? 'bg-[var(--color-primary-muted)]'
+                    : 'hover:bg-[var(--color-slate-muted)]'
                 }`}
               >
                 <AccountAvatar account={account} size={24} />
                 <div className="flex-1 min-w-0">
                   <p
                     className={`text-sm truncate ${
-                      isSelected ? 'font-semibold text-[var(--color-primary)]' : 'text-gray-700'
+                      isSelected
+                        ? 'font-semibold text-[var(--color-primary)]'
+                        : 'text-[var(--color-foreground)]'
                     }`}
                   >
                     {name}
                   </p>
                   {account.basicId && (
-                    <p className="text-xs text-gray-400 truncate">{account.basicId}</p>
+                    <p className="text-xs text-[var(--color-foreground-muted)] truncate">
+                      {account.basicId}
+                    </p>
                   )}
                 </div>
                 {isSelected && (
@@ -301,12 +309,14 @@ export default function Sidebar() {
   const sidebarContent = (
     <>
       {/* ロゴ */}
-      <div className="px-6 py-5 border-b border-gray-200">
+      <div className="px-6 py-5 border-b border-[var(--color-border)]">
         <div className="flex items-center gap-2.5">
           <RaCheckLogo variant="sidebar" />
           <div>
-            <p className="text-sm font-bold text-gray-900 leading-tight">らチェク</p>
-            <p className="text-xs text-gray-400">LINE Harness OSS</p>
+            <p className="text-sm font-bold text-[var(--color-foreground)] leading-tight">
+              らチェック
+            </p>
+            <p className="text-xs text-[var(--color-foreground-muted)]">LINE Harness OSS</p>
           </div>
         </div>
       </div>
@@ -320,7 +330,7 @@ export default function Sidebar() {
           <div key={si}>
             {section.label && (
               <div className="pt-5 pb-2 px-3">
-                <p className="text-[11px] font-semibold text-gray-400 uppercase tracking-wider">
+                <p className="text-[11px] font-bold text-[var(--color-foreground-muted)] uppercase tracking-wider">
                   {section.label}
                 </p>
               </div>
@@ -332,20 +342,15 @@ export default function Sidebar() {
                 <SafeLink
                   key={item.href}
                   href={item.href}
-                  className={`flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors ${
+                  className={`flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-semibold transition-colors ${
                     active
-                      ? 'text-white'
+                      ? isDanger
+                        ? 'bg-[var(--color-error-muted)] text-[var(--color-error)]'
+                        : 'bg-[var(--color-primary-muted)] text-[var(--color-primary)]'
                       : isDanger
                         ? 'text-[var(--color-error)] hover:bg-[var(--color-error-muted)]'
-                        : 'text-gray-600 hover:bg-gray-100 hover:text-gray-900'
+                        : 'text-[var(--color-foreground-muted)] hover:bg-[var(--color-slate-muted)] hover:text-[var(--color-foreground)]'
                   }`}
-                  style={
-                    active
-                      ? {
-                          backgroundColor: isDanger ? 'var(--color-error)' : 'var(--color-primary)',
-                        }
-                      : {}
-                  }
                 >
                   <NavIcon d={item.icon} />
                   {item.label}
@@ -357,8 +362,8 @@ export default function Sidebar() {
       </nav>
 
       {/* フッター */}
-      <div className="px-6 py-4 border-t border-gray-200 space-y-3">
-        <p className="text-xs text-gray-400">らチェク v0.1</p>
+      <div className="px-6 py-4 border-t border-[var(--color-border)] space-y-3">
+        <p className="text-xs text-[var(--color-foreground-muted)]">らチェック v0.1</p>
         <button
           onClick={() => {
             void api.auth
@@ -368,7 +373,7 @@ export default function Sidebar() {
                 window.location.assign('/login');
               });
           }}
-          className="flex items-center gap-2 text-xs text-gray-400 hover:text-[var(--color-error)] transition-colors"
+          className="flex items-center gap-2 text-xs text-[var(--color-foreground-muted)] hover:text-[var(--color-error)] transition-colors"
         >
           <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path
@@ -387,14 +392,14 @@ export default function Sidebar() {
   return (
     <>
       {/* モバイル: ハンバーガーヘッダー */}
-      <div className="lg:hidden fixed top-0 left-0 right-0 z-50 bg-white border-b border-gray-200 px-4 py-3 flex items-center gap-3">
+      <div className="lg:hidden fixed top-0 left-0 right-0 z-50 bg-[var(--color-surface)]/95 border-b border-[var(--color-border)] backdrop-blur-md px-4 py-3 flex items-center gap-3">
         <button
           onClick={() => setIsOpen(!isOpen)}
-          className="min-w-[44px] min-h-[44px] flex items-center justify-center rounded-lg hover:bg-gray-100 transition-colors"
+          className="min-w-[44px] min-h-[44px] flex items-center justify-center rounded-lg hover:bg-[var(--color-slate-muted)] transition-colors"
           aria-label="メニュー"
         >
           <svg
-            className="w-6 h-6 text-gray-700"
+            className="w-6 h-6 text-[var(--color-foreground)]"
             fill="none"
             stroke="currentColor"
             viewBox="0 0 24 24"
@@ -418,7 +423,7 @@ export default function Sidebar() {
         </button>
         <div className="flex items-center gap-2">
           <RaCheckLogo variant="sidebar-mobile" alt="" />
-          <p className="text-sm font-bold text-gray-900">らチェク</p>
+          <p className="text-sm font-bold text-[var(--color-foreground)]">らチェック</p>
         </div>
       </div>
 
@@ -432,16 +437,16 @@ export default function Sidebar() {
 
       {/* モバイル: スライドインサイドバー */}
       <aside
-        className={`lg:hidden fixed top-0 left-0 z-50 w-72 bg-white flex flex-col h-screen transform transition-transform duration-300 ease-in-out ${isOpen ? 'translate-x-0' : '-translate-x-full'}`}
+        className={`lg:hidden fixed top-0 left-0 z-50 w-72 bg-[var(--color-surface)]/95 backdrop-blur-md border-r border-[var(--color-border)] flex flex-col h-screen transform transition-transform duration-300 ease-in-out ${isOpen ? 'translate-x-0' : '-translate-x-full'}`}
       >
         <div className="absolute top-4 right-4">
           <button
             onClick={() => setIsOpen(false)}
-            className="min-w-[44px] min-h-[44px] flex items-center justify-center rounded-lg hover:bg-gray-100"
+            className="min-w-[44px] min-h-[44px] flex items-center justify-center rounded-lg hover:bg-[var(--color-slate-muted)]"
             aria-label="閉じる"
           >
             <svg
-              className="w-5 h-5 text-gray-500"
+              className="w-5 h-5 text-[var(--color-foreground-muted)]"
               fill="none"
               stroke="currentColor"
               viewBox="0 0 24 24"
@@ -459,7 +464,7 @@ export default function Sidebar() {
       </aside>
 
       {/* デスクトップ: 常時表示 */}
-      <aside className="hidden lg:flex w-64 bg-white border-r border-gray-200 flex-col h-screen sticky top-0">
+      <aside className="hidden lg:flex w-64 bg-[var(--color-surface)]/90 backdrop-blur-md border-r border-[var(--color-border)] flex-col h-screen sticky top-0">
         {sidebarContent}
       </aside>
     </>
