@@ -10,6 +10,7 @@ import { SpringFieldBackdrop } from '@/components/layout/spring-field-backdrop';
 import { RaCheckLogo } from '@/components/racheck-logo';
 import { Input } from '@/components/ui/field';
 import { buildAdminAccessBootstrapStartHref } from '@/lib/admin-access-bootstrap-start';
+import { WorkspaceDecorativeArt } from '@/components/layout/workspace-decorative-art';
 
 function errorMessageFromApi(err: unknown): string | undefined {
   if (isApiError(err)) {
@@ -38,12 +39,13 @@ function LoginPageFallback() {
       <SpringFieldBackdrop variant="fixed" position="center 40%" />
       <div className="relative z-10 flex flex-1 flex-col items-center justify-center px-4 py-10">
         <LoginLogoMark />
-        <div className="w-full max-w-sm rounded-2xl border border-[var(--color-border)] bg-white/92 p-8 shadow-[var(--shadow-token-lg)] backdrop-blur-md">
-          <div className="text-center mb-4">
+        <div className="relative w-full max-w-sm overflow-hidden rounded-2xl border border-[var(--color-border)] bg-white/92 p-8 shadow-[var(--shadow-token-lg)] backdrop-blur-md">
+          <WorkspaceDecorativeArt seed="login-fallback" density="compact" />
+          <div className="relative z-10 text-center mb-4">
             <h1 className="text-lg font-bold text-gray-900">ログイン</h1>
             <p className="text-sm text-gray-500 mt-1">セッションを確認しています</p>
           </div>
-          <div className="py-10 flex justify-center">
+          <div className="relative z-10 py-10 flex justify-center">
             <div className="animate-spin w-8 h-8 border-[3px] border-gray-200 border-t-[var(--color-primary)] rounded-full" />
           </div>
         </div>
@@ -177,18 +179,19 @@ function LoginPageInner() {
       <SpringFieldBackdrop variant="fixed" position="center 40%" />
       <div className="relative z-10 flex flex-1 flex-col items-center justify-center px-4 py-10">
         <LoginLogoMark />
-        <div className="w-full max-w-sm rounded-2xl border border-[var(--color-border)] bg-white/92 p-8 shadow-[var(--shadow-token-lg)] backdrop-blur-md">
-          <div className="text-center mb-4">
+        <div className="relative w-full max-w-sm overflow-hidden rounded-2xl border border-[var(--color-border)] bg-white/92 p-8 shadow-[var(--shadow-token-lg)] backdrop-blur-md">
+          <WorkspaceDecorativeArt seed="login" density="compact" />
+          <div className="relative z-10 text-center mb-4">
             <h1 className="text-xl font-bold text-gray-900">ログイン</h1>
             <p className="text-sm text-gray-500 mt-1">API キーまたは Cloudflare Access</p>
           </div>
 
           {!hydrated ? (
-            <div className="py-10 flex justify-center">
+            <div className="relative z-10 py-10 flex justify-center">
               <div className="animate-spin w-8 h-8 border-[3px] border-gray-200 border-t-[var(--color-primary)] rounded-full" />
             </div>
           ) : (
-            <form onSubmit={handleLogin}>
+            <form className="relative z-10" onSubmit={handleLogin}>
               {accessLogin ? (
                 <p className="text-sm text-gray-600 mb-4">
                   Cloudflare Access のログインを開始します。IdP（Google
