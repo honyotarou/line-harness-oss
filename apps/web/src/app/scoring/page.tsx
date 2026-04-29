@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import Header from '@/components/layout/header';
+import { WorkspaceDecoratedSurface } from '@/components/layout/workspace-decorated-surface';
 import { api } from '@/lib/api';
 import CcPromptButton from '@/components/cc-prompt-button';
 import { Alert } from '@/components/ui/alert';
@@ -151,16 +152,24 @@ export default function ScoringPage() {
       {/* Summary stats */}
       {!loading && (
         <div className="grid grid-cols-2 gap-4 mb-6">
-          <div className="bg-white rounded-lg border border-gray-200 p-4">
+          <WorkspaceDecoratedSurface
+            variant="scoring"
+            accent={0}
+            className="rounded-lg border border-[var(--color-border)] p-4 shadow-sm"
+          >
             <p className="text-xs text-gray-500">ルール総数</p>
             <p className="text-2xl font-bold text-gray-900">{totalRules}</p>
-          </div>
-          <div className="bg-white rounded-lg border border-gray-200 p-4">
+          </WorkspaceDecoratedSurface>
+          <WorkspaceDecoratedSurface
+            variant="scoring"
+            accent={1}
+            className="rounded-lg border border-[var(--color-border)] p-4 shadow-sm"
+          >
             <p className="text-xs text-gray-500">有効なルール</p>
             <p className="text-2xl font-bold" style={{ color: 'var(--color-primary)' }}>
               {activeRules}
             </p>
-          </div>
+          </WorkspaceDecoratedSurface>
         </div>
       )}
 
@@ -173,7 +182,10 @@ export default function ScoringPage() {
 
       {/* Create form */}
       {showCreate && (
-        <div className="mb-6 bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+        <WorkspaceDecoratedSurface
+          variant="scoring"
+          className="mb-6 rounded-lg shadow-sm border border-[var(--color-border)] p-6"
+        >
           <h2 className="text-sm font-semibold text-gray-800 mb-4">新規スコアリングルールを作成</h2>
           <div className="space-y-4 max-w-lg">
             <div>
@@ -235,20 +247,29 @@ export default function ScoringPage() {
               </button>
             </div>
           </div>
-        </div>
+        </WorkspaceDecoratedSurface>
       )}
 
       {/* Loading skeleton */}
       {loading ? (
-        <div className="bg-white rounded-lg border border-gray-200 p-8 text-center text-gray-400">
+        <WorkspaceDecoratedSurface
+          variant="scoring"
+          className="rounded-lg border border-[var(--color-border)] p-8 text-center text-gray-400 shadow-sm"
+        >
           読み込み中...
-        </div>
+        </WorkspaceDecoratedSurface>
       ) : rules.length === 0 ? (
-        <div className="bg-white rounded-lg border border-gray-200 p-8 text-center text-gray-400">
+        <WorkspaceDecoratedSurface
+          variant="scoring"
+          className="rounded-lg border border-[var(--color-border)] p-8 text-center text-gray-400 shadow-sm"
+        >
           スコアリングルールがまだありません
-        </div>
+        </WorkspaceDecoratedSurface>
       ) : (
-        <div className="bg-white rounded-lg border border-gray-200 overflow-hidden">
+        <WorkspaceDecoratedSurface
+          variant="scoring"
+          className="rounded-lg border border-[var(--color-border)] overflow-hidden shadow-sm"
+        >
           <div className="overflow-x-auto">
             <table className="w-full min-w-[640px]">
               <thead className="bg-gray-50 border-b border-gray-200">
@@ -316,7 +337,7 @@ export default function ScoringPage() {
               </tbody>
             </table>
           </div>
-        </div>
+        </WorkspaceDecoratedSurface>
       )}
       <CcPromptButton prompts={ccPrompts} />
     </div>

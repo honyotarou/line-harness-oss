@@ -1,5 +1,6 @@
 import SafeLink from '@/components/safe-link';
 import type { Scenario } from '@line-crm/shared';
+import { WorkspaceDecoratedSurface } from '@/components/layout/workspace-decorated-surface';
 import { Badge } from '@/components/ui/badge';
 
 type ScenarioWithCount = Scenario & { stepCount?: number };
@@ -25,18 +26,23 @@ export default function ScenarioList({
 }: ScenarioListProps) {
   if (scenarios.length === 0) {
     return (
-      <div className="rounded-lg border border-gray-200 bg-white/95 p-12 text-center shadow-sm backdrop-blur-sm">
+      <WorkspaceDecoratedSurface
+        variant="scenarios"
+        className="rounded-lg border border-[var(--color-border)] p-12 text-center shadow-sm"
+      >
         <p className="text-gray-500">シナリオがありません。新しいシナリオを作成してください。</p>
-      </div>
+      </WorkspaceDecoratedSurface>
     );
   }
 
   return (
     <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
-      {scenarios.map((scenario) => (
-        <div
+      {scenarios.map((scenario, index) => (
+        <WorkspaceDecoratedSurface
           key={scenario.id}
-          className="bg-white rounded-lg shadow-sm border border-gray-200 p-5 flex flex-col gap-3 hover:shadow-md transition-shadow"
+          variant="scenarios"
+          accent={index}
+          className="rounded-lg shadow-sm border border-[var(--color-border)] p-5 flex flex-col gap-3 hover:shadow-md transition-shadow"
         >
           {/* Header */}
           <div className="flex items-start justify-between gap-2">
@@ -115,7 +121,7 @@ export default function ScenarioList({
               削除
             </button>
           </div>
-        </div>
+        </WorkspaceDecoratedSurface>
       ))}
     </div>
   );

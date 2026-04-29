@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { api } from '@/lib/api';
 import Header from '@/components/layout/header';
 import CcPromptButton from '@/components/cc-prompt-button';
+import { WorkspaceDecoratedSurface } from '@/components/layout/workspace-decorated-surface';
 import { Alert } from '@/components/ui/alert';
 import { Badge } from '@/components/ui/badge';
 import { Input, Select, Textarea } from '@/components/ui/field';
@@ -224,7 +225,10 @@ export default function TemplatesPage() {
 
       {/* Create form */}
       {showCreate && (
-        <div className="mb-6 bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+        <WorkspaceDecoratedSurface
+          variant="templates"
+          className="mb-6 rounded-lg shadow-sm border border-[var(--color-border)] p-6"
+        >
           <h2 className="text-sm font-semibold text-gray-800 mb-4">新規テンプレートを作成</h2>
           <div className="space-y-4 max-w-lg">
             <div>
@@ -373,12 +377,15 @@ export default function TemplatesPage() {
               </button>
             </div>
           </div>
-        </div>
+        </WorkspaceDecoratedSurface>
       )}
 
       {/* Loading skeleton */}
       {loading ? (
-        <div className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
+        <WorkspaceDecoratedSurface
+          variant="templates"
+          className="rounded-lg shadow-sm border border-[var(--color-border)] overflow-hidden"
+        >
           {[...Array(4)].map((_, i) => (
             <div
               key={i}
@@ -392,15 +399,21 @@ export default function TemplatesPage() {
               <div className="h-3 bg-gray-100 rounded w-24" />
             </div>
           ))}
-        </div>
+        </WorkspaceDecoratedSurface>
       ) : templates.length === 0 && !showCreate ? (
-        <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-12 text-center">
+        <WorkspaceDecoratedSurface
+          variant="templates"
+          className="rounded-lg shadow-sm border border-[var(--color-border)] p-12 text-center"
+        >
           <p className="text-gray-500">
             テンプレートがありません。「新規テンプレート」から作成してください。
           </p>
-        </div>
+        </WorkspaceDecoratedSurface>
       ) : (
-        <div className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
+        <WorkspaceDecoratedSurface
+          variant="templates"
+          className="rounded-lg shadow-sm border border-[var(--color-border)] overflow-hidden"
+        >
           <div className="overflow-x-auto">
             <table className="w-full min-w-[640px]">
               <thead>
@@ -465,7 +478,7 @@ export default function TemplatesPage() {
               </tbody>
             </table>
           </div>
-        </div>
+        </WorkspaceDecoratedSurface>
       )}
       <CcPromptButton prompts={ccPrompts} />
     </div>

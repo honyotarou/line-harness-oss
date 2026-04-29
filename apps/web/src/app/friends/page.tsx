@@ -10,6 +10,7 @@ import CcPromptButton from '@/components/cc-prompt-button';
 import { useAccount } from '@/contexts/account-context';
 import { Alert } from '@/components/ui/alert';
 import { Select } from '@/components/ui/field';
+import { WorkspaceDecoratedSurface } from '@/components/layout/workspace-decorated-surface';
 
 const ccPrompts = [
   {
@@ -131,7 +132,10 @@ export default function FriendsPage() {
 
       {/* Loading skeleton */}
       {loading ? (
-        <div className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
+        <WorkspaceDecoratedSurface
+          variant="friends"
+          className="rounded-lg shadow-sm border border-[var(--color-border)] overflow-hidden"
+        >
           {[...Array(5)].map((_, i) => (
             <div
               key={i}
@@ -147,9 +151,14 @@ export default function FriendsPage() {
               <div className="h-3 bg-gray-100 rounded w-20" />
             </div>
           ))}
-        </div>
+        </WorkspaceDecoratedSurface>
       ) : (
-        <FriendTable friends={friends} allTags={allTags} onRefresh={loadFriends} />
+        <WorkspaceDecoratedSurface
+          variant="friends"
+          className="rounded-lg shadow-sm border border-[var(--color-border)]"
+        >
+          <FriendTable friends={friends} allTags={allTags} onRefresh={loadFriends} />
+        </WorkspaceDecoratedSurface>
       )}
 
       {/* Pagination */}

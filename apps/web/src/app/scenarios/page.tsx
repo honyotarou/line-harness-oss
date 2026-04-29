@@ -8,6 +8,7 @@ import Header from '@/components/layout/header';
 import { SpringFieldBackdrop } from '@/components/layout/spring-field-backdrop';
 import ScenarioList from '@/components/scenarios/scenario-list';
 import CcPromptButton from '@/components/cc-prompt-button';
+import { WorkspaceDecoratedSurface } from '@/components/layout/workspace-decorated-surface';
 import { Alert } from '@/components/ui/alert';
 import { Input, Select, Textarea } from '@/components/ui/field';
 
@@ -164,7 +165,10 @@ export default function ScenariosPage() {
 
         {/* Create form */}
         {showCreate && (
-          <div className="mb-6 rounded-lg border border-gray-200 bg-white/95 p-6 shadow-sm backdrop-blur-sm">
+          <WorkspaceDecoratedSurface
+            variant="scenarios"
+            className="mb-6 rounded-lg border border-[var(--color-border)] p-6 shadow-sm"
+          >
             <h2 className="text-sm font-semibold text-gray-800 mb-4">新規シナリオを作成</h2>
             <div className="space-y-4 max-w-lg">
               <div>
@@ -240,16 +244,18 @@ export default function ScenariosPage() {
                 </button>
               </div>
             </div>
-          </div>
+          </WorkspaceDecoratedSurface>
         )}
 
         {/* Loading skeleton */}
         {loading ? (
           <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
             {[...Array(3)].map((_, i) => (
-              <div
+              <WorkspaceDecoratedSurface
                 key={i}
-                className="animate-pulse space-y-3 rounded-lg border border-gray-200 bg-white/95 p-5 backdrop-blur-sm"
+                variant="scenarios"
+                accent={i}
+                className="animate-pulse space-y-3 rounded-lg border border-[var(--color-border)] p-5 shadow-sm"
               >
                 <div className="h-4 bg-gray-200 rounded w-3/4" />
                 <div className="h-3 bg-gray-100 rounded w-full" />
@@ -257,7 +263,7 @@ export default function ScenariosPage() {
                   <div className="h-3 bg-gray-100 rounded w-24" />
                   <div className="h-3 bg-gray-100 rounded w-16" />
                 </div>
-              </div>
+              </WorkspaceDecoratedSurface>
             ))}
           </div>
         ) : (

@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import Header from '@/components/layout/header';
+import { WorkspaceDecoratedSurface } from '@/components/layout/workspace-decorated-surface';
 import { api } from '@/lib/api';
 import CcPromptButton from '@/components/cc-prompt-button';
 import { Alert } from '@/components/ui/alert';
@@ -209,30 +210,38 @@ export default function HealthPage() {
 
       {/* Loading */}
       {loading ? (
-        <div className="bg-white rounded-lg border border-gray-200 p-8 text-center text-gray-400">
+        <WorkspaceDecoratedSurface
+          variant="health"
+          className="rounded-lg border border-[var(--color-border)] p-8 text-center text-gray-400 shadow-sm"
+        >
           読み込み中...
-        </div>
+        </WorkspaceDecoratedSurface>
       ) : accounts.length === 0 ? (
-        <div className="bg-white rounded-lg border border-gray-200 p-8 text-center text-gray-400">
+        <WorkspaceDecoratedSurface
+          variant="health"
+          className="rounded-lg border border-[var(--color-border)] p-8 text-center text-gray-400 shadow-sm"
+        >
           <p className="mb-2">LINEアカウントが登録されていません</p>
           <p className="text-xs text-gray-300">
             先にアカウント管理からLINEアカウントを登録してください
           </p>
-        </div>
+        </WorkspaceDecoratedSurface>
       ) : (
         <>
           {/* Account Health Cards */}
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 mb-8">
-            {accounts.map((account) => {
+            {accounts.map((account, accountIndex) => {
               const risk = latestRisk[account.id] || 'normal';
               const config = riskConfig[risk];
               const isExpanded = expandedId === account.id;
               const logs = healthLogs[account.id] || [];
 
               return (
-                <div
+                <WorkspaceDecoratedSurface
                   key={account.id}
-                  className="bg-white rounded-lg border border-gray-200 overflow-hidden"
+                  variant="health"
+                  accent={accountIndex}
+                  className="rounded-lg border border-[var(--color-border)] overflow-hidden shadow-sm"
                 >
                   <button
                     onClick={() => handleExpand(account.id)}
@@ -344,14 +353,17 @@ export default function HealthPage() {
                       )}
                     </div>
                   )}
-                </div>
+                </WorkspaceDecoratedSurface>
               );
             })}
           </div>
 
           {/* Migration Form Modal */}
           {migrateFrom && (
-            <div className="mb-8 bg-white rounded-lg border border-[var(--color-error-border)] p-6">
+            <WorkspaceDecoratedSurface
+              variant="health"
+              className="mb-8 rounded-lg border border-[var(--color-error-border)] p-6 shadow-sm"
+            >
               <h2 className="text-sm font-bold text-gray-900 mb-4">
                 友だち移行: {getAccountName(migrateFrom)}
               </h2>
@@ -397,18 +409,26 @@ export default function HealthPage() {
                   </button>
                 </div>
               </form>
-            </div>
+            </WorkspaceDecoratedSurface>
           )}
 
           {/* Migrations Table */}
           <div>
             <h2 className="text-lg font-bold text-gray-900 mb-4">移行履歴</h2>
             {migrations.length === 0 ? (
-              <div className="bg-white rounded-lg border border-gray-200 p-8 text-center text-gray-400">
+              <WorkspaceDecoratedSurface
+                variant="health"
+                accent={2}
+                className="rounded-lg border border-[var(--color-border)] p-8 text-center text-gray-400 shadow-sm"
+              >
                 移行履歴はありません
-              </div>
+              </WorkspaceDecoratedSurface>
             ) : (
-              <div className="bg-white rounded-lg border border-gray-200 overflow-hidden">
+              <WorkspaceDecoratedSurface
+                variant="health"
+                accent={1}
+                className="rounded-lg border border-[var(--color-border)] overflow-hidden shadow-sm"
+              >
                 <div className="overflow-x-auto">
                   <table className="w-full text-sm min-w-[640px]">
                     <thead>
@@ -476,7 +496,7 @@ export default function HealthPage() {
                     </tbody>
                   </table>
                 </div>
-              </div>
+              </WorkspaceDecoratedSurface>
             )}
           </div>
         </>

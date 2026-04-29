@@ -7,6 +7,7 @@ import { useAccount } from '@/contexts/account-context';
 import Header from '@/components/layout/header';
 import BroadcastForm from '@/components/broadcasts/broadcast-form';
 import CcPromptButton from '@/components/cc-prompt-button';
+import { WorkspaceDecoratedSurface } from '@/components/layout/workspace-decorated-surface';
 import { Alert } from '@/components/ui/alert';
 import { Badge } from '@/components/ui/badge';
 import { Input, Select, Textarea } from '@/components/ui/field';
@@ -211,7 +212,10 @@ export default function BroadcastsPage() {
       ) : null}
       {opsNotice ? <Alert className="mb-4">{opsNotice}</Alert> : null}
 
-      <div className="mb-6 bg-white rounded-lg border border-gray-200 p-4 shadow-sm">
+      <WorkspaceDecoratedSurface
+        variant="broadcasts"
+        className="mb-6 rounded-lg border border-[var(--color-border)] p-4 shadow-sm"
+      >
         <h2 className="text-sm font-semibold text-gray-800 mb-3">
           運用ツール（セグメント人数・テスト送信）
         </h2>
@@ -284,7 +288,7 @@ export default function BroadcastsPage() {
             1 件テスト送信
           </button>
         </div>
-      </div>
+      </WorkspaceDecoratedSurface>
 
       {/* Create form */}
       {showCreate && (
@@ -300,7 +304,10 @@ export default function BroadcastsPage() {
 
       {/* Loading */}
       {loading ? (
-        <div className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
+        <WorkspaceDecoratedSurface
+          variant="broadcasts"
+          className="rounded-lg shadow-sm border border-[var(--color-border)] overflow-hidden"
+        >
           {[...Array(4)].map((_, i) => (
             <div
               key={i}
@@ -314,13 +321,19 @@ export default function BroadcastsPage() {
               <div className="h-3 bg-gray-100 rounded w-24" />
             </div>
           ))}
-        </div>
+        </WorkspaceDecoratedSurface>
       ) : broadcasts.length === 0 && !showCreate ? (
-        <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-12 text-center">
+        <WorkspaceDecoratedSurface
+          variant="broadcasts"
+          className="rounded-lg shadow-sm border border-[var(--color-border)] p-12 text-center"
+        >
           <p className="text-gray-500">配信がありません。「新規配信」から作成してください。</p>
-        </div>
+        </WorkspaceDecoratedSurface>
       ) : (
-        <div className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
+        <WorkspaceDecoratedSurface
+          variant="broadcasts"
+          className="rounded-lg shadow-sm border border-[var(--color-border)] overflow-hidden"
+        >
           <div className="overflow-x-auto">
             <table className="w-full min-w-[640px]">
               <thead>
@@ -435,7 +448,7 @@ export default function BroadcastsPage() {
               </tbody>
             </table>
           </div>
-        </div>
+        </WorkspaceDecoratedSurface>
       )}
 
       <CcPromptButton prompts={ccPrompts} />
