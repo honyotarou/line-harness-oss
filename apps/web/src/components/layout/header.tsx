@@ -8,13 +8,19 @@ type HeaderProps = Readonly<{
 
 export default function Header({ title, description, action }: HeaderProps) {
   return (
-    <div className="mb-8">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold text-gray-900 tracking-tight">{title}</h1>
-          {description && <p className="mt-1 text-sm text-gray-500">{description}</p>}
+    <div className="mb-6 rounded-[var(--radius-token-lg)] border border-[var(--color-border)] bg-[var(--color-surface)]/95 px-5 py-5 shadow-[var(--shadow-token-sm)] sm:px-6">
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+        <div className="min-w-0">
+          <h1 className="text-2xl font-extrabold tracking-tight text-[var(--color-foreground)] sm:text-[26px]">
+            {title}
+          </h1>
+          {description && (
+            <p className="mt-1.5 text-sm font-medium text-[var(--color-foreground-muted)]">
+              {description}
+            </p>
+          )}
         </div>
-        {action && <div className="shrink-0 ml-4">{action}</div>}
+        {action && <div className="shrink-0 sm:ml-4">{action}</div>}
       </div>
     </div>
   );

@@ -1,9 +1,6 @@
 # ムードボード → トークン（メモ）
 
-- **参照**: 菜の花と桜の春景（上：空の淡青、中：桜のピンク帯、下：菜の花の黄）。ヒーロー写真: `apps/web/public/hero-spring-field.png`（LIFF は `apps/liff/public/hero-spring-field.png` と同一）。
-- **支配色**: **橙 `#D94E28`**（CTA・強調）、**黄 `#F0C14A`**（フッター帯・アクセント）、**珊瑚 `#F4A88C`**（グラデ中間）、**桜ピンク `#E89AA8`**（補助）。**緑は使わない**（LINE 公式緑も UI トークンに載せない）。
-- **背景**: **`canvas` #FFF4EC** で写真下の暖かい地色に接続。
-- **`primary`**: 橙系（管理 UI・KPI アイコン・フォーカスと統一）。
-- **成功系**: 緑ではなく **琥珀〜茶 `#9D6229` / `#FFF1E0`**（状態表示のみ）。
-- **運用者（PC）**: ログイン／ダッシュボード上部に **同一ヒーロー写真**＋グラデオーバーレイ、本文カードは白〜クリーム基調。
-- **LIFF**: `apps/liff/src/liff-index.css` の `:root` が `design-tokens.json` と同系統（`--lh-*`）。
+- **参照**: リポジトリ `mock/` の LINE CRM ダッシュボード静的モック（青 `#3B82F6`・白・スレート canvas）。装飾 PNG は `apps/web/public/mock-design-elements/`（`Downloads/design_elements` と同期可）。
+- **支配色**: **青 `primary`**（CTA・選択ナビ・フォーカス）、**紫 `#9B59D0`**（チャート・アクセント）、**オレンジ**（警告・マーケティング）、**緑 `success`**（正常系・LINE 体験帯は別途 LINE ブランド緑をボタン用途のみ）。
+- **背景**: **`canvas` #F8FAFC**、カードは **`surface` #FFFFFF**＋淡いボーダー。
+- **運用者（PC）**: サイドバーは半透明白＋ぼかし、ログイン背景はソフトな青白グラデ（`SpringFieldBackdrop`）。

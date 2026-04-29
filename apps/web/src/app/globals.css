@@ -1,54 +1,53 @@
 @import "tailwindcss";
 
-/* Semantic tokens — 正本: docs/design/design-tokens.json（春景ムードボード・緑なし暖色） */
+/* Semantic tokens — LINE CRM 管理 UI（mock/docs と同系のクリーン青・白ベース） */
 @theme {
-  --color-canvas: #fff4ec;
-  --color-surface: #fffcf8;
+  --color-canvas: #f8fafc;
+  --color-surface: #ffffff;
   --color-surface-elevated: #ffffff;
-  --color-border: #f0e0d6;
-  --color-border-strong: #e5cec0;
-  --color-foreground: #2a221e;
-  --color-foreground-muted: #6b5e56;
-  --color-foreground-subtle: #95877c;
-  --color-primary: #f0c14a;
-  --color-primary-hover: #d9a63a;
-  --color-primary-foreground: #2a221e;
-  --color-primary-muted: #ffecbf;
-  --color-accent-pink: #e89aa8;
-  --color-accent-pink-muted: #fce4e8;
-  --color-slate: #8b7269;
-  --color-slate-hover: #6e5a52;
-  --color-slate-muted: #f5e8e4;
-  --color-success: #9d6229;
-  --color-success-muted: #fff1e0;
-  --color-success-border: #e8c9a0;
-  --color-warning: #c45c12;
-  --color-warning-muted: #fff2e5;
-  --color-warning-border: #f0c9a8;
-  --color-error: #b54a4a;
-  --color-error-muted: #fceeed;
-  --color-error-border: #e8b4b4;
-  --color-focus-ring: #f0c14a;
-  --color-marketing-orange: #f0c14a;
-  --color-marketing-orange-deep: #d9a63a;
-  --color-marketing-yellow: #f0c14a;
-  --color-marketing-yellow-soft: #ffecbf;
-  --color-marketing-hero-mid: #f4a88c;
-  --color-sky-tint: #b8d4e8;
-  --radius-token-sm: 6px;
-  --radius-token-md: 12px;
-  --radius-token-lg: 18px;
-  --shadow-token-sm: 0 1px 2px rgb(42 34 30 / 0.06);
-  --shadow-token-md: 0 6px 20px rgb(42 34 30 / 0.08);
-  --shadow-token-lg: 0 14px 44px rgb(42 34 30 / 0.12);
+  --color-border: rgba(42, 70, 112, 0.12);
+  --color-border-strong: rgba(42, 70, 112, 0.2);
+  --color-foreground: #172033;
+  --color-foreground-muted: #6b7a90;
+  --color-foreground-subtle: #8a96a8;
+  --color-primary: #3b82f6;
+  --color-primary-hover: #2563eb;
+  --color-primary-foreground: #ffffff;
+  --color-primary-muted: #eff6ff;
+  --color-accent-pink: #9b59d0;
+  --color-accent-pink-muted: rgba(155, 89, 208, 0.12);
+  --color-slate: #64748b;
+  --color-slate-hover: #475569;
+  --color-slate-muted: #f1f5f9;
+  --color-success: #16a05d;
+  --color-success-muted: #eaf8f0;
+  --color-success-border: #b8e0cc;
+  --color-warning: #d79020;
+  --color-warning-muted: #fff6e2;
+  --color-warning-border: #f0d4a8;
+  --color-error: #d94a4a;
+  --color-error-muted: #fff0f0;
+  --color-error-border: #f0b4b4;
+  --color-focus-ring: #3b82f6;
+  --color-marketing-orange: #f4a034;
+  --color-marketing-orange-deep: #e89420;
+  --color-marketing-yellow: #e7b929;
+  --color-marketing-yellow-soft: rgba(231, 185, 41, 0.14);
+  --color-marketing-hero-mid: #93c5fd;
+  --color-sky-tint: #93c5fd;
+  --radius-token-sm: 8px;
+  --radius-token-md: 14px;
+  --radius-token-lg: 20px;
+  --shadow-token-sm: 0 1px 2px rgba(31, 65, 118, 0.04);
+  --shadow-token-md: 0 10px 30px rgba(31, 65, 118, 0.08);
+  --shadow-token-lg: 0 14px 44px rgba(31, 65, 118, 0.1);
 
-  /* Tailwind default palette remap（`green-*` は暖色 primary へ寄せ、実 UI に緑を出さない） */
-  --color-white: var(--color-surface-elevated);
+  --color-white: #ffffff;
   --color-black: #000;
   --color-gray-50: var(--color-canvas);
-  --color-gray-100: var(--color-surface);
-  --color-gray-200: var(--color-border);
-  --color-gray-300: var(--color-border-strong);
+  --color-gray-100: var(--color-slate-muted);
+  --color-gray-200: #e2e8f0;
+  --color-gray-300: #cbd5e1;
   --color-gray-400: var(--color-foreground-subtle);
   --color-gray-500: var(--color-foreground-muted);
   --color-gray-600: var(--color-foreground-muted);
@@ -56,20 +55,21 @@
   --color-gray-800: var(--color-foreground);
   --color-gray-900: var(--color-foreground);
 
-  --color-green-50: var(--color-primary-muted);
-  --color-green-100: var(--color-primary-muted);
-  --color-green-500: var(--color-primary);
-  --color-green-600: var(--color-primary-hover);
+  /* Tailwind chroma → semantic（enforce-design-tokens.test.ts と一致させる） */
+  --color-green-50: var(--color-success-muted);
+  --color-green-100: #d1fae5;
+  --color-green-500: var(--color-success);
+  --color-green-600: #0f766e;
 
-  --color-blue-50: var(--color-slate-muted);
-  --color-blue-100: var(--color-accent-pink-muted);
-  --color-blue-500: var(--color-sky-tint);
-  --color-blue-600: #8fa8bc;
+  --color-blue-50: var(--color-primary-muted);
+  --color-blue-100: #dbeafe;
+  --color-blue-500: var(--color-primary);
+  --color-blue-600: var(--color-primary-hover);
 
   --color-purple-50: var(--color-slate-muted);
   --color-purple-100: var(--color-accent-pink-muted);
   --color-purple-500: var(--color-accent-pink);
-  --color-purple-600: #c97b8c;
+  --color-purple-600: #7c3aed;
 
   --color-orange-50: var(--color-marketing-yellow-soft);
   --color-orange-100: var(--color-marketing-yellow-soft);
