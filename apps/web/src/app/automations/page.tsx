@@ -6,6 +6,7 @@ import { api } from '@/lib/api';
 import { useAccount } from '@/contexts/account-context';
 import Header from '@/components/layout/header';
 import CcPromptButton from '@/components/cc-prompt-button';
+import { WorkspaceDecoratedSurface } from '@/components/layout/workspace-decorated-surface';
 import { Alert } from '@/components/ui/alert';
 import { Badge } from '@/components/ui/badge';
 import { Input, Select, Textarea } from '@/components/ui/field';
@@ -224,7 +225,10 @@ export default function AutomationsPage() {
 
       {/* Create form */}
       {showCreate && (
-        <div className="mb-6 bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+        <WorkspaceDecoratedSurface
+          variant="automations"
+          className="mb-6 rounded-lg shadow-sm border border-[var(--color-border)] p-6"
+        >
           <h2 className="text-sm font-semibold text-gray-800 mb-4">新規オートメーションを作成</h2>
           <div className="space-y-4 max-w-lg">
             <div>
@@ -319,16 +323,18 @@ export default function AutomationsPage() {
               </button>
             </div>
           </div>
-        </div>
+        </WorkspaceDecoratedSurface>
       )}
 
       {/* Loading skeleton */}
       {loading ? (
         <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
           {[...Array(3)].map((_, i) => (
-            <div
+            <WorkspaceDecoratedSurface
               key={i}
-              className="bg-white rounded-lg border border-gray-200 p-5 animate-pulse space-y-3"
+              variant="automations"
+              accent={i}
+              className="rounded-lg border border-[var(--color-border)] p-5 animate-pulse space-y-3"
             >
               <div className="h-4 bg-gray-200 rounded w-3/4" />
               <div className="h-3 bg-gray-100 rounded w-full" />
@@ -336,21 +342,26 @@ export default function AutomationsPage() {
                 <div className="h-3 bg-gray-100 rounded w-24" />
                 <div className="h-3 bg-gray-100 rounded w-16" />
               </div>
-            </div>
+            </WorkspaceDecoratedSurface>
           ))}
         </div>
       ) : automations.length === 0 && !showCreate ? (
-        <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-12 text-center">
+        <WorkspaceDecoratedSurface
+          variant="automations"
+          className="rounded-lg shadow-sm border border-[var(--color-border)] p-12 text-center"
+        >
           <p className="text-gray-500">
             オートメーションがありません。「新規ルール」から作成してください。
           </p>
-        </div>
+        </WorkspaceDecoratedSurface>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
-          {automations.map((automation) => (
-            <div
+          {automations.map((automation, index) => (
+            <WorkspaceDecoratedSurface
               key={automation.id}
-              className="bg-white rounded-lg shadow-sm border border-gray-200 p-5 hover:shadow-md transition-shadow"
+              variant="automations"
+              accent={index}
+              className="rounded-lg shadow-sm border border-[var(--color-border)] p-5 hover:shadow-md transition-shadow"
             >
               {/* Header row */}
               <div className="flex items-start justify-between mb-2">
@@ -410,7 +421,7 @@ export default function AutomationsPage() {
                   削除
                 </button>
               </div>
-            </div>
+            </WorkspaceDecoratedSurface>
           ))}
         </div>
       )}

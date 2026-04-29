@@ -5,6 +5,7 @@ import { tryParseJsonRecord } from '@line-crm/shared';
 import { api, fetchApi } from '@/lib/api';
 import { useAccount } from '@/contexts/account-context';
 import Header from '@/components/layout/header';
+import { WorkspaceDecoratedSurface } from '@/components/layout/workspace-decorated-surface';
 import CcPromptButton from '@/components/cc-prompt-button';
 import { Alert } from '@/components/ui/alert';
 import { Badge } from '@/components/ui/badge';
@@ -397,8 +398,10 @@ export default function ChatsPage() {
 
       <div className="flex gap-4 h-[calc(100vh-120px)] lg:h-[calc(100vh-180px)]">
         {/* Left Panel: Chat List */}
-        <div
-          className={`w-full lg:w-96 lg:flex-shrink-0 bg-white rounded-lg shadow-sm border border-gray-200 flex-col overflow-hidden ${selectedChatId ? 'hidden lg:flex' : 'flex'}`}
+        <WorkspaceDecoratedSurface
+          variant="chats"
+          accent={0}
+          className={`w-full lg:w-96 lg:flex-shrink-0 rounded-lg shadow-sm border border-[var(--color-border)] flex flex-col overflow-hidden ${selectedChatId ? 'hidden lg:flex' : 'flex'}`}
         >
           {/* Status Filter Tabs */}
           <div className="flex border-b border-gray-200">
@@ -533,11 +536,13 @@ export default function ChatsPage() {
               </>
             )}
           </div>
-        </div>
+        </WorkspaceDecoratedSurface>
 
         {/* Right Panel: Chat Detail */}
-        <div
-          className={`flex-1 bg-white rounded-lg shadow-sm border border-gray-200 flex-col overflow-hidden ${selectedChatId || selectedFriendId ? 'flex' : 'hidden lg:flex'}`}
+        <WorkspaceDecoratedSurface
+          variant="chats"
+          accent={1}
+          className={`flex-1 rounded-lg shadow-sm border border-[var(--color-border)] flex flex-col overflow-hidden ${selectedChatId || selectedFriendId ? 'flex' : 'hidden lg:flex'}`}
         >
           {selectedFriendId && !selectedChatId ? (
             /* Direct message to friend without existing chat */
@@ -758,7 +763,7 @@ export default function ChatsPage() {
               </div>
             </>
           ) : null}
-        </div>
+        </WorkspaceDecoratedSurface>
       </div>
       <CcPromptButton prompts={ccPrompts} />
     </div>

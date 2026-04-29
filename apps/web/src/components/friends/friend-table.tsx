@@ -66,14 +66,14 @@ export default function FriendTable({ friends, allTags, onRefresh }: FriendTable
 
   if (friends.length === 0) {
     return (
-      <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-12 text-center">
+      <div className="p-12 text-center">
         <p className="text-gray-500">友だちが見つかりません</p>
       </div>
     );
   }
 
   return (
-    <div className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
+    <div className="overflow-hidden">
       {error && (
         <div className="px-4 py-3 bg-[var(--color-error-muted)] border-b border-[var(--color-error-border)] text-[var(--color-error)] text-sm">
           {error}
