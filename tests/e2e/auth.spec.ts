@@ -34,7 +34,9 @@ test('stores the session in an httpOnly cookie and loads the dashboard after log
   await expect(page).toHaveURL('http://127.0.0.1:3001/');
   await expect(page.getByRole('heading', { name: 'ダッシュボード' })).toBeVisible();
   await expect(page.getByText('Main Account の管理画面')).toBeVisible();
-  await expect(page.getByText('42')).toBeVisible();
+  const friendKpi = page.getByRole('link', { name: /友だち数/ });
+  await expect(friendKpi).toBeVisible();
+  await expect(friendKpi.locator('strong')).toHaveText('42');
   await expect(page.evaluate(() => localStorage.getItem('lh_session_token'))).resolves.toBeNull();
   const cookies = await page.context().cookies('http://127.0.0.1:8787');
   expect(cookies.find((cookie) => cookie.name === 'lh_admin_session')?.httpOnly).toBe(true);

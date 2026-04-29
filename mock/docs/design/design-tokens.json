@@ -1,0 +1,75 @@
+{
+  "color": {
+    "accent": "#3B82F6",
+    "accentHover": "#2563EB",
+    "accentSoft": "#EFF6FF",
+    "line": "#06C755",
+    "lineHover": "#05A948",
+    "bg": "#F8FAFC",
+    "surface": "#FFFFFF",
+    "surfaceMuted": "#F1F5F9",
+    "text": "#172033",
+    "textSub": "#6B7A90",
+    "border": "rgba(42, 70, 112, 0.12)",
+    "borderStrong": "rgba(42, 70, 112, 0.2)",
+    "success": "#16A05D",
+    "successLight": "#EAF8F0",
+    "warning": "#D79020",
+    "warningLight": "#FFF6E2",
+    "error": "#D94A4A",
+    "errorLight": "#FFF0F0",
+    "teal": "#19A99A",
+    "orange": "#F4A034",
+    "purple": "#9B59D0",
+    "yellow": "#E7B929"
+  },
+  "typography": {
+    "fontMain": "Noto Sans JP",
+    "fontFamilyMain": "'Noto Sans JP', system-ui, -apple-system, BlinkMacSystemFont, sans-serif",
+    "fontData": "IBM Plex Mono",
+    "fontFamilyData": "'IBM Plex Mono', 'Menlo', monospace",
+    "heading": {
+      "size": "2rem",
+      "weight": 800,
+      "letterSpacing": "-0.04em"
+    },
+    "body": {
+      "size": "0.9375rem",
+      "weight": 400,
+      "lineHeight": "1.7"
+    },
+    "sub": {
+      "size": "0.8125rem",
+      "weight": 400
+    },
+    "data": {
+      "size": "1.625rem",
+      "weight": 800
+    }
+  },
+  "spacing": {
+    "sidebarWidth": "224px",
+    "pagePadding": "24px",
+    "cardPadding": "20px",
+    "gap": "16px",
+    "sectionGap": "22px",
+    "maxWidth": "1360px"
+  },
+  "radius": {
+    "sm": "8px",
+    "md": "14px",
+    "lg": "20px",
+    "xl": "28px"
+  },
+  "shadow": {
+    "sm": "0 1px 2px rgba(31, 65, 118, 0.04)",
+    "md": "0 10px 30px rgba(31, 65, 118, 0.08)",
+    "focus": "0 0 0 4px rgba(59, 130, 246, 0.2)"
+  },
+  "motion": {
+    "duration": "0.22s",
+    "easing": "cubic-bezier(0.25, 0.46, 0.45, 0.94)",
+    "pageLoad": "cards fade in with translateY(8px -> 0), staggered by 0.04s",
+    "forbidden": ["bounce", "neon", "heavy-shadow", "parallax"]
+  }
+}
