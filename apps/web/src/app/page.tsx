@@ -1,13 +1,14 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import '@/styles/dashboard-mock-reference.css';
 import SafeLink from '@/components/safe-link';
 import { api, getApiBaseUrl } from '@/lib/api';
 import CcPromptButton from '@/components/cc-prompt-button';
 import { useAccount } from '@/contexts/account-context';
-import { SpringFieldBackdrop } from '@/components/layout/spring-field-backdrop';
-import { RaCheckLogo } from '@/components/racheck-logo';
 import { Alert } from '@/components/ui/alert';
+
+const DE = '/mock-design-elements';
 
 const ccPrompts = [
   {
@@ -37,40 +38,9 @@ type DashboardStats = Readonly<{
   scoringRuleCount: number | null;
 }>;
 
-type StatCardProps = Readonly<{
-  title: string;
-  value: number | null;
-  loading: boolean;
-  icon: React.ReactNode;
-  href: string;
-}>;
-
-function StatCard({ title, value, loading, icon, href }: StatCardProps) {
-  return (
-    <SafeLink
-      href={href}
-      className="group block rounded-xl border border-white/60 bg-white/95 p-4 shadow-md backdrop-blur-sm transition-shadow hover:shadow-lg"
-    >
-      <div className="flex items-start justify-between">
-        <div>
-          <p className="text-sm font-medium text-gray-500 mb-1.5">{title}</p>
-          {loading ? (
-            <div className="h-8 w-20 bg-gray-100 rounded animate-pulse" />
-          ) : (
-            <p className="text-2xl font-bold text-gray-900">
-              {value !== null ? value.toLocaleString('ja-JP') : '-'}
-            </p>
-          )}
-        </div>
-        <div className="w-9 h-9 rounded-lg flex items-center justify-center shrink-0 bg-[var(--color-primary-muted)] text-[var(--color-primary)]">
-          {icon}
-        </div>
-      </div>
-      <p className="text-xs text-gray-400 mt-2.5 group-hover:text-[var(--color-primary-hover)] transition-colors">
-        詳細を見る →
-      </p>
-    </SafeLink>
-  );
+function formatStat(n: number | null): string {
+  if (n === null) return '—';
+  return n.toLocaleString('ja-JP');
 }
 
 export default function DashboardPage() {
@@ -143,285 +113,318 @@ export default function DashboardPage() {
     load();
   }, [selectedAccountId]);
 
+  const accountLabel = selectedAccount
+    ? `${selectedAccount.displayName || selectedAccount.name} の管理画面`
+    : '友だち・配信・シナリオをひとつの画面から管理';
+
   return (
-    <div className="relative isolate -mx-4 -mt-[72px] -mb-6 min-h-screen px-4 pb-0 pt-[72px] sm:-mx-6 sm:px-6 lg:-mx-8 lg:-mt-8 lg:-mb-8 lg:px-8 lg:pb-0 lg:pt-8">
-      <SpringFieldBackdrop variant="absolute" position="center 36%" />
-      <div className="relative z-10 flex min-h-screen flex-col gap-4 pb-0 pt-1">
-        <div className="rounded-2xl border border-white/55 bg-white/92 p-5 shadow-[var(--shadow-token-lg)] backdrop-blur-md sm:p-6">
-          <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-            <div className="flex items-center gap-4">
-              <RaCheckLogo variant="dashboard" />
-              <div className="min-w-0">
-                <p className="text-xs font-semibold uppercase tracking-[0.12em] text-[var(--color-foreground-muted)]">
-                  LINE公式アカウント CRM
-                </p>
-                <h1 className="mt-1 text-2xl font-black tracking-tight text-[var(--color-foreground)] sm:text-3xl">
-                  ダッシュボード
-                </h1>
-                <p className="mt-2 max-w-xl text-sm text-[var(--color-foreground-muted)]">
-                  {selectedAccount
-                    ? `${selectedAccount.displayName || selectedAccount.name} の管理画面`
-                    : '友だち・配信・シナリオをひとつの画面から管理'}
-                </p>
-              </div>
+    <div className="relative isolate -mx-4 -mt-[72px] -mb-6 min-h-screen px-0 pb-0 pt-[72px] sm:-mx-6 lg:-mx-8 lg:-mt-8 lg:-mb-8 lg:pt-8">
+      <div className="lh-dref max-w-none px-4 sm:px-6 lg:px-8">
+        <header className="topbar">
+          <div />
+          <label className="search">
+            <span>検索</span>
+            <input
+              type="search"
+              placeholder="検索（友だち・シナリオ・テンプレートなど）"
+              readOnly
+            />
+          </label>
+          <div className="topbar-right">
+            <button className="icon-button" type="button" aria-label="通知">
+              <span className="badge-count">3</span>🔔
+            </button>
+            <div className="user-chip">
+              <span className="avatar" />
+              運営 太郎
+              <span>⌄</span>
             </div>
           </div>
-        </div>
+        </header>
 
         {error && (
-          <Alert variant="error" className="border-white/50 bg-white/95 backdrop-blur-sm">
+          <Alert variant="error" className="mb-3">
             {error}
           </Alert>
         )}
 
-        {/* 友だち追加はこの管理画面と同じ Worker（NEXT_PUBLIC_API_URL）へ。デモ用 URL を直書きしない。 */}
-        <a
-          href={`${getApiBaseUrl()}/auth/line?ref=dashboard`}
-          target="_blank"
-          rel="noopener noreferrer"
-          className="block rounded-xl border border-white/55 bg-white/90 p-4 shadow-md backdrop-blur-sm transition-colors hover:bg-white/95"
-        >
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm font-bold text-gray-900">LINE で体験する</p>
-              <p className="text-xs text-gray-500 mt-0.5">
-                友だち追加でステップ配信・フォーム・自動返信を体験
-              </p>
-            </div>
-            <span
-              className="text-xs px-3 py-1.5 rounded-full text-[var(--color-primary-foreground)] font-semibold"
-              style={{ backgroundColor: 'var(--color-primary)' }}
+        <section className="hero card">
+          <div className="hero-bg" aria-hidden="true">
+            <img className="hero-bg-blob" src={`${DE}/02_green_blob.png`} alt="" />
+            <img className="hero-bg-cloud" src={`${DE}/04_purple_cloud.png`} alt="" />
+            <img className="hero-bg-peach" src={`${DE}/03_peach_wave_area.png`} alt="" />
+            <img className="hero-bg-circle" src={`${DE}/01_blue_circle.png`} alt="" />
+          </div>
+          <div className="hero-main">
+            <p className="eyebrow">LINE公式アカウント CRM</p>
+            <h1>ダッシュボード</h1>
+            <p>{accountLabel}</p>
+          </div>
+          <div className="hero-actions">
+            <a
+              className="button primary"
+              href={`${getApiBaseUrl()}/auth/line?ref=dashboard`}
+              target="_blank"
+              rel="noopener noreferrer"
             >
-              友だち追加
-            </span>
+              LINEで体験する ↗
+            </a>
+            <SafeLink href="/login" className="button ghost">
+              ログイン
+            </SafeLink>
           </div>
-        </a>
+          <div className="hero-art" aria-hidden="true">
+            <img className="hero-chart" src={`${DE}/05_blue_line_area.png`} alt="" />
+            <img className="hero-donut" src={`${DE}/06_blue_donut.png`} alt="" />
+            <img className="hero-bars" src={`${DE}/57_blue_bar_chart.png`} alt="" />
+            <img className="hero-branch" src={`${DE}/18_green_branch.png`} alt="" />
+            <img className="hero-scribble" src={`${DE}/25_blue_scribble.png`} alt="" />
+          </div>
+        </section>
 
-        {/* Summary cards */}
-        <div className="mb-5 grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3">
-          <StatCard
-            title="友だち数"
-            value={stats.friendCount}
-            loading={loading}
-            href="/friends"
-            icon={
-              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z"
-                />
-              </svg>
-            }
-          />
-          <StatCard
-            title="アクティブシナリオ数"
-            value={stats.activeScenarioCount}
-            loading={loading}
-            href="/scenarios"
-            icon={
-              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"
-                />
-              </svg>
-            }
-          />
-          <StatCard
-            title="配信数 (合計)"
-            value={stats.broadcastCount}
-            loading={loading}
-            href="/broadcasts"
-            icon={
-              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M11 5.882V19.24a1.76 1.76 0 01-3.417.592l-2.147-6.15M18 13a3 3 0 100-6M5.436 13.683A4.001 4.001 0 017 6h1.832c4.1 0 7.625-1.234 9.168-3v14c-1.543-1.766-5.067-3-9.168-3H7a3.988 3.988 0 01-1.564-.317z"
-                />
-              </svg>
-            }
-          />
-        </div>
-
-        {/* Round 3 summary cards */}
-        <div className="mb-5 grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3">
-          <StatCard
-            title="テンプレート数"
-            value={stats.templateCount}
-            loading={loading}
-            href="/templates"
-            icon={
-              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M4 5a1 1 0 011-1h14a1 1 0 011 1v2a1 1 0 01-1 1H5a1 1 0 01-1-1V5zM4 13a1 1 0 011-1h6a1 1 0 011 1v6a1 1 0 01-1 1H5a1 1 0 01-1-1v-6z"
-                />
-              </svg>
-            }
-          />
-          <StatCard
-            title="アクティブルール数"
-            value={stats.automationCount}
-            loading={loading}
-            href="/automations"
-            icon={
-              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M13 10V3L4 14h7v7l9-11h-7z"
-                />
-              </svg>
-            }
-          />
-          <StatCard
-            title="スコアリングルール数"
-            value={stats.scoringRuleCount}
-            loading={loading}
-            href="/scoring"
-            icon={
-              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M11.049 2.927c.3-.921 1.603-.921 1.902 0l1.519 4.674a1 1 0 00.95.69h4.915c.969 0 1.371 1.24.588 1.81l-3.976 2.888a1 1 0 00-.363 1.118l1.518 4.674c.3.922-.755 1.688-1.538 1.118l-3.976-2.888a1 1 0 00-1.176 0l-3.976 2.888c-.783.57-1.838-.197-1.538-1.118l1.518-4.674a1 1 0 00-.363-1.118l-3.976-2.888c-.784-.57-.38-1.81.588-1.81h4.914a1 1 0 00.951-.69l1.519-4.674z"
-                />
-              </svg>
-            }
-          />
-        </div>
-
-        {/* Quick links */}
-        <div className="-mx-4 -mb-6 mt-auto flex flex-1 flex-col bg-black/95 pb-6 pt-6 shadow-[0_18px_60px_rgb(0_0_0/0.28)] backdrop-blur-md sm:-mx-6 sm:pb-6 sm:pt-6 lg:-mx-8 lg:-mb-8 lg:pb-8 lg:pt-6">
-          <div className="px-4 sm:px-6 lg:px-8">
-            <h2 className="mb-4 text-sm font-semibold text-white">クイックアクション</h2>
-            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-              <SafeLink
-                href="/friends"
-                className="group flex items-center gap-3 rounded-lg border border-gray-200 bg-white/95 p-3 transition-colors hover:border-gray-300 hover:bg-white"
-              >
-                <div className="w-8 h-8 rounded-lg flex items-center justify-center shrink-0 bg-[var(--color-primary-muted)] text-[var(--color-primary)]">
-                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth={2}
-                      d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z"
-                    />
-                  </svg>
-                </div>
-                <div>
-                  <p className="text-sm font-medium text-gray-900 group-hover:text-[var(--color-primary-hover)] transition-colors">
-                    友だち管理
-                  </p>
-                  <p className="text-xs text-gray-400">友だちの一覧・タグ管理</p>
-                </div>
-              </SafeLink>
-
-              <SafeLink
-                href="/scenarios"
-                className="group flex items-center gap-3 rounded-lg border border-gray-200 bg-white/95 p-3 transition-colors hover:border-gray-300 hover:bg-white"
-              >
-                <div className="w-8 h-8 rounded-lg flex items-center justify-center shrink-0 bg-[var(--color-primary-muted)] text-[var(--color-primary)]">
-                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth={2}
-                      d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"
-                    />
-                  </svg>
-                </div>
-                <div>
-                  <p className="text-sm font-medium text-gray-900 group-hover:text-[var(--color-primary-hover)] transition-colors">
-                    シナリオ配信
-                  </p>
-                  <p className="text-xs text-gray-400">自動配信シナリオの作成・編集</p>
-                </div>
-              </SafeLink>
-
-              <SafeLink
-                href="/broadcasts"
-                className="group flex items-center gap-3 rounded-lg border border-gray-200 bg-white/95 p-3 transition-colors hover:border-gray-300 hover:bg-white"
-              >
-                <div className="w-8 h-8 rounded-lg flex items-center justify-center shrink-0 bg-[var(--color-primary-muted)] text-[var(--color-primary)]">
-                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth={2}
-                      d="M11 5.882V19.24a1.76 1.76 0 01-3.417.592l-2.147-6.15M18 13a3 3 0 100-6M5.436 13.683A4.001 4.001 0 017 6h1.832c4.1 0 7.625-1.234 9.168-3v14c-1.543-1.766-5.067-3-9.168-3H7a3.988 3.988 0 01-1.564-.317z"
-                    />
-                  </svg>
-                </div>
-                <div>
-                  <p className="text-sm font-medium text-gray-900 group-hover:text-[var(--color-primary-hover)] transition-colors">
-                    一斉配信
-                  </p>
-                  <p className="text-xs text-gray-400">メッセージの一斉送信・予約</p>
-                </div>
-              </SafeLink>
-
-              <SafeLink
-                href="/chats"
-                className="group flex items-center gap-3 rounded-lg border border-gray-200 bg-white/95 p-3 transition-colors hover:border-gray-300 hover:bg-white"
-              >
-                <div className="w-8 h-8 rounded-lg flex items-center justify-center shrink-0 bg-[var(--color-primary-muted)] text-[var(--color-primary)]">
-                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth={2}
-                      d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"
-                    />
-                  </svg>
-                </div>
-                <div>
-                  <p className="text-sm font-medium text-gray-900 group-hover:text-[var(--color-primary-hover)] transition-colors">
-                    チャット
-                  </p>
-                  <p className="text-xs text-gray-400">オペレーターチャット管理</p>
-                </div>
-              </SafeLink>
-
-              <SafeLink
-                href="/health"
-                className="group flex items-center gap-3 rounded-lg border border-gray-200 bg-white/95 p-3 transition-colors hover:border-gray-300 hover:bg-white"
-              >
-                <div className="w-8 h-8 rounded-lg flex items-center justify-center shrink-0 bg-[var(--color-primary-muted)] text-[var(--color-primary)]">
-                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth={2}
-                      d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"
-                    />
-                  </svg>
-                </div>
-                <div>
-                  <p className="text-sm font-medium text-gray-900 group-hover:text-[var(--color-primary-hover)] transition-colors">
-                    BAN検知
-                  </p>
-                  <p className="text-xs text-gray-400">アカウント健康度ダッシュボード</p>
-                </div>
-              </SafeLink>
-            </div>
-
-            <div className="mt-6 flex w-full justify-end">
-              <CcPromptButton prompts={ccPrompts} dock="inline-end" />
+        <section className="trial card">
+          <div className="trial-copy">
+            <span className="round-icon line">＋</span>
+            <div>
+              <h2>LINE で体験する</h2>
+              <p>友だち追加でステップ配信・フォーム・自動返信を体験</p>
             </div>
           </div>
+          <a
+            className="button line-button"
+            href={`${getApiBaseUrl()}/auth/line?ref=dashboard`}
+            target="_blank"
+            rel="noopener noreferrer"
+          >
+            友だち追加
+          </a>
+        </section>
+
+        <section className="metric-grid" aria-label="主要指標">
+          <SafeLink href="/friends" className="metric card">
+            <span className="metric-icon blue">👥</span>
+            <p>友だち数</p>
+            <strong>{loading ? '…' : formatStat(stats.friendCount)}</strong>
+            <small aria-hidden="true">&nbsp;</small>
+            <img className="metric-sparkline" src={`${DE}/47_blue_area_chart.png`} alt="" />
+          </SafeLink>
+          <SafeLink href="/scenarios" className="metric card">
+            <span className="metric-icon green">♟</span>
+            <p>アクティブシナリオ数</p>
+            <strong>{loading ? '…' : formatStat(stats.activeScenarioCount)}</strong>
+            <small aria-hidden="true">&nbsp;</small>
+            <img className="metric-sparkline" src={`${DE}/49_blue_wave_line.png`} alt="" />
+          </SafeLink>
+          <SafeLink href="/broadcasts" className="metric card">
+            <span className="metric-icon orange">➤</span>
+            <p>配信数（合計）</p>
+            <strong>{loading ? '…' : formatStat(stats.broadcastCount)}</strong>
+            <small aria-hidden="true">&nbsp;</small>
+            <img className="metric-sparkline" src={`${DE}/55_orange_line_chart.png`} alt="" />
+          </SafeLink>
+          <SafeLink href="/templates" className="metric card">
+            <span className="metric-icon purple">▤</span>
+            <p>テンプレート数</p>
+            <strong>{loading ? '…' : formatStat(stats.templateCount)}</strong>
+            <small aria-hidden="true">&nbsp;</small>
+            <img className="metric-sparkline" src={`${DE}/56_purple_line_chart.png`} alt="" />
+          </SafeLink>
+          <SafeLink href="/automations" className="metric card">
+            <span className="metric-icon teal">🛡</span>
+            <p>アクティブルール数</p>
+            <strong>{loading ? '…' : formatStat(stats.automationCount)}</strong>
+            <small aria-hidden="true">&nbsp;</small>
+            <img className="metric-sparkline" src={`${DE}/50_green_wave_line.png`} alt="" />
+          </SafeLink>
+          <SafeLink href="/scoring" className="metric card">
+            <span className="metric-icon yellow">★</span>
+            <p>スコアリングルール数</p>
+            <strong>{loading ? '…' : formatStat(stats.scoringRuleCount)}</strong>
+            <small aria-hidden="true">&nbsp;</small>
+            <img className="metric-sparkline" src={`${DE}/52_purple_dashed_wave.png`} alt="" />
+          </SafeLink>
+        </section>
+
+        <div className="dashboard-rows">
+          <div className="dashboard-row dashboard-row-top">
+            <section className="card section-card quick-section">
+              <div className="section-heading">
+                <h2>クイックアクション</h2>
+              </div>
+              <div className="quick-grid">
+                <SafeLink href="/friends">
+                  <span className="metric-icon blue">👥</span>
+                  <strong>友だち管理</strong>
+                  <small>友だちの一覧・タグ管理</small>
+                  <b>→</b>
+                </SafeLink>
+                <SafeLink href="/scenarios">
+                  <span className="metric-icon green">♟</span>
+                  <strong>シナリオ配信</strong>
+                  <small>シナリオの作成・編集</small>
+                  <b>→</b>
+                </SafeLink>
+                <SafeLink href="/broadcasts">
+                  <span className="metric-icon orange">➤</span>
+                  <strong>一斉配信</strong>
+                  <small>メッセージの一括送信</small>
+                  <b>→</b>
+                </SafeLink>
+                <SafeLink href="/chats">
+                  <span className="metric-icon purple">●</span>
+                  <strong>チャット</strong>
+                  <small>個別トークとサポート</small>
+                  <b>→</b>
+                </SafeLink>
+                <SafeLink href="/health">
+                  <span className="metric-icon red">!</span>
+                  <strong>BAN検知</strong>
+                  <small>アカウント健全性チェック</small>
+                  <b>→</b>
+                </SafeLink>
+              </div>
+              <div className="mt-4 flex justify-end">
+                <CcPromptButton prompts={ccPrompts} dock="inline-end" />
+              </div>
+            </section>
+
+            <section className="card activity-card activity-section">
+              <div className="section-heading">
+                <h2>最近のアクティビティ</h2>
+                <SafeLink href="/inbox">すべて見る</SafeLink>
+              </div>
+              <ol className="activity-list">
+                <li>
+                  <time>10:42</time>
+                  <span className="dot green" />
+                  シナリオ「相談案内フロー」を公開しました
+                </li>
+                <li>
+                  <time>10:31</time>
+                  <span className="dot orange" />
+                  一斉配信「お知らせ」を配信しました
+                </li>
+                <li>
+                  <time>09:48</time>
+                  <span className="dot purple" />
+                  フォーム「初回問診」を更新しました
+                </li>
+                <li>
+                  <time>09:15</time>
+                  <span className="dot blue" />
+                  友だちが追加されました
+                </li>
+                <li>
+                  <time>08:55</time>
+                  <span className="dot teal" />
+                  Webhook通知の正常受信を確認しました
+                </li>
+              </ol>
+            </section>
+
+            <aside className="phone-panel card phone-section">
+              <div className="section-heading">
+                <h2>LIFF/ミニアプリ プレビュー</h2>
+              </div>
+              <div className="phone">
+                <div className="phone-speaker" />
+                <div className="phone-top">
+                  <span>
+                    ‹ {selectedAccount?.displayName || selectedAccount?.name || '公式アカウント'}
+                  </span>
+                  <span>☰</span>
+                </div>
+                <div className="phone-body">
+                  <h3>
+                    友だち追加して
+                    <br />
+                    始める
+                  </h3>
+                  <ol>
+                    <li className="done">
+                      <span>✓</span>友だち追加
+                    </li>
+                    <li className="current">
+                      <span>2</span>登録情報の入力
+                    </li>
+                    <li>
+                      <span>3</span>登録完了
+                    </li>
+                  </ol>
+                  <a
+                    className="button primary phone-cta"
+                    href={`${getApiBaseUrl()}/auth/line?ref=dashboard`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                  >
+                    次へ進む
+                  </a>
+                </div>
+              </div>
+            </aside>
+          </div>
+
+          <div className="dashboard-row dashboard-row-bottom">
+            <section className="card section-card health-section">
+              <div className="section-heading">
+                <h2>運用の安心</h2>
+                <SafeLink href="/health">すべて正常</SafeLink>
+              </div>
+              <div className="health-grid">
+                <article>
+                  <span>☑</span>
+                  <strong>複数公式アカウント</strong>
+                  <small className="ok">正常</small>
+                </article>
+                <article>
+                  <span>◇</span>
+                  <strong>権限管理</strong>
+                  <small className="ok">正常</small>
+                </article>
+                <article>
+                  <span>♧</span>
+                  <strong>Webhook</strong>
+                  <small className="ok">正常</small>
+                </article>
+                <article>
+                  <span>⬡</span>
+                  <strong>BAN検知</strong>
+                  <small className="warn">注意</small>
+                </article>
+                <article>
+                  <span>☼</span>
+                  <strong>緊急コントロール</strong>
+                  <small className="ok">正常</small>
+                </article>
+              </div>
+            </section>
+
+            <section className="card chart-card chart-section">
+              <div className="section-heading">
+                <h2>友だち数の推移</h2>
+                <span>7日間</span>
+              </div>
+              <img
+                className="chart-image"
+                src={`${DE}/47_blue_area_chart.png`}
+                alt="友だち数の推移グラフ（装飾）"
+              />
+            </section>
+
+            <div className="dashboard-col-spacer" aria-hidden="true" />
+          </div>
         </div>
+
+        <section className="security card">
+          <div>
+            <span className="metric-icon blue">🛡</span>
+            <strong>安心してご利用いただくために</strong>
+            <p>
+              らチェクアカウントの健全性とセキュリティを継続的に検知されています。定期的なBAN検知と緊急コントロールで、安全・安心な運用をサポートします。
+            </p>
+          </div>
+          <SafeLink href="/accounts">セキュリティ設定を確認する ↗</SafeLink>
+        </section>
       </div>
     </div>
   );

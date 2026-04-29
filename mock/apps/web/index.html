@@ -1,0 +1,290 @@
+<!doctype html>
+<html lang="ja">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>らチェック | LINE アカウント CRM</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@500;700&family=Noto+Sans+JP:wght@400;500;700;800&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="./styles.css" />
+  </head>
+  <body>
+    <div class="app-shell">
+      <aside class="sidebar" aria-label="メインナビゲーション">
+        <a class="brand" href="#">
+          <span class="brand-mark">✓</span>
+          <span>
+            <strong>らチェック</strong>
+            <small>LINE Harness OSS</small>
+          </span>
+        </a>
+
+        <button class="tenant-switcher" type="button">
+          <span class="tenant-icon">●</span>
+          トイレ検知
+          <span class="chevron">⌄</span>
+        </button>
+
+        <nav class="nav-groups">
+          <section>
+            <a class="nav-item active" href="#"><span>⌂</span>ダッシュボード</a>
+            <a class="nav-item" href="#"><span>♙</span>友だち管理</a>
+            <a class="nav-item" href="#"><span>◎</span>個別チャット</a>
+            <a class="nav-item" href="#"><span>✉</span>受信箱</a>
+          </section>
+
+          <section>
+            <p class="nav-label">配信</p>
+            <a class="nav-item" href="#"><span>▣</span>シナリオ配信</a>
+            <a class="nav-item" href="#"><span>◒</span>一斉配信</a>
+            <a class="nav-item" href="#"><span>▤</span>テンプレート</a>
+            <a class="nav-item" href="#"><span>▧</span>画像ライブラリ</a>
+            <a class="nav-item" href="#"><span>◉</span>リマインダ</a>
+          </section>
+
+          <section>
+            <p class="nav-label">分析</p>
+            <a class="nav-item" href="#"><span>⌁</span>流入経路</a>
+            <a class="nav-item" href="#"><span>↗</span>広告連携</a>
+            <a class="nav-item" href="#"><span>▥</span>CV計測</a>
+            <a class="nav-item" href="#"><span>☆</span>スコアリング</a>
+            <a class="nav-item" href="#"><span>▦</span>フォーム回答</a>
+          </section>
+
+          <section>
+            <p class="nav-label">自動化</p>
+            <a class="nav-item" href="#"><span>△</span>オートメーション</a>
+            <a class="nav-item" href="#"><span>↻</span>自動返信</a>
+            <a class="nav-item" href="#"><span>♢</span>Webhook通知</a>
+          </section>
+
+          <section>
+            <p class="nav-label">アカウント・権限</p>
+            <a class="nav-item" href="#"><span>▣</span>LINEアカウント</a>
+            <a class="nav-item" href="#"><span>⚙</span>アクセス権</a>
+            <a class="nav-item" href="#"><span>!</span>BAN検知</a>
+            <a class="nav-item danger" href="#"><span>⚑</span>緊急コントロール</a>
+          </section>
+        </nav>
+
+        <div class="sidebar-footer">
+          <small>らチェック v0.1</small>
+          <a href="#">ログアウト</a>
+        </div>
+      </aside>
+
+      <main class="workspace">
+        <header class="topbar">
+          <label class="search">
+            <span>検索</span>
+            <input type="search" placeholder="検索（友だち・シナリオ・テンプレートなど）" />
+          </label>
+          <div class="topbar-right">
+            <button class="icon-button" type="button" aria-label="通知">
+              <span class="badge-count">3</span>
+              🔔
+            </button>
+            <div class="user-chip">
+              <span class="avatar"></span>
+              運営 太郎
+              <span>⌄</span>
+            </div>
+          </div>
+        </header>
+
+        <section class="hero card">
+          <div class="hero-bg" aria-hidden="true">
+            <img class="hero-bg-blob" src="./assets/design-elements/02_green_blob.png" alt="" />
+            <img class="hero-bg-cloud" src="./assets/design-elements/04_purple_cloud.png" alt="" />
+            <img class="hero-bg-peach" src="./assets/design-elements/03_peach_wave_area.png" alt="" />
+            <img class="hero-bg-circle" src="./assets/design-elements/01_blue_circle.png" alt="" />
+          </div>
+          <div class="hero-main">
+            <p class="eyebrow">LINE公式アカウント CRM</p>
+            <h1>ダッシュボード</h1>
+            <p>トイレ検知 の管理画面</p>
+          </div>
+          <div class="hero-actions">
+            <a class="button primary" href="#">LINEで体験する ↗</a>
+            <a class="button ghost" href="#">ログイン</a>
+          </div>
+          <div class="hero-art" aria-hidden="true">
+            <img class="hero-chart" src="./assets/design-elements/05_blue_line_area.png" alt="" />
+            <img class="hero-donut" src="./assets/design-elements/06_blue_donut.png" alt="" />
+            <img class="hero-bars" src="./assets/design-elements/57_blue_bar_chart.png" alt="" />
+            <img class="hero-branch" src="./assets/design-elements/18_green_branch.png" alt="" />
+            <img class="hero-scribble" src="./assets/design-elements/25_blue_scribble.png" alt="" />
+          </div>
+        </section>
+
+        <section class="trial card">
+          <div class="trial-copy">
+            <span class="round-icon line">＋</span>
+            <div>
+              <h2>LINE で体験する</h2>
+              <p>友だち追加でステップ配信・フォーム・自動返信を体験</p>
+            </div>
+          </div>
+          <a class="button line-button" href="#">友だち追加</a>
+        </section>
+
+        <section class="metric-grid" aria-label="主要指標">
+          <article class="metric card">
+            <span class="metric-icon blue">👥</span>
+            <p>友だち数</p>
+            <strong>1</strong>
+            <small>+1（前日比 +100%）</small>
+            <img class="metric-sparkline" src="./assets/design-elements/47_blue_area_chart.png" alt="" />
+          </article>
+          <article class="metric card">
+            <span class="metric-icon green">♟</span>
+            <p>アクティブシナリオ数</p>
+            <strong>0</strong>
+            <small>±0（前日比 ±0）</small>
+            <img class="metric-sparkline" src="./assets/design-elements/49_blue_wave_line.png" alt="" />
+          </article>
+          <article class="metric card">
+            <span class="metric-icon orange">➤</span>
+            <p>配信数（合計）</p>
+            <strong>0</strong>
+            <small>±0（前日比 ±0）</small>
+            <img class="metric-sparkline" src="./assets/design-elements/55_orange_line_chart.png" alt="" />
+          </article>
+          <article class="metric card">
+            <span class="metric-icon purple">▤</span>
+            <p>テンプレート数</p>
+            <strong>0</strong>
+            <small>±0（前日比 ±0）</small>
+            <img class="metric-sparkline" src="./assets/design-elements/56_purple_line_chart.png" alt="" />
+          </article>
+          <article class="metric card">
+            <span class="metric-icon teal">🛡</span>
+            <p>アクティブルール数</p>
+            <strong>0</strong>
+            <small>±0（前日比 ±0）</small>
+            <img class="metric-sparkline" src="./assets/design-elements/50_green_wave_line.png" alt="" />
+          </article>
+          <article class="metric card">
+            <span class="metric-icon yellow">★</span>
+            <p>スコアリングルール数</p>
+            <strong>0</strong>
+            <small>±0（前日比 ±0）</small>
+            <img class="metric-sparkline" src="./assets/design-elements/52_purple_dashed_wave.png" alt="" />
+          </article>
+        </section>
+
+        <div class="dashboard-rows">
+          <div class="dashboard-row dashboard-row-top">
+            <section class="card section-card quick-section">
+              <div class="section-heading">
+                <h2>クイックアクション</h2>
+              </div>
+              <div class="quick-grid">
+                <a href="#"><span class="metric-icon blue">👥</span><strong>友だち管理</strong><small>友だちの一覧・タグ管理</small><b>→</b></a>
+                <a href="#"><span class="metric-icon green">♟</span><strong>シナリオ配信</strong><small>シナリオの作成・編集</small><b>→</b></a>
+                <a href="#"><span class="metric-icon orange">➤</span><strong>一斉配信</strong><small>メッセージの一括送信</small><b>→</b></a>
+                <a href="#"><span class="metric-icon purple">●</span><strong>チャット</strong><small>個別トークとサポート</small><b>→</b></a>
+                <a href="#"><span class="metric-icon red">!</span><strong>BAN検知</strong><small>アカウント健全性チェック</small><b>→</b></a>
+              </div>
+            </section>
+
+            <section class="card activity-card activity-section">
+              <div class="section-heading">
+                <h2>最近のアクティビティ</h2>
+                <a href="#">すべて見る</a>
+              </div>
+              <ol class="activity-list">
+                <li><time>10:42</time><span class="dot green"></span>シナリオ「相談案内フロー」を公開しました</li>
+                <li><time>10:31</time><span class="dot orange"></span>一斉配信「お知らせ」を配信しました</li>
+                <li><time>09:48</time><span class="dot purple"></span>フォーム「初回問診」を更新しました</li>
+                <li><time>09:15</time><span class="dot blue"></span>友だちが追加されました</li>
+                <li><time>08:55</time><span class="dot teal"></span>Webhook通知の正常受信を確認しました</li>
+              </ol>
+            </section>
+
+            <aside class="phone-panel card phone-section">
+              <div class="section-heading">
+                <h2>LIFF/ミニアプリ プレビュー</h2>
+              </div>
+              <div class="phone">
+                <div class="phone-speaker"></div>
+                <div class="phone-top">
+                  <span>‹ トイレ検知</span>
+                  <span>☰</span>
+                </div>
+                <div class="phone-body">
+                  <h3>友だち追加して<br />始める</h3>
+                  <ol>
+                    <li class="done"><span>✓</span>友だち追加</li>
+                    <li class="current"><span>2</span>登録情報の入力</li>
+                    <li><span>3</span>登録完了</li>
+                  </ol>
+                  <a class="button primary phone-cta" href="#">次へ進む</a>
+                </div>
+              </div>
+            </aside>
+          </div>
+
+          <div class="dashboard-row dashboard-row-bottom">
+            <section class="card section-card health-section">
+              <div class="section-heading">
+                <h2>運用の安心</h2>
+                <a href="#">すべて正常</a>
+              </div>
+              <div class="health-grid">
+                <article>
+                  <span>☑</span>
+                  <strong>複数公式アカウント</strong>
+                  <small class="ok">正常</small>
+                </article>
+                <article>
+                  <span>◇</span>
+                  <strong>権限管理</strong>
+                  <small class="ok">正常</small>
+                </article>
+                <article>
+                  <span>♧</span>
+                  <strong>Webhook</strong>
+                  <small class="ok">正常</small>
+                </article>
+                <article>
+                  <span>⬡</span>
+                  <strong>BAN検知</strong>
+                  <small class="warn">注意</small>
+                </article>
+                <article>
+                  <span>☼</span>
+                  <strong>緊急コントロール</strong>
+                  <small class="ok">正常</small>
+                </article>
+              </div>
+            </section>
+
+            <section class="card chart-card chart-section">
+              <div class="section-heading">
+                <h2>友だち数の推移</h2>
+                <span>7日間</span>
+              </div>
+              <img class="chart-image" src="./assets/design-elements/47_blue_area_chart.png" alt="友だち数の推移グラフ" />
+            </section>
+
+            <div class="dashboard-col-spacer" aria-hidden="true"></div>
+          </div>
+        </div>
+
+        <section class="security card">
+          <div>
+            <span class="metric-icon blue">🛡</span>
+            <strong>安心してご利用いただくために</strong>
+            <p>らチェックアカウントの健全性とセキュリティを継続的に検知されています。定期的なBAN検知と緊急コントロールで、安全・安心な運用をサポートします。</p>
+          </div>
+          <a href="#">セキュリティ設定を確認する ↗</a>
+        </section>
+      </main>
+    </div>
+  </body>
+</html>
