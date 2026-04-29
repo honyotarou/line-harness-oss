@@ -21,24 +21,25 @@ type CornerPair = Readonly<{
 }>;
 
 /** 左下＝緑系・右上＝青系の3パターン（ダッシュボード hero / metric と同系、素材だけ交代） */
+/** コーナーだけ・小さめ。本文・ボタン領域にかからないよう縁寄せ */
 const ACCENT_ROTATION: ReadonlyArray<CornerPair> = [
   {
     bl: '02_green_blob.png',
     tr: '01_blue_circle.png',
-    blClass: 'bottom-[-30%] left-[-12%] w-[min(220px,52vw)] max-w-none opacity-[0.26]',
-    trClass: 'top-[6%] right-[-4%] w-[76px] max-w-none opacity-[0.34]',
+    blClass: 'bottom-[-20%] left-[-10%] w-[min(96px,30%)] max-w-none opacity-[0.2]',
+    trClass: 'top-[4%] right-[-5%] w-[44px] max-w-none opacity-[0.26]',
   },
   {
     bl: '18_green_branch.png',
     tr: '10_blue_circle_outline.png',
-    blClass: 'bottom-[-18%] left-[-8%] w-[min(180px,45vw)] max-w-none opacity-[0.22]',
-    trClass: 'top-[4%] right-[-2%] w-[64px] max-w-none opacity-[0.3]',
+    blClass: 'bottom-[-14%] left-[-8%] w-[min(84px,28%)] max-w-none opacity-[0.18]',
+    trClass: 'top-[3%] right-[-4%] w-[40px] max-w-none opacity-[0.24]',
   },
   {
     bl: '14_green_leaf.png',
     tr: '05_blue_line_area.png',
-    blClass: 'bottom-[-24%] left-[-6%] w-[min(140px,38vw)] max-w-none opacity-[0.24]',
-    trClass: 'top-[8%] right-[2%] w-[min(100px,28vw)] max-w-none opacity-[0.28]',
+    blClass: 'bottom-[-18%] left-[-6%] w-[min(72px,26%)] max-w-none opacity-[0.19]',
+    trClass: 'top-[6%] right-[-3%] w-[min(56px,18%)] max-w-none opacity-[0.22]',
   },
 ];
 
@@ -86,13 +87,6 @@ export function WorkspaceDecoratedSurface({
           src={`${base}/${pair.tr}`}
           alt=""
           className={`absolute object-contain select-none ${pair.trClass}`}
-        />
-        <div
-          className="absolute inset-0 mix-blend-soft-light opacity-90"
-          style={{
-            background:
-              'linear-gradient(118deg, rgba(6, 199, 85, 0.045), transparent 44%, rgba(59, 130, 246, 0.065))',
-          }}
         />
       </div>
       <div className="relative z-[1] min-h-0">{children}</div>

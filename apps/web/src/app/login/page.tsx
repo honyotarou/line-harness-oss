@@ -6,7 +6,6 @@ import {
   stripAdminAccessLoginCompleteMarker,
 } from '@line-crm/shared';
 import { api, isApiError, setAdminSessionToken, useCloudflareAccessLoginMode } from '@/lib/api';
-import { SpringFieldBackdrop } from '@/components/layout/spring-field-backdrop';
 import { RaCheckLogo } from '@/components/racheck-logo';
 import { Input } from '@/components/ui/field';
 import { buildAdminAccessBootstrapStartHref } from '@/lib/admin-access-bootstrap-start';
@@ -35,12 +34,11 @@ function LoginLogoMark() {
 
 function LoginPageFallback() {
   return (
-    <div className="relative flex min-h-screen flex-col">
-      <SpringFieldBackdrop variant="fixed" position="center 40%" />
+    <div className="relative flex min-h-screen flex-col bg-[var(--color-canvas)]">
       <div className="relative z-10 flex flex-1 flex-col items-center justify-center px-4 py-10">
         <LoginLogoMark />
         <div className="relative w-full max-w-sm overflow-hidden rounded-2xl border border-[var(--color-border)] bg-white/92 p-8 shadow-[var(--shadow-token-lg)] backdrop-blur-md">
-          <WorkspaceDecorativeArt seed="login-fallback" density="compact" />
+          <WorkspaceDecorativeArt />
           <div className="relative z-10 text-center mb-4">
             <h1 className="text-lg font-bold text-gray-900">ログイン</h1>
             <p className="text-sm text-gray-500 mt-1">セッションを確認しています</p>
@@ -175,12 +173,11 @@ function LoginPageInner() {
   };
 
   return (
-    <div className="relative flex min-h-screen flex-col">
-      <SpringFieldBackdrop variant="fixed" position="center 40%" />
+    <div className="relative flex min-h-screen flex-col bg-[var(--color-canvas)]">
       <div className="relative z-10 flex flex-1 flex-col items-center justify-center px-4 py-10">
         <LoginLogoMark />
         <div className="relative w-full max-w-sm overflow-hidden rounded-2xl border border-[var(--color-border)] bg-white/92 p-8 shadow-[var(--shadow-token-lg)] backdrop-blur-md">
-          <WorkspaceDecorativeArt seed="login" density="compact" />
+          <WorkspaceDecorativeArt />
           <div className="relative z-10 text-center mb-4">
             <h1 className="text-xl font-bold text-gray-900">ログイン</h1>
             <p className="text-sm text-gray-500 mt-1">API キーまたは Cloudflare Access</p>

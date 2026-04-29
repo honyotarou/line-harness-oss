@@ -5,7 +5,6 @@ import type { Scenario, ScenarioTriggerType } from '@line-crm/shared';
 import { api } from '@/lib/api';
 import { useAccount } from '@/contexts/account-context';
 import Header from '@/components/layout/header';
-import { SpringFieldBackdrop } from '@/components/layout/spring-field-backdrop';
 import ScenarioList from '@/components/scenarios/scenario-list';
 import CcPromptButton from '@/components/cc-prompt-button';
 import { WorkspaceDecoratedSurface } from '@/components/layout/workspace-decorated-surface';
@@ -140,143 +139,140 @@ export default function ScenariosPage() {
   };
 
   return (
-    <div className="relative isolate min-h-[calc(100dvh-6.5rem)] overflow-hidden rounded-2xl border border-[var(--color-border)] shadow-[var(--shadow-token-sm)]">
-      <SpringFieldBackdrop variant="absolute" position="center 40%" />
-      <div className="relative z-10 space-y-4 pb-2 pt-1">
-        <Header
-          title="シナリオ配信"
-          action={
-            <button
-              onClick={() => setShowCreate(true)}
-              className="px-4 py-2 min-h-[44px] text-sm font-medium text-white rounded-lg transition-opacity hover:opacity-90"
-              style={{ backgroundColor: 'var(--color-primary)' }}
-            >
-              + 新規シナリオ
-            </button>
-          }
-        />
-
-        {/* Error */}
-        {error && (
-          <Alert variant="error" className="mb-4">
-            {error}
-          </Alert>
-        )}
-
-        {/* Create form */}
-        {showCreate && (
-          <WorkspaceDecoratedSurface
-            variant="scenarios"
-            className="mb-6 rounded-lg border border-[var(--color-border)] p-6 shadow-sm"
+    <div className="space-y-4 pb-2 pt-1">
+      <Header
+        title="シナリオ配信"
+        action={
+          <button
+            onClick={() => setShowCreate(true)}
+            className="px-4 py-2 min-h-[44px] text-sm font-medium text-white rounded-lg transition-opacity hover:opacity-90"
+            style={{ backgroundColor: 'var(--color-primary)' }}
           >
-            <h2 className="text-sm font-semibold text-gray-800 mb-4">新規シナリオを作成</h2>
-            <div className="space-y-4 max-w-lg">
-              <div>
-                <label className="block text-xs font-medium text-gray-600 mb-1">
-                  シナリオ名 <span className="text-[var(--color-error)]">*</span>
-                </label>
-                <Input
-                  type="text"
-                  className=""
-                  placeholder="例: 友だち追加ウェルカムシナリオ"
-                  value={form.name}
-                  onChange={(e) => setForm({ ...form, name: e.target.value })}
-                />
-              </div>
-              <div>
-                <label className="block text-xs font-medium text-gray-600 mb-1">説明</label>
-                <Textarea
-                  className="resize-none"
-                  rows={2}
-                  placeholder="シナリオの説明 (省略可)"
-                  value={form.description}
-                  onChange={(e) => setForm({ ...form, description: e.target.value })}
-                />
-              </div>
-              <div>
-                <label className="block text-xs font-medium text-gray-600 mb-1">トリガー</label>
-                <Select
-                  className=""
-                  value={form.triggerType}
-                  onChange={(e) =>
-                    setForm({ ...form, triggerType: e.target.value as ScenarioTriggerType })
-                  }
-                >
-                  {triggerOptions.map((opt) => (
-                    <option key={opt.value} value={opt.value}>
-                      {opt.label}
-                    </option>
-                  ))}
-                </Select>
-              </div>
-              <div className="flex items-center gap-2">
-                <input
-                  type="checkbox"
-                  id="isActive"
-                  checked={form.isActive}
-                  onChange={(e) => setForm({ ...form, isActive: e.target.checked })}
-                  className="w-4 h-4 rounded border-gray-300 text-[var(--color-primary)] focus:ring-[var(--color-focus-ring)]"
-                />
-                <label htmlFor="isActive" className="text-sm text-gray-600">
-                  作成後すぐに有効にする
-                </label>
-              </div>
+            + 新規シナリオ
+          </button>
+        }
+      />
 
-              {formError && <p className="text-xs text-[var(--color-error)]">{formError}</p>}
+      {/* Error */}
+      {error && (
+        <Alert variant="error" className="mb-4">
+          {error}
+        </Alert>
+      )}
 
-              <div className="flex gap-2">
-                <button
-                  onClick={handleCreate}
-                  disabled={saving}
-                  className="px-4 py-2 min-h-[44px] text-sm font-medium text-white rounded-lg disabled:opacity-50 transition-opacity"
-                  style={{ backgroundColor: 'var(--color-primary)' }}
-                >
-                  {saving ? '作成中...' : '作成'}
-                </button>
-                <button
-                  onClick={() => {
-                    setShowCreate(false);
-                    setFormError('');
-                  }}
-                  className="px-4 py-2 min-h-[44px] text-sm font-medium text-gray-600 bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors"
-                >
-                  キャンセル
-                </button>
-              </div>
+      {/* Create form */}
+      {showCreate && (
+        <WorkspaceDecoratedSurface
+          variant="scenarios"
+          className="mb-6 rounded-lg border border-[var(--color-border)] p-6 shadow-sm"
+        >
+          <h2 className="text-sm font-semibold text-gray-800 mb-4">新規シナリオを作成</h2>
+          <div className="space-y-4 max-w-lg">
+            <div>
+              <label className="block text-xs font-medium text-gray-600 mb-1">
+                シナリオ名 <span className="text-[var(--color-error)]">*</span>
+              </label>
+              <Input
+                type="text"
+                className=""
+                placeholder="例: 友だち追加ウェルカムシナリオ"
+                value={form.name}
+                onChange={(e) => setForm({ ...form, name: e.target.value })}
+              />
             </div>
-          </WorkspaceDecoratedSurface>
-        )}
-
-        {/* Loading skeleton */}
-        {loading ? (
-          <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
-            {[...Array(3)].map((_, i) => (
-              <WorkspaceDecoratedSurface
-                key={i}
-                variant="scenarios"
-                accent={i}
-                className="animate-pulse space-y-3 rounded-lg border border-[var(--color-border)] p-5 shadow-sm"
+            <div>
+              <label className="block text-xs font-medium text-gray-600 mb-1">説明</label>
+              <Textarea
+                className="resize-none"
+                rows={2}
+                placeholder="シナリオの説明 (省略可)"
+                value={form.description}
+                onChange={(e) => setForm({ ...form, description: e.target.value })}
+              />
+            </div>
+            <div>
+              <label className="block text-xs font-medium text-gray-600 mb-1">トリガー</label>
+              <Select
+                className=""
+                value={form.triggerType}
+                onChange={(e) =>
+                  setForm({ ...form, triggerType: e.target.value as ScenarioTriggerType })
+                }
               >
-                <div className="h-4 bg-gray-200 rounded w-3/4" />
-                <div className="h-3 bg-gray-100 rounded w-full" />
-                <div className="flex gap-4">
-                  <div className="h-3 bg-gray-100 rounded w-24" />
-                  <div className="h-3 bg-gray-100 rounded w-16" />
-                </div>
-              </WorkspaceDecoratedSurface>
-            ))}
-          </div>
-        ) : (
-          <ScenarioList
-            scenarios={scenarios}
-            onToggleActive={handleToggleActive}
-            onDelete={handleDelete}
-            loading={loading}
-          />
-        )}
+                {triggerOptions.map((opt) => (
+                  <option key={opt.value} value={opt.value}>
+                    {opt.label}
+                  </option>
+                ))}
+              </Select>
+            </div>
+            <div className="flex items-center gap-2">
+              <input
+                type="checkbox"
+                id="isActive"
+                checked={form.isActive}
+                onChange={(e) => setForm({ ...form, isActive: e.target.checked })}
+                className="w-4 h-4 rounded border-gray-300 text-[var(--color-primary)] focus:ring-[var(--color-focus-ring)]"
+              />
+              <label htmlFor="isActive" className="text-sm text-gray-600">
+                作成後すぐに有効にする
+              </label>
+            </div>
 
-        <CcPromptButton prompts={ccPrompts} />
-      </div>
+            {formError && <p className="text-xs text-[var(--color-error)]">{formError}</p>}
+
+            <div className="flex gap-2">
+              <button
+                onClick={handleCreate}
+                disabled={saving}
+                className="px-4 py-2 min-h-[44px] text-sm font-medium text-white rounded-lg disabled:opacity-50 transition-opacity"
+                style={{ backgroundColor: 'var(--color-primary)' }}
+              >
+                {saving ? '作成中...' : '作成'}
+              </button>
+              <button
+                onClick={() => {
+                  setShowCreate(false);
+                  setFormError('');
+                }}
+                className="px-4 py-2 min-h-[44px] text-sm font-medium text-gray-600 bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors"
+              >
+                キャンセル
+              </button>
+            </div>
+          </div>
+        </WorkspaceDecoratedSurface>
+      )}
+
+      {/* Loading skeleton */}
+      {loading ? (
+        <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
+          {[...Array(3)].map((_, i) => (
+            <WorkspaceDecoratedSurface
+              key={i}
+              variant="scenarios"
+              accent={i}
+              className="animate-pulse space-y-3 rounded-lg border border-[var(--color-border)] p-5 shadow-sm"
+            >
+              <div className="h-4 bg-gray-200 rounded w-3/4" />
+              <div className="h-3 bg-gray-100 rounded w-full" />
+              <div className="flex gap-4">
+                <div className="h-3 bg-gray-100 rounded w-24" />
+                <div className="h-3 bg-gray-100 rounded w-16" />
+              </div>
+            </WorkspaceDecoratedSurface>
+          ))}
+        </div>
+      ) : (
+        <ScenarioList
+          scenarios={scenarios}
+          onToggleActive={handleToggleActive}
+          onDelete={handleDelete}
+          loading={loading}
+        />
+      )}
+
+      <CcPromptButton prompts={ccPrompts} />
     </div>
   );
 }
